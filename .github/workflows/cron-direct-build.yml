@@ -9,33 +9,69 @@ jobs:
   pkg:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
-      - uses: jdx/mise-action@v2
+          go-version: "1.25"
+      - uses: ./.github/actions/retry
         with:
-          experimental: true
+          action: jdx/mise-action@v2
+          with: |
+            version: 2026.10.3
+            experimental: true
+            install_args: --locked
+            cache_key_prefix: mise-npm-shell-out-v0
       - name: Build
         shell: bash
-        run: GOPROXY=direct SDKS="" make build
+        run: |
+          # Fetching dependencies directly from their origin (GOPROXY=direct)
+          # is more prone to transient network failures, so retry.
+          retry() {
+            local attempt=1 max=5
+            while true; do
+              "$@" && return 0
+              if [ "$attempt" -ge "$max" ]; then
+                echo "Command failed after $max attempts: $*" >&2
+                return 1
+              fi
+              echo "Attempt $attempt/$max failed: $*; retrying in 15s..." >&2
+              attempt=$((attempt + 1))
+              sleep 15
+            done
+          }
+          retry env GOPROXY=direct SDKS="" make build
   sdk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
-      - uses: pulumi/actions@v6
+      - uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7
         with:
           pulumi-version: dev
 
       - name: Build
         shell: bash
         run: |
+          # Fetching dependencies directly from their origin (GOPROXY=direct)
+          # is more prone to transient network failures, so retry.
+          retry() {
+            local attempt=1 max=5
+            while true; do
+              "$@" && return 0
+              if [ "$attempt" -ge "$max" ]; then
+                echo "Command failed after $max attempts: $*" >&2
+                return 1
+              fi
+              echo "Attempt $attempt/$max failed: $*; retrying in 15s..." >&2
+              attempt=$((attempt + 1))
+              sleep 15
+            done
+          }
           mkdir test
           cd test
           pulumi new random-go --generate-only --yes
           go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../sdk
-          GOPROXY=direct pulumi install
+          retry env GOPROXY=direct pulumi install

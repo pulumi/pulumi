@@ -16,7 +16,7 @@ const lambdaModuleResource = new keywords.lambda.SomeResource("lambdaModuleResou
     lambda: "lambda",
     property: "property",
 });
-const lambdaResource = new keywords.Lambda("lambdaResource", {
+const lambdaResource = new keywords.module.Lambda("lambdaResource", {
     builtins: "builtins",
     lambda: "lambda",
     property: "property",

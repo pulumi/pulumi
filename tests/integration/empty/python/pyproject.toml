@@ -1,0 +1,4 @@
+[project]
+name = "emptypy"
+version = "0.0.0"
+dependencies = []

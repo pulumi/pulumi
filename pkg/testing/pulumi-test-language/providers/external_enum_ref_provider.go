@@ -22,8 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -33,7 +33,7 @@ type ExternalEnumRefProvider struct {
 
 var _ plugin.Provider = (*ExternalEnumRefProvider)(nil)
 
-func (p *ExternalEnumRefProvider) Pkg() tokens.Package {
+func (p *ExternalEnumRefProvider) pkg() tokens.Package {
 	return "extenumref"
 }
 
@@ -47,25 +47,25 @@ func (p *ExternalEnumRefProvider) GetSchema(
 	enumProvider := &EnumProvider{}
 	enumVersion := enumProvider.version()
 	pkg := schema.PackageSpec{
-		Name:    p.Pkg().String(),
+		Name:    p.pkg().String(),
 		Version: p.version().String(),
 		Dependencies: []schema.PackageDescriptor{
-			{Name: enumProvider.Pkg().String(), Version: &enumVersion},
+			{Name: enumProvider.pkg().String(), Version: &enumVersion},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			p.Pkg().String() + ":index:Sink": {
+			p.pkg().String() + ":index:Sink": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
 						"stringEnum": {TypeSpec: schema.TypeSpec{
 							Ref: fmt.Sprintf("/%s/v%s/schema.json#/types/%s:index:StringEnum",
-								enumProvider.Pkg(), enumProvider.version(), enumProvider.Pkg()),
+								enumProvider.pkg(), enumProvider.version(), enumProvider.pkg()),
 						}},
 					},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"stringEnum": {TypeSpec: schema.TypeSpec{
 						Ref: fmt.Sprintf("/%s/v%s/schema.json#/types/%s:index:StringEnum",
-							enumProvider.Pkg(), enumProvider.version(), enumProvider.Pkg()),
+							enumProvider.pkg(), enumProvider.version(), enumProvider.pkg()),
 					}},
 				},
 			},
@@ -94,7 +94,7 @@ func (p *ExternalEnumRefProvider) CheckConfig(
 
 func (p *ExternalEnumRefProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 
@@ -123,9 +123,10 @@ func (p *ExternalEnumRefProvider) DiffConfig(
 func (p *ExternalEnumRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Sink", p.Pkg()):
-		return plugin.CheckResponse{Properties: req.News}, nil
+	case fmt.Sprintf("%s:index:Sink", p.pkg()):
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -136,11 +137,12 @@ func (p *ExternalEnumRefProvider) Check(
 func (p *ExternalEnumRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Sink", p.Pkg()):
+	case fmt.Sprintf("%s:index:Sink", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

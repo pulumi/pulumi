@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import execa from "execa";
 import * as fs from "fs/promises";
-import { readdirSync } from "fs";
+import { existsSync, lstatSync, readdirSync, readFileSync } from "fs";
 import * as path from "path";
 import * as semver from "semver";
 import * as typescript from "typescript";
@@ -45,14 +45,28 @@ async function getSnapshot(testCase: string, typescriptVersion: string): Promise
     return fs.readFile(path.join("cases", testCase, "snapshot.txt"), "utf-8");
 }
 
+// Returns the typescript version resolved within the @pulumi/pulumi package, as reported by the package manager.
+async function resolvedTypescriptVersion(packageManager: string): Promise<string> {
+    if (packageManager === "pnpm") {
+        const { stdout } = await execa("pnpm", ["ls", "typescript", "--json", "--depth", "Infinity"], {
+            cwd: __dirname,
+            reject: false,
+        });
+        const projects = JSON.parse(stdout);
+        return projects[0].dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+    }
+    const { stdout } = await execa("npm", ["ls", "typescript", "--json"], { cwd: __dirname, reject: false });
+    const deps = JSON.parse(stdout);
+    return deps.dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+}
+
 // This test validates that the typescript version used by the closure tests
 // is the same as the one used by the pulumi package and that we are testing
 // what we think we are testing ...
 it(`resolve to the correct typescript version within the pulumi package`,
     async function () {
-        const { stdout } = await execa("npm", ["ls", "typescript", "--json"], { cwd: __dirname, reject: false });
-        const deps = JSON.parse(stdout);
-        const version = deps.dependencies["@pulumi/pulumi"].dependencies.typescript.version;
+        const packageManager = process.env.CLOSURE_TEST_PACKAGE_MANAGER ?? "npm";
+        const version = await resolvedTypescriptVersion(packageManager);
         assert.strictEqual(version, typescript.version);
     });
 
@@ -104,6 +118,77 @@ describe(`closure tests (TypeScript ${typescript.version})`, function () {
 function anonymizeFunctionNames(text: string): string {
     return text.replace(/function '.+'/g, "function '<anonymous>'");
 }
+
+describe("computeCodePaths", () => {
+    it("computes the expected archive layout", async () => {
+        const packageManager = process.env.CLOSURE_TEST_PACKAGE_MANAGER ?? "npm";
+        const cwd = process.cwd();
+        process.chdir(path.join(__dirname, "codepaths-app"));
+        try {
+            const codePaths: Map<string, any> = await runtime.computeCodePaths();
+
+            const expected = [
+                "node_modules/cross-spawn",
+                "node_modules/execa",
+                "node_modules/get-stream",
+                "node_modules/human-signals",
+                "node_modules/is-stream",
+                "node_modules/isexe",
+                "node_modules/lru-cache",
+                "node_modules/merge-stream",
+                "node_modules/mimic-fn",
+                "node_modules/mockpackage",
+                "node_modules/npm-run-path",
+                "node_modules/onetime",
+                "node_modules/path-key",
+                "node_modules/semver",
+                "node_modules/shebang-command",
+                "node_modules/shebang-regex",
+                "node_modules/signal-exit",
+                "node_modules/strip-final-newline",
+                "node_modules/which",
+                "node_modules/yallist",
+            ];
+            if (packageManager === "pnpm") {
+                // In the zip, which@2 sits at node_modules/cross-spawn/node_modules/which under
+                // both package managers, but only pnpm needs an archive entry to put it there:
+                // its store keeps cross-spawn and which@2 in disjoint directories. npm physically
+                // nests which@2 inside cross-spawn's directory on disk, so it is carried along by
+                // the node_modules/cross-spawn entry and a separate entry would duplicate it.
+                expected.push("node_modules/cross-spawn/node_modules/which");
+            }
+            assert.deepStrictEqual([...codePaths.keys()].sort(), expected.sort());
+
+            const sources = new Map<string, string>();
+            for (const [key, archive] of codePaths) {
+                const sourcePath = await archive.path;
+                // The engine's archiver does not follow directory symlinks, so each entry must
+                // be backed by a real directory.
+                assert.ok(
+                    lstatSync(sourcePath).isDirectory(),
+                    `'${key}' source '${sourcePath}' is not a real directory`,
+                );
+                assert.ok(
+                    existsSync(path.join(sourcePath, "package.json")),
+                    `'${key}' source '${sourcePath}' has no package.json`,
+                );
+                sources.set(key, sourcePath);
+            }
+
+            // Both `which` versions must end up at the node_modules location Node resolves
+            // them from at runtime.
+            const versionOf = (dir: string) =>
+                JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).version;
+            assert.strictEqual(versionOf(sources.get("node_modules/which")!), "1.3.1");
+            const nestedWhich =
+                sources.get("node_modules/cross-spawn/node_modules/which") ??
+                path.join(sources.get("node_modules/cross-spawn")!, "node_modules", "which");
+            assert.ok(semver.satisfies(versionOf(nestedWhich), "2.x"));
+        } finally {
+            process.chdir(cwd);
+        }
+    });
+});
 
 describe("mock package", () => {
     describe("module", () => {

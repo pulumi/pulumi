@@ -42,8 +42,9 @@ import (
 func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
-	// track resources errored
+	// track resources errored and awaiting
 	resourcesErrored := 0
+	resourcesAwaited := 0
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -83,17 +84,21 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 				out = stderr
 			}
 			if event.Type == engine.ResourceOperationFailed {
-				resourcesErrored++
+				if event.Awaited() {
+					resourcesAwaited++
+				} else {
+					resourcesErrored++
+				}
 			}
 
 			var msg string
 
-			// When the event received is SummaryEvent we can safely use `resourcesErrored`
-			// as all resource events have finished at this point.
+			// When the event received is SummaryEvent we can safely use the counts as all resource
+			// events have finished at this point.
 			if event.Type != engine.SummaryEvent {
-				msg = RenderDiffEvent(event, 0, seen, opts)
+				msg = RenderDiffEvent(event, 0, 0, seen, opts)
 			} else {
-				msg = RenderDiffEvent(event, resourcesErrored, seen, opts)
+				msg = RenderDiffEvent(event, resourcesErrored, resourcesAwaited, seen, opts)
 			}
 
 			if msg != "" && out != nil {
@@ -107,7 +112,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	}
 }
 
-func RenderDiffEvent(event engine.Event, resourcesErrored int,
+func RenderDiffEvent(event engine.Event, resourcesErrored, resourcesAwaited int,
 	seen map[resource.URN]engine.StepEventMetadata, opts Options,
 ) string {
 	switch event.Type {
@@ -116,6 +121,8 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 	case engine.PolicyLoadEvent:
 		return ""
 	case engine.StartDebuggingEvent:
+		return ""
+	case engine.UpdateStartedEvent:
 		return ""
 	case engine.ProgressEvent:
 		return ""
@@ -133,7 +140,8 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload),
+			resourcesErrored, resourcesAwaited, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -176,6 +184,16 @@ func resourceText(urn resource.URN, opts Options) string {
 	return urn.Name()
 }
 
+// policyResourceClause renders the "  (type: name)" suffix for a policy event's target
+// resource, or "" for an invalid URN — URN.Type/URN.Name panic on the empty URN a
+// stack-level violation may carry.
+func policyResourceClause(urn resource.URN, opts Options) string {
+	if !urn.IsValid() {
+		return ""
+	}
+	return fmt.Sprintf("  (%s: %s)", urn.Type().DisplayName(), resourceText(urn, opts))
+}
+
 func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
 	prefix string, detailed bool, opts Options,
 ) string {
@@ -185,10 +203,10 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 		return ""
 	}
 
-	// Print the individual remediation's name and target resource type/name.
-	resText := resourceText(payload.ResourceURN, opts)
-	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resText)
+	// Print the individual remediation's name and its target resource type and name.
+	remediationLine := fmt.Sprintf("%s[remediate]  %s%s%s",
+		colors.SpecInfo, payload.PolicyName, colors.Reset,
+		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -217,9 +235,28 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	prefix string, linePrefix string, opts Options,
 ) string {
-	// Colorize mandatory and warning violations differently.
+	// Colorize mandatory and warning violations differently, and dim exempted ones, tagged before their level. On a
+	// single line, the exempted tag lists the exceptions; otherwise each exception and its reason follows the message.
 	c := colors.SpecWarning
-	if payload.EnforcementLevel == apitype.Mandatory {
+	tag := fmt.Sprintf("[%s]", payload.EnforcementLevel)
+	message := strings.TrimSuffix(payload.Message, "\n")
+	if len(payload.Exceptions) > 0 {
+		c = colors.BrightBlack
+		exempted := "exempted"
+		ids := make([]string, 0, len(payload.Exceptions))
+		lines := make([]string, 0, 1+len(payload.Exceptions))
+		lines = append(lines, message)
+		for _, e := range payload.Exceptions {
+			ids = append(ids, e.ID)
+			lines = append(lines, e.ID+": "+e.Reason)
+		}
+		if linePrefix == "" {
+			exempted += ": " + strings.Join(ids, ", ")
+		} else {
+			message = strings.Join(lines, "\n")
+		}
+		tag = fmt.Sprintf("[%s] %s", exempted, tag)
+	} else if payload.EnforcementLevel == apitype.Mandatory {
 		c = colors.SpecError
 	}
 
@@ -228,10 +265,11 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 		severity = fmt.Sprintf(" [severity: %s]", payload.Severity)
 	}
 
-	// Print the individual policy's name and target resource type/name.
-	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
-		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
+	// Print the individual policy's name and, for resource-scoped violations, the
+	// target resource type and name. Stack-level violations carry no resource URN.
+	policyLine := fmt.Sprintf("%s%s%s  %s%s%s",
+		c, tag, severity, payload.PolicyName, colors.Reset,
+		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -247,7 +285,6 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	}
 
 	// The message may span multiple lines, so we massage it so it will be indented properly.
-	message := strings.TrimSuffix(payload.Message, "\n")
 	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
 	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
 	return opts.Color.Colorize(policyLine + "\n")
@@ -257,7 +294,7 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
+func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored, resourcesAwaited int,
 	diffStyleSummary bool, opts Options,
 ) string {
 	changes := event.ResourceChanges
@@ -330,6 +367,12 @@ func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
 	if resourcesErrored > 0 {
 		errSummary := "    " + colors.Red + fmt.Sprintf("%d errored", resourcesErrored) + colors.Reset
 		out.WriteString(errSummary)
+		out.WriteString("\n")
+	}
+	// add awaiting summary
+	if resourcesAwaited > 0 {
+		awaitSummary := "    " + colors.Yellow + fmt.Sprintf("%d awaiting", resourcesAwaited) + colors.Reset
+		out.WriteString(awaitSummary)
 		out.WriteString("\n")
 	}
 
@@ -564,7 +607,7 @@ func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
 			continue
 		}
 
-		msg := RenderDiffEvent(e, 0, seen, displayOpts)
+		msg := RenderDiffEvent(e, 0, 0, seen, displayOpts)
 		if msg == "" {
 			continue
 		}

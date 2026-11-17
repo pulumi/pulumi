@@ -1,3 +1,6 @@
 name: pulumi-python-venv
 description: A simple Python Pulumi program that needs a venv to run.
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

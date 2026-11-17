@@ -20,12 +20,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -62,6 +68,10 @@ type LocalWorkspace struct {
 	pulumiCommand                 PulumiCommand
 	remoteExecutorImage           *ExecutorImage
 	remoteAgentPoolID             string
+	// cliAPI is the auto-generated low-level wrapper around pulumiCommand.
+	// Workspace and Stack methods migrated off `runPulumiCmdSync` reach
+	// the CLI through here.
+	cliAPI *automation.API
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -479,9 +489,7 @@ func setEnvVars(l *LocalWorkspace, envvars map[string]string) error {
 	if l.envvars == nil {
 		l.envvars = map[string]string{}
 	}
-	for k, v := range envvars {
-		l.envvars[k] = v
-	}
+	maps.Copy(l.envvars, envvars)
 	return nil
 }
 
@@ -564,20 +572,52 @@ func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error
 
 // OrgGetDefault returns the default organization for the current backend.
 func (l *LocalWorkspace) OrgGetDefault(ctx context.Context) (string, error) {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "org", "get-default")
+	bo := l.cliBaseOptions()
+	result, err := l.cliAPI.OrgGetDefault(ctx, func(o *optorggetdefault.Options) {
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
+	})
 	if err != nil {
-		return "", newAutoError(fmt.Errorf("could not get default organization: %w", err), stdout, stderr, errCode)
+		return "", newAutoError(
+			fmt.Errorf("could not get default organization: %w", err),
+			result.Stdout, result.Stderr, result.ExitCode)
 	}
-	return strings.TrimSpace(stdout), nil
+	return strings.TrimSpace(result.Stdout), nil
 }
 
 // OrgSetDefault sets the default organization for the current backend.
 func (l *LocalWorkspace) OrgSetDefault(ctx context.Context, orgName string) error {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "org", "set-default", orgName)
+	bo := l.cliBaseOptions()
+	result, err := l.cliAPI.OrgSetDefault(ctx, orgName, func(o *optorgsetdefault.Options) {
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
+	})
 	if err != nil {
-		return newAutoError(fmt.Errorf("could not set default organization: %w", err), stdout, stderr, errCode)
+		return newAutoError(
+			fmt.Errorf("could not set default organization: %w", err),
+			result.Stdout, result.Stderr, result.ExitCode)
 	}
 	return nil
+}
+
+// cliBaseOptions returns the base.BaseOptions used by workspace-scoped
+// CLI calls. Mirrors the env wiring of runPulumiInputCmdSync.
+func (l *LocalWorkspace) cliBaseOptions() base.BaseOptions {
+	env := map[string]string{}
+	if l.PulumiHome() != "" {
+		env[pulumiHomeEnv] = l.PulumiHome()
+	}
+	maps.Copy(env, l.GetEnvVars())
+	return base.BaseOptions{
+		Cwd:           l.WorkDir(),
+		AdditionalEnv: env,
+	}
 }
 
 // Stack returns a summary of the currently selected stack, if any.
@@ -813,7 +853,7 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 		"stack", "output", "--json", "--show-secrets", "--stack", stackName,
 	)
 	if err != nil {
-		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), outStdout, outStderr, code)
+		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), secretStdout, secretStderr, code)
 	}
 
 	var outputs map[string]any
@@ -875,6 +915,56 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
 	}
 	return nil
+}
+
+func (l *LocalWorkspace) New(ctx context.Context, opts *NewOptions) (NewResult, error) {
+	bo := l.cliBaseOptions()
+
+	var templateOrURL *string
+	apply := func(o *optnew.Options) {
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
+		if opts == nil {
+			return
+		}
+		if opts.Stdout != nil {
+			o.Stdout = opts.Stdout
+		}
+		if opts.Stderr != nil {
+			o.Stderr = opts.Stderr
+		}
+		o.AI = opts.AI
+		o.Config = opts.Config
+		o.ConfigPath = opts.ConfigPath
+		o.Description = opts.Description
+		o.Dir = opts.Dir
+		o.Force = opts.Force
+		o.GenerateOnly = opts.GenerateOnly
+		o.Language = opts.Language
+		o.ListTemplates = opts.ListTemplates
+		o.Name = opts.Name
+		o.Offline = opts.Offline
+		o.RemoteStackConfig = opts.RemoteStackConfig
+		o.RuntimeOptions = opts.RuntimeOptions
+		o.SecretsProvider = opts.SecretsProvider
+		o.Stack = opts.Stack
+		o.TemplateMode = opts.TemplateMode
+	}
+	if opts != nil && opts.TemplateOrURL != "" {
+		t := opts.TemplateOrURL
+		templateOrURL = &t
+	}
+
+	result, err := l.cliAPI.New(ctx, templateOrURL, apply)
+	if err != nil {
+		return NewResult{}, newAutoError(
+			fmt.Errorf("could not create new project: %w", err),
+			result.Stdout, result.Stderr, result.ExitCode)
+	}
+	return NewResult{StdOut: result.Stdout, StdErr: result.Stderr}, nil
 }
 
 func (l *LocalWorkspace) runPulumiInputCmdSync(
@@ -999,6 +1089,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		remoteInheritSettings:         lwOpts.RemoteInheritSettings,
 		repo:                          lwOpts.Repo,
 		pulumiCommand:                 pulumiCommand,
+		cliAPI:                        automation.New(pulumiCommand),
 	}
 
 	// If remote was specified, ensure the CLI supports it.

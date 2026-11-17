@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,6 +28,9 @@ var _ = SnapshotManager(&MockSnapshotManager{})
 type MockSnapshotManager struct {
 	WriteF                   func(base *deploy.Snapshot) error
 	RebuiltBaseStateF        func() error
+	StateMigrationsSupported bool
+	StateMigrationF          func(transaction *deploy.StateMigrationTransaction) error
+	SetSnippetsF             func(snippets []resource.Snippet) error
 	BeginMutationF           func(step deploy.Step) (SnapshotMutation, error)
 	RegisterResourceOutputsF func(step deploy.Step) error
 	CloseF                   func() error
@@ -46,6 +50,27 @@ func (m *MockSnapshotManager) Write(base *deploy.Snapshot) error {
 func (m *MockSnapshotManager) RebuiltBaseState() error {
 	if m.RebuiltBaseStateF != nil {
 		return m.RebuiltBaseStateF()
+	}
+	return nil
+}
+
+func (m *MockSnapshotManager) SupportsStateMigrations() bool {
+	return m.StateMigrationsSupported
+}
+
+func (m *MockSnapshotManager) StateMigration(transaction *deploy.StateMigrationTransaction) error {
+	if m.StateMigrationF != nil {
+		return m.StateMigrationF(transaction)
+	}
+	if !m.StateMigrationsSupported {
+		return deploy.ErrStateMigrationsUnsupported
+	}
+	return nil
+}
+
+func (m *MockSnapshotManager) SetSnippets(snippets []resource.Snippet) error {
+	if m.SetSnippetsF != nil {
+		return m.SetSnippetsF(snippets)
 	}
 	return nil
 }
@@ -76,6 +101,79 @@ func (m *MockSanpshotMutation) End(step deploy.Step, success bool) error {
 		return m.EndF(step, success)
 	}
 	return nil
+}
+
+func TestCombinedManagerStateMigration(t *testing.T) {
+	t.Parallel()
+
+	transaction := &deploy.StateMigrationTransaction{}
+	calls := 0
+	manager := &MockSnapshotManager{
+		StateMigrationsSupported: true,
+		StateMigrationF: func(got *deploy.StateMigrationTransaction) error {
+			require.Same(t, transaction, got)
+			calls++
+			return nil
+		},
+	}
+	combined := &CombinedManager{Managers: []SnapshotManager{manager, manager}}
+
+	require.True(t, combined.SupportsStateMigrations())
+	require.NoError(t, combined.StateMigration(transaction))
+	require.Equal(t, 2, calls)
+}
+
+func TestCombinedManagerStateMigrationUnsupportedRequiredManager(t *testing.T) {
+	t.Parallel()
+
+	combined := &CombinedManager{Managers: []SnapshotManager{&MockSnapshotManager{}}}
+
+	require.False(t, combined.SupportsStateMigrations())
+	require.ErrorIs(t, combined.StateMigration(&deploy.StateMigrationTransaction{}), deploy.ErrStateMigrationsUnsupported)
+}
+
+func TestCombinedManagerStateMigrationSkipsUnsupportedBestEffortManager(t *testing.T) {
+	t.Parallel()
+
+	called := false
+	supporting := &MockSnapshotManager{
+		StateMigrationsSupported: true,
+		StateMigrationF: func(*deploy.StateMigrationTransaction) error {
+			called = true
+			return nil
+		},
+	}
+	combined := &CombinedManager{
+		Managers:          []SnapshotManager{supporting, &MockSnapshotManager{}},
+		CollectErrorsOnly: []bool{false, true},
+	}
+
+	require.True(t, combined.SupportsStateMigrations())
+	require.NoError(t, combined.StateMigration(&deploy.StateMigrationTransaction{}))
+	require.True(t, called)
+	require.Empty(t, combined.Errors())
+}
+
+func TestCombinedManagerStateMigrationCollectsBestEffortError(t *testing.T) {
+	t.Parallel()
+
+	expected := errors.New("shadow migration failed")
+	required := &MockSnapshotManager{StateMigrationsSupported: true}
+	shadow := &MockSnapshotManager{
+		StateMigrationsSupported: true,
+		StateMigrationF: func(*deploy.StateMigrationTransaction) error {
+			return expected
+		},
+	}
+	combined := &CombinedManager{
+		Managers:          []SnapshotManager{required, shadow},
+		CollectErrorsOnly: []bool{false, true},
+	}
+
+	require.True(t, combined.SupportsStateMigrations())
+	require.NoError(t, combined.StateMigration(&deploy.StateMigrationTransaction{}))
+	require.Len(t, combined.Errors(), 1)
+	require.ErrorIs(t, combined.Errors()[0], expected)
 }
 
 func TestIgnoreSomeErrors(t *testing.T) {

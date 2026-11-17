@@ -24,11 +24,12 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -110,10 +111,8 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 	}
 
 	// If any component is empty this is also an invalid token
-	for _, c := range components {
-		if c == "" {
-			return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
-		}
+	if slices.Contains(components, "") {
+		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
 	}
 
 	return components[0], components[1], components[2], nil
@@ -132,8 +131,8 @@ func mutuallyDependant(a, b Node) bool {
 	return hasDependencyOn(a, b) && hasDependencyOn(b, a)
 }
 
-func linearizeNode(n Node, done codegen.Set, list *[]Node) {
-	if !done.Has(n) {
+func linearizeNode(n Node, done mapset.Set[Node], list *[]Node) {
+	if !done.Contains(n) {
 		for _, d := range n.GetDependencies() {
 			if !mutuallyDependant(n, d) {
 				linearizeNode(d, done, list)
@@ -176,17 +175,17 @@ func Linearize(p *Program) []Node {
 
 	// While the worklist is not empty, add the nodes in the file with the fewest unsatisfied dependencies on nodes in
 	// other files.
-	doneNodes, nodes := codegen.Set{}, slice.Prealloc[Node](len(p.Nodes))
+	doneNodes, nodes := mapset.NewSet[Node](), slice.Prealloc[Node](len(p.Nodes))
 	for len(worklist) > 0 {
 		// Recalculate file weights and find the file with the lowest weight.
 		var next *file
 		var nextIndex, nextWeight int
 		for i, f := range worklist {
-			weight, processed := 0, codegen.Set{}
+			weight, processed := 0, mapset.NewSet[Node]()
 			for _, n := range f.nodes {
 				for _, d := range n.GetDependencies() {
 					// We don't count nodes that we've already counted or nodes that have already been ordered.
-					if processed.Has(d) || doneNodes.Has(d) {
+					if processed.Contains(d) || doneNodes.Contains(d) {
 						continue
 					}
 
@@ -227,20 +226,17 @@ func Linearize(p *Program) []Node {
 // The resultant program should be a shallow copy of the source with only the modified resource nodes copied.
 func MapProvidersAsResources(p *Program) {
 	for _, n := range p.Nodes {
-		if r, ok := n.(*Resource); ok && r.Schema != nil {
-			pkg, mod, name, _ := r.DecomposeToken()
+		switch r := n.(type) {
+		case *Resource:
+			if r.Schema == nil {
+				continue
+			}
+			pkg, mod, name, _ := DecomposeToken(r.GetToken())
 			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
 				// the binder emits tokens like this when the module is "index"
-				r.Token = name + "::Provider"
+				r.token = name + "::Provider"
 			}
 		}
-	}
-}
-
-func FixupPulumiPackageTokens(r *Resource) {
-	pkg, mod, name, _ := r.DecomposeToken()
-	if pkg == "pulumi" && mod == "pulumi" {
-		r.Token = "pulumi::" + name
 	}
 }
 
@@ -274,12 +270,16 @@ func SortedFunctionParameters(expr *model.FunctionCallExpression) []*schema.Prop
 // However, when optional parameters are omitted, then <undefinedLiteral> is used where they should be.
 // Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, <undefinedLiteral>, 3
 // because b was omitted and c was provided so b had to be the provided <undefinedLiteral>
+// trailingArgs reports whether the caller will emit a further positional argument after the spread
+// ones, such as an options bag. When it does, parameters the program left out can no longer be
+// omitted -- they must be filled with undefinedLiteral to keep the trailing argument in its slot.
 func GenerateMultiArguments(
 	f *format.Formatter,
 	w io.Writer,
 	undefinedLiteral string,
 	expr *model.ObjectConsExpression,
 	multiArguments []*schema.Property,
+	trailingArgs bool,
 ) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
@@ -302,13 +302,13 @@ func GenerateMultiArguments(
 		value, ok := items[arg.Name]
 		if ok {
 			f.Fgenf(w, "%.v", value)
-		} else if hasMoreArgs(index) {
+		} else if trailingArgs || hasMoreArgs(index) {
 			// a positional argument was not provided in the input bag
 			// assume it is optional
 			f.Fgen(w, undefinedLiteral)
 		}
 
-		if hasMoreArgs(index + 1) {
+		if hasMoreArgs(index+1) || (trailingArgs && index+1 < len(multiArguments)) {
 			f.Fgen(w, ", ")
 		}
 	}
@@ -318,15 +318,23 @@ func GenerateMultiArguments(
 func UnwrapOption(exprType model.Type) model.Type {
 	switch exprType := exprType.(type) {
 	case *model.UnionType:
-		if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[0] == model.NoneType {
+		if len(exprType.ElementTypes) == 2 && isNoneType(exprType.ElementTypes[0]) {
 			return exprType.ElementTypes[1]
-		} else if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[1] == model.NoneType {
+		} else if len(exprType.ElementTypes) == 2 && isNoneType(exprType.ElementTypes[1]) {
 			return exprType.ElementTypes[0]
 		}
 		return exprType
 	default:
 		return exprType
 	}
+}
+
+// isNoneType returns true if t is the none type or the type of a `null` literal.
+func isNoneType(t model.Type) bool {
+	if c, ok := t.(*model.ConstType); ok {
+		t = c.Type
+	}
+	return t == model.NoneType
 }
 
 // VariableAccessed returns whether the given variable name is accessed in the given expression.

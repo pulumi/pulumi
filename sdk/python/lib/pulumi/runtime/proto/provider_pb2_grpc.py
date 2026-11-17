@@ -40,6 +40,11 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.CheckResponse.FromString,
                 )
+        self.CheckConfig2 = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/CheckConfig2',
+                request_serializer=pulumi_dot_provider__pb2.CheckConfigRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.CheckConfigResponse.FromString,
+                )
         self.DiffConfig = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/DiffConfig',
                 request_serializer=pulumi_dot_provider__pb2.DiffRequest.SerializeToString,
@@ -79,6 +84,11 @@ class ResourceProviderStub(object):
                 '/pulumirpc.ResourceProvider/Read',
                 request_serializer=pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.ReadResponse.FromString,
+                )
+        self.List = channel.unary_stream(
+                '/pulumirpc.ResourceProvider/List',
+                request_serializer=pulumi_dot_provider__pb2.ListRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ListResponse.FromString,
                 )
         self.Update = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Update',
@@ -204,6 +214,18 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def CheckConfig2(self, request, context):
+        """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+        uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+        Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+        provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+        to implement `CheckConfig` for as long as they support callers that only know about the latter.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def DiffConfig(self, request, context):
         """`DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
         difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
@@ -314,6 +336,14 @@ class ResourceProviderServicer(object):
         """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
         must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
         include other properties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def List(self, request, context):
+        """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+        emit a continuation token indicating another page is available.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -444,6 +474,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_provider__pb2.CheckRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.CheckResponse.SerializeToString,
             ),
+            'CheckConfig2': grpc.unary_unary_rpc_method_handler(
+                    servicer.CheckConfig2,
+                    request_deserializer=pulumi_dot_provider__pb2.CheckConfigRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.CheckConfigResponse.SerializeToString,
+            ),
             'DiffConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.DiffConfig,
                     request_deserializer=pulumi_dot_provider__pb2.DiffRequest.FromString,
@@ -483,6 +518,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.Read,
                     request_deserializer=pulumi_dot_provider__pb2.ReadRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.ReadResponse.SerializeToString,
+            ),
+            'List': grpc.unary_stream_rpc_method_handler(
+                    servicer.List,
+                    request_deserializer=pulumi_dot_provider__pb2.ListRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ListResponse.SerializeToString,
             ),
             'Update': grpc.unary_unary_rpc_method_handler(
                     servicer.Update,
@@ -603,6 +643,23 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/CheckConfig',
             pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
             pulumi_dot_provider__pb2.CheckResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CheckConfig2(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/CheckConfig2',
+            pulumi_dot_provider__pb2.CheckConfigRequest.SerializeToString,
+            pulumi_dot_provider__pb2.CheckConfigResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -739,6 +796,23 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Read',
             pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
             pulumi_dot_provider__pb2.ReadResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def List(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceProvider/List',
+            pulumi_dot_provider__pb2.ListRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ListResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

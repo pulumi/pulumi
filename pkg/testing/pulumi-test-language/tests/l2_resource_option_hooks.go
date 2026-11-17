@@ -18,9 +18,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,7 +50,7 @@ func init() {
 
 					testFile := filepath.Join(res.ProjectDirectory, "hook-test.txt")
 					_, err = os.Stat(testFile)
-					require.Error(l, err,
+					require.Error(l, err, //nolint:forbidigo // pre-existing
 						"expected non-preview hook NOT to have created file during preview at %s", testFile)
 				},
 				Assert: func(l *L, res AssertArgs) {

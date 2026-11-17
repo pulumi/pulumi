@@ -22,13 +22,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	deployProviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // TestEnvVarMappingsOnProvider tests that envVarMappings can be set on provider resources
@@ -66,7 +66,7 @@ func TestEnvVarMappingsOnProvider(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
@@ -123,14 +123,14 @@ func TestEnvVarMappingsOnNonProviderFails(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	_, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "envVarMappings can only be used with provider resources")
 }
 
@@ -164,7 +164,7 @@ func TestEmptyEnvVarMappingsNotStoredInState(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
@@ -207,7 +207,7 @@ func TestEnvVarMappingsRemovedFromStateOnUpdate(t *testing.T) {
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
 					// Report a diff if inputs changed
-					if !req.OldInputs.DeepEquals(req.NewInputs) {
+					if !req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResponse{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -248,7 +248,7 @@ func TestEnvVarMappingsRemovedFromStateOnUpdate(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}

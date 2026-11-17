@@ -23,7 +23,6 @@ def func_with_empty_outputs(name: Optional[_builtins.str] = None,
     """
     n/a
 
-
     :param _builtins.str name: The Name of the FeatureGroup.
     """
     __args__ = dict()

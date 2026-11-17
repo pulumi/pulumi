@@ -48,6 +48,24 @@ func main() {
 		if err != nil {
 			return err
 		}
+		ctx.Export("assetOutput", pulumi.NewFileAsset("../test.txt"))
+		ctx.Export("archiveOutput", pulumi.NewFileArchive("../archive.tar"))
+		ctx.Export("assetList", pulumi.AssetOrArchiveArray{
+			pulumi.NewFileAsset("../test.txt"),
+			pulumi.NewStringAsset("file contents"),
+		})
+		ctx.Export("archiveList", pulumi.ArchiveArray{
+			pulumi.NewFileArchive("../archive.tar"),
+			pulumi.NewFileArchive("../folder"),
+		})
+		ctx.Export("assetMap", pulumi.AssetOrArchiveMap{
+			"file":   pulumi.NewFileAsset("../test.txt"),
+			"string": pulumi.NewStringAsset("file contents"),
+		})
+		ctx.Export("archiveMap", pulumi.ArchiveMap{
+			"tar":    pulumi.NewFileArchive("../archive.tar"),
+			"folder": pulumi.NewFileArchive("../folder"),
+		})
 		return nil
 	})
 }

@@ -82,4 +82,6 @@ func TestTokenToModule(t *testing.T) {
 
 	assert.Equal(t, "module", tokenToModule("pkg:module:Type", nil, nil))
 	assert.Equal(t, "mymodule", tokenToModule("pkg:myModule:Type", nil, nil))
+	assert.Equal(t, "indexmine", tokenToModule("pkg:indexMine:Type", nil, nil))
+	assert.Equal(t, "indexmine/nested", tokenToModule("pkg:indexMine/nested:Type", nil, nil))
 }

@@ -15,16 +15,21 @@
 package packagecmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -32,6 +37,7 @@ import (
 
 func newExtractMappingCommand() *cobra.Command {
 	var out string
+	var serverURL string
 
 	cmd := &cobra.Command{
 		Use:   "get-mapping",
@@ -44,6 +50,8 @@ from Terraform to Pulumi). If you need to pass parameters, you must provide a pr
 key. In the event that you wish to pass none, you must therefore explicitly pass an
 empty string.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
 			key := args[0]
 			source := args[1]
 			var provider string
@@ -56,19 +64,36 @@ empty string.`,
 				return err
 			}
 			sink := cmdutil.Diag()
+			registry := cmdCmd.NewDefaultRegistry(
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(registry))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
 			pctx, err := plugin.NewContext(
-				cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+				ctx, sink, sink, pluginHost, nil, wd, nil, false,
+				nil, cloudCredentialEnv)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
-			registry := cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-			p, _, err := packages.ProviderFromSource(pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+			p, _, err := packages.ProviderFromSource(
+				pkgWorkspace.Instance, pctx, source, registry, env.Global(),
+				0 /* unbounded concurrency */, serverURL)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
+			defer contract.IgnoreClose(p)
 
 			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
 			if len(args) > 3 {
@@ -81,7 +106,7 @@ empty string.`,
 				}
 			}
 
-			mapping, err := p.GetMapping(cmd.Context(), plugin.GetMappingRequest{
+			mapping, err := p.GetMapping(ctx, plugin.GetMappingRequest{
 				Key:      key,
 				Provider: provider,
 			})
@@ -93,7 +118,7 @@ empty string.`,
 				return fmt.Errorf("no mapping found for key %q", key)
 			}
 
-			fmt.Fprintf(os.Stderr, "%s maps to provider %s\n", source, mapping.Provider)
+			fmt.Fprintf(cmd.ErrOrStderr(), "%s maps to provider %s\n", source, mapping.Provider)
 
 			// If the user has specified out, then write out the mapping data
 			// to a file.
@@ -104,7 +129,7 @@ empty string.`,
 				}
 			} else {
 				// Otherwise, just write it to stdout
-				_, err := os.Stdout.Write(mapping.Data)
+				_, err := cmd.OutOrStdout().Write(mapping.Data)
 				if err != nil {
 					return fmt.Errorf("failed to write mapping data to stdout: %w", err)
 				}
@@ -130,6 +155,9 @@ empty string.`,
 	cmd.Use = "get-mapping <key> <schema-source> [provider-key] [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }

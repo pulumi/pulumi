@@ -139,7 +139,7 @@ func TestLogWriterRace(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(N)
-	for i := 0; i < N; i++ {
+	for range N {
 		go func() {
 			defer wg.Done()
 
@@ -152,6 +152,26 @@ func TestLogWriterRace(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+// Ensures that a goroutine that outlives the test
+// doesn't log to it after it has finished.
+func TestLogWriterAfterTestFinished(t *testing.T) {
+	t.Parallel()
+
+	fakeT := fakeT{TB: t}
+	w := LogWriter(&fakeT)
+
+	_, err := io.WriteString(w, "during\n")
+	require.NoError(t, err)
+
+	fakeT.runCleanup()
+
+	n, err := io.WriteString(w, "after\n")
+	require.NoError(t, err)
+	assert.Equal(t, len("after\n"), n)
+
+	assert.Equal(t, []string{"during"}, fakeT.msgs)
 }
 
 // Wraps a testing.TB and intercepts log messages.

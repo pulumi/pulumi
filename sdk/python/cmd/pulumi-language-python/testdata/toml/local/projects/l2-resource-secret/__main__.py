@@ -11,4 +11,18 @@ res = secret.Resource("res",
     public_data={
         "private": "closed",
         "public": "open",
+    },
+    private_array=["closed"],
+    private_map={
+        "key": "closed",
+    },
+    private_data_array=[{
+        "private": "closed",
+        "public": "open",
+    }],
+    private_data_map={
+        "key": {
+            "private": "closed",
+            "public": "open",
+        },
     })

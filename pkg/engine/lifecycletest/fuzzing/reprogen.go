@@ -84,11 +84,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 )
@@ -236,7 +238,7 @@ func writeSnapshotTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -286,7 +288,7 @@ func writeSnapshotTestFunction(
 			g.writeLine("")
 			g.writeLine("// Trigger the reproduction.")
 			g.writeLinef(
-				"reproSnap, err := "+
+				"_, err := "+
 					"lt.TestOp(%s).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, \"1\")",
 				operation,
 			)
@@ -342,7 +344,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, setupLoaders...)")
+			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, setupLoaders...)")
 			g.writeBlock(
 				"setupOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -400,7 +402,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -450,7 +452,7 @@ func writeFrameworkTestFunction(
 			g.writeLine("")
 			g.writeLine("// Trigger the reproduction.")
 			g.writeLinef(
-				"reproSnap, err := "+
+				"_, err = "+
 					"lt.TestOp(%s).RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, \"1\")",
 				operation,
 			)
@@ -465,7 +467,7 @@ func writeFrameworkTestFunction(
 //
 //	s := &deploy.Snapshot{}
 //
-//	res0 := &resource.State{
+//	res0 := &pkgresource.State{
 //	  Type: ...,
 //	  URN: ...,
 //	  ...
@@ -533,7 +535,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 			g.writeLine("")
 			g.writeBlock(
-				varFor(r.URN())+" := &resource.State{",
+				varFor(r.URN())+" := &pkgresource.State{",
 				func(g *generator) {
 					g.writeLinef("Type:               \"%s\",", r.Type)
 					g.writeLinef("URN:                \"%s\",", r.URN())
@@ -545,7 +547,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 					g.writeLinef("ID:                 \"%s\",", r.ID)
 
-					if r.Protect {
+					if r.Protect != nil && *r.Protect {
 						g.writeLine("Protect:            true,")
 					}
 
@@ -716,15 +718,49 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 			return "unknownProvRef"
 		}
 
+		// A registration result that no later registration refers to is assigned to the blank identifier, so that the
+		// generated test compiles.
+		referenced := map[resource.URN]bool{}
+		for _, r := range rs {
+			referenced[r.Parent] = true
+			referenced[r.DeletedWith] = true
+			for _, dep := range r.Dependencies {
+				referenced[dep] = true
+			}
+			for _, deps := range r.PropertyDependencies {
+				for _, dep := range deps {
+					referenced[dep] = true
+				}
+			}
+			if r.Provider != "" {
+				ref, err := providers.ParseReference(r.Provider)
+				require.NoError(t, err)
+				referenced[ref.URN()] = true
+			}
+		}
+
+		errDeclared := false
 		for i, r := range rs {
 			indicesByURN[r.URN()] = i
 
 			provRefVar := provRefVarFor(r.Provider)
+			if provRefVar != "" {
+				errDeclared = true
+			}
+
+			resultVar, assign := varFor(r.URN()), ":="
+			if !referenced[r.URN()] {
+				resultVar = "_"
+				if errDeclared {
+					assign = "="
+				}
+			}
+			errDeclared = true
 
 			g.writeBlock(
 				fmt.Sprintf(
-					"%s, err := monitor.RegisterResource(\"%s\", \"%s\", %v, deploytest.ResourceOptions{",
-					varFor(r.URN()), r.Type, r.Name, r.Custom,
+					"%s, err %s monitor.RegisterResource(\"%s\", \"%s\", %v, deploytest.ResourceOptions{",
+					resultVar, assign, r.Type, r.Name, r.Custom,
 				),
 				func(g *generator) {
 					if r.Delete {
@@ -736,11 +772,11 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 						g.writeLine("// PendingReplacement: true,")
 					}
 
-					if r.Protect {
-						g.writeLine("Protect: ptr(true),")
+					if r.Protect != nil {
+						g.writeLinef("Protect: new(%v),", *r.Protect)
 					}
 					if r.RetainOnDelete {
-						g.writeLine("RetainOnDelete: ptr(true),")
+						g.writeLine("RetainOnDelete: new(true),")
 					}
 
 					if r.Provider != "" {
@@ -949,7 +985,7 @@ func writeReadFStatements(provSpec *ProviderSpec) func(g *generator) {
 		g.writeBlock(
 			"return plugin.ReadResponse{",
 			func(g *generator) {
-				g.writeLine("ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},")
+				g.writeLine("ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},")
 				g.writeLine("Status: resource.StatusOK,")
 			},
 			"}, nil",

@@ -17,6 +17,16 @@ export class Resource extends pulumi.CustomResource {
         return new Resource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Resource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("primitive-defaults:index:Resource", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'primitive-defaults:index:Resource';
 
@@ -66,8 +76,8 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    boolean?: pulumi.Input<boolean>;
-    float?: pulumi.Input<number>;
-    integer?: pulumi.Input<number>;
-    string?: pulumi.Input<string>;
+    boolean?: pulumi.Input<boolean | undefined>;
+    float?: pulumi.Input<number | undefined>;
+    integer?: pulumi.Input<number | undefined>;
+    string?: pulumi.Input<string | undefined>;
 }

@@ -11,14 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -56,7 +55,7 @@ type RandomArgs struct {
 }
 
 func (RandomArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*randomArgs)(nil)).Elem()
+	return reflect.TypeFor[randomArgs]()
 }
 
 type Component struct {
@@ -82,7 +81,7 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 		return nil, err
 	}
 
-	res, err := NewRandom(ctx, fmt.Sprintf("child-%s", name), &RandomArgs{
+	res, err := NewRandom(ctx, "child-"+name, &RandomArgs{
 		Length: pulumi.Int(args.Length),
 	}, pulumi.Parent(component))
 	if err != nil {

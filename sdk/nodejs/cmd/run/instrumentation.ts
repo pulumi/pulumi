@@ -16,9 +16,12 @@
 // that might load @grpc/grpc-js. The OpenTelemetry instrumentation works by
 // monkey-patching the gRPC module, which must happen before it's loaded.
 
-import * as opentelemetry from "@opentelemetry/api";
+// Loaded with require() instead of a typed import because the OpenTelemetry type declarations
+// use syntax that requires TypeScript >= 4.5, while this SDK is compiled with TypeScript 3.8.
+const opentelemetry = require("@opentelemetry/api");
 
-let rootContext: opentelemetry.Context | null = null;
+// A `Context` from `@opentelemetry/api`, which is loaded untyped (see above).
+let rootContext: any = null;
 let tracerProvider: any = null;
 
 if (process.env.TRACEPARENT) {
@@ -29,26 +32,28 @@ if (process.env.TRACEPARENT) {
     const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node");
     const { W3CTraceContextPropagator } = require("@opentelemetry/core");
     const { BatchSpanProcessor } = require("@opentelemetry/sdk-trace-base");
-    const { Resource } = require("@opentelemetry/resources");
+    const { defaultResource, resourceFromAttributes } = require("@opentelemetry/resources");
     const { ATTR_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 
-    const provider = new NodeTracerProvider({
-        resource: Resource.default().merge(
-            new Resource({
-                [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
-            }),
-        ),
-    });
-
     const otlpEndpoint = process.env.PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT;
+    const spanProcessors: any[] = [];
     if (otlpEndpoint) {
         const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-grpc");
         process.env.OTEL_EXPORTER_OTLP_INSECURE = "true";
         const exporter = new OTLPTraceExporter({
             url: otlpEndpoint,
         });
-        provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+        spanProcessors.push(new BatchSpanProcessor(exporter));
     }
+
+    const provider = new NodeTracerProvider({
+        resource: defaultResource().merge(
+            resourceFromAttributes({
+                [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
+            }),
+        ),
+        spanProcessors,
+    });
 
     provider.register();
     tracerProvider = provider;
@@ -71,7 +76,7 @@ if (process.env.TRACEPARENT) {
             instrumentations: [
                 new GrpcInstrumentation({
                     // Add stack trace to client spans
-                    requestHook: (span: opentelemetry.Span, _requestInfo: unknown) => {
+                    requestHook: (span: any, _requestInfo: unknown) => {
                         span.setAttribute("code.stacktrace", captureStackTrace());
                     },
                 }),

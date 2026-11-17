@@ -98,6 +98,10 @@ var expectedFailures = map[string]string{
 }
 
 func TestLanguage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	t.Parallel()
 
 	engineAddress, engine := runTestingHost(t)
@@ -157,8 +161,8 @@ func TestLanguage(t *testing.T) {
 			for _, msg := range result.Messages {
 				t.Log(msg)
 			}
-			ptesting.LogTruncated(t, "stdout", result.Stdout)
-			ptesting.LogTruncated(t, "stderr", result.Stderr)
+			ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+			ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 			assert.True(t, result.Success)
 		})
 	}

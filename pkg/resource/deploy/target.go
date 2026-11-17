@@ -15,9 +15,9 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Target represents information about a deployment target.
@@ -43,12 +43,12 @@ func isDynamicProvider(pkg tokens.Package) bool {
 }
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
-func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
-	result := resource.PropertyMap{}
+func (t *Target) GetPackageConfig(pkg tokens.Package) (property.Map, error) {
 	if t == nil {
-		return result, nil
+		return property.Map{}, nil
 	}
 
+	result := make(map[string]property.Value)
 	for k, c := range t.Config {
 		// For dynamic providers, we always pass the full configuration.
 		if !isDynamicProvider(pkg) && tokens.Package(k.Namespace()) != pkg {
@@ -57,19 +57,16 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 
 		v, err := c.Value(t.Decrypter)
 		if err != nil {
-			return nil, err
+			return property.Map{}, err
 		}
 
-		propertyValue := resource.NewProperty(v)
-		if c.Secure() {
-			propertyValue = resource.MakeSecret(propertyValue)
-		}
+		propertyValue := property.New(v).WithSecret(c.Secure())
 		if isDynamicProvider(pkg) {
 			// For dynamic providers, we want to maintain the namespace.
-			result[resource.PropertyKey(k.String())] = propertyValue
+			result[k.String()] = propertyValue
 		} else {
-			result[resource.PropertyKey(k.Name())] = propertyValue
+			result[k.Name()] = propertyValue
 		}
 	}
-	return result, nil
+	return property.NewMap(result), nil
 }

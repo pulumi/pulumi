@@ -58,15 +58,37 @@ function deserialize_pulumirpc_Callback(buffer_arg) {
   return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_InvokeResponse(arg) {
-  if (!(arg instanceof pulumi_provider_pb.InvokeResponse)) {
-    throw new Error('Expected argument of type pulumirpc.InvokeResponse');
+function serialize_pulumirpc_DeploymentInfo(arg) {
+  if (!(arg instanceof pulumi_resource_pb.DeploymentInfo)) {
+    throw new Error('Expected argument of type pulumirpc.DeploymentInfo');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
-  return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_DeploymentInfo(buffer_arg) {
+  return pulumi_resource_pb.DeploymentInfo.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ExistsResourceRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ExistsResourceRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ExistsResourceRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ExistsResourceRequest(buffer_arg) {
+  return pulumi_resource_pb.ExistsResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ExistsResourceResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ExistsResourceResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ExistsResourceResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ExistsResourceResponse(buffer_arg) {
+  return pulumi_resource_pb.ExistsResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ReadResourceRequest(arg) {
@@ -190,6 +212,17 @@ function deserialize_pulumirpc_ResourceInvokeRequest(buffer_arg) {
   return pulumi_resource_pb.ResourceInvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ResourceInvokeResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ResourceInvokeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ResourceInvokeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResourceInvokeResponse(buffer_arg) {
+  return pulumi_resource_pb.ResourceInvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_SupportsFeatureRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.SupportsFeatureRequest)) {
     throw new Error('Expected argument of type pulumirpc.SupportsFeatureRequest');
@@ -215,6 +248,26 @@ function deserialize_pulumirpc_SupportsFeatureResponse(buffer_arg) {
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 var ResourceMonitorService = exports.ResourceMonitorService = {
+  // GetDeploymentInfo returns the execution context associated with this monitor instance.
+//
+// This is an additive API intended to reduce duplicated state passed through
+// environment variables and per-request protobuf fields. New clients should
+// prefer this over piecemeal feature probing via SupportsFeature.
+//
+// Backward compatibility:
+// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+// - Clients should fall back to existing request fields/env vars/SupportsFeature.
+getDeploymentInfo: {
+    path: '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: pulumi_resource_pb.DeploymentInfo,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_DeploymentInfo,
+    responseDeserialize: deserialize_pulumirpc_DeploymentInfo,
+  },
   supportsFeature: {
     path: '/pulumirpc.ResourceMonitor/SupportsFeature',
     requestStream: false,
@@ -231,11 +284,11 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestStream: false,
     responseStream: false,
     requestType: pulumi_resource_pb.ResourceInvokeRequest,
-    responseType: pulumi_provider_pb.InvokeResponse,
+    responseType: pulumi_resource_pb.ResourceInvokeResponse,
     requestSerialize: serialize_pulumirpc_ResourceInvokeRequest,
     requestDeserialize: deserialize_pulumirpc_ResourceInvokeRequest,
-    responseSerialize: serialize_pulumirpc_InvokeResponse,
-    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+    responseSerialize: serialize_pulumirpc_ResourceInvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_ResourceInvokeResponse,
   },
   call: {
     path: '/pulumirpc.ResourceMonitor/Call',
@@ -258,6 +311,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestDeserialize: deserialize_pulumirpc_ReadResourceRequest,
     responseSerialize: serialize_pulumirpc_ReadResourceResponse,
     responseDeserialize: deserialize_pulumirpc_ReadResourceResponse,
+  },
+  existsResource: {
+    path: '/pulumirpc.ResourceMonitor/ExistsResource',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.ExistsResourceRequest,
+    responseType: pulumi_resource_pb.ExistsResourceResponse,
+    requestSerialize: serialize_pulumirpc_ExistsResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_ExistsResourceRequest,
+    responseSerialize: serialize_pulumirpc_ExistsResourceResponse,
+    responseDeserialize: deserialize_pulumirpc_ExistsResourceResponse,
   },
   registerResource: {
     path: '/pulumirpc.ResourceMonitor/RegisterResource',

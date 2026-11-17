@@ -28,7 +28,7 @@ import (
 )
 
 type ptyCloser struct {
-	done     chan (error)
+	done     chan error
 	pty, tty *os.File
 }
 

@@ -1,0 +1,4 @@
+component: cli/package
+kind: fix
+body: Fix formatting of the `pulumi package publish` reference docs
+time: 2026-11-12T00:00:00Z

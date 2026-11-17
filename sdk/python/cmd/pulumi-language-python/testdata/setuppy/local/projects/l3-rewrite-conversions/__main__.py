@@ -8,9 +8,9 @@ direct = primitive.Resource("direct",
     integer=42,
     string="false",
     number_array=[
-        -1,
-        0,
-        1,
+        float(-1),
+        float(0),
+        float(1),
     ],
     boolean_map={
         "t": True,
@@ -22,8 +22,8 @@ converted = Converted("converted", {
     'integer': 7, 
     'string': "true", 
     'numberArray': [
-        10,
-        11,
+        float(10),
+        float(11),
     ], 
     'booleanMap': {
         "left": True,

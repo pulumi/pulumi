@@ -35,12 +35,14 @@ import (
 	"github.com/pgavlin/fx/v2"
 	fxm "github.com/pgavlin/fx/v2/maps"
 	fxs "github.com/pgavlin/fx/v2/slices"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
@@ -50,7 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -126,7 +127,7 @@ func (p *snapshotBenchProvider) Create(ctx context.Context, req plugin.CreateReq
 	}
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 	}, nil
 }
 
@@ -138,7 +139,7 @@ func (p *snapshotBenchProvider) Read(ctx context.Context, req plugin.ReadRequest
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "id",
-			Outputs: outputs,
+			Outputs: new(resource.FromResourcePropertyMap(outputs)),
 		},
 	}, nil
 }
@@ -149,7 +150,7 @@ func (p *snapshotBenchProvider) Update(ctx context.Context, req plugin.UpdateReq
 		return plugin.UpdateResponse{}, fmt.Errorf("unknown resource %v", req.URN)
 	}
 	return plugin.UpdateResponse{
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 	}, nil
 }
 
@@ -220,7 +221,11 @@ func update(
 			PluginManager:   framework.NopPluginManager{},
 			BackendClient:   snapshotBackendClient{},
 		},
-		engine.UpdateOptions{Host: host},
+		engine.UpdateOptions{
+			HostFactory: func(context.Context, diag.Sink, diag.Sink, plugin.DebugContext) (plugin.Host, error) {
+				return host, nil
+			},
+		},
 		false,
 	)
 	require.NoError(t, err)
@@ -307,7 +312,7 @@ func (c dynamicStackCase) getRun(
 var recordedReplayCases = []recordedReplayCase{}
 
 func init() {
-	for _, c := range strings.Split(os.Getenv("PULUMI_TEST_SNAPSHOT_REPLAY"), ",") {
+	for c := range strings.SplitSeq(os.Getenv("PULUMI_TEST_SNAPSHOT_REPLAY"), ",") {
 		if c != "" {
 			recordedReplayCases = append(recordedReplayCases, recordedReplayCase(c))
 		}
@@ -613,7 +618,9 @@ func newMockPersister(t testing.TB, server *httptest.Server) *cloudSnapshotPersi
 	}
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	backendGeneric, err := New(t.Context(), sink, server.URL, &workspace.Project{}, false)
+	backendGeneric, err := New(t.Context(), sink, server.URL, &workspace.Project{}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), sink),
+	)
 	require.NoError(t, err)
 
 	backend := backendGeneric.(*cloudBackend)

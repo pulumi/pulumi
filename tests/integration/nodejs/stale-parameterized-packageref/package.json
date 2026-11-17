@@ -1,0 +1,9 @@
+{
+    "name": "stale-parameterized-packageref",
+    "main": "index.js",
+    "type": "module",
+    "dependencies": {
+        "@pulumi/pulumi": "latest",
+        "@pulumi/random": "file:sdks/nodejs"
+    }
+}

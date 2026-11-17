@@ -16,11 +16,13 @@ package python
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+
+	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -80,7 +82,7 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 			}
 		}
 
-		if objectKey && isLegalIdentifier(keyVal) {
+		if objectKey && isLegalIdentifier(PyName(keyVal)) {
 			currentTraversal = append(currentTraversal, traverser)
 			currentParts = append(currentParts, parts[i+1])
 			continue
@@ -162,18 +164,18 @@ type quoteAllocations struct {
 
 type quoteAllocator struct {
 	allocations *quoteAllocations
-	allocated   codegen.StringSet
+	allocated   mapset.Set[string]
 	stack       []model.Expression
 }
 
 func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
 	if longString {
-		if !qa.allocated.Has(`"`) && !qa.allocated.Has(`"""`) {
+		if !qa.allocated.Contains(`"`) && !qa.allocated.Contains(`"""`) {
 			qa.allocated.Add(`"""`)
 			return `"""`, true
 		}
 
-		if !qa.allocated.Has(`'`) && !qa.allocated.Has(`'''`) {
+		if !qa.allocated.Contains(`'`) && !qa.allocated.Contains(`'''`) {
 			qa.allocated.Add(`'''`)
 			return `'''`, true
 		}
@@ -181,12 +183,12 @@ func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
 		return "", false
 	}
 
-	if !qa.allocated.Has(`"`) {
+	if !qa.allocated.Contains(`"`) {
 		qa.allocated.Add(`"`)
 		return `"`, true
 	}
 
-	if !qa.allocated.Has(`'`) {
+	if !qa.allocated.Contains(`'`) {
 		qa.allocated.Add(`'`)
 		return `'`, true
 	}
@@ -195,7 +197,7 @@ func (qa *quoteAllocator) allocate(longString bool) (string, bool) {
 }
 
 func (qa *quoteAllocator) free(quotes string) {
-	qa.allocated.Delete(quotes)
+	qa.allocated.Remove(quotes)
 }
 
 func (qa *quoteAllocator) inTemplate() bool {
@@ -249,7 +251,7 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 		return x, nil
 	}
 
-	allocator := &quoteAllocator{allocated: codegen.StringSet{}, allocations: qa.allocations}
+	allocator := &quoteAllocator{allocated: mapset.NewSet[string](), allocations: qa.allocations}
 	value, valueDiags := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
 
 	temp := &quoteTemp{
@@ -290,10 +292,8 @@ func (qa *quoteAllocator) freeExpression(x model.Expression) (model.Expression, 
 }
 
 func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quoteTemp, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	// First, rewrite traversals that require string indices into index expressions.
-	x, rewriteDiags := model.VisitExpression(x, nil, func(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	x, rewriteDiags1 := model.VisitExpression(x, nil, func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		switch x := x.(type) {
 		case *model.RelativeTraversalExpression:
 			idx := g.rewriteTraversal(x.Traversal, x.Source, x.Parts)
@@ -301,6 +301,9 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 				return idx, nil
 			}
 		case *model.ScopeTraversalExpression:
+			if isHookArgsTraversal(x) {
+				return x, nil
+			}
 			idx := g.rewriteTraversal(x.Traversal, nil, x.Parts)
 			if idx != nil {
 				return idx, nil
@@ -308,15 +311,15 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 		}
 		return x, nil
 	})
-	diagnostics = append(diagnostics, rewriteDiags...)
 
 	// Then lift any expressions that cannot be allocated quotes into temps.
 	allocations := &quoteAllocations{
 		quotes: g.quotes,
 	}
-	allocator := &quoteAllocator{allocated: codegen.StringSet{}, allocations: allocations}
-	x, rewriteDiags = model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
-	diagnostics = append(diagnostics, rewriteDiags...)
+	allocator := &quoteAllocator{allocated: mapset.NewSet[string](), allocations: allocations}
+	x, rewriteDiags2 := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
+
+	diagnostics := slices.Concat(rewriteDiags1, rewriteDiags2)
 
 	return x, allocations.temps, diagnostics
 }

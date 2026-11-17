@@ -38,6 +38,7 @@ const (
 	ResourceProvider_Parameterize_FullMethodName  = "/pulumirpc.ResourceProvider/Parameterize"
 	ResourceProvider_GetSchema_FullMethodName     = "/pulumirpc.ResourceProvider/GetSchema"
 	ResourceProvider_CheckConfig_FullMethodName   = "/pulumirpc.ResourceProvider/CheckConfig"
+	ResourceProvider_CheckConfig2_FullMethodName  = "/pulumirpc.ResourceProvider/CheckConfig2"
 	ResourceProvider_DiffConfig_FullMethodName    = "/pulumirpc.ResourceProvider/DiffConfig"
 	ResourceProvider_Configure_FullMethodName     = "/pulumirpc.ResourceProvider/Configure"
 	ResourceProvider_Invoke_FullMethodName        = "/pulumirpc.ResourceProvider/Invoke"
@@ -46,6 +47,7 @@ const (
 	ResourceProvider_Diff_FullMethodName          = "/pulumirpc.ResourceProvider/Diff"
 	ResourceProvider_Create_FullMethodName        = "/pulumirpc.ResourceProvider/Create"
 	ResourceProvider_Read_FullMethodName          = "/pulumirpc.ResourceProvider/Read"
+	ResourceProvider_List_FullMethodName          = "/pulumirpc.ResourceProvider/List"
 	ResourceProvider_Update_FullMethodName        = "/pulumirpc.ResourceProvider/Update"
 	ResourceProvider_Delete_FullMethodName        = "/pulumirpc.ResourceProvider/Delete"
 	ResourceProvider_Construct_FullMethodName     = "/pulumirpc.ResourceProvider/Construct"
@@ -83,17 +85,17 @@ type ResourceProviderClient interface {
 	//
 	// `Parameterize` supports two types of parameterization:
 	//
-	//   - *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
-	//     original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
-	//     the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
-	//     Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
+	// * *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
+	//   original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
+	//   the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
+	//   Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
 	//
-	//   - *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
-	//     original. This is useful in cases where a provider can be extended with additional resources or functions, such
-	//     as a Kubernetes provider that can be extended with resources representing custom resource definitions.
-	//     Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
-	//     packages may even be called multiple times with the same package name, but with different versions. The CRUD
-	//     operations of extension resources must include the version of which sub-package they correspond to.
+	// * *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
+	//   original. This is useful in cases where a provider can be extended with additional resources or functions, such
+	//   as a Kubernetes provider that can be extended with resources representing custom resource definitions.
+	//   Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
+	//   packages may even be called multiple times with the same package name, but with different versions. The CRUD
+	//   operations of extension resources must include the version of which sub-package they correspond to.
 	//
 	// `Parameterize` should work the same whether it is provided with `ParametersArgs` or `ParametersValue` input. In
 	// each case it should return the sub-package name and version (which when a `ParametersValue` is supplied should
@@ -120,6 +122,13 @@ type ResourceProviderClient interface {
 	// thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
 	// rendering diffs.
 	CheckConfig(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
+	// `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+	// uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+	//
+	// Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+	// provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+	// to implement `CheckConfig` for as long as they support callers that only know about the latter.
+	CheckConfig2(ctx context.Context, in *CheckConfigRequest, opts ...grpc.CallOption) (*CheckConfigResponse, error)
 	// `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
 	// difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
 	// is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
@@ -135,9 +144,9 @@ type ResourceProviderClient interface {
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
-	//   - Provider-specific configuration, which is the set of inputs that have been validated by a previous
-	//     [](pulumirpc.ResourceProvider.CheckConfig) call.
-	//   - Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
+	// * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
 	//
 	// The provider is expected to return its own set of protocol configuration, indicating which features it supports
 	// in turn so that the caller and the provider can interact appropriately.
@@ -151,13 +160,12 @@ type ResourceProviderClient interface {
 	// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
 	// compatibility between older engines and providers:
 	//
-	//   - Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
-	//     set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
-	//     must support them. See [](pulumirpc.ConfigureRequest) for more information.
-	//   - Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
-	//     indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
-	//     [](pulumirpc.ConfigureResponse) for more information.
-	//
+	// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+	//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+	//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+	// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+	//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+	//   [](pulumirpc.ConfigureResponse) for more information.
 	// :::
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
@@ -196,6 +204,9 @@ type ResourceProviderClient interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+	// emit a continuation token indicating another page is available.
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListResponse], error)
 	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 	// `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
@@ -209,13 +220,13 @@ type ResourceProviderClient interface {
 	// `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
 	// consequently passed enough information to manage fully these resources. At a high level, this comprises:
 	//
-	//   - A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
-	//     custom or component resources that belong to the component.
+	// * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+	//   custom or component resources that belong to the component.
 	//
 	// * A set of input properties.
 	//
-	//   - A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
-	//     propagate to resources it registers against the supplied resource monitor.
+	// * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+	//   propagate to resources it registers against the supplied resource monitor.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
@@ -305,6 +316,16 @@ func (c *resourceProviderClient) CheckConfig(ctx context.Context, in *CheckReque
 	return out, nil
 }
 
+func (c *resourceProviderClient) CheckConfig2(ctx context.Context, in *CheckConfigRequest, opts ...grpc.CallOption) (*CheckConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckConfigResponse)
+	err := c.cc.Invoke(ctx, ResourceProvider_CheckConfig2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resourceProviderClient) DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DiffResponse)
@@ -384,6 +405,25 @@ func (c *resourceProviderClient) Read(ctx context.Context, in *ReadRequest, opts
 	}
 	return out, nil
 }
+
+func (c *resourceProviderClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ResourceProvider_ServiceDesc.Streams[0], ResourceProvider_List_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ListRequest, ListResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ResourceProvider_ListClient = grpc.ServerStreamingClient[ListResponse]
 
 func (c *resourceProviderClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -492,17 +532,17 @@ type ResourceProviderServer interface {
 	//
 	// `Parameterize` supports two types of parameterization:
 	//
-	//   - *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
-	//     original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
-	//     the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
-	//     Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
+	// * *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
+	//   original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
+	//   the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
+	//   Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
 	//
-	//   - *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
-	//     original. This is useful in cases where a provider can be extended with additional resources or functions, such
-	//     as a Kubernetes provider that can be extended with resources representing custom resource definitions.
-	//     Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
-	//     packages may even be called multiple times with the same package name, but with different versions. The CRUD
-	//     operations of extension resources must include the version of which sub-package they correspond to.
+	// * *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
+	//   original. This is useful in cases where a provider can be extended with additional resources or functions, such
+	//   as a Kubernetes provider that can be extended with resources representing custom resource definitions.
+	//   Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
+	//   packages may even be called multiple times with the same package name, but with different versions. The CRUD
+	//   operations of extension resources must include the version of which sub-package they correspond to.
 	//
 	// `Parameterize` should work the same whether it is provided with `ParametersArgs` or `ParametersValue` input. In
 	// each case it should return the sub-package name and version (which when a `ParametersValue` is supplied should
@@ -529,6 +569,13 @@ type ResourceProviderServer interface {
 	// thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
 	// rendering diffs.
 	CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error)
+	// `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+	// uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+	//
+	// Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+	// provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+	// to implement `CheckConfig` for as long as they support callers that only know about the latter.
+	CheckConfig2(context.Context, *CheckConfigRequest) (*CheckConfigResponse, error)
 	// `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
 	// difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
 	// is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
@@ -544,9 +591,9 @@ type ResourceProviderServer interface {
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
-	//   - Provider-specific configuration, which is the set of inputs that have been validated by a previous
-	//     [](pulumirpc.ResourceProvider.CheckConfig) call.
-	//   - Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
+	// * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
 	//
 	// The provider is expected to return its own set of protocol configuration, indicating which features it supports
 	// in turn so that the caller and the provider can interact appropriately.
@@ -560,13 +607,12 @@ type ResourceProviderServer interface {
 	// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
 	// compatibility between older engines and providers:
 	//
-	//   - Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
-	//     set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
-	//     must support them. See [](pulumirpc.ConfigureRequest) for more information.
-	//   - Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
-	//     indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
-	//     [](pulumirpc.ConfigureResponse) for more information.
-	//
+	// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+	//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+	//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+	// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+	//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+	//   [](pulumirpc.ConfigureResponse) for more information.
 	// :::
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
@@ -605,6 +651,9 @@ type ResourceProviderServer interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+	// emit a continuation token indicating another page is available.
+	List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error
 	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	// `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
@@ -618,13 +667,13 @@ type ResourceProviderServer interface {
 	// `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
 	// consequently passed enough information to manage fully these resources. At a high level, this comprises:
 	//
-	//   - A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
-	//     custom or component resources that belong to the component.
+	// * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+	//   custom or component resources that belong to the component.
 	//
 	// * A set of input properties.
 	//
-	//   - A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
-	//     propagate to resources it registers against the supplied resource monitor.
+	// * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+	//   propagate to resources it registers against the supplied resource monitor.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
@@ -686,6 +735,9 @@ func (UnimplementedResourceProviderServer) GetSchema(context.Context, *GetSchema
 func (UnimplementedResourceProviderServer) CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig not implemented")
 }
+func (UnimplementedResourceProviderServer) CheckConfig2(context.Context, *CheckConfigRequest) (*CheckConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig2 not implemented")
+}
 func (UnimplementedResourceProviderServer) DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiffConfig not implemented")
 }
@@ -709,6 +761,9 @@ func (UnimplementedResourceProviderServer) Create(context.Context, *CreateReques
 }
 func (UnimplementedResourceProviderServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedResourceProviderServer) List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedResourceProviderServer) Update(context.Context, *UpdateRequest) (*UpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
@@ -823,6 +878,24 @@ func _ResourceProvider_CheckConfig_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).CheckConfig(ctx, req.(*CheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ResourceProvider_CheckConfig2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).CheckConfig2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceProvider_CheckConfig2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).CheckConfig2(ctx, req.(*CheckConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -970,6 +1043,17 @@ func _ResourceProvider_Read_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _ResourceProvider_List_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ListRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ResourceProviderServer).List(m, &grpc.GenericServerStream[ListRequest, ListResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ResourceProvider_ListServer = grpc.ServerStreamingServer[ListResponse]
 
 func _ResourceProvider_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateRequest)
@@ -1139,6 +1223,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceProvider_CheckConfig_Handler,
 		},
 		{
+			MethodName: "CheckConfig2",
+			Handler:    _ResourceProvider_CheckConfig2_Handler,
+		},
+		{
 			MethodName: "DiffConfig",
 			Handler:    _ResourceProvider_DiffConfig_Handler,
 		},
@@ -1203,6 +1291,12 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceProvider_GetMappings_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "List",
+			Handler:       _ResourceProvider_List_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pulumi/provider.proto",
 }

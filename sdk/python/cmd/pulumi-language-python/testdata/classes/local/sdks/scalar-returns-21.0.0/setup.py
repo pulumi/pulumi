@@ -31,8 +31,8 @@ setup(name='pulumi_scalar_returns',
           ]
       },
       install_requires=[
-          'parver>=0.2.1',
-          'pulumi>=3.165.0,<4.0.0',
+          'packaging>=24.0',
+          'pulumi>=3.269.0,<4.0.0',
           'semver>=2.8.1'
       ],
       zip_safe=False)

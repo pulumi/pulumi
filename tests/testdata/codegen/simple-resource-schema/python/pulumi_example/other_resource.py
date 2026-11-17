@@ -20,7 +20,7 @@ __all__ = ['OtherResourceArgs', 'OtherResource']
 @pulumi.input_type
 class OtherResourceArgs:
     def __init__(__self__, *,
-                 foo: Optional[pulumi.Input['Resource']] = None):
+                 foo: pulumi.Input[Optional['Resource']] = None):
         """
         The set of arguments for constructing a OtherResource resource.
         """
@@ -29,11 +29,11 @@ class OtherResourceArgs:
 
     @_builtins.property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['Resource']]:
+    def foo(self) -> pulumi.Input[Optional['Resource']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['Resource']]):
+    def foo(self, value: pulumi.Input[Optional['Resource']]):
         pulumi.set(self, "foo", value)
 
 
@@ -43,7 +43,7 @@ class OtherResource(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 foo: Optional[pulumi.Input['Resource']] = None,
+                 foo: pulumi.Input[Optional['Resource']] = None,
                  __props__=None):
         """
         Create a OtherResource resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class OtherResource(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 foo: Optional[pulumi.Input['Resource']] = None,
+                 foo: pulumi.Input[Optional['Resource']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

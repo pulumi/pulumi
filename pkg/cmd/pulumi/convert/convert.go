@@ -18,34 +18,41 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -57,7 +64,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
+func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.Command {
 	var outDir string
 	var from string
 	var language string
@@ -95,6 +102,9 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			return runConvert(
 				cmd.Context(),
+				cmd.OutOrStdout(),
+				cmd.ErrOrStderr(),
+				lm,
 				ws,
 				env.Global(),
 				args,
@@ -113,28 +123,35 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
 
 	cmd.PersistentFlags().StringVar(
-		&language, "language", "", "Which language plugin to use to generate the Pulumi project")
+		&language, "language", "", "Which language plugin to use to generate the Pulumi project",
+	)
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&from, "from", "yaml", "Which converter plugin to use to read the source program")
+		&from, "from", "yaml", "Which converter plugin to use to read the source program",
+	)
 
 	cmd.PersistentFlags().StringVar(
-		&outDir, "out", ".", "The output directory to write the converted project to")
+		&outDir, "out", ".", "The output directory to write the converted project to",
+	)
 
 	cmd.PersistentFlags().BoolVar(
-		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
+		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies",
+	)
 
 	cmd.PersistentFlags().StringSliceVar(
-		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
+		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion",
+	)
 
 	cmd.PersistentFlags().BoolVar(
-		&strict, "strict", false, "Fail the conversion on errors such as missing variables")
+		&strict, "strict", false, "Fail the conversion on errors such as missing variables",
+	)
 
 	cmd.PersistentFlags().StringVar(
-		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
+		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project",
+	)
 
 	return cmd
 }
@@ -161,7 +178,8 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(
-	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader,
+	_ convert.Mapper, strict bool,
 ) (hcl.Diagnostics, error) {
 	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
 	// We always try to copy the source directory to the target directory even if binding failed
@@ -175,11 +193,13 @@ func pclGenerateProject(
 }
 
 type projectGeneratorFunction func(
-	string, string, *workspace.Project, schema.ReferenceLoader, bool,
+	string, string, *workspace.Project, schema.ReferenceLoader, convert.Mapper, bool,
 ) (hcl.Diagnostics, error)
 
 func runConvert(
 	ctx context.Context,
+	stdout, stderr io.Writer,
+	lm cmdBackend.LoginManager,
 	ws pkgWorkspace.Context,
 	e env.Env,
 	args []string,
@@ -203,14 +223,23 @@ func runConvert(
 		name = filepath.Base(cwd)
 	}
 
+	reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
+
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packages.NewPluginContext(outDir)
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, nil)
+	if err != nil {
+		return err
+	}
+	pCtx, err := packages.NewPluginContext(outDir, reg, cloudCredentialEnv)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
+	// The context owns its loader/mapper servers; the host is caller-owned. Close the context
+	// first, then the host.
 	defer contract.IgnoreClose(pCtx.Host)
+	defer contract.IgnoreClose(pCtx)
 
 	// Translate well known sources to plugins
 	switch strings.ToLower(from) {
@@ -220,12 +249,12 @@ func runConvert(
 		from = "yaml"
 	}
 
-	// Translate well known languages to runtimes
-	switch language {
-	case "csharp", "c#":
-		language = "dotnet"
-	case "typescript":
-		language = "nodejs"
+	language = cmdCmd.NormalizeRuntimeName(language)
+
+	if from == "terraform" && language == "hcl" {
+		return errors.New("cannot convert a Terraform program to the \"hcl\" language: " +
+			"pulumi-hcl runs Terraform directly, so no conversion is needed; converting would re-home " +
+			"every resource onto a different provider and show a delete and create for each one on the next preview")
 	}
 
 	var projectGenerator projectGeneratorFunction
@@ -239,17 +268,21 @@ func runConvert(
 			sourceDirectory, targetDirectory string,
 			proj *workspace.Project,
 			loader schema.ReferenceLoader,
+			mapper convert.Mapper,
 			strict bool,
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 			if err != nil {
 				return nil, err
 			}
 
 			loaderServer := schema.NewLoaderServer(loader)
-			grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+			mapperServer := convert.NewMapperServer(mapper)
+			grpcServer, err := plugin.NewServer(pCtx,
+				schema.LoaderRegistration(loaderServer),
+				convert.MapperRegistration(mapperServer))
 			if err != nil {
 				return nil, err
 			}
@@ -262,9 +295,9 @@ func runConvert(
 			projectJSON := string(projectBytes)
 
 			var diags hcl.Diagnostics
-			ds, err := languagePlugin.GenerateProject(
+			ds, err := languagePlugin.GenerateProject(ctx,
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), nil /*localDependencies*/)
+				strict, grpcServer.Addr(), grpcServer.Addr(), nil /*localDependencies*/)
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
@@ -304,11 +337,12 @@ func runConvert(
 
 			err = generateAndLinkSdksForPackages(
 				pCtx,
+				stdout,
 				language,
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
-				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
+				cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)
@@ -327,32 +361,41 @@ func runConvert(
 		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
 	}
 
+	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pCtx, stderr, stderr,
+		nil, packageworkspace.Options{})
+
 	installPlugin := func(pluginName string) *semver.Version {
 		// If auto plugin installs are disabled just return nil, the mapper will still carry on
 		if env.DisableAutomaticPluginAcquisition.Value() {
 			return nil
 		}
 
-		pluginSpec, err := workspace.NewPluginDescriptor(ctx, pluginName, apitype.ResourcePlugin, nil, "", nil)
-		if err != nil {
-			pCtx.Diag.Errorf(diag.Message("", "failed to create plugin spec for %q: %v"), pluginName, err)
-			return nil
-		}
-
-		version, err := pkgWorkspace.InstallPlugin(pCtx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		// Resolve and install the provider plugin without running it; the mapper launches
+		// its own instance via the provider factory once the plugin is on disk.
+		_, spec, _, err := packageinstallation.InstallPlugin(ctx,
+			workspace.PackageSpec{Source: pluginName}, nil, "",
+			packageinstallation.Options{
+				Options: packageresolution.Options{
+					ResolveWithRegistry: !e.GetBool(env.DisableRegistryResolve),
+				},
+			}, reg, installCtx)
 		if err != nil {
 			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 			return nil
 		}
-		return version
+		version, err := semver.ParseTolerant(spec.Version)
+		if err != nil {
+			return nil
+		}
+		return &version
 	}
 
-	loader := schema.NewPluginLoader(pCtx.Host)
+	loader := schema.NewPluginLoader(pCtx)
 
 	baseMapper, err := convert.NewBasePluginMapper(
-		convert.DefaultWorkspace(),
+		pluginstorage.Instance,
 		from, /*conversionKey*/
-		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+		convert.ProviderFactoryFromHost(ctx, pCtx),
 		installPlugin,
 		mappings,
 	)
@@ -440,18 +483,18 @@ func runConvert(
 	}
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
-	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, strict)
+	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, mapper, strict)
 	// If we have error diagnostics then program generation failed, print an error to the user that they
 	// should raise an issue about this
 	if diagnostics.HasErrors() {
 		// Don't print the notice about this being a bug if we're in strict mode
 		if !strict {
-			fmt.Fprintln(os.Stderr, "================================================================================")
-			fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
-			fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
-			fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
-			fmt.Fprintln(os.Stderr, "================================================================================")
-			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
+			fmt.Fprintln(stderr, "================================================================================")
+			fmt.Fprintln(stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
+			fmt.Fprintln(stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
+			fmt.Fprintln(stderr, "Please provide all of the below text in your report.")
+			fmt.Fprintln(stderr, "================================================================================")
+			fmt.Fprintf(stderr, "Pulumi Version:   %s\n", version.Version)
 		}
 		cmdDiag.PrintDiagnostics(pCtx.Diag, diagnostics)
 		if err != nil {
@@ -477,14 +520,29 @@ func runConvert(
 			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
-		proj, root, err := ws.ReadProject()
+		proj, root, err := ws.ReadProject(outDir)
 		if err != nil {
 			return err
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pluginHost, err := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg),
+		)
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			cloudCredentialEnv,
+		)
 		if err != nil {
 			return err
 		}
@@ -503,17 +561,15 @@ func runConvert(
 func getPackagesToGenerateSdks(
 	sourceDirectory string,
 ) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
-	var diagnostics hcl.Diagnostics
-
 	parser := hclsyntax.NewParser()
 	parseDiagnostics, err := pcl.ParseDirectory(parser, sourceDirectory)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse PCL files: %w", err)
 	}
-	diagnostics = append(diagnostics, parseDiagnostics...)
 
 	allPackageDescriptors, packageDiagnostics := pcl.ReadAllPackageDescriptors(parser.Files)
-	diagnostics = append(diagnostics, packageDiagnostics...)
+
+	diagnostics := slices.Concat(parseDiagnostics, packageDiagnostics)
 
 	if len(diagnostics) != 0 {
 		var errorDiags hcl.Diagnostics
@@ -533,6 +589,7 @@ func getPackagesToGenerateSdks(
 
 func generateAndLinkSdksForPackages(
 	pctx *plugin.Context,
+	stdout io.Writer,
 	language string,
 	targetDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
@@ -561,24 +618,32 @@ func generateAndLinkSdksForPackages(
 		}
 
 		pkgSpec, _, err := packages.SchemaFromSchemaSource(
+			pkgWorkspace.Instance,
 			pctx,
 			pkg.Name,
-			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
+			&plugin.ParameterizeValue{
+				Name:    pkg.Parameterization.Name,
+				Version: pkg.Parameterization.Version,
+				Value:   pkg.Parameterization.Value,
+			},
 			registry,
 			env.Global(),
-			0, /* unbounded concurrency */
+			0,     /* unbounded concurrency */
+			false, /* asExtension */
+			"",    /* pluginDownloadURL */
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)
 		}
 
-		pkgSchema, err := packages.BindSpec(*pkgSpec)
+		pkgSchema, err := packages.BindSpec(*pkgSpec, schema.NewPluginLoader(pctx))
 		if err != nil {
 			return fmt.Errorf("binding package schema: %w", err)
 		}
 
 		diags, err := packages.GenSDK(
 			pctx.Request(),
+			registry,
 			language,
 			tempOut,
 			pkgSchema,
@@ -603,11 +668,11 @@ func generateAndLinkSdksForPackages(
 
 		packagesToLink = append(packagesToLink, packages.PackageToLink{Pkg: pkgSchema, Out: sdkOut})
 
-		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+		fmt.Fprintf(stdout, "Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 	}
 
 	if err := packages.LinkPackages(&packages.LinkPackagesContext{
-		Writer:        os.Stdout,
+		Writer:        stdout,
 		Project:       proj,
 		Language:      language,
 		Root:          targetDirectory,

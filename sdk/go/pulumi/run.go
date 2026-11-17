@@ -59,7 +59,7 @@ func Run(body RunFunc, opts ...RunOption) {
 		printRequiredPlugins()
 	}
 
-	os.Exit(constant.ExitStatusLoggedError)
+	os.Exit(constant.ExitStatusLoggedError) //nolint:noosexit // Run's contract terminates the process on failure.
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
@@ -207,7 +207,7 @@ func getEnvInfo() RunInfo {
 		Stack:            os.Getenv(EnvStack),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
-		Parallel:         int32(parallel), //nolint:gosec // guarded by strconv.ParseInt
+		Parallel:         int32(parallel),
 		DryRun:           dryRun,
 		MonitorAddr:      os.Getenv(EnvMonitor),
 		EngineAddr:       os.Getenv(EnvEngine),

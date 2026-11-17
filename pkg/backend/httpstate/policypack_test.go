@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -118,7 +118,7 @@ func TestEscValueToConfigMap(t *testing.T) {
 		input := esc.Value{Value: "not a map"}
 
 		_, err := escValueToConfigMap(input)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "expected policyConfig to be a map")
 	})
 
@@ -136,6 +136,7 @@ func TestEscValueToConfigMap(t *testing.T) {
 type mockEnvironmentsBackend struct {
 	openYAMLEnvironmentF func(
 		ctx context.Context, org string, yaml []byte, duration time.Duration,
+		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
@@ -153,8 +154,9 @@ func (m *mockEnvironmentsBackend) CheckYAMLEnvironment(
 
 func (m *mockEnvironmentsBackend) OpenYAMLEnvironment(
 	ctx context.Context, org string, yaml []byte, duration time.Duration,
+	environmentOverrides map[string]string,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
-	return m.openYAMLEnvironmentF(ctx, org, yaml, duration)
+	return m.openYAMLEnvironmentF(ctx, org, yaml, duration, environmentOverrides)
 }
 
 func TestResolveEnvironments(t *testing.T) {
@@ -178,6 +180,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
+				_ map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				assert.Contains(t, string(yaml), "prod/policy-config")
@@ -225,6 +228,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return nil, nil, errors.New("connection refused")
 			},
@@ -240,7 +244,7 @@ func TestResolveEnvironments(t *testing.T) {
 		}
 
 		_, err := rp.ResolveEnvironments(t.Context())
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "opening ESC environments")
 		assert.Contains(t, err.Error(), "connection refused")
 	})
@@ -250,6 +254,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return nil, apitype.EnvironmentDiagnostics{
 					{Summary: "unknown environment 'prod/missing'"},
@@ -267,7 +272,7 @@ func TestResolveEnvironments(t *testing.T) {
 		}
 
 		_, err := rp.ResolveEnvironments(t.Context())
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "unknown environment")
 	})
 
@@ -276,6 +281,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -308,6 +314,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -340,6 +347,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
+				_ map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				yamlStr := string(yaml)
@@ -377,6 +385,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -415,6 +424,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -468,6 +478,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -512,6 +523,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -542,5 +554,134 @@ func TestResolveEnvironments(t *testing.T) {
 		assert.Contains(t, result.EnvironmentVariables, "SECRET_KEY")
 		assert.Contains(t, result.EnvironmentVariables, "PLAIN_KEY")
 		assert.Contains(t, result.Secrets, "super-secret-value")
+	})
+}
+
+func TestLocalPolicyEnvironmentResolver(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no environments returns nil", func(t *testing.T) {
+		t.Parallel()
+		resolver := NewLocalPolicyEnvironmentResolver(&mockEnvironmentsBackend{}, "org")
+		result, err := resolver.ResolveEnvironments(t.Context(), nil)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("empty environments returns nil", func(t *testing.T) {
+		t.Parallel()
+		resolver := NewLocalPolicyEnvironmentResolver(&mockEnvironmentsBackend{}, "org")
+		result, err := resolver.ResolveEnvironments(t.Context(), []string{})
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("resolves policyConfig and environmentVariables", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				_ context.Context, org string, yaml []byte, _ time.Duration,
+				_ map[string]string,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				assert.Equal(t, "test-org", org)
+				assert.Contains(t, string(yaml), "org/policy-secrets")
+				assert.Contains(t, string(yaml), "org/compliance-config")
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"policyConfig": {Value: map[string]esc.Value{
+							"cost-policy": {Value: map[string]esc.Value{
+								"maxMonthlyCost": {Value: json.Number("1000")},
+							}},
+						}},
+						"environmentVariables": {Value: map[string]esc.Value{
+							"VALIDATOR_TOKEN": {Value: "secret-token", Secret: true},
+							"API_URL":         {Value: "https://example.com"},
+						}},
+					},
+				}, nil, nil
+			},
+		}
+
+		resolver := NewLocalPolicyEnvironmentResolver(mock, "test-org")
+		result, err := resolver.ResolveEnvironments(
+			t.Context(), []string{"org/policy-secrets", "org/compliance-config"})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Verify policyConfig was extracted.
+		require.Contains(t, result.Config, "cost-policy")
+		var configVal map[string]any
+		err = json.Unmarshal(*result.Config["cost-policy"], &configVal)
+		require.NoError(t, err)
+		assert.Equal(t, float64(1000), configVal["maxMonthlyCost"])
+
+		// Verify environment variables.
+		assert.Equal(t, "secret-token", result.EnvironmentVariables["VALIDATOR_TOKEN"])
+		assert.Equal(t, "https://example.com", result.EnvironmentVariables["API_URL"])
+
+		// Verify secrets are tracked.
+		assert.Contains(t, result.Secrets, "secret-token")
+	})
+
+	t.Run("OpenYAMLEnvironment error propagates", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+				map[string]string,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return nil, nil, errors.New("connection refused")
+			},
+		}
+
+		resolver := NewLocalPolicyEnvironmentResolver(mock, "org")
+		_, err := resolver.ResolveEnvironments(t.Context(), []string{"env/missing"})
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "opening ESC environments")
+		assert.Contains(t, err.Error(), "connection refused")
+	})
+
+	t.Run("diagnostics returned as error", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+				map[string]string,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return nil, apitype.EnvironmentDiagnostics{
+					{Summary: "unknown environment 'env/missing'"},
+				}, nil
+			},
+		}
+
+		resolver := NewLocalPolicyEnvironmentResolver(mock, "org")
+		_, err := resolver.ResolveEnvironments(t.Context(), []string{"env/missing"})
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "unknown environment")
+	})
+
+	t.Run("only envVars no policyConfig", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+				map[string]string,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"environmentVariables": {Value: map[string]esc.Value{
+							"KEY": {Value: "val"},
+						}},
+					},
+				}, nil, nil
+			},
+		}
+
+		resolver := NewLocalPolicyEnvironmentResolver(mock, "org")
+		result, err := resolver.ResolveEnvironments(t.Context(), []string{"env"})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Nil(t, result.Config)
+		assert.Equal(t, map[string]string{"KEY": "val"}, result.EnvironmentVariables)
 	})
 }

@@ -116,6 +116,18 @@ class ResourceProviderStub:
     rendering diffs.
     """
 
+    CheckConfig2: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.CheckConfigRequest,
+        pulumi.provider_pb2.CheckConfigResponse,
+    ]
+    """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+    uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+    Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+    provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+    to implement `CheckConfig` for as long as they support callers that only know about the latter.
+    """
+
     DiffConfig: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.DiffRequest,
         pulumi.provider_pb2.DiffResponse,
@@ -227,6 +239,14 @@ class ResourceProviderStub:
     """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
     must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     include other properties.
+    """
+
+    List: grpc.UnaryStreamMultiCallable[
+        pulumi.provider_pb2.ListRequest,
+        pulumi.provider_pb2.ListResponse,
+    ]
+    """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    emit a continuation token indicating another page is available.
     """
 
     Update: grpc.UnaryUnaryMultiCallable[
@@ -409,6 +429,18 @@ class ResourceProviderAsyncStub:
     rendering diffs.
     """
 
+    CheckConfig2: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.CheckConfigRequest,
+        pulumi.provider_pb2.CheckConfigResponse,
+    ]
+    """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+    uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+    Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+    provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+    to implement `CheckConfig` for as long as they support callers that only know about the latter.
+    """
+
     DiffConfig: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.DiffRequest,
         pulumi.provider_pb2.DiffResponse,
@@ -520,6 +552,14 @@ class ResourceProviderAsyncStub:
     """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
     must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     include other properties.
+    """
+
+    List: grpc.aio.UnaryStreamMultiCallable[
+        pulumi.provider_pb2.ListRequest,
+        pulumi.provider_pb2.ListResponse,
+    ]
+    """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    emit a continuation token indicating another page is available.
     """
 
     Update: grpc.aio.UnaryUnaryMultiCallable[
@@ -711,6 +751,20 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         """
 
     
+    def CheckConfig2(
+        self,
+        request: pulumi.provider_pb2.CheckConfigRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.CheckConfigResponse, collections.abc.Awaitable[pulumi.provider_pb2.CheckConfigResponse]]:
+        """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+        uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+        Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+        provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+        to implement `CheckConfig` for as long as they support callers that only know about the latter.
+        """
+
+    
     def DiffConfig(
         self,
         request: pulumi.provider_pb2.DiffRequest,
@@ -837,6 +891,16 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
         must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
         include other properties.
+        """
+
+    
+    def List(
+        self,
+        request: pulumi.provider_pb2.ListRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[collections.abc.Iterator[pulumi.provider_pb2.ListResponse], collections.abc.AsyncIterator[pulumi.provider_pb2.ListResponse]]:
+        """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+        emit a continuation token indicating another page is available.
         """
 
     

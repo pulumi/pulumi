@@ -1,0 +1,7 @@
+values:
+  env_h:
+    token: {fn::secret: {ciphertext: ZXNjeAAAAAHo9e705fKyKo30VQ==}}
+  environmentVariables:
+    env_h: ${env_h.token}
+  pulumiConfig:
+    env_h::token: ${env_h.token}

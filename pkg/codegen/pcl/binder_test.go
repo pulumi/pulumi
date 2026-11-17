@@ -16,6 +16,7 @@ package pcl_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -55,7 +57,6 @@ func TestBindProgram(t *testing.T) {
 		bindOptions[r.Directory+"-pp"] = r.BindOptions
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, v := range testdata {
 		if !v.IsDir() {
 			continue
@@ -91,18 +92,17 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
+				loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 				absoluteFolderPath, err := filepath.Abs(folderPath)
 				if err != nil {
 					t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
 				}
 				options := append(
 					bindOptions[v.Name()],
-					loader,
 					pcl.DirPath(absoluteFolderPath),
 					pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 				// PCL binder options are taken from program_driver.go
-				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
+				program, diags, bindError := pcl.BindProgram(parser.Files, loader, options...)
 
 				require.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
@@ -146,7 +146,7 @@ func TestWritingProgramSource(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -245,6 +245,22 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 	listType, ok := config.Type().(*model.ListType)
 	assert.True(t, ok, "the type of config is a list type")
 	assert.Equal(t, listType.ElementType, model.StringType, "the element type is a string")
+}
+
+func TestConfigNodeTypedOptionalStringList(t *testing.T) {
+	t.Parallel()
+	source := `config names "list(optional(string))" { default = [null] }`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, 1, len(program.Nodes), "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, "names", config.Name())
+	listType, ok := config.Type().(*model.ListType)
+	assert.True(t, ok, "the type of config is a list type")
+	assert.True(t, model.IsOptionalType(listType.ElementType), "the element type is optional")
 }
 
 func TestConfigNodeTypedIntList(t *testing.T) {
@@ -352,7 +368,7 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 		description = "The ID of the VPC"
 	}
 
-	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	resource "endpoint" "infra:index:Endpoint" {
 	  options {
 		range = endpointsServiceNames
 	  }
@@ -420,6 +436,22 @@ output "values" {
 	assert.Nil(t, strictProgram)
 }
 
+func TestBindingReadProviderResourceFails(t *testing.T) {
+	t.Parallel()
+
+	source := `
+read provider "pulumi:providers:random" {
+	id = "provider-id"
+}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, "provider resources cannot be read: 'pulumi:providers:random'", diags[0].Summary)
+}
+
 func TestBindingUnknownResourceFromKnownSchemaWhenSkippingResourceTypeChecking(t *testing.T) {
 	t.Parallel()
 	// here the random package is available, but it doesn't have a resource called "Unknown"
@@ -475,7 +507,7 @@ output "knownId" {
 		}
 
 		if output.Name() == "knownId" {
-			assert.Equal(t, model.StringType, outputType)
+			assert.Equal(t, model.IDType, outputType)
 		}
 	}
 
@@ -588,9 +620,9 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 	t.Parallel()
 	// when binding a resource from a package that has a transitive dependency
 	// then that transitive dependency is part of the program package references.
-	// for example when binding a resource from AWSX package and that resources uses types from the AWS package
-	// then both AWSX and AWS packages are part of the program package references
-	source := `resource "example" "awsx:ecs:EC2Service" { }`
+	// for example when binding a resource from the remoteref package and that resource uses types
+	// from the goalias package then both packages are part of the program package references
+	source := `resource "example" "remoteref:index:Root" { }`
 
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
@@ -608,8 +640,8 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 		return false
 	}
 
-	assert.True(t, packageRefExists("awsx"), "The program has a reference to the awsx package")
-	assert.True(t, packageRefExists("aws"), "The program has a reference to the aws package")
+	assert.True(t, packageRefExists("remoteref"), "The program has a reference to the remoteref package")
+	assert.True(t, packageRefExists("goalias"), "The program has a reference to the goalias package")
 }
 
 func TestAllowMissingVariablesShouldNotErrorOnUnboundVariableReferences(t *testing.T) {
@@ -783,7 +815,7 @@ lenPublicSubnets = invoke("std:index:max", {
   ]
 })
 
-resource "defaultVpc" "aws:ec2/vpc:Vpc" {
+resource "defaultVpc" "infra:index:Vpc" {
   options { range = createVpc ? lenPublicSubnets.result : 0 }
   cidrBlock = "10.0.0.1/16"
 }
@@ -822,7 +854,7 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 func TestBindingElementFunctionWithOutputSplatExpression(t *testing.T) {
 	t.Parallel()
 	source := `
-azs = invoke("aws:index:getAvailabilityZones", {})
+azs = invoke("infra:index:getZones", {})
 
 resource "randomPet" "random:index/randomPet:RandomPet" {
 	options { range = length(azs.filters) }
@@ -1102,7 +1134,7 @@ func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testi
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1143,7 +1175,7 @@ func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1208,14 +1240,14 @@ config "vpcId" "string" {
   description = "The ID of the VPC"
 }
 
-resource "ptfeService" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+resource "ptfeService" "infra:index:Endpoint" {
   __logicalName     = "ptfe_service"
   vpcId             = vpcId
   vpcEndpointType   = "Interface"
   privateDnsEnabled = false
 }
 
-resource "ptfeServiceRecord" "aws:route53/record:Record" {
+resource "ptfeServiceRecord" "infra:index:Record" {
   __logicalName = "ptfe_service"
   zoneId        = "example_zone_id"
   name          = "example"
@@ -1274,7 +1306,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	_, diags, _ := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
@@ -1309,7 +1341,7 @@ component myComp "./myComponent" {
 	require.NoError(t, err)
 
 	program, diags, bindErr := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absDir),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	require.NoError(t, bindErr)
@@ -1333,4 +1365,221 @@ component myComp "./myComponent" {
 		require.False(t, convertDiags.HasErrors())
 		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
 	}
+}
+
+func TestMaxAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "number" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsStringArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "string" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMinAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "number" {}
+config "b" "int" {}
+
+output "result" {
+  value = min(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsOutputInt(t *testing.T) {
+	t.Parallel()
+	source := `
+config "b" "int" {}
+
+resource "ri" "random:index/randomInteger:RandomInteger" {
+  min = 0
+  max = 10
+}
+
+output "result" {
+  value = max(ri.result, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxRejectsListArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "list(string)" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	require.Equal(t, hcl.Diagnostics{{
+		Severity: hcl.DiagError,
+		Summary:  "cannot assign expression of type list(string) to location of type int | output(int): ",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start:    hcl.Pos{Line: 5, Column: 18, Byte: 86},
+			End:      hcl.Pos{Line: 5, Column: 19, Byte: 87},
+		},
+	}}, diags)
+	require.Nil(t, program)
+}
+
+func TestBindInvokePicksOutputForm(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "resource output at property",
+			source: `
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = 1})
+`,
+		},
+		{
+			name: "resource output mixed with dynamic",
+			source: `
+config "y" "any" {}
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = y})
+`,
+		},
+		{
+			name: "whole-output args",
+			source: `
+args = secret({a = 1, b = 2})
+result = invoke("std:index:Abs", args)
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			program, diags, err := ParseAndBindProgram(t, tc.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "binding should not error: %v", diags)
+			require.NotNil(t, program)
+
+			var call *model.FunctionCallExpression
+			for _, n := range program.Nodes {
+				lv, ok := n.(*pcl.LocalVariable)
+				if !ok || lv.Name() != "result" {
+					continue
+				}
+				call, _ = lv.Definition.Value.(*model.FunctionCallExpression)
+			}
+			require.NotNil(t, call, "expected 'result' bound to an invoke call")
+			require.GreaterOrEqual(t, len(call.Signature.Parameters), 2)
+			assert.True(t, model.ContainsOutputs(call.Signature.Parameters[1].Type),
+				"args param type should be the Input<T>-shaped output form; got %v",
+				call.Signature.Parameters[1].Type)
+		})
+	}
+}
+
+// Test binding a conditional whose branches mix a promise-typed value (from an
+// invoke().result) with a try() expression.
+func TestBindConditionalMixingPromiseWithTry(t *testing.T) {
+	t.Parallel()
+	source := `
+config "x" "any" {}
+isOne = invoke("std:index:Abs", {a = 1, b = 1}).result == 1
+a = isOne ? x : null
+b = true ? a : try(x, null)
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "binding should not panic or error: %v", diags)
+	require.NotNil(t, program)
+}
+
+func TestStackReferenceGetToken(t *testing.T) {
+	t.Parallel()
+	source := `
+resource stackRef "pulumi:pulumi:StackReference" {
+    name = "org/project/stack"
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, node := range program.Nodes {
+		if r, ok := node.(*pcl.Resource); ok && r.Name() == "stackRef" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "expected a resource named stackRef")
+
+	token, _ := resource.GetToken()
+	assert.Equal(t, "pulumi:pulumi:StackReference", token)
+}
+
+type mockLoader struct{ spec schema.PackageSpec }
+
+func (m mockLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
+	return m.LoadPackageV2(context.Background(), &schema.PackageDescriptor{Name: pkg, Version: version})
+}
+
+func (m mockLoader) LoadPackageV2(_ context.Context, d *schema.PackageDescriptor) (*schema.Package, error) {
+	if d.Name != m.spec.Name || (d.Version != nil && m.spec.Version != d.Version.String()) {
+		return nil, fmt.Errorf("%s does not match expected descriptor %s@%s", d, m.spec.Name, m.spec.Version)
+	}
+
+	pkg, diags, err := schema.BindSpec(m.spec, schema.NewNullLoader(), schema.ValidationOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	return pkg, nil
 }

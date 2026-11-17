@@ -1,0 +1,4 @@
+ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+ROOT/artifacts/pulumi_extbase-45.0.0-py3-none-any.whl
+ROOT/artifacts/pulumi_myext-2.0.0-py3-none-any.whl
+mypy

@@ -18,8 +18,9 @@ import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransform, ResourceTransformation } from "../resource";
 import { InvokeTransform } from "../invoke";
-import { getCallbacks, isDryRun, setRootResource } from "./settings";
+import { getCallbacks, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 /**
  * The type name that should be used to construct the root component in the tree
@@ -150,40 +151,20 @@ async function massage(key: string | undefined, prop: any, objectStack: any[]): 
 }
 
 async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
-    if (asset.Asset.isInstance(prop)) {
-        if ((<asset.FileAsset>prop).path !== undefined) {
-            return { path: (<asset.FileAsset>prop).path };
-        } else if ((<asset.RemoteAsset>prop).uri !== undefined) {
-            return { uri: (<asset.RemoteAsset>prop).uri };
-        } else if ((<asset.StringAsset>prop).text !== undefined) {
-            return { text: "..." };
-        }
-
-        return undefined;
-    }
-
-    if (asset.Archive.isInstance(prop)) {
-        if ((<asset.AssetArchive>prop).assets) {
-            return { assets: await massage("assets", (<asset.AssetArchive>prop).assets, objectStack) };
-        } else if ((<asset.FileArchive>prop).path !== undefined) {
-            return { path: (<asset.FileArchive>prop).path };
-        } else if ((<asset.RemoteArchive>prop).uri !== undefined) {
-            return { uri: (<asset.RemoteArchive>prop).uri };
-        }
-
-        return undefined;
+    // Preserve Asset / Archive instances so subsequent gRPC serialization
+    // tags them with the special signature key (`specialAssetSig` /
+    // `specialArchiveSig`).
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+        return prop;
     }
 
     if (Resource.isInstance(prop)) {
         // Emit a resource as a normal pojo.  But filter out all our internal properties so that
         // they don't clutter the display/checkpoint with values not relevant to the application.
         //
-        // In preview only, we mark the POJO with "@isPulumiResource" to indicate that it is derived
-        // from a resource. This allows the engine to perform resource-specific filtering of unknowns
-        // from output diffs during a preview. This filtering is not necessary during an update because
-        // all property values are known.
-        const pojo = await serializeAllKeys((n) => !n.startsWith("__"));
-        return !isDryRun() ? pojo : { ...pojo, "@isPulumiResource": true };
+        // The POJO must be the same shape in previews and updates, otherwise the stack outputs recorded
+        // in an update plan will never match the outputs of the update that executes it.
+        return await serializeAllKeys((n) => !n.startsWith("__"));
     }
 
     if (prop instanceof Array) {
@@ -214,6 +195,8 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  * stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
+    ensureNotInStateMigration("register stack transformation");
+
     const stackResource = getStackResource();
     if (!stackResource) {
         throw new Error("The root stack resource was referenced before it was initialized.");
@@ -226,6 +209,8 @@ export function registerStackTransformation(t: ResourceTransformation) {
  * stack.
  */
 export function registerResourceTransform(t: ResourceTransform): void {
+    ensureNotInStateMigration("register resource transform");
+
     if (!getStore().supportsTransforms) {
         throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
     }
@@ -251,6 +236,8 @@ export function registerStackTransform(t: ResourceTransform) {
  * Add a transformation to all future invoke calls in this Pulumi stack.
  */
 export function registerInvokeTransform(t: InvokeTransform): void {
+    ensureNotInStateMigration("register invoke transform");
+
     if (!getStore().supportsInvokeTransforms) {
         throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
     }

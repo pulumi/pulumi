@@ -38,8 +38,7 @@ func (id *ID) StringPtr() *string {
 	if id == nil {
 		return nil
 	}
-	ids := (*id).String()
-	return &ids
+	return new((*id).String())
 }
 
 // IDStrings turns an array of resource IDs into an array of strings.

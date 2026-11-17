@@ -28,3 +28,111 @@ type GetDefaultOrganizationResponse struct {
 	// Can be possibly empty.
 	Messages []Message
 }
+
+// FGARole describes the role currently assigned to an organization member.
+// It is either a built-in role (member, admin, billingManager) or a custom
+// role defined in the organization.
+type FGARole struct {
+	// ID is the role identifier; for built-in roles this is the role name,
+	// for custom roles it is an opaque identifier.
+	ID string `json:"id"`
+	// Name is the human-readable role name.
+	Name string `json:"name"`
+	// ModifiedAt is when the role was last modified.
+	ModifiedAt string `json:"modifiedAt"`
+}
+
+// MemberLinks contains links to the member's page in the Pulumi Console.
+type MemberLinks struct {
+	// Self is the URL of the member's page in the Pulumi Console.
+	Self string `json:"self,omitempty"`
+}
+
+// OrganizationMember describes a single member of a Pulumi organization,
+// as returned by the ListOrganizationMembers Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/members).
+type OrganizationMember struct {
+	// Role is the member's built-in role within the organization. Deprecated
+	// by the service in favour of FGARole; retained because the list endpoint
+	// continues to return it and tooling may want to display it.
+	Role string `json:"role"`
+	// User is the underlying user record. Email is typically empty on this
+	// endpoint.
+	User UserInfo `json:"user"`
+	// Created is when the member joined the organization.
+	Created string `json:"created"`
+	// KnownToPulumi indicates whether the organization member has a Pulumi
+	// account.
+	KnownToPulumi bool `json:"knownToPulumi"`
+	// VirtualAdmin indicates that the member does not have admin access on
+	// the backing identity provider, but does have admin access to the
+	// Pulumi organization.
+	VirtualAdmin bool `json:"virtualAdmin"`
+	// Links optionally contains URLs to the member in the Pulumi Console.
+	Links *MemberLinks `json:"links,omitempty"`
+	// FGARole is the role currently assigned to this member — either a
+	// built-in role or a custom role.
+	FGARole FGARole `json:"fgaRole"`
+}
+
+// ListOrganizationMembersResponse is the response body returned by the
+// ListOrganizationMembers Pulumi Cloud REST endpoint.
+type ListOrganizationMembersResponse struct {
+	// Members is the page of organization members.
+	Members []OrganizationMember `json:"members"`
+	// ContinuationToken is an opaque token for fetching the next page of
+	// members; empty when there are no more pages.
+	ContinuationToken string `json:"continuationToken,omitempty"`
+}
+
+// AuditLogEvent describes a single entry in an organization's audit log, as
+// returned by the ListAuditLogEvents Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/auditlogs).
+type AuditLogEvent struct {
+	// Timestamp is the Unix epoch (in seconds) at which the event occurred.
+	Timestamp int64 `json:"timestamp"`
+	// Event is the event type identifier (e.g. "stack.update", "member.added").
+	Event string `json:"event"`
+	// Description is the human-readable description of the event.
+	Description string `json:"description"`
+	// User is the user that triggered the event.
+	User UserInfo `json:"user"`
+	// SourceIP is the IP address from which the event originated.
+	SourceIP string `json:"sourceIP"`
+	// TokenID is the ID of the access token used, if any.
+	TokenID string `json:"tokenID,omitempty"`
+	// TokenName is the name of the access token used, if any.
+	TokenName string `json:"tokenName,omitempty"`
+}
+
+// ListAuditLogEventsResponse is the response body returned by the
+// ListAuditLogEvents Pulumi Cloud REST endpoint.
+type ListAuditLogEventsResponse struct {
+	// AuditLogEvents is the page of audit log events.
+	AuditLogEvents []AuditLogEvent `json:"auditLogEvents"`
+	// ContinuationToken is an opaque token for fetching the next page of
+	// events; empty when there are no more pages.
+	ContinuationToken string `json:"continuationToken,omitempty"`
+}
+
+// UpdateOrganizationMemberRequest modifies a member's role within an
+// organization. It is the body of the `UpdateOrganizationMember` Pulumi Cloud
+// REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Set Role to
+// assign a built-in role (member, admin, or billing-manager); set FgaRoleId
+// to assign a custom role. The two are mutually exclusive.
+type UpdateOrganizationMemberRequest struct {
+	Role      *string `json:"role,omitempty"`
+	FgaRoleId *string `json:"fgaRoleId,omitempty"`
+}
+
+// OrgRole describes a role available in an organization, as returned by the
+// list roles endpoint (GET /api/orgs/{orgName}/roles).
+type OrgRole struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListOrgRolesResponse is the response from the list roles endpoint.
+type ListOrgRolesResponse struct {
+	Roles []OrgRole `json:"roles"`
+}

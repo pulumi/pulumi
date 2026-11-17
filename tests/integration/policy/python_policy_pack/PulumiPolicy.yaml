@@ -1,6 +1,7 @@
 runtime:
   name: python
   options:
+    toolchain: uv
     virtualenv: venv
 version: 0.0.1
 description: A policy that does nothing

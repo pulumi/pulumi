@@ -15,9 +15,9 @@
 package tests
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,13 +38,13 @@ func init() {
 					// Resource with additionalSecretOutputs
 					withSecret := RequireSingleNamedResource(l, res.Snap.Resources, "withSecret")
 					assert.Equal(l, []resource.PropertyKey{"value"}, withSecret.AdditionalSecretOutputs)
-					assert.True(l, withSecret.Outputs["value"].IsSecret(),
+					assert.True(l, resource.FromResourcePropertyMap(withSecret.Outputs).Get("value").Secret(),
 						"expected 'value' output to be secret")
 
 					// Resource without additionalSecretOutputs
 					withoutSecret := RequireSingleNamedResource(l, res.Snap.Resources, "withoutSecret")
 					assert.Empty(l, withoutSecret.AdditionalSecretOutputs)
-					assert.False(l, withoutSecret.Outputs["value"].IsSecret(),
+					assert.False(l, resource.FromResourcePropertyMap(withoutSecret.Outputs).Get("value").Secret(),
 						"expected 'value' output to not be secret")
 				},
 			},

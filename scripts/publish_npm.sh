@@ -22,7 +22,9 @@ if [[ "${BRANCH_NAME}" == feature-* ]]; then
     NPM_TAG="${BRANCH_NAME}"
 fi
 
-PKG_NAME=$(jq -r .name < "${ROOT}/sdk/nodejs/package.json")
+# NPM_PKG_JSON overrides the package.json used to determine the package name.
+# Defaults to the Node SDK package.json for backwards compatibility.
+PKG_NAME=$(jq -r .name < "${NPM_PKG_JSON:-${ROOT}/sdk/nodejs/package.json}")
 # shellcheck disable=SC2154 # assigned by release.yml
 PKG_VERSION="${PULUMI_VERSION}"
 
@@ -44,8 +46,13 @@ fi
 # We exploit the fact that `npm info <package-name>@<package-version>` has no output
 # when the package does not exist.
 set -x
+# NPM_ARTIFACT_GLOB overrides the artifact glob used when publishing.
+# Defaults to the Node SDK pattern for backwards compatibility.
+ARTIFACT_GLOB="${NPM_ARTIFACT_GLOB:-sdk-nodejs-*.tgz}"
+
 if [ "$(npm info "${PKG_NAME}@${PKG_VERSION}")" == "" ]; then
-    if ! npm publish -tag "${NPM_TAG}" "${ROOT}"/artifacts/sdk-nodejs-*.tgz ; then
+    # shellcheck disable=SC2086 # glob must expand
+    if ! npm publish -tag "${NPM_TAG}" "${ROOT}"/artifacts/${ARTIFACT_GLOB} ; then
     # if we get here, we have a TOCTOU issue, so check again
     # to see if it published. If it didn't bail out.
         if [ "$(npm info "${PKG_NAME}@${PKG_VERSION}")" == "" ]; then

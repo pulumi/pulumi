@@ -15,8 +15,9 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Output pulumi.StringOutput  `pulumi:"output"`
-	Value  pulumi.Float64Output `pulumi:"value"`
+	Output       pulumi.StringOutput  `pulumi:"output"`
+	SecretOutput pulumi.StringOutput  `pulumi:"secretOutput"`
+	Value        pulumi.Float64Output `pulumi:"value"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -29,6 +30,10 @@ func NewResource(ctx *pulumi.Context,
 	if args.Value == nil {
 		return nil, errors.New("invalid value for required argument 'Value'")
 	}
+	secrets := pulumi.AdditionalSecretOutputs([]string{
+		"secretOutput",
+	})
+	opts = append(opts, secrets)
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("output:index:Resource", name, args, &resource, opts...)
@@ -59,6 +64,12 @@ type ResourceState struct {
 
 func (ResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*resourceState)(nil)).Elem()
+}
+
+// ResourceExists checks whether an existing Resource resource with the given ID exists.
+func ResourceExists(ctx *pulumi.Context,
+	id pulumi.StringInput, state *ResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("output:index:Resource", id, state, "", opts...)
 }
 
 type resourceArgs struct {
@@ -109,6 +120,10 @@ func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) Resourc
 
 func (o ResourceOutput) Output() pulumi.StringOutput {
 	return o.ApplyT(func(v *Resource) pulumi.StringOutput { return v.Output }).(pulumi.StringOutput)
+}
+
+func (o ResourceOutput) SecretOutput() pulumi.StringOutput {
+	return o.ApplyT(func(v *Resource) pulumi.StringOutput { return v.SecretOutput }).(pulumi.StringOutput)
 }
 
 func (o ResourceOutput) Value() pulumi.Float64Output {

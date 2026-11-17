@@ -19,14 +19,16 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"golang.org/x/sync/errgroup"
 
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // analyzeResource runs all analyzers against a single resource in parallel, emitting
@@ -36,7 +38,9 @@ import (
 // Returns (invalid, sawError) where invalid is true if any mandatory violation was found
 // (unless dryRun is true), and sawError is true if any mandatory violation was found.
 func analyzeResource(
+	ctx context.Context,
 	analyzers []plugin.Analyzer,
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions,
 	r plugin.AnalyzerResource,
 	events PolicyEvents,
 	dryRun bool,
@@ -55,12 +59,12 @@ func analyzeResource(
 
 	for _, analyzer := range analyzers {
 		g.Go(func() error {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.Analyze(r)
+			response, err := analyzer.Analyze(ctx, r)
 			if err != nil {
 				return fmt.Errorf("failed to run policy: %w", err)
 			}
@@ -72,13 +76,14 @@ func analyzeResource(
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
+				exceptions := policyExceptions[analyzer].Match(d.PolicyName, r.URN)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					if !dryRun {
 						invalidAtomic.Store(true)
 					}
 					sawErrorAtomic.Store(true)
 				}
-				events.OnPolicyViolation(r.URN, d)
+				events.OnPolicyViolation(r.URN, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzePolicySummary(r.URN, response, info)
@@ -94,9 +99,41 @@ func analyzeResource(
 	return invalidAtomic.Load(), sawErrorAtomic.Load(), nil
 }
 
+// snapshotRootStackURN returns the URN that stack-level policy violations are attributed
+// to: the snapshot's root stack resource, or a default synthesized from another resource.
+// Invalid URNs are skipped; a resourceless snapshot yields the empty URN.
+func snapshotRootStackURN(snap *Snapshot) resource.URN {
+	var fallback resource.URN
+	for _, res := range snap.Resources {
+		if !res.URN.IsValid() {
+			continue
+		}
+		if res.Type == resource.RootStackType && res.Parent == "" {
+			return res.URN
+		}
+		if fallback == "" {
+			fallback = resource.DefaultRootStackURN(res.URN.Stack(), res.URN.Project())
+		}
+	}
+	return fallback
+}
+
+// resolveStackPolicyViolationURN attributes a stack-level policy diagnostic to its own URN
+// when that names a resource in the stack, otherwise to the root stack URN. Shared with the
+// deployment path (step_generator.go) to keep attribution consistent.
+func resolveStackPolicyViolationURN(
+	diagURN, rootStackURN resource.URN,
+	inStack func(resource.URN) bool,
+) resource.URN {
+	if inStack(diagURN) {
+		return diagURN
+	}
+	return rootStackURN
+}
+
 // buildSnapshotProviderMap builds a map of provider URN -> provider state from a snapshot.
-func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
-	providers := make(map[resource.URN]*resource.State)
+func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*pkgresource.State {
+	providers := make(map[resource.URN]*pkgresource.State)
 	for _, res := range snap.Resources {
 		if sdkproviders.IsProviderType(res.Type) {
 			providers[res.URN] = res
@@ -105,20 +142,20 @@ func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
 	return providers
 }
 
-// stateToAnalyzerResource converts a resource.State to a plugin.AnalyzerResource.
+// stateToAnalyzerResource converts a pkgresource.State to a plugin.AnalyzerResource.
 // properties must be supplied explicitly: use res.Inputs for per-resource Analyze calls
 // (matching what Analyze receives during a deployment) and res.Outputs for AnalyzeStack
 // calls (to verify the final deployed state).
 func stateToAnalyzerResource(
-	res *resource.State,
+	res *pkgresource.State,
 	properties resource.PropertyMap,
-	providers map[resource.URN]*resource.State,
+	providers map[resource.URN]*pkgresource.State,
 ) plugin.AnalyzerResource {
 	r := plugin.AnalyzerResource{
 		URN:        res.URN,
 		Type:       res.Type,
 		Name:       res.URN.Name(),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 res.Protect,
 			IgnoreChanges:           res.IgnoreChanges,
@@ -135,7 +172,7 @@ func stateToAnalyzerResource(
 					URN:        provRes.URN,
 					Type:       provRes.Type,
 					Name:       provRes.URN.Name(),
-					Properties: provRes.Inputs,
+					Properties: resource.FromResourcePropertyMap(provRes.Inputs),
 				}
 			}
 		}
@@ -154,6 +191,7 @@ func AnalyzeSnapshot(
 	ctx context.Context,
 	snap *Snapshot,
 	analyzers []plugin.Analyzer,
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions,
 	events PolicyEvents,
 ) (bool, error) {
 	if snap == nil || len(analyzers) == 0 {
@@ -175,12 +213,12 @@ func AnalyzeSnapshot(
 		// First pass: report remediations for this resource. Unlike during a deployment,
 		// we report what would be changed but do not apply the changes.
 		for _, analyzer := range analyzers {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return false, fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.Remediate(analyzerRes)
+			response, err := analyzer.Remediate(ctx, analyzerRes)
 			if err != nil {
 				return false, fmt.Errorf("failed to run remediation: %w", err)
 			}
@@ -195,10 +233,11 @@ func AnalyzeSnapshot(
 						Message:           tresult.Diagnostic,
 						EnforcementLevel:  apitype.Advisory,
 						URN:               res.URN,
-					})
-				} else if tresult.Properties != nil {
+					}, nil)
+				} else {
 					// Report what would be remediated without applying it.
-					events.OnPolicyRemediation(res.URN, tresult, analyzerRes.Properties, tresult.Properties)
+					events.OnPolicyRemediation(res.URN, tresult,
+						analyzerRes.Properties, tresult.Properties)
 				}
 				// A remediation might not set diagnostic or properties, we just ignore them.
 			}
@@ -208,7 +247,7 @@ func AnalyzeSnapshot(
 
 		// Second pass: run analysis in parallel. We use dryRun=true because we're not
 		// executing a deployment; violations are reported but do not fail the resource.
-		_, sawError, err := analyzeResource(analyzers, analyzerRes, events, true /*dryRun*/)
+		_, sawError, err := analyzeResource(ctx, analyzers, policyExceptions, analyzerRes, events, true /*dryRun*/)
 		if err != nil {
 			return false, err
 		}
@@ -233,6 +272,17 @@ func AnalyzeSnapshot(
 		})
 	}
 
+	// Only non-deleted resources are valid violation targets; anything else (including a
+	// stack-level violation's empty URN) attributes to the root stack.
+	rootStackURN := snapshotRootStackURN(snap)
+	snapshotURNs := make(map[resource.URN]struct{}, len(snap.Resources))
+	for _, res := range snap.Resources {
+		if res.Delete {
+			continue
+		}
+		snapshotURNs[res.URN] = struct{}{}
+	}
+
 	var sawStackError atomic.Bool
 	var g errgroup.Group
 	if parallelism := env.ParallelAnalyze.Value(); parallelism > 0 {
@@ -241,12 +291,12 @@ func AnalyzeSnapshot(
 
 	for _, analyzer := range analyzers {
 		g.Go(func() error {
-			info, err := analyzer.GetAnalyzerInfo()
+			info, err := analyzer.GetAnalyzerInfo(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get analyzer info: %w", err)
 			}
 
-			response, err := analyzer.AnalyzeStack(stackResources)
+			response, err := analyzer.AnalyzeStack(ctx, stackResources)
 			if err != nil {
 				return fmt.Errorf("failed to run stack policy: %w", err)
 			}
@@ -256,10 +306,13 @@ func AnalyzeSnapshot(
 					// Stack policies cannot be remediated, so treat the level as mandatory.
 					d.EnforcementLevel = apitype.Mandatory
 				}
-				if d.EnforcementLevel == apitype.Mandatory {
+				urn := resolveStackPolicyViolationURN(d.URN, rootStackURN,
+					func(u resource.URN) bool { _, ok := snapshotURNs[u]; return ok })
+				exceptions := policyExceptions[analyzer].Match(d.PolicyName, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					sawStackError.Store(true)
 				}
-				events.OnPolicyViolation(d.URN, d)
+				events.OnPolicyViolation(urn, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)

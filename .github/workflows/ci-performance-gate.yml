@@ -10,6 +10,7 @@ name: Performance Gate
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -68,19 +69,9 @@ jobs:
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
-        with:
-          cache: true
-          cache-dependency-path: pkg/go.sum
-          go-version-file: pkg/go.mod
-      - uses: jdx/mise-action@v2
-        with:
-          experimental: true
-      - name: Install CLI
-        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:
@@ -121,9 +112,11 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Set outputs"
-          ./.github/scripts/set-output performance-test-matrix "${PERFORMANCE_TEST_MATRIX}"
-          ./.github/scripts/set-output version-set "${VERSION_SET}"
-          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          # Pipe matrix values via stdin: they can exceed the 128 KiB per-argument limit
+          # (MAX_ARG_STRLEN), which would otherwise fail the exec with "Argument list too long".
+          printf '%s' "${PERFORMANCE_TEST_MATRIX}" | ./.github/scripts/set-output performance-test-matrix
+          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
+          printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
           echo "::endgroup::"
     outputs:
       performance-test-matrix: "${{ fromJson(steps.matrix.outputs.performance-test-matrix) }}"

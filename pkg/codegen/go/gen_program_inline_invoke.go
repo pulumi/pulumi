@@ -132,7 +132,8 @@ func (spiller *callSpiller) spillExpression(expr model.Expression) (model.Expres
 			spiller.count++
 
 			return model.VariableReference(&model.Variable{
-				Name: temp.Name,
+				Name:         temp.Name,
+				VariableType: expr.Type(),
 			}), nil
 		}
 		return expr, nil

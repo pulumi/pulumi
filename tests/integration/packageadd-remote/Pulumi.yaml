@@ -3,4 +3,4 @@ description: A minimal TypeScript Pulumi program
 runtime:
   name: nodejs
   options:
-    packagemanager: yarn
+    packagemanager: npm

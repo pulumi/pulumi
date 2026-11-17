@@ -1,0 +1,997 @@
+{
+    "check": {
+        "exprs": {
+            "dependent": {
+                "range": {
+                    "environment": "open-unknown",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 74
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 20,
+                        "byte": 110
+                    }
+                },
+                "schema": true,
+                "builtin": {
+                    "name": "fn::open::error",
+                    "nameRange": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 20,
+                            "byte": 89
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "why": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "why"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 97
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 20,
+                                "byte": 110
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "why": true
+                            },
+                            "type": "object",
+                            "required": [
+                                "why"
+                            ]
+                        },
+                        "keyRanges": {
+                            "why": {
+                                "environment": "open-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 97
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 100
+                                }
+                            }
+                        },
+                        "object": {
+                            "why": {
+                                "range": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 12,
+                                        "byte": 102
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 20,
+                                        "byte": 110
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "error",
+                                        "range": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 14,
+                                                "byte": 104
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 109
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 3,
+                                                "column": 5,
+                                                "byte": 21
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 19,
+                                                "byte": 56
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "error": {
+                "range": {
+                    "environment": "open-unknown",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 21
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 19,
+                        "byte": 56
+                    }
+                },
+                "schema": true,
+                "builtin": {
+                    "name": "fn::open::error",
+                    "nameRange": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 20,
+                            "byte": 36
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "why": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "why"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 44
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 19,
+                                "byte": 56
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "why": {
+                                    "type": "string",
+                                    "const": "testing"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "why"
+                            ]
+                        },
+                        "keyRanges": {
+                            "why": {
+                                "environment": "open-unknown",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 44
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 10,
+                                    "byte": 47
+                                }
+                            }
+                        },
+                        "object": {
+                            "why": {
+                                "range": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 12,
+                                        "byte": 49
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 56
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "testing"
+                                },
+                                "literal": "testing"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "dependent": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 20,
+                            "byte": 110
+                        }
+                    }
+                }
+            },
+            "error": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 19,
+                            "byte": 56
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "dependent": true,
+                "error": true
+            },
+            "type": "object",
+            "required": [
+                "dependent",
+                "error"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "open-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "open-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "open-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "open-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "dependent": "[unknown]",
+        "error": "[unknown]"
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "testing",
+            "Detail": "",
+            "Subject": {
+                "Filename": "open-unknown",
+                "Start": {
+                    "Line": 3,
+                    "Column": 5,
+                    "Byte": 21
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 19,
+                    "Byte": 56
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.error"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "dependent": {
+                "range": {
+                    "environment": "open-unknown",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 74
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 20,
+                        "byte": 110
+                    }
+                },
+                "schema": true,
+                "builtin": {
+                    "name": "fn::open::error",
+                    "nameRange": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 20,
+                            "byte": 89
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "why": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "why"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 97
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 20,
+                                "byte": 110
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "why": true
+                            },
+                            "type": "object",
+                            "required": [
+                                "why"
+                            ]
+                        },
+                        "keyRanges": {
+                            "why": {
+                                "environment": "open-unknown",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 97
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 100
+                                }
+                            }
+                        },
+                        "object": {
+                            "why": {
+                                "range": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 12,
+                                        "byte": 102
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 20,
+                                        "byte": 110
+                                    }
+                                },
+                                "schema": true,
+                                "symbol": [
+                                    {
+                                        "key": "error",
+                                        "range": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 14,
+                                                "byte": 104
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 19,
+                                                "byte": 109
+                                            }
+                                        },
+                                        "value": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 3,
+                                                "column": 5,
+                                                "byte": 21
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 19,
+                                                "byte": 56
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "error": {
+                "range": {
+                    "environment": "open-unknown",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 21
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 19,
+                        "byte": 56
+                    }
+                },
+                "schema": true,
+                "builtin": {
+                    "name": "fn::open::error",
+                    "nameRange": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 20,
+                            "byte": 36
+                        }
+                    },
+                    "argSchema": {
+                        "properties": {
+                            "why": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "why"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 44
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 19,
+                                "byte": 56
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "why": {
+                                    "type": "string",
+                                    "const": "testing"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "why"
+                            ]
+                        },
+                        "keyRanges": {
+                            "why": {
+                                "environment": "open-unknown",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 44
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 10,
+                                    "byte": 47
+                                }
+                            }
+                        },
+                        "object": {
+                            "why": {
+                                "range": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 12,
+                                        "byte": 49
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 56
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "testing"
+                                },
+                                "literal": "testing"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "dependent": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 74
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 20,
+                            "byte": 110
+                        }
+                    }
+                }
+            },
+            "error": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "open-unknown",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 21
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 19,
+                            "byte": 56
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "dependent": true,
+                "error": true
+            },
+            "type": "object",
+            "required": [
+                "dependent",
+                "error"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "open-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "open-unknown",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "open-unknown",
+                            "trace": {
+                                "def": {
+                                    "environment": "open-unknown",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "open-unknown",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "open-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "open-unknown"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "dependent": "[unknown]",
+        "error": "[unknown]"
+    },
+    "evalJSONRevealed": {
+        "dependent": "[unknown]",
+        "error": "[unknown]"
+    }
+}

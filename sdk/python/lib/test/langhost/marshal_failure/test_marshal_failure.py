@@ -21,6 +21,7 @@ class TestMarshalFailure(LanghostTest):
             program=path.join(self.base_path(), "marshal_failure"),
             expected_resource_count=1,
             expected_bail=True,
+            expected_error_log_message="unexpected input of type bytes for value",
         )
 
     def invoke(self, _ctx, token, args, provider, _version):

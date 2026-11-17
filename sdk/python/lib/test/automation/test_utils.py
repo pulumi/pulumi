@@ -14,16 +14,39 @@
 
 import os
 import uuid
+from contextlib import contextmanager
 
-from pulumi.automation import fully_qualified_stack_name
+from pulumi.automation import Stack, fully_qualified_stack_name
+
+
+@contextmanager
+def stack_cleanup(stack: Stack, destroy: bool = True):
+    """Context manager that ensures a stack is destroyed and removed after use.
+
+    Usage:
+        stack = create_stack(stack_name, work_dir=work_dir)
+        with stack_cleanup(stack):
+            stack.up()
+            # ... assertions ...
+
+    Set destroy=False to skip the destroy step.
+    """
+    try:
+        yield stack
+    finally:
+        try:
+            if destroy:
+                stack.destroy()
+        finally:
+            stack.workspace.remove_stack(stack.name, force=True)
 
 
 def get_test_org():
+    if not os.getenv("PULUMI_ACCESS_TOKEN"):
+        return "organization"
     env_var = os.getenv("PULUMI_TEST_ORG")
     if env_var is not None:
         return env_var
-    if os.getenv("PULUMI_ACCESS_TOKEN") is None:
-        return "organization"
     test_org = "moolumi"
     return test_org
 

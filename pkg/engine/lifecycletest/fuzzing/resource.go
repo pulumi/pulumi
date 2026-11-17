@@ -20,6 +20,8 @@ import (
 	"slices"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/mitchellh/copystructure"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -39,7 +41,7 @@ type ResourceSpec struct {
 	ID                   resource.ID
 	Custom               bool
 	Delete               bool
-	Protect              bool
+	Protect              *bool
 	PendingReplacement   bool
 	RetainOnDelete       bool
 	Provider             string
@@ -55,8 +57,8 @@ type ResourceSpec struct {
 	Tags map[string]bool
 }
 
-// Creates a ResourceSpec from the given resource.State.
-func FromResource(r *resource.State) *ResourceSpec {
+// Creates a ResourceSpec from the given pkgresource.State.
+func FromResource(r *pkgresource.State) *ResourceSpec {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
@@ -69,7 +71,7 @@ func FromResource(r *resource.State) *ResourceSpec {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              new(r.Protect),
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
@@ -96,7 +98,7 @@ func FromResourceV3(r apitype.ResourceV3) *ResourceSpec {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              new(r.Protect),
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
@@ -140,6 +142,11 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 	tags := copystructure.Must(copystructure.Copy(r.Tags)).(map[string]bool)
 
+	var protect *bool
+	if r.Protect != nil {
+		protect = new(*r.Protect)
+	}
+
 	return &ResourceSpec{
 		Project:              r.Project,
 		Stack:                r.Stack,
@@ -148,7 +155,7 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              protect,
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Parent:               r.Parent,
@@ -161,20 +168,20 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 	}
 }
 
-// Returns a resource.State representation of this ResourceSpec, suitable for inclusion in e.g. a snapshot.
-func (r *ResourceSpec) AsResource() *resource.State {
+// Returns a pkgresource.State representation of this ResourceSpec, suitable for inclusion in e.g. a snapshot.
+func (r *ResourceSpec) AsResource() *pkgresource.State {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 
 	tags := strings.Join(slices.Sorted(maps.Keys(r.Tags)), ", ")
-	s := &resource.State{
+	s := &pkgresource.State{
 		Type:                 r.Type,
 		URN:                  r.URN(),
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              r.Protect != nil && *r.Protect,
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
@@ -184,7 +191,7 @@ func (r *ResourceSpec) AsResource() *resource.State {
 		DeletedWith:          r.DeletedWith,
 		Aliases:              aliases,
 		SourcePosition:       tags,
-		StackTrace:           []resource.StackFrame{{SourcePosition: tags}},
+		StackTrace:           []pkgresource.StackFrame{{SourcePosition: tags}},
 	}
 
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),
@@ -234,63 +241,63 @@ func (r *ResourceSpec) Pretty(indent string) string {
 
 	if len(r.Tags) > 0 {
 		ks := slices.Sorted(maps.Keys(r.Tags))
-		b.WriteString(fmt.Sprintf("\n%s  Tags:                %s", indent, strings.Join(ks, ", ")))
+		fmt.Fprintf(&b, "\n%s  Tags:                %s", indent, strings.Join(ks, ", "))
 	}
 
 	if r.ID != "" {
-		b.WriteString(fmt.Sprintf("\n%s  ID:                  %s", indent, r.ID))
+		fmt.Fprintf(&b, "\n%s  ID:                  %s", indent, r.ID)
 	}
 
-	if r.Protect {
-		b.WriteString(fmt.Sprintf("\n%s  Protect:             true", indent))
+	if r.Protect != nil {
+		fmt.Fprintf(&b, "\n%s  Protect:             %v", indent, *r.Protect)
 	}
 
 	if r.PendingReplacement {
-		b.WriteString(fmt.Sprintf("\n%s  Pending replacement: true", indent))
+		fmt.Fprintf(&b, "\n%s  Pending replacement: true", indent)
 	}
 
 	if r.RetainOnDelete {
-		b.WriteString(fmt.Sprintf("\n%s  Retain on delete:    true", indent))
+		fmt.Fprintf(&b, "\n%s  Retain on delete:    true", indent)
 	}
 
 	if r.Provider != "" {
 		provRef, err := providers.ParseReference(r.Provider)
 		if err != nil {
-			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s", indent, r.Provider))
+			fmt.Fprintf(&b, "\n%s  Provider:            %s", indent, r.Provider)
 		} else {
-			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID()))
+			fmt.Fprintf(&b, "\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID())
 		}
 	}
 
 	if r.Parent != "" {
-		b.WriteString(fmt.Sprintf("\n%s  Parent:              %s", indent, Colored(r.Parent)))
+		fmt.Fprintf(&b, "\n%s  Parent:              %s", indent, Colored(r.Parent))
 	}
 
 	if len(r.Dependencies) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Dependencies (%d):", indent, len(r.Dependencies)))
+		fmt.Fprintf(&b, "\n\n%s  Dependencies (%d):", indent, len(r.Dependencies))
 		for _, d := range r.Dependencies {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(d)))
+			fmt.Fprintf(&b, "\n%s    %s", indent, Colored(d))
 		}
 	}
 
 	if len(r.PropertyDependencies) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies)))
+		fmt.Fprintf(&b, "\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies))
 		for k, deps := range r.PropertyDependencies {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, k))
+			fmt.Fprintf(&b, "\n%s    %s", indent, k)
 			for _, d := range deps {
-				b.WriteString(fmt.Sprintf("\n%s      %s", indent, Colored(d)))
+				fmt.Fprintf(&b, "\n%s      %s", indent, Colored(d))
 			}
 		}
 	}
 
 	if r.DeletedWith != "" {
-		b.WriteString(fmt.Sprintf("\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith)))
+		fmt.Fprintf(&b, "\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith))
 	}
 
 	if len(r.Aliases) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Aliases (%d):", indent, len(r.Aliases)))
+		fmt.Fprintf(&b, "\n\n%s  Aliases (%d):", indent, len(r.Aliases))
 		for _, a := range r.Aliases {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(a)))
+			fmt.Fprintf(&b, "\n%s    %s", indent, Colored(a))
 		}
 	}
 
@@ -335,7 +342,7 @@ var GeneratedResourceID = rapid.Custom(func(t *rapid.T) resource.ID {
 // A set of options for configuring the generation of a ResourceSpec.
 type ResourceSpecOptions struct {
 	Custom             *rapid.Generator[bool]
-	Protect            *rapid.Generator[bool]
+	Protect            *rapid.Generator[*bool]
 	PendingReplacement *rapid.Generator[bool]
 	RetainOnDelete     *rapid.Generator[bool]
 }
@@ -361,7 +368,7 @@ func (rso ResourceSpecOptions) With(overrides ResourceSpecOptions) ResourceSpecO
 // A default set of ResourceSpecOptions. By default, all configurations are equally likely.
 var defaultResourceSpecOptions = ResourceSpecOptions{
 	Custom:             rapid.Bool(),
-	Protect:            rapid.Bool(),
+	Protect:            rapid.Ptr(rapid.Bool(), true),
 	PendingReplacement: rapid.Bool(),
 	RetainOnDelete:     rapid.Bool(),
 }
@@ -387,7 +394,7 @@ func GeneratedProviderResourceSpec(
 
 			Custom:             true,
 			Delete:             false,
-			Protect:            false,
+			Protect:            nil,
 			PendingReplacement: false,
 			RetainOnDelete:     false,
 

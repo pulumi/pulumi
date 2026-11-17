@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:lll
 package pulumi
 
 import (
@@ -33,8 +32,8 @@ import (
 type Output = internal.Output
 
 var (
-	outputType = reflect.TypeOf((*Output)(nil)).Elem()
-	inputType  = reflect.TypeOf((*Input)(nil)).Elem()
+	outputType = reflect.TypeFor[Output]()
+	inputType  = reflect.TypeFor[Input]()
 )
 
 // RegisterOutputType registers an Output type with the Pulumi runtime. If a value of this type's concrete type is
@@ -74,7 +73,7 @@ func NewOutput() (Output, func(any), func(error)) {
 	return newAnyOutput(nil)
 }
 
-var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
+var anyOutputType = reflect.TypeFor[AnyOutput]()
 
 // IsSecret returns a bool representing the secretness of the Output
 //
@@ -295,7 +294,7 @@ func init() {
 //	}
 type Input = internal.Input
 
-var anyType = reflect.TypeOf((*any)(nil)).Elem()
+var anyType = reflect.TypeFor[any]()
 
 func Any(v any) AnyOutput {
 	return AnyWithContext(context.Background(), v)
@@ -342,44 +341,12 @@ func (o AnyOutput) ToOutput(context.Context) pulumix.Output[any] {
 	}
 }
 
-func (in ID) ToStringPtrOutput() StringPtrOutput {
-	return in.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (in ID) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
-}
-
-func (o IDOutput) ToStringPtrOutput() StringPtrOutput {
-	return o.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
-}
-
 func (o IDOutput) awaitID(ctx context.Context) (ID, bool, bool, error) {
 	id, known, secret, _, err := internal.AwaitOutput(ctx, o)
 	if !known || err != nil {
 		return "", known, false, err
 	}
 	return ID(convert(id, stringType).(string)), true, secret, nil
-}
-
-func (in URN) ToStringPtrOutput() StringPtrOutput {
-	return in.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (in URN) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
-}
-
-func (o URNOutput) ToStringPtrOutput() StringPtrOutput {
-	return o.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {
@@ -410,7 +377,7 @@ func (ResourceOutput) MarshalJSON() ([]byte, error) {
 
 // ElementType returns the element type of this Output (Resource).
 func (ResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil)).Elem()
+	return reflect.TypeFor[Resource]()
 }
 
 func (o ResourceOutput) ToOutput(context.Context) pulumix.Output[Resource] {
@@ -448,7 +415,7 @@ func NewResourceOutput(resource Resource) ResourceOutput {
 
 var _ ResourceInput = &ResourceOutput{}
 
-var resourceArrayType = reflect.TypeOf((*[]Resource)(nil)).Elem()
+var resourceArrayType = reflect.TypeFor[[]Resource]()
 
 // ResourceArrayInput is an input type that accepts ResourceArray and ResourceArrayOutput values.
 type ResourceArrayInput interface {
@@ -549,7 +516,7 @@ func NewResourceArrayOutput(in ...ResourceOutput) ResourceArrayOutput {
 }
 
 func init() {
-	RegisterInputType(reflect.TypeOf((*ResourceArrayInput)(nil)).Elem(), ResourceArray{})
+	RegisterInputType(reflect.TypeFor[ResourceArrayInput](), ResourceArray{})
 	RegisterOutputType(ResourceOutput{})
 	RegisterOutputType(ResourceArrayOutput{})
 }

@@ -1,0 +1,147 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package agentauth
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"os"
+	"time"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+var validateAgentClaim = func(ctx context.Context, cloudURL, claimToken string) (bool, error) {
+	return client.NewClient(cloudURL, "", false, nil).ValidateAgentClaim(ctx, claimToken)
+}
+
+// revalidatedClaim brings a persisted claim-unavailable marker up to date:
+// when one is present, the claim is re-checked with the service, and the
+// marker is cleared if the claim is usable again. The marker is kept while
+// the service still refuses the claim or cannot be reached.
+func revalidatedClaim(ctx context.Context, claim workspace.AgentClaim) workspace.AgentClaim {
+	if claim.ClaimUnavailableAt == nil || claim.ClaimToken == "" {
+		return claim
+	}
+	claimable, err := validateAgentClaim(ctx, claim.CloudURL, claim.ClaimToken)
+	if err != nil || !claimable {
+		if err != nil {
+			slog.InfoContext(ctx, "Could not re-validate agent claim token", "cloud-url", claim.CloudURL, "err", err)
+		}
+		return claim
+	}
+	if err := workspace.ClearAgentClaimUnavailable(); err != nil {
+		slog.InfoContext(ctx, "Could not clear agent claim unavailable marker", "cloud-url", claim.CloudURL, "err", err)
+	}
+	claim.ClaimUnavailableAt = nil
+	return claim
+}
+
+// MaybePrintClaimWarning reminds detected coding agents to tell the user about
+// a claim URL for shared agent credentials used by this CLI process.
+func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
+	if agentdetect.Detect(os.Getenv) == "" {
+		return
+	}
+
+	now := time.Now()
+	deleted, err := workspace.DeleteExpiredAgentCredentials(now)
+	if err != nil {
+		slog.InfoContext(ctx, "Could not delete expired agent credentials", "err", err)
+		return
+	}
+	if deleted {
+		return
+	}
+
+	claim, err := workspace.GetAgentClaim()
+	if err != nil || claim.ClaimURL == "" {
+		return
+	}
+	if claim.CloudURL == "" || !httpstate.AgentCredentialsUsed(ctx, claim.CloudURL) {
+		return
+	}
+	account, err := workspace.GetAgentAccount(claim.CloudURL)
+	if err != nil {
+		slog.InfoContext(ctx, "Could not read agent account credentials", "err", err)
+		return
+	}
+	var accessTokenExpiresAt *time.Time
+	if account.TokenInformation != nil {
+		accessTokenExpiresAt = account.TokenInformation.ExpiresAt
+	}
+	if (accessTokenExpiresAt == nil || !accessTokenExpiresAt.After(now)) &&
+		(claim.ValidUntil.IsZero() || !claim.ValidUntil.After(now)) {
+		return
+	}
+
+	claim = revalidatedClaim(ctx, claim)
+	if claim.ClaimUnavailableAt != nil {
+		return
+	}
+
+	warning := formatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
+	_, err = io.WriteString(stderr, warning)
+	contract.IgnoreError(err)
+}
+
+// AuthRequiredMessage returns the structured instruction shown to coding
+// agents when an ephemeral agent account can no longer authenticate. If the
+// local token has already expired but the claim URL is still valid, it returns
+// the claim instruction instead of the auth-required instruction.
+func AuthRequiredMessage(ctx context.Context, now time.Time) string {
+	if agentdetect.Detect(os.Getenv) == "" {
+		return ""
+	}
+
+	claim, err := workspace.GetAgentClaim()
+	if err != nil || claim.CloudURL == "" {
+		return ""
+	}
+	account, err := workspace.GetAgentAccount(claim.CloudURL)
+	if err != nil {
+		return ""
+	}
+	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
+	claim = revalidatedClaim(ctx, claim)
+	if claim.ClaimUnavailableAt != nil {
+		return formatAgentLoginRequiredInstruction(
+			agentLoginClaimUnavailable, expiresAt, now)
+	}
+	if claim.ClaimToken != "" {
+		claimable, err := validateAgentClaim(ctx, claim.CloudURL, claim.ClaimToken)
+		if err != nil {
+			slog.Info("Could not validate agent claim token", "cloud-url", claim.CloudURL, "err", err)
+		} else if !claimable {
+			if err = workspace.MarkAgentClaimUnavailable(now); err != nil {
+				slog.Info("Could not mark agent claim unavailable", "cloud-url", claim.CloudURL, "err", err)
+			}
+			return formatAgentLoginRequiredInstruction(
+				agentLoginClaimUnavailable, expiresAt, now)
+		} else {
+			return formatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+		}
+	}
+	if valid && expiresAt != nil {
+		return formatAgentLoginRequiredInstruction(
+			agentLoginTokenRejected, expiresAt, now)
+	}
+	return formatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+}

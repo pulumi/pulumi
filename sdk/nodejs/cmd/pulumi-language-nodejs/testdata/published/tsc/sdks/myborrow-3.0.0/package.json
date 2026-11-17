@@ -1,0 +1,25 @@
+{
+    "name": "@pulumi/myborrow",
+    "version": "3.0.0",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/borrowbase": "ROOT/artifacts/pulumi-borrowbase-56.0.0.tgz",
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+    },
+    "devDependencies": {
+        "@types/node": "^20",
+        "typescript": "^4.7.0"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "borrowbase",
+        "version": "56.0.0",
+        "extensionParameterization": {
+            "name": "myborrow",
+            "version": "3.0.0",
+            "value": "V2lkZ2V0"
+        }
+    }
+}

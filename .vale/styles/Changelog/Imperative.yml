@@ -1,0 +1,8 @@
+extends: existence
+message: "'%s' does not look like the active imperative form (e.g. use 'Fix' instead of 'Fixes'/'Fixed'/'Fixing')"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+ignorecase: false
+scope: raw
+raw:
+  - '^(?!(?:Access|Address|Alias|Always|Bring|Bypass|Compress|Cross|Embed|Exceed|Express|Focus|Pass|Ping|Proceed|Process|Seed|Speed|String|Succeed|Suppress)\b)(?![A-Za-z][a-z]*[A-Z])[A-Za-z]+(?:s|ed|ing)\b'

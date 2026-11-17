@@ -1,0 +1,9 @@
+GET /api/old/things
+Tag: Legacy
+Status: DEPRECATED — use ListThings instead
+Operation: ListOldThings
+
+List legacy things.
+
+Parameters:
+  [query] filter (string) — Optional filter.

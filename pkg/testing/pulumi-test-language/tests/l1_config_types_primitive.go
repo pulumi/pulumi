@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,21 +39,21 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					assert.Equal(l, resource.PropertyMap{
+					assert.Equal(l, property.NewMap(map[string]property.Value{
 						// Provided config
-						"theNumber":  resource.NewProperty(4.75),
-						"theInteger": resource.NewProperty(60.0),
-						"theString":  resource.NewProperty("Hello World"),
-						"theBool":    resource.NewProperty(true),
+						"theNumber":  property.New(4.75),
+						"theInteger": property.New(60.0),
+						"theString":  property.New("Hello World"),
+						"theBool":    property.New(true),
 
 						// Default values
-						"defaultNumber":  resource.NewProperty(42.7),
-						"defaultInteger": resource.NewProperty(3.0),
-						"defaultString":  resource.NewProperty("defaultStringValue"),
-						"defaultBool":    resource.NewProperty(false),
-					}, outputs)
+						"defaultNumber":  property.New(42.7),
+						"defaultInteger": property.New(3.0),
+						"defaultString":  property.New("defaultStringValue"),
+						"defaultBool":    property.New(false),
+					}), outputs)
 				},
 			},
 		},

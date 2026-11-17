@@ -13,16 +13,21 @@
 # limitations under the License.
 
 import importlib
+import importlib.util
 import os
 import subprocess
 import sys
 import unittest
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, Dict, List
 
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 FIXTURE = Path(__file__).resolve().parent / "fixture.json"
 BOILERPLATE = TOOLS_DIR / "boilerplate" / "testing.py"
-OUTPUT_DIR = TOOLS_DIR / "output"
+# The generator writes to ``<output>/__init__.py``; give that output directory
+# a distinct name so it becomes the importable module.
+OUTPUT_DIR = TOOLS_DIR / "output" / "generated"
 
 
 def setUpModule() -> None:
@@ -33,52 +38,47 @@ def setUpModule() -> None:
     )
 
 
-# Add the output directory to the path so we can import the generated module.
-sys.path.insert(0, str(OUTPUT_DIR))
+# Add the parent of the generated package to sys.path so Python can import it.
+sys.path.insert(0, str(OUTPUT_DIR.parent))
 
 
 class TestCommands(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # Import the generated module (force reimport if cached).
-        if "main" in sys.modules:
-            importlib.reload(sys.modules["main"])
-        mod = importlib.import_module("main")
+        module_name = OUTPUT_DIR.name
+        if module_name in sys.modules:
+            importlib.reload(sys.modules[module_name])
+        mod = importlib.import_module(module_name)
         cls.mod = mod
         cls.api = mod.API()
 
     def test_cancel(self) -> None:
-        options = self.mod.PulumiCancelOptions()
-        command = self.api.cancel(options, "my-stack")
+        command = self.api.cancel("my-stack")
         self.assertEqual(command, "pulumi cancel --yes -- my-stack")
 
     def test_cancel_no_stack(self) -> None:
-        options = self.mod.PulumiCancelOptions()
-        command = self.api.cancel(options)
+        command = self.api.cancel()
         self.assertEqual(command, "pulumi cancel --yes")
 
     def test_cancel_with_option(self) -> None:
-        options = self.mod.PulumiCancelOptions()
-        options.stack = "dev"
-        command = self.api.cancel(options)
+        command = self.api.cancel(stack="dev")
         self.assertEqual(command, "pulumi cancel --yes --stack dev")
 
     def test_org_get_default(self) -> None:
-        options = self.mod.PulumiOrgGetDefaultOptions()
-        command = self.api.org_get_default(options)
+        command = self.api.org_get_default()
         self.assertEqual(command, "pulumi org get-default")
 
     def test_org_set_default(self) -> None:
-        options = self.mod.PulumiOrgSetDefaultOptions()
-        command = self.api.org_set_default(options, "my-org")
+        command = self.api.org_set_default("my-org")
         self.assertEqual(command, "pulumi org set-default -- my-org")
 
     def test_org_search_with_query_flags(self) -> None:
-        options = self.mod.PulumiOrgSearchOptions()
-        options.org = "my-org"
-        options.query = ["type:aws:s3/bucketv2:BucketV2", "modified:>=2023-09-01"]
-        options.output = "json"
-        command = self.api.org_search(options)
+        command = self.api.org_search(
+            org="my-org",
+            query=["type:aws:s3/bucketv2:BucketV2", "modified:>=2023-09-01"],
+            output="json",
+        )
         self.assertEqual(
             command,
             "pulumi org search --org my-org --output json "
@@ -86,43 +86,111 @@ class TestCommands(unittest.TestCase):
         )
 
     def test_org_search_ai(self) -> None:
-        options = self.mod.PulumiOrgSearchAiOptions()
-        options.org = "my-org"
-        options.query = "find all S3 buckets"
-        command = self.api.org_search_ai(options)
+        command = self.api.org_search_ai(
+            org="my-org",
+            query="find all S3 buckets",
+        )
         self.assertEqual(
             command,
             "pulumi org search ai --org my-org --query find all S3 buckets",
         )
 
     def test_org_executable_menu(self) -> None:
-        options = self.mod.PulumiOrgOptions()
-        command = self.api.org(options)
+        command = self.api.org()
         self.assertEqual(command, "pulumi org")
 
     def test_state_move_variadic(self) -> None:
-        options = self.mod.PulumiStateMoveOptions()
-        options.dest = "prod"
-        options.source = "dev"
-        command = self.api.state_move(options, "urn:1", "urn:2")
+        command = self.api.state_move("urn:1", "urn:2", dest="prod", source="dev")
         self.assertEqual(
             command,
             "pulumi state move --yes --dest prod --source dev -- urn:1 urn:2",
         )
 
     def test_state_move_no_args(self) -> None:
-        options = self.mod.PulumiStateMoveOptions()
-        command = self.api.state_move(options)
+        command = self.api.state_move()
         self.assertEqual(command, "pulumi state move --yes")
 
     def test_state_move_boolean_flag(self) -> None:
-        options = self.mod.PulumiStateMoveOptions()
-        options.include_parents = True
-        command = self.api.state_move(options, "urn:1")
+        command = self.api.state_move("urn:1", include_parents=True)
         self.assertEqual(
             command,
             "pulumi state move --yes --include-parents -- urn:1",
         )
+
+    def test_base_options_kwargs_propagate(self) -> None:
+        # The four BaseOptions kwargs are lifted into every generated method
+        # and must be forwarded verbatim to ``self._run``. Spy on ``_run`` and
+        # assert it sees exactly those four kwargs with the expected values.
+        #
+        # The assertion is on the full captured dict (not ``assertIn`` per
+        # key), so a future fifth BaseOptions kwarg added to the generator
+        # forces this test to be updated — which, in turn, catches any
+        # boilerplate that forgot to accept it.
+        on_out: Callable[[str], Any] = lambda _: None
+        on_err: Callable[[str], Any] = lambda _: None
+
+        api = self.mod.API()
+        captured: Dict[str, Any] = {}
+        original_run = api._run
+
+        def spy(args: List[str], **kwargs: Any) -> str:
+            captured.update(kwargs)
+            return original_run(args, **kwargs)
+
+        api._run = spy  # type: ignore[method-assign]
+
+        api.cancel(
+            stack="dev",
+            cwd="/tmp",
+            additional_env={"FOO": "bar"},
+            on_output=on_out,
+            on_error=on_err,
+        )
+
+        self.assertEqual(
+            captured,
+            {
+                "cwd": "/tmp",
+                "additional_env": {"FOO": "bar"},
+                "on_output": on_out,
+                "on_error": on_err,
+            },
+        )
+
+
+class TestCollisionGuards(unittest.TestCase):
+    """Unit tests for the generator's collision checks against reserved names."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        # Import main.py directly under a non-conflicting name (the generated
+        # output also uses ``main`` as its module name).
+        spec = importlib.util.spec_from_file_location(
+            "automation_generator", str(TOOLS_DIR / "main.py")
+        )
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls.gen = module
+
+    def test_flag_collides_with_reserved_kwarg(self) -> None:
+        structure = {
+            "type": "command",
+            "flags": {"cwd": {"name": "cwd", "type": "string"}},
+            "arguments": {"arguments": []},
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.gen._generate_commands(structure, [], breadcrumbs=["test"])
+        self.assertIn("reserved keyword argument", str(ctx.exception))
+
+    def test_positional_collides_with_reserved_kwarg(self) -> None:
+        structure = {
+            "type": "command",
+            "arguments": {"arguments": [{"name": "cwd"}]},
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.gen._generate_commands(structure, [], breadcrumbs=["test"])
+        self.assertIn("reserved keyword argument", str(ctx.exception))
 
 
 if __name__ == "__main__":

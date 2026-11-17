@@ -13,8 +13,10 @@
 // limitations under the License.
 
 import assert from "assert";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import * as semver from "semver";
-import * as tmp from "tmp";
 
 import { CommandResult, LocalWorkspace, PulumiCommand, Stack } from "../../automation";
 import { withTestBackend } from "./util";
@@ -29,13 +31,13 @@ describe("LocalWorkspace - PulumiCommand", () => {
     });
 
     it("sets pulumi version when using a custom CLI instance", async () => {
-        const tmpDir = tmp.dirSync({ prefix: "automation-test-", unsafeCleanup: true });
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "automation-test-"));
         try {
             const cmd = await PulumiCommand.get();
             const ws = await LocalWorkspace.create(withTestBackend({ pulumiCommand: cmd }));
             assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
         } finally {
-            tmpDir.removeCallback();
+            fs.rmSync(tmpDir, { recursive: true, force: true });
         }
     });
 

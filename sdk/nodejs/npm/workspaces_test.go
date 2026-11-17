@@ -21,6 +21,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFindWorkspaceRootEmptyDir(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	_, err := FindWorkspaceRoot(dir)
+	require.ErrorIs(t, err, ErrNotInWorkspace)
+}
+
 func TestFindWorkspaceRoot(t *testing.T) {
 	t.Parallel()
 
@@ -81,4 +89,13 @@ func TestFindWorkspaceRootPNPM(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join("testdata", "pnpm-workspace"), root)
+}
+
+func TestFindWorkspaceRootPNPMPackageYAML(t *testing.T) {
+	t.Parallel()
+
+	root, err := FindWorkspaceRoot(filepath.Join("testdata", "pnpm-workspace-yaml", "project"))
+
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join("testdata", "pnpm-workspace-yaml"), root)
 }

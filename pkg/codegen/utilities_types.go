@@ -15,12 +15,13 @@
 package codegen
 
 import (
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
-func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
-	if seen.Has(t) {
+func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen mapset.Set[schema.Type]) {
+	if seen.Contains(t) {
 		return
 	}
 	seen.Add(t)
@@ -48,12 +49,12 @@ func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
 }
 
 func VisitType(schemaType schema.Type, visitor func(t schema.Type)) {
-	seen := Set{}
+	seen := mapset.NewSet[schema.Type]()
 	visitTypeClosure(schemaType, visitor, seen)
 }
 
 func VisitTypeClosure(properties []*schema.Property, visitor func(t schema.Type)) {
-	seen := Set{}
+	seen := mapset.NewSet[schema.Type]()
 	for _, p := range properties {
 		visitTypeClosure(p.Type, visitor, seen)
 	}
@@ -135,6 +136,21 @@ func MapOptionalType(t schema.Type, f func(schema.Type) schema.Type) schema.Type
 		return &schema.OptionalType{ElementType: f(opt.ElementType)}
 	}
 	return f(t)
+}
+
+// PushOptionalIntoInput rewrites Optional(Input(T)) to Input(Optional(T))
+func PushOptionalIntoInput(t schema.Type) schema.Type {
+	opt, ok := t.(*schema.OptionalType)
+	if !ok {
+		return t
+	}
+	input, ok := opt.ElementType.(*schema.InputType)
+	if !ok {
+		return t
+	}
+	return &schema.InputType{
+		ElementType: &schema.OptionalType{ElementType: SimplifyInputUnion(input.ElementType)},
+	}
 }
 
 func IsNOptionalInput(t schema.Type) bool {

@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,42 +28,53 @@ func init() {
 				Config: config.Map{
 					config.MustMakeKey("l1-builtin-object", "aMap"): config.NewObjectValue(
 						`{"keyPresent":"value","alpha":"a","delta":"d","omega":"o","tango":"t","zebra":"z"}`),
+					config.MustMakeKey("l1-builtin-object", "alternativeNames"): config.NewObjectValue(
+						`{"a":"first","b":"second"}`),
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
 					// Entries must be sorted alphabetically by key.
-					assert.Equal(l, resource.PropertyMap{
-						"entriesOutput": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("alpha"),
-								"value": resource.NewProperty("a"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"entriesOutput": property.New([]property.Value{
+							property.New(map[string]property.Value{
+								"key":   property.New("alpha"),
+								"value": property.New("a"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("delta"),
-								"value": resource.NewProperty("d"),
+							property.New(map[string]property.Value{
+								"key":   property.New("delta"),
+								"value": property.New("d"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("keyPresent"),
-								"value": resource.NewProperty("value"),
+							property.New(map[string]property.Value{
+								"key":   property.New("keyPresent"),
+								"value": property.New("value"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("omega"),
-								"value": resource.NewProperty("o"),
+							property.New(map[string]property.Value{
+								"key":   property.New("omega"),
+								"value": property.New("o"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("tango"),
-								"value": resource.NewProperty("t"),
+							property.New(map[string]property.Value{
+								"key":   property.New("tango"),
+								"value": property.New("t"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("zebra"),
-								"value": resource.NewProperty("z"),
+							property.New(map[string]property.Value{
+								"key":   property.New("zebra"),
+								"value": property.New("z"),
 							}),
 						}),
-						"lookupOutput":        resource.NewProperty("value"),
-						"lookupOutputDefault": resource.NewProperty("default"),
-					}, stack.Outputs)
+						"lookupOutput":                property.New("value"),
+						"lookupOutputDefault":         property.New("default"),
+						"lookupLiteral":               property.New(3.0),
+						"lookupLiteralMismatchedType": property.New(true),
+						"deprecatedTwoArgumentLookup": property.New(1.0),
+						"lengthOutput":                property.New(6.0),
+						"lengthDynamicOutput":         property.New(2.0),
+						"names": property.New([]property.Value{
+							property.New("first"),
+							property.New("second"),
+						}),
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

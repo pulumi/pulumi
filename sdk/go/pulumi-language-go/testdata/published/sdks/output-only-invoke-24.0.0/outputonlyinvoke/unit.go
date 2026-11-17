@@ -19,12 +19,8 @@ type UnitResult struct {
 }
 
 func UnitOutput(ctx *pulumi.Context, args UnitOutputArgs, opts ...pulumi.InvokeOption) UnitResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (UnitResultOutput, error) {
-			args := v.(UnitArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("output-only-invoke:index:unit", args, UnitResultOutput{}, options).(UnitResultOutput), nil
-		}).(UnitResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("output-only-invoke:index:unit", args, UnitResultOutput{}, options).(UnitResultOutput)
 }
 
 type UnitOutputArgs struct {

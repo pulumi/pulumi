@@ -20,8 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 )
 
 type ConformanceComponentProvider struct {
@@ -32,10 +31,6 @@ var _ plugin.Provider = (*ConformanceComponentProvider)(nil)
 
 func (p *ConformanceComponentProvider) Close() error {
 	return nil
-}
-
-func (p *ConformanceComponentProvider) Pkg() tokens.Package {
-	return "conformance-component"
 }
 
 func (p *ConformanceComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

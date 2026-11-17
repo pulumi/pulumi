@@ -38,10 +38,13 @@ jobs:
       contents: read
       # To sign artifacts.
       id-token: write
+      # Requested by the changelog lint job; unused on push events.
+      pull-requests: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       enable-coverage: true
+      sign-windows-binaries: true
       fail-fast: true
       test-retries: 2
       acceptance-test-platforms: 'macos-latest'
@@ -56,6 +59,8 @@ jobs:
       fail-fast: true
     permissions:
       contents: read
+      # To fetch secrets from ESC with OIDC.
+      id-token: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
@@ -80,12 +85,44 @@ jobs:
       project: ${{ github.repository }}
     secrets: inherit
 
+  check-previous-changelog:
+    name: check previous changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Check the latest release's changelog is merged before a freeze
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "$BASE_SHA"
+
+          BASE_VERSION=$(git show "$BASE_SHA":sdk/.version | tr -d '[:space:]')
+          VERSION=$(tr -d '[:space:]' < sdk/.version)
+          if [ "$BASE_VERSION" = "$VERSION" ]; then
+            exit 0
+          fi
+
+          LATEST=$(gh release view --repo "$REPO" --json tagName --jq .tagName)
+          if [ ! -f "changelog/${LATEST#v}.md" ]; then
+            echo "::error::This merge freezes v${BASE_VERSION}, but the changelog for ${LATEST} is not on master yet."
+            echo "Merge the \"Changelog for ${LATEST}\" PR first, then re-queue this PR."
+            exit 1
+          fi
+
   ci-ok:
     name: ci-ok
-    needs: [ci, performance-gate, prepare-release]
+    needs: [ci, performance-gate, prepare-release, check-previous-changelog]
     if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
+      - name: Previous changelog missing
+        if: ${{ needs.check-previous-changelog.result != 'success' }}
+        run: exit 1
       - name: CI failed
         if: ${{ needs.ci.result != 'success' }}
         run: exit 1

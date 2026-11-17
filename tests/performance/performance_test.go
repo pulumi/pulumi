@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,7 +84,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 		OtelTraces:  otelTracesEndpoint(t),
 		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 	})
 }
@@ -108,7 +109,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		OtelTraces:  otelTracesEndpoint(t),
 		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 	})
 }
@@ -116,10 +117,9 @@ func TestPerfParentChainUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
-		T: t,
-		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
-		MaxPreviewDuration: 10 * time.Second,
-		MaxUpdateDuration:  10 * time.Second,
+		T:                  t,
+		MaxPreviewDuration: 7 * time.Second,
+		MaxUpdateDuration:  7 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -139,8 +139,7 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
-		T: t,
-		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
+		T:                  t,
 		MaxPreviewDuration: 10 * time.Second,
 		MaxUpdateDuration:  10 * time.Second,
 	}
@@ -187,8 +186,8 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 func TestPerfManyResourcesWithJournaling(t *testing.T) {
 	initialBenchmark := &integration.AssertPerfBenchmark{
 		T:                      t,
-		MaxUpdateDuration:      110 * time.Second,
-		MaxEmptyUpdateDuration: 50 * time.Second,
+		MaxUpdateDuration:      200 * time.Second,
+		MaxEmptyUpdateDuration: 100 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

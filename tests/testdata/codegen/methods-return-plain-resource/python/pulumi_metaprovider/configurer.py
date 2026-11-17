@@ -20,7 +20,7 @@ __all__ = ['ConfigurerArgs', 'Configurer']
 @pulumi.input_type
 class ConfigurerArgs:
     def __init__(__self__, *,
-                 tls_proxy: Optional[pulumi.Input[_builtins.str]] = None):
+                 tls_proxy: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a Configurer resource.
         """
@@ -29,11 +29,11 @@ class ConfigurerArgs:
 
     @_builtins.property
     @pulumi.getter(name="tlsProxy")
-    def tls_proxy(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def tls_proxy(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "tls_proxy")
 
     @tls_proxy.setter
-    def tls_proxy(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def tls_proxy(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "tls_proxy", value)
 
 
@@ -43,7 +43,7 @@ class Configurer(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 tls_proxy: Optional[pulumi.Input[_builtins.str]] = None,
+                 tls_proxy: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Configurer resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class Configurer(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 tls_proxy: Optional[pulumi.Input[_builtins.str]] = None,
+                 tls_proxy: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

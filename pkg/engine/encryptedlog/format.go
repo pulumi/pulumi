@@ -20,7 +20,7 @@
 //   - Magic (4 bytes): the ASCII string "PLOG"
 //   - Version (1 byte): the format version (currently 0x01)
 //   - Key length (2 bytes, big-endian uint16): the length of the encrypted session key
-//   - Encrypted session key (variable length): the base64-encoded session key, encrypted with the configured encrypter
+//   - Encrypted session key (variable length): the raw session key, encrypted with the configured encrypter
 //
 // After the header, the file contains a sequence of encrypted chunks. Each chunk has the following format:
 //

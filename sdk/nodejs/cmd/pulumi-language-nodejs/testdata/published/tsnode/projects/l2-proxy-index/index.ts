@@ -27,8 +27,19 @@ const res = new ref_ref.Resource("res", {data: {
         x: "100",
         y: "200",
     },
+    innerDataList: [{
+        boolean: false,
+        float: 3.14,
+        integer: 42,
+        string: "Partridge",
+        boolArray: [true],
+        stringMap: {
+            one: "in a pear tree",
+        },
+    }],
 }});
 export const bool = res.data.boolean;
 export const array = res.data.boolArray[0];
 export const map = res.data.stringMap.x;
 export const nested = res.data.innerData.stringMap.three;
+export const listIndex = res.data.apply(data => data.innerDataList?.[0]?.string);

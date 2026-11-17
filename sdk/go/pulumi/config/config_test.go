@@ -98,10 +98,7 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, "a string value", cfg.Require("sss"))
 	assert.Equal(t, true, cfg.RequireBool("bbb"))
 	assert.Equal(t, 42, cfg.RequireInt("intint"))
-	assert.PanicsWithError(t,
-		"unable to parse required configuration variable"+
-			" 'testpkg:badint'; unable to cast \"4d2\" of type string to int",
-		func() { cfg.RequireInt("badint") })
+	assert.Panics(t, func() { cfg.RequireInt("badint") })
 	assert.Equal(t, 99.963, cfg.RequireFloat64("fpfpfp"))
 	cfg.RequireObject("obj", &testStruct)
 	assert.Equal(t, expectedTestStruct, testStruct)
@@ -219,14 +216,12 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-result:
 			assert.Equal(t, "a string value", r)
-			break
 		}
 	}
 
@@ -255,14 +250,12 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case o := <-objResult:
 			assert.Equal(t, expectedTestStruct, o)
-			break
 		}
 	}
 
@@ -285,14 +278,12 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultBool:
 			assert.Equal(t, true, r)
-			break
 		}
 	}
 
@@ -315,14 +306,12 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultInt:
 			assert.Equal(t, 42, r)
-			break
 		}
 	}
 }

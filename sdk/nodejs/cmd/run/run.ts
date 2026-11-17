@@ -30,6 +30,7 @@ import { register } from "module";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { Inputs } from "../../output";
+import { readPackageManifest, searchupPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
@@ -64,16 +65,13 @@ async function reportModuleLoadFailure(program: string, error: Error): Promise<v
 
 /**
  * @internal
- * This function searches for the nearest package.json file, scanning up from the
- * program path until it finds one. If it does not find a package.json file, it
- * it returns the folder enclosing the program.
+ * This function searches for the nearest package manifest (package.json or
+ * package.yaml), scanning up from the program path until it finds one. If it
+ * does not find a manifest, it returns the folder enclosing the program.
  * @param programPath the path to the Pulumi program; this is the project "main" directory,
  * which defaults to the project "root" directory.
  */
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
-    // package-directory is an ESM module which we use to find the location of package.json Because it's an ESM module,
-    // we cannot import it directly.
-    const { packageDirectory } = await dynamicImport("package-directory");
     // Check if programPath is a directory. If not, then we
     // look at it's parent dir for the package root.
     let isDirectory = false;
@@ -85,24 +83,22 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         // Do nothing, because isDirectory is already false.
     }
     const programDirectory = isDirectory ? programPath : path.dirname(programPath);
-    const pkgDir = await packageDirectory({
-        cwd: programDirectory,
-    });
-    if (pkgDir === undefined) {
+    const manifestPath = searchupPackageManifest(programDirectory);
+    if (manifestPath === undefined) {
         log.warn(
-            "Could not find a package.json file for the program. Using the Pulumi program directory as the project root.",
+            "Could not find a package.json or package.yaml file for the program. " +
+                "Using the Pulumi program directory as the project root.",
         );
         return programDirectory;
     }
-    return pkgDir;
+    return path.dirname(manifestPath);
 }
 
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
-    const packageJson = path.join(projectRoot, "package.json");
     try {
-        return require(packageJson);
+        return readPackageManifest(projectRoot).data;
     } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
+        // This is all best-effort so if we can't load the package manifest, that's
         // fine.
         return {};
     }

@@ -5,12 +5,13 @@ set -euo pipefail
 export PULUMI_VERSION="${1}"
 TAP_FILE="${2:-"./.github/scripts/homebrew-tap.rb}"}"
 TAP_FILE="$(realpath "${TAP_FILE}")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "$(mktemp -d)"
 
 >&2 echo "::info Generating Homebrew Tap..."
 >&2 echo "::group::Download release assets"
->&2 gh release download --repo pulumi/pulumi "v${PULUMI_VERSION}" -p 'pulumi*darwin*.tar.gz' -p 'pulumi*linux*.tar.gz' --skip-existing
+>&2 bash "${SCRIPT_DIR}/download-release-artifacts" -p 'pulumi*darwin*.tar.gz' -p 'pulumi*linux*.tar.gz'
 >&2 echo "::endgroup::"
 
 for i in \

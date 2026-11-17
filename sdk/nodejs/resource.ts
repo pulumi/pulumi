@@ -27,6 +27,7 @@ import {
 } from "./runtime/resource";
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
+import { ensureNotInStateMigration } from "./runtime/stateMigration";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
 
@@ -430,7 +431,12 @@ export abstract class Resource {
      * @param opts
      *  A bag of options that control this resource's behavior.
      * @param remote
-     *  True if this is a remote component resource.
+     *  This parameter is intended for use by code-generated component SDKs;
+     *  end users authoring their own {@link ComponentResource} subclasses
+     *  should leave this at its default (`false`). When `true`, the
+     *  component's children are constructed by the engine rather than in
+     *  this process, and the constructor skips local child registration
+     *  accordingly.
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
@@ -450,6 +456,8 @@ export abstract class Resource {
             this.__providers = {};
             return;
         }
+
+        ensureNotInStateMigration("resource construction");
 
         if (opts.parent && !Resource.isInstance(opts.parent)) {
             throw new Error(`Resource parent is not a valid Resource: ${opts.parent}`);
@@ -747,6 +755,80 @@ function collapseAliasToUrn(
 }
 
 /**
+ * {@link StateMigrationArgs} contains the prior state of the resource and its
+ * descendants in [checkpoint resource format](https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state).
+ *
+ * This API is experimental and may change.
+ */
+export interface StateMigrationArgs {
+    /**
+     * The URN of the resource being registered. This may differ from its URN in
+     * {@link oldState} when the prior resource is matched through an alias.
+     */
+    urn: URN;
+
+    /**
+     * The prior state of the resource and its descendants in
+     * [checkpoint resource format](https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state),
+     * with the resource itself first. For subsequent callbacks, this includes
+     * changes made by earlier callbacks in the chain.
+     */
+    oldState: Record<string, any>[];
+}
+
+/**
+ * {@link StateMigrationResult} is returned by a state migration callback when
+ * it changes the state. Every resource present in the old state must either be
+ * returned in {@link StateMigrationResult.newState | newState} under the same URN
+ * or have an entry in {@link StateMigrationResult.successors | successors}, but not both.
+ *
+ * This API is experimental and may change.
+ */
+export interface StateMigrationResult {
+    /**
+     * The complete migrated subtree in
+     * [checkpoint resource format](https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state),
+     * including unchanged resources. This replaces {@link StateMigrationArgs.oldState}.
+     */
+    newState: Record<string, any>[];
+
+    /**
+     * Maps each old URN removed from the state to the URN in {@link newState}
+     * that succeeds it. Multiple old URNs may map to the same successor. A resource
+     * cannot be removed without a successor. The engine uses these mappings to
+     * rewrite resource references.
+     */
+    successors?: Record<URN, URN>;
+}
+
+/**
+ * {@link StateMigration} is the callback signature for the {@link ResourceOptions.stateMigrations}
+ * resource option.
+ *
+ * This API is experimental and may change.
+ *
+ * A callback receives the prior state of the resource and its descendants, and
+ * may return a replacement subtree for the engine to use before diffing those
+ * resources. Returning `undefined` leaves the callback's input state unchanged
+ * and allows later callbacks to run. Callbacks may be synchronous or asynchronous
+ * and must be idempotent.
+ *
+ * Migrations run during updates and previews when prior state exists, including
+ * state matched through aliases. Migrations rewrite state only, they do not create,
+ * import, or modify physical resources.
+ *
+ * The callback receives plaintext secret values inside their secret envelopes
+ * and must not log or otherwise expose them. It must not perform Pulumi runtime
+ * operations or wait for unresolved Outputs. Every resource omitted from the
+ * returned state must identify a returned successor. Provider resource states
+ * must remain unchanged, and custom resources must preserve their physical
+ * identity and lifecycle safety flags.
+ */
+export type StateMigration = (
+    args: StateMigrationArgs,
+) => StateMigrationResult | undefined | Promise<StateMigrationResult | undefined>;
+
+/**
  * {@link ResourceOptions} is a bag of optional settings that control a
  * resource's behavior.
  */
@@ -835,6 +917,16 @@ export interface ResourceOptions {
     transforms?: ResourceTransform[];
 
     /**
+     * Optional state migrations to apply to this resource's prior state and its
+     * descendants. The migrations are applied in order, each receiving the state
+     * produced by earlier callbacks. See {@link StateMigration} for the callback
+     * contract and safety restrictions.
+     *
+     * This API is experimental and may change.
+     */
+    stateMigrations?: StateMigration[];
+
+    /**
      * The URN of a previously-registered resource of this type to read from the engine.
      */
     urn?: URN;
@@ -853,7 +945,8 @@ export interface ResourceOptions {
 
     /**
      * If set, the providers Delete method will not be called for this resource
-     * if specified is being deleted as well.
+     * if specified is being deleted as well. If the named resource is being
+     * replaced, this resource will be replaced as well.
      */
     deletedWith?: Resource;
 
@@ -900,6 +993,11 @@ export interface CustomTimeouts {
      * The optional delete timeout represented as a string e.g. 5m, 40s, 1d.
      */
     delete?: string;
+
+    /**
+     * The optional read timeout represented as a string e.g. 5m, 40s, 1d.
+     */
+    read?: string;
 }
 
 /**
@@ -1111,6 +1209,10 @@ export interface ResourceHookOptions {
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
     onDryRun?: boolean;
+    /**
+     * If true, errors from this hook are logged as warnings instead of failing the program.
+     */
+    ignoreErrors?: boolean;
 }
 
 /**
@@ -1265,9 +1367,10 @@ export class ErrorHook {
  * Binds {@link ResourceHook} instances to a resource. The resource hooks will
  * be invoked during certain step of the lifecycle of the resource.
  *
- * `before_${action}` hooks that raise an exception cause the action to fail.
- * `after_${action}` hooks that raise an exception will log a warning, but do
- * not cause the action or the deployment to fail.
+ * By default, an error from a `before_${action}` hook causes the action to fail.
+ * An error from an `after_${action}` hook fails the deployment. The resource
+ * operation itself has already succeeded, so its result is recorded in state.
+ * Set `ignoreErrors` on the hook to log a warning instead.
  *
  * When running `pulumi destroy`, `before_delete` and `after_delete` resource
  * hooks require the operation to run with `--run-program`, to ensure that the
@@ -1536,7 +1639,12 @@ export class ComponentResource<TData = any> extends Resource {
      * @param opts
      *  A bag of options that control this resource's behavior.
      * @param remote
-     *  True if this is a remote component resource.
+     *  This parameter is intended for use by code-generated component SDKs;
+     *  end users authoring their own {@link ComponentResource} subclasses
+     *  should leave this at its default (`false`). When `true`, the
+     *  component's children are constructed by the engine rather than in
+     *  this process, and the constructor skips local child registration
+     *  accordingly.
      */
     constructor(
         type: string,
@@ -1702,6 +1810,7 @@ export function mergeOptions(opts1: ResourceOptions | undefined, opts2: Resource
             "afterUpdate",
             "beforeDelete",
             "afterDelete",
+            "onError",
         ] as const;
         for (const hookType of hookTypes) {
             const destHooks = dest?.hooks?.[hookType];

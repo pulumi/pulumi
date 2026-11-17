@@ -1,0 +1,101 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package apitype
+
+import "encoding/json"
+
+// ScheduledActionKind identifies what kind of action a scheduled action executes.
+type ScheduledActionKind string
+
+const (
+	// ScheduledActionKindDeployment is a scheduled deployment action.
+	ScheduledActionKindDeployment ScheduledActionKind = "deployment"
+)
+
+// ScheduledAction describes the state of a scheduled action returned by the Pulumi Cloud REST API.
+type ScheduledAction struct {
+	// ID is the unique identifier for this scheduled action.
+	ID string `json:"id"`
+	// OrgID is the organization ID that owns this scheduled action.
+	OrgID string `json:"orgID,omitempty"`
+	// ScheduleCron is a cron expression defining the recurring schedule.
+	ScheduleCron string `json:"scheduleCron,omitempty"`
+	// ScheduleOnce is a timestamp for a one-time scheduled execution.
+	ScheduleOnce string `json:"scheduleOnce,omitempty"`
+	// NextExecution is the timestamp of the next scheduled execution.
+	NextExecution string `json:"nextExecution,omitempty"`
+	// Paused indicates whether the scheduled action is currently paused.
+	Paused bool `json:"paused"`
+	// Kind is the kind of action to be executed.
+	Kind ScheduledActionKind `json:"kind"`
+	// Definition is the action definition, which varies based on the action kind.
+	Definition json.RawMessage `json:"definition,omitempty"`
+	// Created is the timestamp when this scheduled action was created.
+	Created string `json:"created,omitempty"`
+	// Modified is the timestamp when this scheduled action was last modified.
+	Modified string `json:"modified,omitempty"`
+	// LastExecuted is the timestamp of the last execution, if any.
+	LastExecuted *string `json:"lastExecuted,omitempty"`
+}
+
+// ListScheduledActionsResponse is the API response when scheduled actions are listed.
+type ListScheduledActionsResponse struct {
+	Schedules []ScheduledAction `json:"schedules"`
+}
+
+// ScheduledDeploymentDefinition is the shape of ScheduledAction.Definition when Kind is
+// ScheduledActionKindDeployment.
+type ScheduledDeploymentDefinition struct {
+	// ProgramID is the Pulumi Cloud-internal identifier for the program (stack) being deployed.
+	ProgramID string `json:"programID,omitempty"`
+	// Request is the deployment request payload that will be executed when the schedule fires.
+	Request *CreateDeploymentRequest `json:"request,omitempty"`
+}
+
+// CreateScheduledDeploymentRequest is the request payload for creating or updating a
+// custom scheduled deployment action. Exactly one of ScheduleCron and ScheduleOnce must
+// be set.
+type CreateScheduledDeploymentRequest struct {
+	// ScheduleCron is a cron expression defining a recurring schedule for this deployment,
+	// evaluated in UTC. When set, ScheduleOnce must be empty.
+	ScheduleCron string `json:"scheduleCron,omitempty"`
+	// ScheduleOnce is an ISO 8601 timestamp for a one-time execution. When set,
+	// ScheduleCron must be empty.
+	ScheduleOnce string `json:"scheduleOnce,omitempty"`
+	// Request is the deployment request payload to execute when the schedule fires.
+	Request *CreateDeploymentRequest `json:"request,omitempty"`
+}
+
+// CreateScheduledDriftDeploymentRequest is the request payload for creating or updating a
+// scheduled drift detection action. AutoRemediate is always serialized (no omitempty)
+// because the update endpoint treats an omitted value as false.
+type CreateScheduledDriftDeploymentRequest struct {
+	// ScheduleCron is a cron expression defining when drift detection should run, evaluated in UTC.
+	ScheduleCron string `json:"scheduleCron,omitempty"`
+	// AutoRemediate, when true, automatically runs a remediation update when drift is detected.
+	AutoRemediate bool `json:"autoRemediate"`
+}
+
+// CreateScheduledTTLDeploymentRequest is the request payload for creating or updating a
+// scheduled TTL action: a one-time destroy that runs at the given timestamp.
+// DeleteAfterDestroy is always serialized (no omitempty) because the update endpoint
+// treats an omitted value as false.
+type CreateScheduledTTLDeploymentRequest struct {
+	// Timestamp is the ISO 8601 timestamp at which the TTL expires and the stack should be destroyed.
+	Timestamp string `json:"timestamp,omitempty"`
+	// DeleteAfterDestroy, when true, deletes the stack from Pulumi Cloud after successfully
+	// destroying its resources.
+	DeleteAfterDestroy bool `json:"deleteAfterDestroy"`
+}

@@ -15,7 +15,16 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { ComponentResourceOptions, ProviderResource, merge, mergeOptions } from "../resource";
+import { invokeOptionsFromResourceOptions, invokeOutputOptionsFromResourceOptions } from "../invoke";
+import {
+    ComponentResourceOptions,
+    ErrorHookFunction,
+    ProviderResource,
+    Resource,
+    ResourceOptions,
+    merge,
+    mergeOptions,
+} from "../resource";
 
 describe("options", () => {
     describe("merge", () => {
@@ -124,6 +133,16 @@ describe("options", () => {
             it("merges values from opts1 if given value in opts2", async () => {
                 const result = mergeOptions({ transformations: [a] }, { transformations: [b] });
                 assert.deepStrictEqual(result.transformations, [a, b]);
+            });
+        });
+
+        describe("stateMigrations", () => {
+            const a = () => undefined;
+            const b = () => undefined;
+
+            it("merges migrations in order", () => {
+                const result = mergeOptions({ stateMigrations: [a] }, { stateMigrations: [b] });
+                assert.deepStrictEqual(result.stateMigrations, [a, b]);
             });
         });
 
@@ -238,6 +257,32 @@ describe("options", () => {
             });
         });
 
+        describe("hooks.onError", () => {
+            const makeHook = (name: string) => ({
+                name,
+                callback: (() => false) as ErrorHookFunction,
+                __registered: Promise.resolve(),
+                __pulumiErrorHook: true as const,
+            });
+
+            it("keeps onError hooks from opts1 if not provided in opts2", async () => {
+                const hook = makeHook("h1");
+                const result = mergeOptions({ hooks: { onError: [hook] } }, {});
+                assert.deepStrictEqual(result.hooks?.onError, [hook]);
+            });
+            it("keeps onError hooks from opts2 if not provided in opts1", async () => {
+                const hook = makeHook("h1");
+                const result = mergeOptions({}, { hooks: { onError: [hook] } });
+                assert.deepStrictEqual(result.hooks?.onError, [hook]);
+            });
+            it("merges onError hooks from opts1 and opts2", async () => {
+                const hook1 = makeHook("h1");
+                const hook2 = makeHook("h2");
+                const result = mergeOptions({ hooks: { onError: [hook1] } }, { hooks: { onError: [hook2] } });
+                assert.deepStrictEqual(result.hooks?.onError, [hook1, hook2]);
+            });
+        });
+
         describe("envVarMappings", () => {
             it("keeps value from opts1 if not provided in opts2", async () => {
                 const result = mergeOptions({ envVarMappings: { MY_VAR: "PROVIDER_VAR" } }, {});
@@ -253,6 +298,42 @@ describe("options", () => {
                     { envVarMappings: { VAR_B: "TARGET_B" } },
                 );
                 assert.deepStrictEqual(result.envVarMappings, { VAR_B: "TARGET_B" });
+            });
+        });
+    });
+
+    describe("fromResourceOptions", () => {
+        const provider = <ProviderResource>{ getPackage: () => "aws" };
+        const parent = <Resource>(<unknown>{ getProvider: () => provider });
+        const dep = <Resource>(<unknown>{});
+        const resOpts: ResourceOptions = {
+            parent,
+            provider,
+            version: "1.2.3",
+            pluginDownloadURL: "https://example.com/plugin",
+            dependsOn: [dep],
+            protect: true,
+            ignoreChanges: ["prop"],
+        };
+
+        it("copies the invoke-relevant options and drops the rest", () => {
+            const result = invokeOptionsFromResourceOptions(resOpts);
+            assert.deepStrictEqual(result, {
+                parent,
+                provider,
+                version: "1.2.3",
+                pluginDownloadURL: "https://example.com/plugin",
+            });
+        });
+
+        it("preserves dependsOn for output invokes", () => {
+            const result = invokeOutputOptionsFromResourceOptions(resOpts);
+            assert.deepStrictEqual(result, {
+                parent,
+                provider,
+                version: "1.2.3",
+                pluginDownloadURL: "https://example.com/plugin",
+                dependsOn: [dep],
             });
         });
     });

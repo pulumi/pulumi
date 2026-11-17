@@ -18,7 +18,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 )
 
 func newDebugContext(events eventEmitter, attachDebugger []string) plugin.DebugContext {

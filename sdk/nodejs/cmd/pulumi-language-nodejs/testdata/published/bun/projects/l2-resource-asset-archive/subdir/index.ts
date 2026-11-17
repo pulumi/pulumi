@@ -12,3 +12,21 @@ const assarc = new asset_archive.ArchiveResource("assarc", {value: new pulumi.as
 })});
 const remoteass = new asset_archive.AssetResource("remoteass", {value: new pulumi.asset.RemoteAsset("https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/test.txt")});
 const remotearc = new asset_archive.ArchiveResource("remotearc", {value: new pulumi.asset.RemoteArchive("https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/archive.tar")});
+export const assetOutput = new pulumi.asset.FileAsset("../test.txt");
+export const archiveOutput = new pulumi.asset.FileArchive("../archive.tar");
+export const assetList = [
+    new pulumi.asset.FileAsset("../test.txt"),
+    new pulumi.asset.StringAsset("file contents"),
+];
+export const archiveList = [
+    new pulumi.asset.FileArchive("../archive.tar"),
+    new pulumi.asset.FileArchive("../folder"),
+];
+export const assetMap = {
+    file: new pulumi.asset.FileAsset("../test.txt"),
+    string: new pulumi.asset.StringAsset("file contents"),
+};
+export const archiveMap = {
+    tar: new pulumi.asset.FileArchive("../archive.tar"),
+    folder: new pulumi.asset.FileArchive("../folder"),
+};

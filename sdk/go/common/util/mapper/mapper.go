@@ -16,6 +16,7 @@ package mapper
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -100,8 +101,8 @@ func structFields(t reflect.Type) []reflect.StructField {
 	for len(fldtypes) > 0 {
 		fldtype := fldtypes[0]
 		fldtypes = fldtypes[1:]
-		for i := 0; i < fldtype.NumField(); i++ {
-			if fldinfo := fldtype.Field(i); fldinfo.Anonymous {
+		for fldinfo := range fldtype.Fields() {
+			if fldinfo.Anonymous {
 				// If an embedded struct, push it onto the queue to visit.
 				if fldinfo.Type.Kind() == reflect.Struct {
 					fldtypes = append(fldtypes, fldinfo.Type)
@@ -167,20 +168,14 @@ func (md *mapper) structFieldsTags(t reflect.Type) []structFieldTags {
 				}
 				for _, part := range tagparts[1:] {
 					var match bool
-					for _, optionalTag := range optionalTags {
-						if part == optionalTag {
-							optional = true
-							match = true
-							break
-						}
+					if slices.Contains(optionalTags, part) {
+						optional = true
+						match = true
 					}
 					if !match {
-						for _, skipTag := range skipTags {
-							if part == skipTag {
-								skip = true
-								match = true
-								break
-							}
+						if slices.Contains(skipTags, part) {
+							skip = true
+							match = true
 						}
 					}
 					contract.Assertf(match, "Unrecognized tagpart on field %v.%v: %v", t.Name(), fldinfo.Name, part)

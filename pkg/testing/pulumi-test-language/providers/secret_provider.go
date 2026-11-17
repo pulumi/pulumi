@@ -22,14 +22,14 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a "public" and "private" field, plus two nested
 // objects "privateData" and "publicData" that have the same fields. The "private" fields are marked secret at
-// various levels. these fields are marked secret at various levels.
+// various levels. The resource also has secret-marked collection fields: arrays and maps of both plain strings
+// ("privateArray", "privateMap") and object types ("privateDataArray", "privateDataMap").
 type SecretProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -44,10 +44,6 @@ func (p *SecretProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *SecretProvider) Pkg() tokens.Package {
-	return "secret"
 }
 
 func (p *SecretProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -100,8 +96,49 @@ func (p *SecretProvider) GetSchema(
 				Ref:  "#/types/secret:index:Data",
 			},
 		},
+		"privateArray": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "array",
+				Items: &schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+		"privateMap": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "object",
+				AdditionalProperties: &schema.TypeSpec{
+					Type: "string",
+				},
+			},
+		},
+		"privateDataArray": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "array",
+				Items: &schema.TypeSpec{
+					Type: "ref",
+					Ref:  "#/types/secret:index:Data",
+				},
+			},
+		},
+		"privateDataMap": {
+			Secret: true,
+			TypeSpec: schema.TypeSpec{
+				Type: "object",
+				AdditionalProperties: &schema.TypeSpec{
+					Type: "ref",
+					Ref:  "#/types/secret:index:Data",
+				},
+			},
+		},
 	}
-	resourceRequired := []string{"private", "public", "privateData", "publicData"}
+	resourceRequired := []string{
+		"private", "public", "privateData", "publicData",
+		"privateArray", "privateMap", "privateDataArray", "privateDataMap",
+	}
 
 	pkg := schema.PackageSpec{
 		Name:    "secret",
@@ -136,26 +173,26 @@ func (p *SecretProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "14.0.0" {
+	if version.AsString() != "14.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 14.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 14.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -165,10 +202,26 @@ func (p *SecretProvider) CheckConfig(
 func (p *SecretProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "secret:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
+	}
+
+	unsecret := func(v resource.PropertyValue) resource.PropertyValue {
+		for {
+			if v.IsSecret() {
+				v = v.SecretValue().Element
+				continue
+			}
+			if v.IsOutput() {
+				v = v.OutputValue().Element
+				continue
+			}
+			break
+		}
+		return v
 	}
 
 	assertField := func(props resource.PropertyMap, key resource.PropertyKey, typ string,
@@ -189,53 +242,124 @@ func (p *SecretProvider) Check(
 		return nil
 	}
 
+	// isSecretString, isSecretObject and isSecretArray require the outermost wrapper to be a
+	// secret, but accept any number of additional secret layers beneath it.
 	isSecretString := func(v resource.PropertyValue) bool {
-		if !v.IsSecret() {
-			return false
-		}
-		return v.SecretValue().Element.IsString()
+		return v.IsSecret() && unsecret(v).IsString()
 	}
 
 	isSecretObject := func(v resource.PropertyValue) bool {
-		if !v.IsSecret() {
+		return v.IsSecret() && unsecret(v).IsObject()
+	}
+
+	isSecretArray := func(v resource.PropertyValue) bool {
+		return v.IsSecret() && unsecret(v).IsArray()
+	}
+
+	// isDataObject reports whether v unwraps to a Data object: exactly a "private" and a
+	// "public" field, each unwrapping to a string.
+	isDataObject := func(v resource.PropertyValue) bool {
+		v = unsecret(v)
+		if !v.IsObject() {
 			return false
 		}
-		return v.SecretValue().Element.IsObject()
+		data := v.ObjectValue()
+		return len(data) == 2 &&
+			unsecret(data["private"]).IsString() &&
+			unsecret(data["public"]).IsString()
 	}
 
-	check := assertField(req.News, "privateData", "secret object", isSecretObject)
+	check := assertField(news, "privateData", "secret object", isSecretObject)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "publicData", "object", resource.PropertyValue.IsObject)
+	check = assertField(news, "publicData", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "private", "secret string", isSecretString)
+	check = assertField(news, "private", "secret string", isSecretString)
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(req.News, "public", "string", resource.PropertyValue.IsString)
-	if check != nil {
-		return *check, nil
-	}
-
-	if len(req.News) != 4 {
-		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
-		}, nil
-	}
-
-	publicData := req.News["publicData"].ObjectValue()
-	check = assertField(publicData, "private", "string or secret string", func(v resource.PropertyValue) bool {
-		// TODO[https://github.com/pulumi/pulumi/issues/10319] publicData.private should be a secret string, but
-		// we tolerate a plain string here. Most SDKs do not correctly send a secret string on nested inputs.
-		return v.IsString() || (v.IsSecret() && v.SecretValue().Element.IsString())
+	check = assertField(news, "public", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
 	})
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(publicData, "public", "string", resource.PropertyValue.IsString)
+	check = assertField(news, "privateArray", "secret array of strings", func(v resource.PropertyValue) bool {
+		if !isSecretArray(v) {
+			return false
+		}
+		for _, elem := range unsecret(v).ArrayValue() {
+			if !unsecret(elem).IsString() {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(news, "privateMap", "secret map of strings", func(v resource.PropertyValue) bool {
+		if !isSecretObject(v) {
+			return false
+		}
+		for _, value := range unsecret(v).ObjectValue() {
+			if !unsecret(value).IsString() {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(news, "privateDataArray", "secret array of Data", func(v resource.PropertyValue) bool {
+		if !isSecretArray(v) {
+			return false
+		}
+		for _, elem := range unsecret(v).ArrayValue() {
+			if !isDataObject(elem) {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(news, "privateDataMap", "secret map of Data", func(v resource.PropertyValue) bool {
+		if !isSecretObject(v) {
+			return false
+		}
+		for _, value := range unsecret(v).ObjectValue() {
+			if !isDataObject(value) {
+				return false
+			}
+		}
+		return true
+	})
+	if check != nil {
+		return *check, nil
+	}
+
+	if len(news) != 8 {
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
+		}, nil
+	}
+
+	publicData := news["publicData"].ObjectValue()
+	check = assertField(publicData, "private", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
+	if check != nil {
+		return *check, nil
+	}
+	check = assertField(publicData, "public", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}
@@ -245,12 +369,16 @@ func (p *SecretProvider) Check(
 		}, nil
 	}
 
-	privateData := req.News["privateData"].SecretValue().Element.ObjectValue()
-	check = assertField(privateData, "private", "string", resource.PropertyValue.IsString)
+	privateData := unsecret(news["privateData"]).ObjectValue()
+	check = assertField(privateData, "private", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}
-	check = assertField(privateData, "public", "string", resource.PropertyValue.IsString)
+	check = assertField(privateData, "public", "string", func(v resource.PropertyValue) bool {
+		return unsecret(v).IsString()
+	})
 	if check != nil {
 		return *check, nil
 	}
@@ -260,12 +388,13 @@ func (p *SecretProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *SecretProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "secret:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -279,7 +408,7 @@ func (p *SecretProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

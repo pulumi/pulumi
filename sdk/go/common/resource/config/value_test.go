@@ -129,7 +129,6 @@ func TestHasSecureValue(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
@@ -189,7 +188,6 @@ func TestDecryptingValue(t *testing.T) {
 
 	decrypter := NewBlindingDecrypter()
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
@@ -259,7 +257,6 @@ func TestSecureValues(t *testing.T) {
 
 	decrypter := passThroughDecrypter{}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
@@ -300,7 +297,6 @@ func TestCopyValue(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
@@ -376,4 +372,43 @@ func roundtripValue(v Value, marshal func(v any) ([]byte, error),
 	var newV Value
 	err = unmarshal(b, &newV)
 	return newV, err
+}
+
+func TestToCoercedObject(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		Val      Value
+		Expected any
+	}{
+		{Val: NewValue("abc"), Expected: "abc"},
+		{Val: NewValue(""), Expected: ""},
+		{Val: NewValue("true"), Expected: true},
+		{Val: NewValue("True"), Expected: "True"},
+		{Val: NewValue("42"), Expected: int64(42)},
+		{Val: NewValue("-7"), Expected: int64(-7)},
+		{Val: NewValue("042"), Expected: "042"},
+		{Val: NewValue("1.5"), Expected: "1.5"},
+		{Val: NewTypedValue("42", TypeString), Expected: "42"},
+		{Val: NewTypedValue("42", TypeInt), Expected: int64(42)},
+		{Val: NewTypedValue("1.5", TypeFloat), Expected: 1.5},
+		{Val: NewTypedValue("TRUE", TypeBool), Expected: true},
+		{Val: NewObjectValue(`{"a":["1",2,true]}`), Expected: map[string]any{"a": []any{"1", int64(2), true}}},
+		{Val: NewSecureValue("ciphertext"), Expected: map[string]any{"secure": "ciphertext"}},
+	}
+	for _, test := range tests {
+		t.Run(test.Val.value, func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := test.Val.ToCoercedObject()
+			require.NoError(t, err)
+			assert.Equal(t, test.Expected, actual)
+
+			m := Map{}
+			require.NoError(t, m.Set(MustMakeKey("proj", "a.b"), test.Val, true))
+			root, err := m[MustMakeKey("proj", "a")].ToObject()
+			require.NoError(t, err)
+			assert.Equal(t, root.(map[string]any)["b"], actual)
+		})
+	}
 }

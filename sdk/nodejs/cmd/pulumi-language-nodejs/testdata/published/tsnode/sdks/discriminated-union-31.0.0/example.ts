@@ -19,6 +19,16 @@ export class Example extends pulumi.CustomResource {
         return new Example(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Example resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("discriminated-union:index:Example", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'discriminated-union:index:Example';
 
@@ -62,6 +72,6 @@ export class Example extends pulumi.CustomResource {
  * The set of arguments for constructing a Example resource.
  */
 export interface ExampleArgs {
-    arrayOfUnionOf?: pulumi.Input<pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs>[]>;
-    unionOf?: pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs>;
+    arrayOfUnionOf?: pulumi.Input<pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs>[] | undefined>;
+    unionOf?: pulumi.Input<inputs.VariantOneArgs | inputs.VariantTwoArgs | undefined>;
 }

@@ -13,9 +13,11 @@
 // limitations under the License.
 
 import { randomUUID } from "crypto";
-import * as tmp from "tmp";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-import { LocalWorkspaceOptions, ProjectRuntime } from "../../automation";
+import { LocalWorkspaceOptions, ProjectRuntime, Stack } from "../../automation";
 
 /** @internal */
 export function getTestSuffix() {
@@ -93,12 +95,9 @@ function withTemporaryFileBackend(
     description?: string,
     runtime?: string,
 ): LocalWorkspaceOptions {
-    const tmpDir = tmp.dirSync({
-        prefix: "nodejs-tests-automation-",
-        unsafeCleanup: true,
-    });
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "nodejs-tests-automation-"));
 
-    const backend = { url: `file://${tmpDir.name}` };
+    const backend = { url: `file://${tmpDir}` };
 
     if (name === undefined) {
         name = "node_test";
@@ -109,7 +108,7 @@ function withTemporaryFileBackend(
 
     return withTestConfigPassphrase({
         ...opts,
-        pulumiHome: tmpDir.name,
+        pulumiHome: tmpDir,
         projectSettings: {
             // We are obliged to provide a name and runtime if we provide project
             // settings, so we do so, but we spread in the provided project settings
@@ -137,4 +136,30 @@ function withTestConfigPassphrase(opts?: LocalWorkspaceOptions): LocalWorkspaceO
             PULUMI_CONFIG_PASSPHRASE: "test",
         },
     };
+}
+
+/**
+ * Runs a test function with a stack, ensuring the stack is destroyed and
+ * removed after the test completes, even if the test fails.
+ *
+ * Set destroy to false to skip the destroy step.
+ *
+ * @internal
+ */
+export async function withStack<T>(
+    stack: Stack,
+    fn: (stack: Stack) => Promise<T>,
+    { destroy = true }: { destroy?: boolean } = {},
+): Promise<T> {
+    try {
+        return await fn(stack);
+    } finally {
+        try {
+            if (destroy) {
+                await stack.destroy();
+            }
+        } finally {
+            await stack.workspace.removeStack(stack.name, { force: true });
+        }
+    }
 }

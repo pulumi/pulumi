@@ -121,13 +121,15 @@ type cloudStack struct {
 	tags map[apitype.StackTagName]string
 	// escConfigEnv caches if we expect this stack to have its config stored in an ESC environment.
 	escConfigEnv *string
+
+	managedEnv string
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
 
-	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
 	}
@@ -135,6 +137,11 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 	var escConfigEnv *string
 	if apistack.Config != nil {
 		escConfigEnv = &apistack.Config.Environment
+	}
+
+	var managedEnv string
+	if apistack.ManagedEnvironment != nil {
+		managedEnv = *apistack.ManagedEnvironment
 	}
 
 	// Now assemble all the pieces into a stack structure.
@@ -151,15 +158,17 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		tags:             apistack.Tags,
 		b:                b,
 		escConfigEnv:     escConfigEnv,
+		managedEnv:       managedEnv,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
-// ConfigLocation returns the ESC environment of the stack config if applicable.
+// ConfigLocation reports the stack's remote-config and managed ESC environments, if any.
 func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
 	return backend.StackConfigLocation{
-		IsRemote: s.escConfigEnv != nil,
-		EscEnv:   s.escConfigEnv,
+		IsRemote:           s.escConfigEnv != nil,
+		EscEnv:             s.escConfigEnv,
+		ManagedEnvironment: s.managedEnv,
 	}
 }
 
@@ -288,8 +297,7 @@ func (css cloudStackSummary) LastUpdate() *time.Time {
 	if css.summary.LastUpdate == nil {
 		return nil
 	}
-	t := time.Unix(*css.summary.LastUpdate, 0)
-	return &t
+	return new(time.Unix(*css.summary.LastUpdate, 0))
 }
 
 func (css cloudStackSummary) ResourceCount() *int {

@@ -86,7 +86,6 @@ func TestActivateVirtualEnv(t *testing.T) {
 			},
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%#v", test.input), func(t *testing.T) {
 			t.Parallel()
@@ -272,7 +271,7 @@ func TestParsePipVersion(t *testing.T) {
 			version, err := ParsePipVersion(test.versionString)
 
 			if test.expectError {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 				expected := semver.MustParse(test.expectedSemver)

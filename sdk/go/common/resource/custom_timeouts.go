@@ -18,8 +18,9 @@ type CustomTimeouts struct {
 	Create float64 `json:"create,omitempty" yaml:"create,omitempty"`
 	Update float64 `json:"update,omitempty" yaml:"update,omitempty"`
 	Delete float64 `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Read   float64 `json:"read,omitempty" yaml:"read,omitempty"`
 }
 
 func (c *CustomTimeouts) IsNotEmpty() bool {
-	return c.Delete != 0 || c.Update != 0 || c.Create != 0
+	return c.Delete != 0 || c.Update != 0 || c.Create != 0 || c.Read != 0
 }

@@ -58,7 +58,6 @@ def get_bastion_shareable_link(bastion_host_name: Optional[_builtins.str] = None
     Response for all the Bastion Shareable Link endpoints.
     API Version: 2020-11-01.
 
-
     :param _builtins.str bastion_host_name: The name of the Bastion Host.
     :param _builtins.str resource_group_name: The name of the resource group.
     :param Sequence[Union['BastionShareableLink', 'BastionShareableLinkDict']] vms: List of VM references.
@@ -72,14 +71,13 @@ def get_bastion_shareable_link(bastion_host_name: Optional[_builtins.str] = None
 
     return AwaitableGetBastionShareableLinkResult(
         next_link=pulumi.get(__ret__, 'next_link'))
-def get_bastion_shareable_link_output(bastion_host_name: Optional[pulumi.Input[_builtins.str]] = None,
-                                      resource_group_name: Optional[pulumi.Input[_builtins.str]] = None,
-                                      vms: Optional[pulumi.Input[Optional[Sequence[Union['BastionShareableLink', 'BastionShareableLinkDict']]]]] = None,
+def get_bastion_shareable_link_output(bastion_host_name: pulumi.Input[Optional[_builtins.str]] = None,
+                                      resource_group_name: pulumi.Input[Optional[_builtins.str]] = None,
+                                      vms: pulumi.Input[Optional[Optional[Sequence[Union['BastionShareableLink', 'BastionShareableLinkDict']]]]] = None,
                                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetBastionShareableLinkResult]:
     """
     Response for all the Bastion Shareable Link endpoints.
     API Version: 2020-11-01.
-
 
     :param _builtins.str bastion_host_name: The name of the Bastion Host.
     :param _builtins.str resource_group_name: The name of the resource group.

@@ -1,0 +1,5 @@
+name: l2-invoke-depends-on-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false

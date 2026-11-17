@@ -15,23 +15,17 @@
 package plugin
 
 import (
-	"context"
+	"fmt"
 	"net"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func TestLogFlowArgumentPropagation(t *testing.T) {
@@ -99,220 +93,61 @@ func TestParsePort(t *testing.T) {
 		"100000",
 	} {
 		_, err := parsePort(port)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	}
 }
 
-func TestHealthCheck(t *testing.T) {
+func TestPrematureExit(t *testing.T) {
 	t.Parallel()
 
-	startServer := func(healthService bool) (*grpc.Server, *Plugin) {
-		listener, _ := net.Listen("tcp", "127.0.0.1:0")
-		server := grpc.NewServer()
+	// Start a gRPC server to simulate a provider plugin.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := grpc.NewServer()
+	pulumirpc.RegisterResourceProviderServer(server, &pulumirpc.UnimplementedResourceProviderServer{})
 
-		if healthService {
-			healthServer := health.NewServer()
-			grpc_health_v1.RegisterHealthServer(server, healthServer)
-		}
+	ready := make(chan struct{})
+	go func() {
+		close(ready)
+		server.Serve(listener) //nolint:errcheck
+	}()
+	<-ready
 
-		ready := make(chan struct{})
-		go func() {
-			close(ready) // Signal that server is ready
-			err := server.Serve(listener)
-			require.NoError(t, err)
-		}()
-		<-ready // Wait until the server is ready before continuing
+	port := listener.Addr().(*net.TCPAddr).Port
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("127.0.0.1:%d", port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
 
-		port := listener.Addr().(*net.TCPAddr).Port
+	sink := &diag.MockSink{}
 
-		type foo struct{}
-		handshake := func(context.Context, string, string, *grpc.ClientConn) (*foo, error) {
-			return &foo{}, nil
-		}
-
-		conn, _, err := dialPlugin(t.Context(), port, "test", "test", handshake, []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		})
-		require.NoError(t, err)
-
-		return server, &Plugin{Conn: conn}
-	}
-
-	tests := []struct {
-		name           string
-		healthService  bool
-		shutdownServer bool
-		expected       bool
-	}{
-		{
-			name:           "Server with health check - running",
-			healthService:  true,
-			shutdownServer: false,
-			expected:       true,
-		},
-		{
-			name:           "Server with health check - crashed",
-			healthService:  true,
-			shutdownServer: true,
-			expected:       false,
-		},
-		{
-			name:           "Server without health check - running",
-			healthService:  false,
-			shutdownServer: false,
-			expected:       true,
-		},
-		{
-			name:           "Server without health check - crashed",
-			healthService:  false,
-			shutdownServer: true,
-			expected:       false,
+	plug := &Plugin{
+		Bin:  "test-plugin",
+		Conn: conn,
+		Kill: func() error { return nil },
+		unstructuredOutput: &unstructuredOutput{
+			diag: sink,
 		},
 	}
+	plug.unstructuredOutput.output.WriteString("some plugin output\n")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			server, p := startServer(tt.healthService)
-
-			// Simulate a crash by stopping the server before calling healthCheck.
-			if tt.shutdownServer {
-				server.Stop()
-				// Give time for cleanup
-				time.Sleep(100 * time.Millisecond)
-			}
-
-			result := p.healthCheck()
-			assert.Equal(t, tt.expected, result)
-
-			p.Conn.Close()
-			server.Stop()
-		})
+	prov := &provider{
+		plug:      plug,
+		clientRaw: pulumirpc.NewResourceProviderClient(conn),
 	}
-}
 
-func TestStartupFailure(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
+	// Simulate a crash: stop the server before calling Close.
+	server.Stop()
+
+	err = prov.Close()
 	require.NoError(t, err)
 
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the plugin
-	file, err := exec.LookPath("pulumi-language-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-language-test")
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin]: not implemented")
-}
-
-func TestNonZeroExitcode(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
-	require.NoError(t, err)
-
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the plugin
-	file, err := exec.LookPath("pulumi-language-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-language-test")
-
-	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "1")
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: exit status 1")
-
-	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
-	tmp := t.TempDir()
-	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
-	package main
-	import "os"
-
-	func main() {
-		os.Exit(1)
-	}
-	`), 0o600)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
-	module test-plugin-exit
-	go 1.24
-	`), 0o600)
-	require.NoError(t, err)
-
-	// Build and run the program
-	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
-	cmd.Dir = tmp
-	stdout, err := cmd.CombinedOutput()
-	t.Log(string(stdout))
-	require.NoError(t, err)
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join(tmp, "test-plugin-exit"))
-	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
-	// separately.
-	require.ErrorContains(t, err, "could not read plugin [")
-	require.ErrorContains(t, err, "test-plugin-exit]: exit status 1")
-}
-
-// Similar to TestNonZeroExitcode but with a zero exit code, but no port written so it's still an error.
-func TestZeroExitcode(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
-	require.NoError(t, err)
-
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
-
-	path := os.Getenv("PATH")
-	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
-
-	// Check exec.LookPath finds the plugin
-	file, err := exec.LookPath("pulumi-language-test")
-	require.NoError(t, err)
-	require.Contains(t, file, "pulumi-language-test")
-
-	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "0")
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: EOF")
-
-	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
-	tmp := t.TempDir()
-	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
-	package main
-	import "os"
-
-	func main() {
-		os.Exit(0)
-	}
-	`), 0o600)
-	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
-	module test-plugin-exit
-	go 1.24
-	`), 0o600)
-	require.NoError(t, err)
-
-	// Build and run the program
-	cmd := exec.Command("go", "build", "-o", "test-plugin-exit", ".")
-	cmd.Dir = tmp
-	stdout, err := cmd.CombinedOutput()
-	t.Log(string(stdout))
-	require.NoError(t, err)
-
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join(tmp, "test-plugin-exit"))
-	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
-	// separately.
-	require.ErrorContains(t, err, "could not read plugin [")
-	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
+	// Verify the "exited prematurely" error was reported.
+	require.Len(t, sink.Messages[diag.Error], 1)
+	msg := sink.Messages[diag.Error][0].Diag.Message
+	require.Contains(t, msg, "exited prematurely")
+	require.Contains(t, msg, "some plugin output")
 }
 
 func TestCheckVersionRange(t *testing.T) {
@@ -342,22 +177,19 @@ func TestCheckVersionRange(t *testing.T) {
 			name:               "too old",
 			cliVersion:         "2.9.0",
 			pulumiVersionRange: ">=3.0.0",
-			//nolint:lll
-			expectedError: "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\"",
+			expectedError:      "CLI version 2.9.0 does not satisfy the version range \">=3.0.0\"",
 		},
 		{
 			name:               "too new",
 			cliVersion:         "4.0.0",
 			pulumiVersionRange: "<4.0.0",
-			//nolint:lll
-			expectedError: "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\"",
+			expectedError:      "CLI version 4.0.0 does not satisfy the version range \"<4.0.0\"",
 		},
 		{
 			name:               "exclude",
 			cliVersion:         "3.1.0",
 			pulumiVersionRange: ">=3.0.0 !3.1.0",
-			//nolint:lll
-			expectedError: "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\"",
+			expectedError:      "CLI version 3.1.0 does not satisfy the version range \">=3.0.0 !3.1.0\"",
 		},
 		{
 			name:               "exclude 2",
@@ -388,8 +220,7 @@ func TestCheckVersionRange(t *testing.T) {
 			name:               "cli dev version bad",
 			cliVersion:         "3.215.0-alpha.x75fc436",
 			pulumiVersionRange: ">=3.215.0",
-			//nolint:lll
-			expectedError: "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\"",
+			expectedError:      "CLI version 3.215.0-alpha.x75fc436 does not satisfy the version range \">=3.215.0\"",
 		},
 	}
 
@@ -408,20 +239,18 @@ func TestCheckVersionRange(t *testing.T) {
 	}
 }
 
-// Test a provider that has an incompatible version range in its `PulumiPlugin.yaml`.
-//
-//nolint:paralleltest // Modifying the global version.Version
-func TestPulumiVersionRangeYaml(t *testing.T) {
-	d := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { ctx.Close() })
+func TestCloudCredentialEnvVars(t *testing.T) {
+	t.Parallel()
 
-	oldVersion := version.Version
-	version.Version = "3.1.2"
-	t.Cleanup(func() { version.Version = oldVersion })
+	ctx := &Context{CloudCredentialEnv: map[string]string{"PULUMI_ACCESS_TOKEN": "secret"}}
 
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-cli-version"))
-	require.ErrorContains(t, err,
-		"test-plugin-cli-version: Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\"")
+	t.Run("env is injected", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, []string{"PULUMI_ACCESS_TOKEN=secret"}, cloudCredentialEnvVars(ctx))
+	})
+
+	t.Run("nil context is safe", func(t *testing.T) {
+		t.Parallel()
+		assert.Empty(t, cloudCredentialEnvVars(nil))
+	})
 }

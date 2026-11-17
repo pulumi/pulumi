@@ -72,12 +72,7 @@ func (l *cachedLoader) LoadPackageReferenceV2(
 	l.m.Lock()
 	defer l.m.Unlock()
 
-	var key string
-	if descriptor.Parameterization == nil {
-		key = packageIdentity(descriptor.Name, descriptor.Version)
-	} else {
-		key = packageIdentity(descriptor.Parameterization.Name, &descriptor.Parameterization.Version)
-	}
+	key := entryKey(descriptor)
 	if p, ok := l.entries[key]; ok {
 		return p, nil
 	}
@@ -89,4 +84,34 @@ func (l *cachedLoader) LoadPackageReferenceV2(
 
 	l.entries[key] = p
 	return p, nil
+}
+
+// LoadRawSchemaBytes implements RawLoader when the underlying loader does. A cached entry takes precedence over
+// whatever the underlying loader would serve — entries may be pre-seeded with packages the underlying loader
+// can't load at all, such as file-based schemas during package linking — so its presence forces ok=false and a
+// bind-based load. The cache is never populated here: raw bytes are unbound.
+func (l *cachedLoader) LoadRawSchemaBytes(
+	ctx context.Context, descriptor *PackageDescriptor,
+) ([]byte, bool, error) {
+	raw, ok := l.loader.(RawLoader)
+	if !ok {
+		return nil, false, nil
+	}
+
+	l.m.RLock()
+	_, cached := l.entries[entryKey(descriptor)]
+	l.m.RUnlock()
+	if cached {
+		return nil, false, nil
+	}
+
+	return raw.LoadRawSchemaBytes(ctx, descriptor)
+}
+
+// entryKey returns the entry cache key for a package descriptor.
+func entryKey(descriptor *PackageDescriptor) string {
+	if descriptor.Parameterization == nil {
+		return packageIdentity(descriptor.Name, descriptor.Version)
+	}
+	return packageIdentity(descriptor.Parameterization.Name, &descriptor.Parameterization.Version)
 }

@@ -7,10 +7,10 @@ import * as outputs from "../types/output";
 
 export interface VariantOneArgs {
     discriminantKind: pulumi.Input<"variant1">;
-    field1?: pulumi.Input<string>;
+    field1?: pulumi.Input<string | undefined>;
 }
 
 export interface VariantTwoArgs {
     discriminantKind: pulumi.Input<"variant2">;
-    field2?: pulumi.Input<string>;
+    field2?: pulumi.Input<string | undefined>;
 }

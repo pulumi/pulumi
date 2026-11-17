@@ -16,6 +16,7 @@ interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedSe
     parameterize: IResourceProviderService_IParameterize;
     getSchema: IResourceProviderService_IGetSchema;
     checkConfig: IResourceProviderService_ICheckConfig;
+    checkConfig2: IResourceProviderService_ICheckConfig2;
     diffConfig: IResourceProviderService_IDiffConfig;
     configure: IResourceProviderService_IConfigure;
     invoke: IResourceProviderService_IInvoke;
@@ -24,6 +25,7 @@ interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedSe
     diff: IResourceProviderService_IDiff;
     create: IResourceProviderService_ICreate;
     read: IResourceProviderService_IRead;
+    list: IResourceProviderService_IList;
     update: IResourceProviderService_IUpdate;
     delete: IResourceProviderService_IDelete;
     construct: IResourceProviderService_IConstruct;
@@ -69,6 +71,15 @@ interface IResourceProviderService_ICheckConfig extends grpc.MethodDefinition<pu
     requestDeserialize: grpc.deserialize<pulumi_provider_pb.CheckRequest>;
     responseSerialize: grpc.serialize<pulumi_provider_pb.CheckResponse>;
     responseDeserialize: grpc.deserialize<pulumi_provider_pb.CheckResponse>;
+}
+interface IResourceProviderService_ICheckConfig2 extends grpc.MethodDefinition<pulumi_provider_pb.CheckConfigRequest, pulumi_provider_pb.CheckConfigResponse> {
+    path: "/pulumirpc.ResourceProvider/CheckConfig2";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_provider_pb.CheckConfigRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_provider_pb.CheckConfigRequest>;
+    responseSerialize: grpc.serialize<pulumi_provider_pb.CheckConfigResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_provider_pb.CheckConfigResponse>;
 }
 interface IResourceProviderService_IDiffConfig extends grpc.MethodDefinition<pulumi_provider_pb.DiffRequest, pulumi_provider_pb.DiffResponse> {
     path: "/pulumirpc.ResourceProvider/DiffConfig";
@@ -141,6 +152,15 @@ interface IResourceProviderService_IRead extends grpc.MethodDefinition<pulumi_pr
     requestDeserialize: grpc.deserialize<pulumi_provider_pb.ReadRequest>;
     responseSerialize: grpc.serialize<pulumi_provider_pb.ReadResponse>;
     responseDeserialize: grpc.deserialize<pulumi_provider_pb.ReadResponse>;
+}
+interface IResourceProviderService_IList extends grpc.MethodDefinition<pulumi_provider_pb.ListRequest, pulumi_provider_pb.ListResponse> {
+    path: "/pulumirpc.ResourceProvider/List";
+    requestStream: false;
+    responseStream: true;
+    requestSerialize: grpc.serialize<pulumi_provider_pb.ListRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_provider_pb.ListRequest>;
+    responseSerialize: grpc.serialize<pulumi_provider_pb.ListResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_provider_pb.ListResponse>;
 }
 interface IResourceProviderService_IUpdate extends grpc.MethodDefinition<pulumi_provider_pb.UpdateRequest, pulumi_provider_pb.UpdateResponse> {
     path: "/pulumirpc.ResourceProvider/Update";
@@ -222,6 +242,7 @@ export interface IResourceProviderServer extends grpc.UntypedServiceImplementati
     parameterize: grpc.handleUnaryCall<pulumi_provider_pb.ParameterizeRequest, pulumi_provider_pb.ParameterizeResponse>;
     getSchema: grpc.handleUnaryCall<pulumi_provider_pb.GetSchemaRequest, pulumi_provider_pb.GetSchemaResponse>;
     checkConfig: grpc.handleUnaryCall<pulumi_provider_pb.CheckRequest, pulumi_provider_pb.CheckResponse>;
+    checkConfig2: grpc.handleUnaryCall<pulumi_provider_pb.CheckConfigRequest, pulumi_provider_pb.CheckConfigResponse>;
     diffConfig: grpc.handleUnaryCall<pulumi_provider_pb.DiffRequest, pulumi_provider_pb.DiffResponse>;
     configure: grpc.handleUnaryCall<pulumi_provider_pb.ConfigureRequest, pulumi_provider_pb.ConfigureResponse>;
     invoke: grpc.handleUnaryCall<pulumi_provider_pb.InvokeRequest, pulumi_provider_pb.InvokeResponse>;
@@ -230,6 +251,7 @@ export interface IResourceProviderServer extends grpc.UntypedServiceImplementati
     diff: grpc.handleUnaryCall<pulumi_provider_pb.DiffRequest, pulumi_provider_pb.DiffResponse>;
     create: grpc.handleUnaryCall<pulumi_provider_pb.CreateRequest, pulumi_provider_pb.CreateResponse>;
     read: grpc.handleUnaryCall<pulumi_provider_pb.ReadRequest, pulumi_provider_pb.ReadResponse>;
+    list: grpc.handleServerStreamingCall<pulumi_provider_pb.ListRequest, pulumi_provider_pb.ListResponse>;
     update: grpc.handleUnaryCall<pulumi_provider_pb.UpdateRequest, pulumi_provider_pb.UpdateResponse>;
     delete: grpc.handleUnaryCall<pulumi_provider_pb.DeleteRequest, google_protobuf_empty_pb.Empty>;
     construct: grpc.handleUnaryCall<pulumi_provider_pb.ConstructRequest, pulumi_provider_pb.ConstructResponse>;
@@ -253,6 +275,9 @@ export interface IResourceProviderClient {
     checkConfig(request: pulumi_provider_pb.CheckRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
+    checkConfig2(request: pulumi_provider_pb.CheckConfigRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckConfigResponse) => void): grpc.ClientUnaryCall;
+    checkConfig2(request: pulumi_provider_pb.CheckConfigRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckConfigResponse) => void): grpc.ClientUnaryCall;
+    checkConfig2(request: pulumi_provider_pb.CheckConfigRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckConfigResponse) => void): grpc.ClientUnaryCall;
     diffConfig(request: pulumi_provider_pb.DiffRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.DiffResponse) => void): grpc.ClientUnaryCall;
     diffConfig(request: pulumi_provider_pb.DiffRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.DiffResponse) => void): grpc.ClientUnaryCall;
     diffConfig(request: pulumi_provider_pb.DiffRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.DiffResponse) => void): grpc.ClientUnaryCall;
@@ -277,6 +302,8 @@ export interface IResourceProviderClient {
     read(request: pulumi_provider_pb.ReadRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ReadResponse) => void): grpc.ClientUnaryCall;
     read(request: pulumi_provider_pb.ReadRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ReadResponse) => void): grpc.ClientUnaryCall;
     read(request: pulumi_provider_pb.ReadRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ReadResponse) => void): grpc.ClientUnaryCall;
+    list(request: pulumi_provider_pb.ListRequest, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.ListResponse>;
+    list(request: pulumi_provider_pb.ListRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.ListResponse>;
     update(request: pulumi_provider_pb.UpdateRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.UpdateResponse) => void): grpc.ClientUnaryCall;
     update(request: pulumi_provider_pb.UpdateRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.UpdateResponse) => void): grpc.ClientUnaryCall;
     update(request: pulumi_provider_pb.UpdateRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.UpdateResponse) => void): grpc.ClientUnaryCall;
@@ -317,6 +344,9 @@ export class ResourceProviderClient extends grpc.Client implements IResourceProv
     public checkConfig(request: pulumi_provider_pb.CheckRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     public checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
     public checkConfig(request: pulumi_provider_pb.CheckRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckResponse) => void): grpc.ClientUnaryCall;
+    public checkConfig2(request: pulumi_provider_pb.CheckConfigRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckConfigResponse) => void): grpc.ClientUnaryCall;
+    public checkConfig2(request: pulumi_provider_pb.CheckConfigRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckConfigResponse) => void): grpc.ClientUnaryCall;
+    public checkConfig2(request: pulumi_provider_pb.CheckConfigRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.CheckConfigResponse) => void): grpc.ClientUnaryCall;
     public diffConfig(request: pulumi_provider_pb.DiffRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.DiffResponse) => void): grpc.ClientUnaryCall;
     public diffConfig(request: pulumi_provider_pb.DiffRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.DiffResponse) => void): grpc.ClientUnaryCall;
     public diffConfig(request: pulumi_provider_pb.DiffRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.DiffResponse) => void): grpc.ClientUnaryCall;
@@ -341,6 +371,8 @@ export class ResourceProviderClient extends grpc.Client implements IResourceProv
     public read(request: pulumi_provider_pb.ReadRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ReadResponse) => void): grpc.ClientUnaryCall;
     public read(request: pulumi_provider_pb.ReadRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ReadResponse) => void): grpc.ClientUnaryCall;
     public read(request: pulumi_provider_pb.ReadRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ReadResponse) => void): grpc.ClientUnaryCall;
+    public list(request: pulumi_provider_pb.ListRequest, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.ListResponse>;
+    public list(request: pulumi_provider_pb.ListRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<pulumi_provider_pb.ListResponse>;
     public update(request: pulumi_provider_pb.UpdateRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.UpdateResponse) => void): grpc.ClientUnaryCall;
     public update(request: pulumi_provider_pb.UpdateRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.UpdateResponse) => void): grpc.ClientUnaryCall;
     public update(request: pulumi_provider_pb.UpdateRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.UpdateResponse) => void): grpc.ClientUnaryCall;

@@ -33,12 +33,8 @@ type FuncWithDictParamResult struct {
 }
 
 func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithDictParamResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (FuncWithDictParamResultOutput, error) {
-			args := v.(FuncWithDictParamArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("mypkg::funcWithDictParam", args, FuncWithDictParamResultOutput{}, options).(FuncWithDictParamResultOutput), nil
-		}).(FuncWithDictParamResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("mypkg::funcWithDictParam", args, FuncWithDictParamResultOutput{}, options).(FuncWithDictParamResultOutput)
 }
 
 type FuncWithDictParamOutputArgs struct {

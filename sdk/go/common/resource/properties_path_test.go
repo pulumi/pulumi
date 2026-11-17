@@ -273,7 +273,6 @@ func TestPropertyPath(t *testing.T) {
 		"foo",
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCases {
 		t.Run(c, func(t *testing.T) {
 			t.Parallel()
@@ -294,13 +293,42 @@ func TestPropertyPath(t *testing.T) {
 		`root.array.[1]`,
 		`root.["key with a ."]`,
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCasesStrict {
 		t.Run(c, func(t *testing.T) {
 			t.Parallel()
 
 			_, err := ParsePropertyPathStrict(c)
 			require.NotNil(t, err)
+		})
+	}
+}
+
+// TestParsePropertyPathStrictAcceptsBareSpecialChars documents that the strict parser is looser than the grammar
+// comment on parsePropertyPath claims: characters outside [a-zA-Z0-9_$] (such as '-', ':', '/', '@', and even
+// non-ASCII letters) are accepted as bare property name characters because the parser only stops at '.' or '['.
+func TestParsePropertyPathStrictAcceptsBareSpecialChars(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input    string
+		expected PropertyPath
+	}{
+		{"foo-bar", PropertyPath{"foo-bar"}},
+		{"root.foo-bar", PropertyPath{"root", "foo-bar"}},
+		{"foo:bar", PropertyPath{"foo:bar"}},
+		{"foo/bar", PropertyPath{"foo/bar"}},
+		{"foo@bar", PropertyPath{"foo@bar"}},
+		{"foo bar", PropertyPath{"foo bar"}},
+		{"naïve", PropertyPath{"naïve"}},
+		{"root.foo-bar[0]", PropertyPath{"root", "foo-bar", 0}},
+	}
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			t.Parallel()
+
+			parsed, err := ParsePropertyPathStrict(c.input)
+			require.NoError(t, err)
+			assert.Equal(t, c.expected, parsed)
 		})
 	}
 }

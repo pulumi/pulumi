@@ -14,7 +14,7 @@ export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, 
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("example::funcWithAllOptionalInputs", {
         "a": args.a ? inputs.helmReleaseSettingsProvideDefaults(args.a) : undefined,
-        "b": args.b,
+        "b": (args.b) ?? "defValue",
     }, opts);
 }
 
@@ -39,8 +39,8 @@ export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputs
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("example::funcWithAllOptionalInputs", {
-        "a": args.a ? pulumi.output(args.a).apply(inputs.helmReleaseSettingsProvideDefaults) : undefined,
-        "b": args.b,
+        "a": pulumi.output(args.a).apply(v => v === undefined ? undefined : inputs.helmReleaseSettingsProvideDefaults(v)),
+        "b": (args.b) ?? "defValue",
     }, opts);
 }
 
@@ -48,9 +48,9 @@ export interface FuncWithAllOptionalInputsOutputArgs {
     /**
      * Property A
      */
-    a?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    a?: pulumi.Input<inputs.HelmReleaseSettingsArgs | undefined>;
     /**
      * Property B
      */
-    b?: pulumi.Input<string>;
+    b?: pulumi.Input<string | undefined>;
 }

@@ -17,22 +17,25 @@ Support for automatic stack components.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from inspect import isawaitable
-from typing import Any, Optional
-from collections.abc import Callable
-from collections.abc import Awaitable
+from typing import TYPE_CHECKING, Any, Optional
+
 from google.protobuf import empty_pb2
 import grpc
 
 
 from . import settings
-from ._instrumentation import wrap_with_context
-from .. import log
+from ._context import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
+from .proto import resource_pb2
+from .. import _types, log
 from ..resource import (
     ComponentResource,
     Resource,
     ResourceTransformation,
     ResourceTransform,
+    export,
 )
 from ..invoke import (
     InvokeTransform,
@@ -43,8 +46,7 @@ from .settings import (
     _get_rpc_manager,
     _load_monitor_feature_support,
     _shutdown_callbacks,
-    _sync_monitor_supports_transforms,
-    _sync_monitor_supports_invoke_transforms,
+    monitor_supports_feature,
     get_monitor,
     get_project,
     get_root_resource,
@@ -54,13 +56,57 @@ from .settings import (
 )
 from .sync_await import _sync_await
 
+if TYPE_CHECKING:
+    from ..output import Inputs
+
+
+_AsyncProgram = Callable[[], Awaitable[Optional["Inputs"]]]
+
+
+def run(program: _AsyncProgram) -> None:
+    """Register an asynchronous entrypoint for the current Pulumi program.
+
+    The entrypoint is invoked and awaited after the program's top-level module
+    code has finished running. Each entry in a mapping returned by the entrypoint
+    is exported as if :func:`pulumi.export` had been called with its key and
+    value. This means returned entries merge with existing exports, overwriting
+    any existing export with the same name. The entrypoint may instead return
+    ``None`` and use :func:`pulumi.export` directly.
+
+    ``pulumi.run`` may only be called once per Pulumi program.
+
+    Example::
+
+        import pulumi
+
+        async def main() -> pulumi.Inputs:
+            value = await some_async_operation()
+            return {"value": value}
+
+        pulumi.run(main)
+
+    :param program: A zero-argument callable that returns an awaitable.
+    """
+    if not callable(program):
+        raise TypeError("pulumi.run expects a callable")
+
+    root = get_root_resource()
+    if not isinstance(root, Stack):
+        from ..errors import RunError
+
+        raise RunError(
+            "pulumi.run may only be called while a Pulumi program is running"
+        )
+
+    root._register_async_program(program)
+
 
 async def _wait_for_shutdown() -> None:
     try:
         monitor = get_monitor()
         if monitor is None:
             return
-        await asyncio.get_event_loop().run_in_executor(
+        await asyncio.get_running_loop().run_in_executor(
             None,
             wrap_with_context(
                 lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
@@ -76,19 +122,23 @@ async def _wait_for_shutdown() -> None:
             log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
 
 
-async def run_pulumi_func(func: Callable[[], None]):
+async def run_pulumi_func(
+    func: Callable[[], Optional[Awaitable[None]]],
+) -> None:
     # Run the function and grab any exception it generates
-    ex = None
+    ex: Optional[BaseException] = None
     try:
-        func()
-    except Exception as e:  # noqa # We re-raise this below
+        result = func()
+        if isawaitable(result):
+            await result
+    except BaseException as e:  # noqa: BLE001 re-raised after runtime cleanup
         ex = e
 
     # Wait for RPCs to complete, then signal and wait for shutdown.
     try:
         await wait_for_rpcs()
         # If func succeeded, let the monitor decide when we should shutdown.
-        if not ex:
+        if ex is None:
             await _wait_for_shutdown()
     finally:
         # Finally, we must always shutdown the callbacks server when we're done.
@@ -96,7 +146,7 @@ async def run_pulumi_func(func: Callable[[], None]):
 
     # By now, all tasks have exited and we're good to go.
     log.debug("run_pulumi_func completed")
-    if ex:
+    if ex is not None:
         # Re-raise ex so the language runtime can report the error.
         raise ex
 
@@ -164,7 +214,7 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
                 if not_done:
                     with SETTINGS.lock:
                         for task in not_done:
-                            SETTINGS.outputs.append(task)
+                            SETTINGS.outputs.add(task)
 
             log.debug("All outstanding outputs completed.")
 
@@ -181,8 +231,24 @@ async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
     is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
 
-    def run() -> None:
-        Stack(func)
+    async def run() -> None:
+        stack = Stack()
+        try:
+            result = func()
+            if isawaitable(result):
+                await result
+
+            program = stack._take_async_program()
+            if program is not None:
+                outputs = program()
+                if not isawaitable(outputs):
+                    raise TypeError(
+                        "The function passed to pulumi.run must return an awaitable"
+                    )
+
+                stack._add_program_outputs(await outputs)
+        finally:
+            stack._finish()
 
     await _load_monitor_feature_support()
     await run_pulumi_func(run)
@@ -195,7 +261,10 @@ class Stack(ComponentResource):
 
     outputs: dict[str, Any]
 
-    def __init__(self, func: Callable[[], Optional[Awaitable[None]]]) -> None:
+    def __init__(
+        self,
+        func: Optional[Callable[[], Optional[Awaitable[None]]]] = None,
+    ) -> None:
         # Ensure we don't already have a stack registered.
         if get_root_resource() is not None:
             raise Exception("Only one root Pulumi Stack may be active at once")
@@ -204,12 +273,22 @@ class Stack(ComponentResource):
         name = f"{get_project()}-{get_stack()}"
         super().__init__("pulumi:pulumi:Stack", name, None, None)
 
-        # Invoke the function while this stack is active and then register its outputs. func might return an awaitable
-        # so we need to await it, ideally we'd do this in a standard way but alas back compatibility means we do
-        # everything in stack constructors, so we have to use sync_await here.
-
         self.outputs = {}
+        self._async_program: Optional[_AsyncProgram] = None
+        self._async_program_registration_closed = False
+        self._outputs_registered = False
         set_root_resource(self)
+
+        # Stack historically invoked the program callback and finalized outputs
+        # in its constructor. Keep Stack(func) working for direct callers of this
+        # importable internal class. run_in_stack now creates Stack() and awaits
+        # user code itself.
+        if func is not None:
+            self._run_legacy_callback(func)
+
+    def _run_legacy_callback(
+        self, func: Callable[[], Optional[Awaitable[None]]]
+    ) -> None:
         try:
             awaitable = func()
             # This _should_ be an awaitable but old pulumi executors returned modules here, so we need to handle that
@@ -217,8 +296,36 @@ class Stack(ComponentResource):
             if isawaitable(awaitable):
                 _sync_await(awaitable)
         finally:
-            self.register_outputs(massage(self.outputs, []))
+            self._finish()
             # Intentionally leave this resource installed in case subsequent async work uses it.
+
+    def _register_async_program(self, program: _AsyncProgram) -> None:
+        from ..errors import RunError
+
+        if self._async_program is not None or self._async_program_registration_closed:
+            raise RunError("pulumi.run may only be called once")
+
+        self._async_program = program
+
+    def _take_async_program(self) -> Optional[_AsyncProgram]:
+        self._async_program_registration_closed = True
+        return self._async_program
+
+    def _add_program_outputs(self, outputs: Optional["Inputs"]) -> None:
+        if outputs is None:
+            return
+        for name, value in outputs.items():
+            export(name, value)
+
+    def _finish(self) -> None:
+        """Register this stack's outputs exactly once."""
+        if self._outputs_registered:
+            return
+
+        self._async_program_registration_closed = True
+        outputs = massage(self.outputs, [])
+        self._outputs_registered = True
+        self.register_outputs(outputs)
 
     def output(self, name: str, value: Any):
         """
@@ -269,6 +376,8 @@ def massage(attr: Any, seen: list[Any]):
 
 
 def massage_complex(attr: Any, seen: list[Any]) -> Any:
+    from .. import Asset, Archive
+
     def is_public_key(key: str) -> bool:
         return not key.startswith("_")
 
@@ -278,6 +387,13 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
             if include(key):
                 plain_object[key] = massage(attr.__dict__[key], seen)
         return plain_object
+
+    # Preserve Asset / Archive instances so subsequent gRPC serialization
+    # tags them with the special signature key; without that, the engine
+    # deserializes them as weakly-typed dicts and assets in stack outputs
+    # lose their identity. See pulumi/pulumi#16384.
+    if isinstance(attr, (Asset, Archive)):
+        return attr
 
     if isinstance(attr, Resource):
         serialized_attr = serialize_all_keys(is_public_key)
@@ -292,13 +408,20 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
             else {**serialized_attr, "@isPulumiResource": True}
         )
 
+    # Output types store their values under Python (snake_case) names; convert them to
+    # dicts keyed by their Pulumi (wire-format) names so stack outputs match the names
+    # other languages serialize.
+    if _types.is_output_type(type(attr)):
+        return {
+            key: massage(value, seen)
+            for key, value in _types.output_type_to_dict(attr).items()
+        }
+
     # first check if the value is an actual dictionary.  If so, massage the values of it to deeply
     # make sure this is a popo.
     if isinstance(attr, dict):
         # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
-        return {
-            key: massage(attr[key], seen) for key in attr if not key.startswith("_")
-        }
+        return {key: massage(attr[key], seen) for key in attr}
 
     if hasattr(attr, "__iter__"):
         return [massage(item, seen) for item in attr]
@@ -341,6 +464,8 @@ def register_stack_transformation(t: ResourceTransformation):
     """
     Add a transformation to all future resources constructed in this Pulumi stack.
     """
+    _ensure_not_in_state_migration("register stack transformation")
+
     root_resource = get_root_resource()
     if root_resource is None:
         raise Exception(
@@ -352,11 +477,20 @@ def register_stack_transformation(t: ResourceTransformation):
         root_resource._transformations = root_resource._transformations + [t]
 
 
+def _wait_for_pending_rpcs() -> None:
+    pending = asyncio.all_tasks()
+    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
+    if rpcs:
+        _sync_await(asyncio.gather(*rpcs))
+
+
 def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
-    if not _sync_monitor_supports_transforms():
+    _ensure_not_in_state_migration("register resource transform")
+
+    if not monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS):
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
         )
@@ -364,9 +498,7 @@ def register_resource_transform(t: ResourceTransform) -> None:
     # We need to make sure all the current resource registrations are finished before
     # registering the transforms.  Do so by waiting for all RPCs to complete, before
     # we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:
@@ -388,7 +520,11 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     Add a transforms to all future invokes called in this Pulumi stack.
     """
 
-    if not _sync_monitor_supports_invoke_transforms():
+    _ensure_not_in_state_migration("register invoke transform")
+
+    if not monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS
+    ):
         raise Exception(
             "The Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI."
         )
@@ -396,9 +532,7 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     # We need to make sure all the current invokes are finished before
     # registering the transforms.  Do so by waiting for all RPCs to
     # complete, before we go ahead and register the transform.
-    pending = asyncio.all_tasks()
-    rpcs = {task for task in pending if task.get_coro().__name__ == "rpc_wrapper"}  # type: ignore
-    _sync_await(asyncio.gather(*rpcs))
+    _wait_for_pending_rpcs()
 
     callbacks = _sync_await(_get_callbacks())
     if callbacks is None:

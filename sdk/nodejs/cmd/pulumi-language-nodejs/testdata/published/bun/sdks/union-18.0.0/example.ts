@@ -20,6 +20,16 @@ export class Example extends pulumi.CustomResource {
         return new Example(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Example resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("union:index:Example", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'union:index:Example';
 
@@ -69,8 +79,8 @@ export class Example extends pulumi.CustomResource {
  * The set of arguments for constructing a Example resource.
  */
 export interface ExampleArgs {
-    mapMapUnionProperty?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string | pulumi.Input<string>[]>}>}>;
-    stringEnumUnionListProperty?: pulumi.Input<pulumi.Input<string | enums.AccessRights>[]>;
-    stringOrIntegerProperty?: pulumi.Input<string | number>;
-    typedEnumProperty?: pulumi.Input<string | enums.BlobType>;
+    mapMapUnionProperty?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string | pulumi.Input<string>[]>}>} | undefined>;
+    stringEnumUnionListProperty?: pulumi.Input<pulumi.Input<string | enums.AccessRights>[] | undefined>;
+    stringOrIntegerProperty?: pulumi.Input<string | number | undefined>;
+    typedEnumProperty?: pulumi.Input<string | enums.BlobType | undefined>;
 }

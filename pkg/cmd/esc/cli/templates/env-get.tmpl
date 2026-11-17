@@ -1,0 +1,12 @@
+{{ if .Value }}# Value
+```json
+{{.Value}}
+```
+{{ end -}}{{ if .Definition }}# Definition
+```yaml
+{{.Definition}}
+```
+{{ end -}}{{ if .Stack }}
+# Defined at
+{{ range .Stack }}- {{ . }}
+{{ end }}{{ end }}

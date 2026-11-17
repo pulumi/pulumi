@@ -46,12 +46,13 @@ service LanguageRuntime {
     }
 
     // `GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-    // by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-    // to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-    // back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-    // determine which plugins are required to service the import of a given resource, since given the presence of
-    // [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-    // with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+    // by a program or plugin. It is used to pre-install packages before running a program with
+    // [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+    // registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+    // resources into a stack, it is used to determine which plugins are required to service the import of a given
+    // resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+    // true that a package name corresponds 1:1 with a plugin name. It replaces
+    // [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
     // providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
     // provide multiple packages.
     rpc GetRequiredPackages(GetRequiredPackagesRequest) returns (GetRequiredPackagesResponse) {}
@@ -123,12 +124,6 @@ service LanguageRuntime {
     // `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
     // user on how to use the linked package in the project.
     rpc Link(LinkRequest) returns (LinkResponse) {}
-
-    // `RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-    // in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-    // containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-    // the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-    rpc RunPlugin2(stream RunPlugin2Request) returns (stream RunPluginResponse) {}
 
     // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
     // Operations aborted in this way will return an error.
@@ -283,10 +278,18 @@ message GetRequiredPackagesRequest {
 message GetRequiredPackagesResponse {
     // The packages required by the program specified by the request.
     repeated PackageDependency packages = 1;
+    // The package specs required by the program specified by the request.
+    //
+    // Only specs not included in packages should be included.
+    repeated PackageSpec specs = 2;
 }
 
 // `RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
 message RunRequest {
+    // NOTE: execution context fields (project/stack/config/dryRun/parallel/organization) remain for
+    // backward compatibility. Newer language runtimes may read monitor execution context via
+    // [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitor_address`.
+
     // The project name.
     string project = 1;
 
@@ -342,6 +345,9 @@ message RunRequest {
 
     // True if and only if the host should start the program under a debugger.
     bool attach_debugger = 16;
+
+    // The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+    string mapper_target = 17;
 }
 
 // `RunResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.Run) call.
@@ -509,28 +515,6 @@ message RunPluginResponse {
     }
 }
 
-// `RunPlugin2Request` is the type of requests streamed by a [](pulumirpc.LanguageRuntime.RunPlugin2) call.
-// The first message must contain a `start` request with the plugin configuration. Subsequent messages may contain
-// a `cancel` request to signal graceful shutdown of the plugin.
-message RunPlugin2Request {
-    oneof request {
-        // The initial request to start the plugin.
-        RunPluginRequest start = 1;
-
-        // A request to cancel the running plugin.
-        RunPluginCancelRequest cancel = 2;
-    }
-}
-
-// `RunPluginCancelRequest` is sent on a [](pulumirpc.LanguageRuntime.RunPlugin2) stream to request shutdown of the
-// running plugin. By default (`force` = false), the plugin receives a graceful shutdown signal (e.g. SIGINT). If
-// `force` is true, the plugin is killed immediately (e.g. SIGKILL).
-message RunPluginCancelRequest {
-    // If true, forcefully kill the plugin process immediately.
-    // If false (default), send a graceful shutdown signal.
-    bool force = 1;
-}
-
 // `GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
 // call.
 message GenerateProgramRequest {
@@ -542,6 +526,9 @@ message GenerateProgramRequest {
 
     // True if [PCL binding](pcl-binding) should be strict.
     bool strict = 3;
+
+    // The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+    string mapper_target = 4;
 }
 
 // `GenerateProgramResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProgram) call.
@@ -577,6 +564,9 @@ message GenerateProjectRequest {
     // used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
     // published `@pulumi/aws` package.
     map<string, string> local_dependencies = 6;
+
+    // The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+    string mapper_target = 7;
 }
 
 // `GenerateProjectResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProject) call.

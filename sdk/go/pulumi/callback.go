@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -71,14 +72,21 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 	defer s.functionsLock.Unlock()
 	s.functions[uuidString] = function
 	return &pulumirpc.Callback{
-		Token:  uuidString,
-		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		Token:             uuidString,
+		Target:            "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		AcceptsByteString: true,
 	}, nil
 }
 
 func (s *callbackServer) Invoke(
 	ctx context.Context, req *pulumirpc.CallbackInvokeRequest,
-) (*pulumirpc.CallbackInvokeResponse, error) {
+) (_ *pulumirpc.CallbackInvokeResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("callback panicked: %v\n%s", r, debug.Stack())
+		}
+	}()
+
 	s.functionsLock.RLock()
 	function, ok := s.functions[req.Token]
 	s.functionsLock.RUnlock()

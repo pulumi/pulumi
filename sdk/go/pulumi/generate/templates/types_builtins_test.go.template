@@ -18,7 +18,6 @@
 package pulumi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -73,7 +72,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 	}
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
@@ -118,7 +117,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 
 		app = out.ApplyT(func(v int) (any, error) {
@@ -129,7 +128,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
@@ -138,8 +137,9 @@ func TestOutputApply(t *testing.T) {
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 
 {{range .Builtins}}
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::{{.Name}}Output", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
 			assert.True(t, ok)
 		})
@@ -296,13 +296,13 @@ func TestTo{{.Name}}Output(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.To{{.Name}}OutputWithContext(context.Background())
+	out = in.To{{.Name}}OutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.To{{.Name}}OutputWithContext(context.Background())
+	out = out.To{{.Name}}OutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -528,3 +528,8 @@ func TestAnyOutputAs{{.Name}}Output(t *testing.T) {
 	assert.EqualValues(t, ev, av)
 }
 {{end}}
+
+// An input type is also an input type of every type it implements.
+{{- range $builtin := .Builtins}}{{range $t := $builtin.Implements}}
+var _ {{$t.Name}}Input = {{$builtin.Name}}Input(nil)
+{{- end}}{{end}}

@@ -23,7 +23,7 @@ class KubeClientSettingsArgsDict(TypedDict):
     """
     Options for tuning the Kubernetes client used by a Provider.
     """
-    timeout: NotRequired[pulumi.Input[_builtins.int]]
+    timeout: NotRequired[pulumi.Input[Optional[_builtins.int]]]
     """
     Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.
     """
@@ -31,7 +31,7 @@ class KubeClientSettingsArgsDict(TypedDict):
 @pulumi.input_type
 class KubeClientSettingsArgs:
     def __init__(__self__, *,
-                 timeout: Optional[pulumi.Input[_builtins.int]] = None):
+                 timeout: pulumi.Input[Optional[_builtins.int]] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
 
@@ -44,14 +44,14 @@ class KubeClientSettingsArgs:
 
     @_builtins.property
     @pulumi.getter
-    def timeout(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def timeout(self) -> pulumi.Input[Optional[_builtins.int]]:
         """
         Maximum time in seconds to wait before cancelling a HTTP request to the Kubernetes server. Default value is 32.
         """
         return pulumi.get(self, "timeout")
 
     @timeout.setter
-    def timeout(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def timeout(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "timeout", value)
 
 

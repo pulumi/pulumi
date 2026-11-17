@@ -206,11 +206,15 @@ class ResourceHookOptions:
     on_dry_run: bool
     """Run the hook during dry run (preview) operations. Defaults to False."""
 
-    def __init__(self, on_dry_run: bool = False):
+    ignore_errors: bool
+    """If True, errors from this hook are logged as warnings instead of failing the program."""
+
+    def __init__(self, on_dry_run: bool = False, ignore_errors: bool = False):
         self.on_dry_run = on_dry_run
+        self.ignore_errors = ignore_errors
 
     def __repr__(self):
-        return f"ResourceHookOptions(on_dry_run={self.on_dry_run})"
+        return f"ResourceHookOptions(on_dry_run={self.on_dry_run}, ignore_errors={self.ignore_errors})"
 
 
 class ResourceHook:
@@ -272,9 +276,10 @@ class ResourceHookBinding:
     Binds :class:`ResourceHook` instances to a resource. The resource hooks will
     be invoked during certain step of the lifecycle of the resource.
 
-    `before_${action}` hooks that raise an exception cause the action to fail.
-    `after_${action}` hooks that raise an exception will log a warning, but do
-    not cause the action or the deployment to fail.
+    By default, an error from a `before_${action}` hook causes the action to fail.
+    An error from an `after_${action}` hook fails the deployment. The resource
+    operation itself has already succeeded, so its result is recorded in state.
+    Set `ignore_errors` on the hook to log a warning instead.
 
     When running `pulumi destroy`, `before_delete` and `after_delete` resource
     hooks require the operation to run with `--run-program`, to ensure that the

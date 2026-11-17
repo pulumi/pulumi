@@ -104,10 +104,13 @@ var expectedFailures = map[string]string{
 	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
-	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
-	"l3-range-ref":                       `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
-	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
+	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
+	"l2-invoke-per-value-deps":           "output aware invokes not yet implemented",
+	"l2-call-per-value-deps":             "output aware calls not yet implemented",
+
+	"l2-component-output-value-input-deps": "SDK does not yet set uses_output_values on RegisterResource",
 }
 
 type languageTestConfig struct {
@@ -120,6 +123,10 @@ type languageTestConfig struct {
 }
 
 func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)
@@ -212,22 +219,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
-						t.Skip("pulumi#21830: Expected to fail")
-					}
-
-					if config.typechecker == "pyright" &&
-						(tt == "l3-component-simple" ||
-							tt == "l3-rewrite-conversions" ||
-							tt == "l3-component-config-primitives" ||
-							tt == "l3-component-config-objects") {
-						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
-					}
-
-					if config.name == "classes" && tt == "l2-snake-names" {
-						t.Skip(`"EntryArgs" is not a known attribute of module "pulumi_snake_names.cool_module"`)
-					}
-
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
@@ -241,8 +232,8 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

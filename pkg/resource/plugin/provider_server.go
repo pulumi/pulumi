@@ -1,0 +1,1350 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package plugin
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+)
+
+type providerServer struct {
+	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
+
+	provider                       Provider
+	acceptSecrets, sendSecrets     bool
+	acceptResources, sendResources bool
+
+	// True if the caller accepts strings containing bytes that are not valid UTF-8. Unlike the other
+	// capabilities this defaults to false: it is only enabled when the caller advertises it via Handshake or
+	// Configure, since older engines cannot decode the encoding.
+	sendByteString bool
+
+	// True if the provider negotiated OutputValues on Invoke via Handshake (both sides opted in).
+	invokeOutputValues bool
+
+	// True if the provider negotiated OutputValues on Call via Handshake (both sides opted in).
+	callOutputValues bool
+
+	// True if the provider negotiated OutputValues on Check via Handshake (both sides opted in).
+	checkOutputValues bool
+}
+
+func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
+	return &providerServer{
+		provider: provider,
+		// Apply defaults unless Handshake overrides
+		acceptSecrets: true, sendSecrets: true,
+		acceptResources: true, sendResources: true,
+	}
+}
+
+func (p *providerServer) unmarshalFilterOptions(keepDependencies bool) FilterOptions {
+	return FilterOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      p.acceptSecrets,
+		KeepResources:    p.acceptResources,
+		KeepDependencies: keepDependencies,
+	}
+}
+
+func (p *providerServer) marshalFilterOptions() FilterOptions {
+	return FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          p.sendSecrets,
+		KeepResources:        p.sendResources,
+		RejectNonUTF8Strings: !p.sendByteString,
+	}
+}
+
+// jsonValueToProperty converts a value produced by [json.Unmarshal] into a [property.Value]. It handles only the
+// concrete types json.Unmarshal yields when decoding into `any` (nil, bool, float64, string, []any, map[string]any)
+// plus plain string, which Configure's legacy variables path falls back to when a value isn't valid JSON.
+func jsonValueToProperty(v any) property.Value {
+	switch v := v.(type) {
+	case nil:
+		return property.New(property.Null)
+	case bool:
+		return property.New(v)
+	case float64:
+		return property.New(v)
+	case string:
+		return property.New(v)
+	case []any:
+		arr := make([]property.Value, len(v))
+		for i, e := range v {
+			arr[i] = jsonValueToProperty(e)
+		}
+		return property.New(arr)
+	case map[string]any:
+		m := make(map[string]property.Value, len(v))
+		for k, e := range v {
+			m[k] = jsonValueToProperty(e)
+		}
+		return property.New(m)
+	default:
+		contract.Failf("unexpected json.Unmarshal value of type %T", v)
+		return property.Value{}
+	}
+}
+
+func (p *providerServer) checkNYI(method string, err error) error {
+	if err == ErrNotYetImplemented {
+		return status.Error(codes.Unimplemented, fmt.Sprintf("%v is not yet implemented", method))
+	}
+	return err
+}
+
+func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, error) {
+	var changes pulumirpc.DiffResponse_DiffChanges
+	switch diff.Changes {
+	case DiffNone:
+		changes = pulumirpc.DiffResponse_DIFF_NONE
+	case DiffSome:
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+	case DiffUnknown:
+		changes = pulumirpc.DiffResponse_DIFF_UNKNOWN
+	}
+
+	// Infer the result from the detailed diff.
+	var diffs, replaces []string
+	var detailedDiff map[string]*pulumirpc.PropertyDiff
+	if len(diff.DetailedDiff) == 0 {
+		diffs = make([]string, len(diff.ChangedKeys))
+		for i, k := range diff.ChangedKeys {
+			diffs[i] = string(k)
+		}
+		replaces = make([]string, len(diff.ReplaceKeys))
+		for i, k := range diff.ReplaceKeys {
+			replaces[i] = string(k)
+		}
+	} else {
+		changes = pulumirpc.DiffResponse_DIFF_SOME
+
+		detailedDiff = make(map[string]*pulumirpc.PropertyDiff)
+		for path, diff := range diff.DetailedDiff {
+			diffs = append(diffs, path)
+
+			var kind pulumirpc.PropertyDiff_Kind
+			switch diff.Kind {
+			case DiffAdd:
+				kind = pulumirpc.PropertyDiff_ADD
+			case DiffAddReplace:
+				kind, replaces = pulumirpc.PropertyDiff_ADD_REPLACE, append(replaces, path)
+			case DiffDelete:
+				kind = pulumirpc.PropertyDiff_DELETE
+			case DiffDeleteReplace:
+				kind, replaces = pulumirpc.PropertyDiff_DELETE, append(replaces, path)
+			case DiffUpdate:
+				kind = pulumirpc.PropertyDiff_UPDATE
+			case DiffUpdateReplace:
+				kind, replaces = pulumirpc.PropertyDiff_UPDATE_REPLACE, append(replaces, path)
+			}
+
+			detailedDiff[path] = &pulumirpc.PropertyDiff{
+				Kind:      kind,
+				InputDiff: diff.InputDiff,
+			}
+		}
+	}
+
+	return &pulumirpc.DiffResponse{
+		Replaces:            replaces,
+		DeleteBeforeReplace: diff.DeleteBeforeReplace,
+		Changes:             changes,
+		Diffs:               diffs,
+		DetailedDiff:        detailedDiff,
+	}, nil
+}
+
+func (p *providerServer) Handshake(
+	ctx context.Context,
+	req *pulumirpc.ProviderHandshakeRequest,
+) (*pulumirpc.ProviderHandshakeResponse, error) {
+	res, err := p.provider.Handshake(ctx, ProviderHandshakeRequest{
+		EngineAddress:               req.EngineAddress,
+		RootDirectory:               req.RootDirectory,
+		ProgramDirectory:            req.ProgramDirectory,
+		ConfigureWithUrn:            req.ConfigureWithUrn,
+		SupportsViews:               req.SupportsViews,
+		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
+		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
+		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	p.acceptSecrets = res.AcceptSecrets
+	p.acceptResources = res.AcceptResources
+	p.sendByteString = req.AcceptsByteString
+	p.invokeOutputValues = req.AcceptsOutputsInInvoke && res.AcceptsOutputsInInvoke
+	p.callOutputValues = req.AcceptsOutputsInCall && res.AcceptsOutputsInCall
+	p.checkOutputValues = req.AcceptsOutputsInCheck && res.AcceptsOutputsInCheck
+
+	return &pulumirpc.ProviderHandshakeResponse{
+		AcceptSecrets:                   res.AcceptSecrets,
+		AcceptResources:                 res.AcceptResources,
+		AcceptOutputs:                   res.AcceptOutputs,
+		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		// providerServer unmarshals byte string into plain Go strings before handing them to the wrapped
+		// provider, so it can shim support regardless of the provider's own answer.
+		AcceptsByteString:      true,
+		AcceptsOutputsInInvoke: res.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:   res.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:  res.AcceptsOutputsInCheck,
+	}, nil
+}
+
+func (p *providerServer) Parameterize(
+	ctx context.Context, req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	var params ParameterizeParameters
+	switch p := req.Parameters.(type) {
+	case *pulumirpc.ParameterizeRequest_Args:
+		params = &ParameterizeArgs{Args: p.Args.GetArgs()}
+	case *pulumirpc.ParameterizeRequest_Value:
+		version, err := semver.Parse(p.Value.GetVersion())
+		if err != nil {
+			return nil, err
+		}
+		params = &ParameterizeValue{
+			Name:    p.Value.GetName(),
+			Version: version,
+			Value:   p.Value.Value,
+		}
+	}
+	resp, err := p.provider.Parameterize(ctx, ParameterizeRequest{Parameters: params})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.ParameterizeResponse{
+		Name:    resp.Name,
+		Version: resp.Version.String(),
+	}, nil
+}
+
+func (p *providerServer) GetSchema(ctx context.Context,
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
+	var subpackageVersion *semver.Version
+	if req.SubpackageVersion != "" {
+		v, err := semver.ParseTolerant(req.SubpackageVersion)
+		if err != nil {
+			return nil, err
+		}
+		subpackageVersion = &v
+	}
+
+	schema, err := p.provider.GetSchema(ctx, GetSchemaRequest{
+		Version:           req.Version,
+		SubpackageName:    req.SubpackageName,
+		SubpackageVersion: subpackageVersion,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetSchemaResponse{Schema: string(schema.Schema)}, nil
+}
+
+func (p *providerServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	info, err := p.provider.GetPluginInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.PluginInfo{Version: info.Version.String()}, nil
+}
+
+func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	// NewProviderServer should take a GrpcProvider instead of Provider, but that's a breaking change
+	// so for now we type test here
+	if grpcProvider, ok := p.provider.(GrpcProvider); ok {
+		err := grpcProvider.Attach(req.GetAddress())
+		if err != nil {
+			return nil, err
+		}
+		return &emptypb.Empty{}, nil
+	}
+	// Else report this is unsupported
+	return nil, status.Error(codes.Unimplemented, "Attach is not yet implemented")
+}
+
+func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	if err := p.provider.SignalCancellation(ctx); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (p *providerServer) CheckConfig(ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	rpcInputs, failures, err := p.checkConfig(ctx,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOlds(), req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
+	for i, f := range failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+func (p *providerServer) CheckConfig2(ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	rpcInputs, failures, err := p.checkConfig(ctx,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOldInputs(), req.GetNewInputs())
+	if err != nil {
+		return nil, err
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
+	for i, f := range failures {
+		rpcFailures[i] = checkConfigFailureToRPC(f)
+	}
+
+	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+// checkConfigFailureToRPC converts a failure to send in a CheckConfig2 response.
+func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigFailure {
+	return &pulumirpc.CheckConfigFailure{
+		Property: string(failure.Property),
+		Reason:   failure.Reason,
+	}
+}
+
+// checkConfig is the part of CheckConfig and CheckConfig2 that does not depend on their wire types.
+func (p *providerServer) checkConfig(
+	ctx context.Context,
+	rawURN, name, typ string,
+	olds, news *structpb.Struct,
+) (*structpb.Struct, []CheckConfigFailure, error) {
+	urn := resource.URN(rawURN)
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if name == "" {
+		name = urn.Name()
+	}
+	if name != urn.Name() {
+		return nil, nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if typ == "" {
+		typ = string(urn.Type())
+	}
+	if typ != string(urn.Type()) {
+		return nil, nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawState, err := propertyrpc.Unmarshal(olds)
+	if err != nil {
+		return nil, nil, err
+	}
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rawInputs, err := propertyrpc.Unmarshal(news)
+	if err != nil {
+		return nil, nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
+		URN:           urn,
+		Name:          name,
+		Type:          tokens.Type(typ),
+		Olds:          state,
+		News:          inputs,
+		AllowUnknowns: true,
+	})
+	if err != nil {
+		return nil, nil, p.checkNYI("CheckConfig", err)
+	}
+
+	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return propertyrpc.Marshal(filteredInputs), resp.Failures, nil
+}
+
+func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	urn := resource.URN(req.GetUrn())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawOldInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	oldInputs, err := FilterProperties(rawOldInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawOldOutputs, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	oldOutputs, err := FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawNewInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	newInputs, err := FilterProperties(rawNewInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	diff, err := p.provider.DiffConfig(ctx, DiffConfigRequest{
+		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
+		OldInputs:     oldInputs,
+		OldOutputs:    oldOutputs,
+		NewInputs:     newInputs,
+		AllowUnknowns: true,
+		IgnoreChanges: req.GetIgnoreChanges(),
+	})
+	if err != nil {
+		return nil, p.checkNYI("DiffConfig", err)
+	}
+	return p.marshalDiff(diff)
+}
+
+func (p *providerServer) Configure(ctx context.Context,
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
+	var inputs property.Map
+	if req.GetArgs() != nil {
+		rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
+		if err != nil {
+			return nil, err
+		}
+		args, err := FilterProperties(rawArgs, p.unmarshalFilterOptions(false /* keepDependencies */))
+		if err != nil {
+			return nil, err
+		}
+		inputs = args
+	} else {
+		legacy := map[string]property.Value{}
+		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
+			key, err := config.ParseKey(k)
+			if err != nil {
+				return nil, err
+			}
+
+			var value any
+			if err = json.Unmarshal([]byte(v), &value); err != nil {
+				// If we couldn't unmarshal a JSON value, just pass the raw string through.
+				value = v
+			}
+
+			legacy[key.Name()] = jsonValueToProperty(value)
+		}
+		inputs = property.NewMap(legacy)
+	}
+
+	var urn *resource.URN
+	if req.Urn != nil {
+		urnVal := resource.URN(*req.Urn)
+		urn = &urnVal
+	}
+	var id *resource.ID
+	if req.Id != nil {
+		idVal := resource.ID(*req.Id)
+		id = &idVal
+	}
+	var typ *tokens.Type
+	if req.Type != nil {
+		typVal := tokens.Type(*req.Type)
+		typ = &typVal
+	}
+
+	_, err := p.provider.Configure(ctx, ConfigureRequest{
+		URN:    urn,
+		Name:   req.Name,
+		Type:   typ,
+		ID:     id,
+		Inputs: inputs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	p.sendSecrets = req.GetAcceptSecrets()
+	p.sendResources = req.GetAcceptResources()
+	return &pulumirpc.ConfigureResponse{
+		AcceptSecrets:   p.acceptSecrets,
+		AcceptResources: p.acceptResources,
+		// providerServer can shim support for all these features, so we always set them to true. Note that we do the same
+		// in Handshake (though Handshake implies SupportsPreview, so we don't shim that there).
+		SupportsPreview: true,
+		AcceptOutputs:   true,
+	}, nil
+}
+
+func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	urn := resource.URN(req.GetUrn())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawState, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	var oldOutputs property.Map
+	if req.OldOutputs != nil {
+		rawOldOutputs, err := propertyrpc.Unmarshal(req.OldOutputs)
+		if err != nil {
+			return nil, err
+		}
+		oldOutputs, err = FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var autonaming *AutonamingOptions
+	if req.Autonaming != nil {
+		autonaming = &AutonamingOptions{
+			ProposedName: req.Autonaming.ProposedName,
+			Mode:         AutonamingMode(req.Autonaming.Mode),
+		}
+	}
+
+	resp, err := p.provider.Check(ctx, CheckRequest{
+		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
+		OldInputs:     state,
+		NewInputs:     inputs,
+		OldOutputs:    oldOutputs,
+		AllowUnknowns: true,
+		RandomSeed:    req.RandomSeed,
+		Autonaming:    autonaming,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
+	if err != nil {
+		return nil, err
+	}
+	rpcInputs := propertyrpc.Marshal(filteredInputs)
+
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
+	for i, f := range resp.Failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawOldInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	oldInputs, err := FilterProperties(rawOldInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawOldOutputs, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	oldOutputs, err := FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawNewInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	newInputs, err := FilterProperties(rawNewInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	diff, err := p.provider.Diff(ctx, DiffRequest{
+		URN:           urn,
+		Name:          req.Name,
+		Type:          tokens.Type(req.Type),
+		ID:            id,
+		OldInputs:     oldInputs,
+		OldOutputs:    oldOutputs,
+		NewInputs:     newInputs,
+		AllowUnknowns: true,
+		IgnoreChanges: req.GetIgnoreChanges(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return p.marshalDiff(diff)
+}
+
+func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+	urn := resource.URN(req.GetUrn())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawInputs, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Create(ctx, CreateRequest{
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		Properties:            inputs,
+		Timeout:               req.GetTimeout(),
+		Preview:               req.GetPreview(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	filteredState, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
+	if err != nil {
+		return nil, err
+	}
+	rpcState := propertyrpc.Marshal(filteredState)
+
+	return &pulumirpc.CreateResponse{
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
+}
+
+func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawState, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawInputs, err := propertyrpc.Unmarshal(req.GetInputs())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Read(ctx, ReadRequest{
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		ID:                    requestID,
+		Inputs:                inputs,
+		State:                 state,
+		Timeout:               req.GetTimeout(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+		OldViews:              oldViews,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// A nil Outputs or Inputs on the response signals "resource not found" to the engine;
+	// preserve that by sending nil on the wire rather than a non-nil empty Struct.
+	var rpcState, rpcInputs *structpb.Struct
+	if resp.Outputs != nil {
+		filteredState, err := FilterProperties(*resp.Outputs, p.marshalFilterOptions())
+		if err != nil {
+			return nil, err
+		}
+		rpcState = propertyrpc.Marshal(filteredState)
+	}
+	if resp.Inputs != nil {
+		filteredInputs, err := FilterProperties(*resp.Inputs, p.marshalFilterOptions())
+		if err != nil {
+			return nil, err
+		}
+		rpcInputs = propertyrpc.Marshal(filteredInputs)
+	}
+
+	return &pulumirpc.ReadResponse{
+		Id:                  string(resp.ID),
+		Properties:          rpcState,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
+}
+
+func (p *providerServer) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	rawQuery, err := propertyrpc.Unmarshal(req.GetQuery())
+	if err != nil {
+		return err
+	}
+	query, err := FilterProperties(rawQuery, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return err
+	}
+	listStream, err := p.provider.List(stream.Context(), ListRequest{
+		Token:             tokens.Type(req.GetToken()),
+		Query:             query,
+		Limit:             req.GetLimit(),
+		PageSize:          req.GetPageSize(),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return err
+	}
+	for result, err := range listStream.Items {
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{
+					Id:   string(result.ID),
+					Name: result.Name,
+				},
+			},
+		}); err != nil {
+			return err
+		}
+	}
+	if listStream.Computed {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Computed_{
+				Computed: &pulumirpc.ListResponse_Computed{},
+			},
+		})
+	}
+	if listStream.ContinuationToken != "" {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Continuation_{
+				Continuation: &pulumirpc.ListResponse_Continuation{
+					ContinuationToken: listStream.ContinuationToken,
+				},
+			},
+		})
+	}
+	return nil
+}
+
+func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawOldOutputs, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	oldOutputs, err := FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawOldInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	oldInputs, err := FilterProperties(rawOldInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawNewInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	newInputs, err := FilterProperties(rawNewInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Update(ctx, UpdateRequest{
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		ID:                    id,
+		OldInputs:             oldInputs,
+		OldOutputs:            oldOutputs,
+		NewInputs:             newInputs,
+		Timeout:               req.GetTimeout(),
+		IgnoreChanges:         req.GetIgnoreChanges(),
+		Preview:               req.GetPreview(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+		OldViews:              oldViews,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	filteredState, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
+	if err != nil {
+		return nil, err
+	}
+	rpcState := propertyrpc.Marshal(filteredState)
+
+	return &pulumirpc.UpdateResponse{
+		Properties:          rpcState,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
+}
+
+func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
+	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	rawOutputs, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	outputs, err := FilterProperties(rawOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = p.provider.Delete(ctx, DeleteRequest{
+		URN:                   urn,
+		Name:                  req.Name,
+		Type:                  tokens.Type(req.Type),
+		ID:                    id,
+		Inputs:                inputs,
+		Outputs:               outputs,
+		Timeout:               req.GetTimeout(),
+		ResourceStatusAddress: req.GetResourceStatusAddress(),
+		ResourceStatusToken:   req.GetResourceStatusToken(),
+		OldViews:              oldViews,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (p *providerServer) Construct(ctx context.Context,
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
+	typ, name, parent := tokens.Type(req.GetType()), req.GetName(), resource.URN(req.GetParent())
+
+	rawInputs, err := propertyrpc.Unmarshal(req.GetInputs())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(true /* keepDependencies */))
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := map[config.Key]string{}
+	for k, v := range req.GetConfig() {
+		configKey, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfg[configKey] = v
+	}
+
+	cfgSecretKeys := []config.Key{}
+	for _, k := range req.GetConfigSecretKeys() {
+		key, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfgSecretKeys = append(cfgSecretKeys, key)
+	}
+
+	info := ConstructInfo{
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
+		Config:           cfg,
+		ConfigSecretKeys: cfgSecretKeys,
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
+	}
+
+	aliases := make([]resource.Alias, len(req.GetAliases()))
+	for i, alias := range req.GetAliases() {
+		var result resource.Alias
+		switch a := alias.Alias.(type) {
+		case *pulumirpc.Alias_Spec_:
+			result = resource.Alias{
+				Name:    a.Spec.Name,
+				Type:    a.Spec.Type,
+				Project: a.Spec.Project,
+				Stack:   a.Spec.Stack,
+			}
+			switch p := a.Spec.Parent.(type) {
+			case *pulumirpc.Alias_Spec_ParentUrn:
+				result.Parent = resource.URN(p.ParentUrn)
+			case *pulumirpc.Alias_Spec_NoParent:
+				result.NoParent = p.NoParent
+			}
+		case *pulumirpc.Alias_Urn:
+			result = resource.Alias{URN: resource.URN(a.Urn)}
+		}
+		aliases[i] = result
+	}
+	dependencies := slice.Cast[resource.URN](req.GetDependencies())
+	propertyDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetInputDependencies() {
+		urns := slice.Cast[resource.URN](deps.Urns)
+		propertyDependencies[resource.PropertyKey(name)] = urns
+	}
+
+	var hooks map[resource.HookType][]string
+	binding := req.GetResourceHooks()
+	if binding != nil {
+		hooks = make(map[resource.HookType][]string)
+		hooks[resource.BeforeCreate] = binding.GetBeforeCreate()
+		hooks[resource.AfterCreate] = binding.GetAfterCreate()
+		hooks[resource.BeforeUpdate] = binding.GetBeforeUpdate()
+		hooks[resource.AfterUpdate] = binding.GetAfterUpdate()
+		hooks[resource.BeforeDelete] = binding.GetBeforeDelete()
+		hooks[resource.AfterDelete] = binding.GetAfterDelete()
+		hooks[resource.OnError] = binding.GetOnError()
+	}
+
+	replaceWith := slice.Cast[resource.URN](req.GetReplaceWith())
+
+	var replacementTrigger property.Value
+	if trigger := req.GetReplacementTrigger(); trigger != nil {
+		rawRT, err := propertyrpc.UnmarshalValue(trigger)
+		if err != nil {
+			return nil, err
+		}
+		filteredRT, keep, err := FilterPropertyValue(rawRT, p.unmarshalFilterOptions(true /* keepDependencies */))
+		if err != nil {
+			return nil, err
+		}
+		if keep {
+			replacementTrigger = filteredRT
+		}
+	}
+
+	options := ConstructOptions{
+		Aliases:              aliases,
+		Dependencies:         dependencies,
+		Protect:              req.Protect,
+		Providers:            req.GetProviders(),
+		PropertyDependencies: propertyDependencies,
+		ResourceHooks:        hooks,
+		DeletedWith:          resource.URN(req.DeletedWith),
+		ReplaceWith:          replaceWith,
+		ReplacementTrigger:   replacementTrigger,
+		IgnoreChanges:        req.GetIgnoreChanges(),
+		ReplaceOnChanges:     req.GetReplaceOnChanges(),
+	}
+
+	resp, err := p.provider.Construct(ctx, ConstructRequest{
+		Info:    info,
+		Type:    typ,
+		Name:    name,
+		Parent:  parent,
+		Inputs:  inputs,
+		Options: options,
+	})
+	if err != nil {
+		return nil, rpcerror.WrapDetailedError(err)
+	}
+
+	outOpts := p.marshalFilterOptions()
+	outOpts.KeepDependencies = req.AcceptsOutputValues
+	filteredOutputs, err := FilterProperties(resp.Outputs, outOpts)
+	if err != nil {
+		return nil, err
+	}
+	outputs := propertyrpc.Marshal(filteredOutputs)
+
+	outputDependencies := map[string]*pulumirpc.ConstructResponse_PropertyDependencies{}
+	for name, deps := range resp.OutputDependencies {
+		urns := slice.Cast[string](deps)
+		outputDependencies[string(name)] = &pulumirpc.ConstructResponse_PropertyDependencies{Urns: urns}
+	}
+
+	return &pulumirpc.ConstructResponse{
+		Urn:               string(resp.URN),
+		State:             outputs,
+		StateDependencies: outputDependencies,
+	}, nil
+}
+
+func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
+	if err != nil {
+		return nil, err
+	}
+	args, err := FilterProperties(rawArgs, p.unmarshalFilterOptions(p.invokeOutputValues))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Invoke(ctx, InvokeRequest{
+		Tok:     tokens.ModuleMember(req.GetTok()),
+		Args:    args,
+		Preview: req.GetPreview(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resultOpts := p.marshalFilterOptions()
+	resultOpts.KeepDependencies = p.invokeOutputValues
+	filteredResult, err := FilterProperties(resp.Properties, resultOpts)
+	if err != nil {
+		return nil, err
+	}
+	rpcResult := propertyrpc.Marshal(filteredResult)
+
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
+	for i, f := range resp.Failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
+	return &pulumirpc.InvokeResponse{
+		Return:   rpcResult,
+		Failures: rpcFailures,
+	}, nil
+}
+
+func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
+	if err != nil {
+		return nil, err
+	}
+	args, err := FilterProperties(rawArgs, p.unmarshalFilterOptions(p.callOutputValues))
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := map[config.Key]string{}
+	for k, v := range req.GetConfig() {
+		configKey, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfg[configKey] = v
+	}
+	info := CallInfo{
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           cfg,
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
+	}
+	argDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetArgDependencies() {
+		urns := slice.Cast[resource.URN](deps.Urns)
+		argDependencies[resource.PropertyKey(name)] = urns
+	}
+	options := CallOptions{
+		ArgDependencies: argDependencies,
+	}
+
+	result, err := p.provider.Call(ctx, CallRequest{
+		Tok:     tokens.ModuleMember(req.GetTok()),
+		Args:    args,
+		Info:    info,
+		Options: options,
+	})
+	if err != nil {
+		err = rpcerror.WrapDetailedError(err)
+		return nil, err
+	}
+
+	retOpts := p.marshalFilterOptions()
+	retOpts.KeepDependencies = req.AcceptsOutputValues && p.callOutputValues
+	filteredReturn, err := FilterProperties(result.Return, retOpts)
+	if err != nil {
+		return nil, err
+	}
+	rpcResult := propertyrpc.Marshal(filteredReturn)
+
+	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
+	for name, deps := range result.ReturnDependencies {
+		urns := slice.Cast[string](deps)
+		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(result.Failures))
+	for i, f := range result.Failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
+	return &pulumirpc.CallResponse{
+		Return:             rpcResult,
+		ReturnDependencies: returnDependencies,
+		Failures:           rpcFailures,
+	}, nil
+}
+
+func (p *providerServer) GetMapping(ctx context.Context,
+	req *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
+	resp, err := p.provider.GetMapping(ctx, GetMappingRequest{
+		Key:      req.Key,
+		Provider: req.Provider,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetMappingResponse{Data: resp.Data, Provider: resp.Provider}, nil
+}
+
+func (p *providerServer) GetMappings(ctx context.Context,
+	req *pulumirpc.GetMappingsRequest,
+) (*pulumirpc.GetMappingsResponse, error) {
+	providers, err := p.provider.GetMappings(ctx, GetMappingsRequest{
+		Key: req.Key,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetMappingsResponse{Providers: providers.Keys}, nil
+}
+
+// unmarshalViews is a helper that unmarshals a slice of views from gRPC into a slice of View structs.
+func unmarshalViews(views []*pulumirpc.View, opts FilterOptions) ([]View, error) {
+	return slice.MapError(views, func(v *pulumirpc.View) (View, error) {
+		return unmarshalView(v, opts)
+	})
+}
+
+// unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
+func unmarshalView(v *pulumirpc.View, opts FilterOptions) (View, error) {
+	var inputs property.Map
+	if v.Inputs != nil {
+		raw, err := propertyrpc.Unmarshal(v.Inputs)
+		if err != nil {
+			return View{}, err
+		}
+		inputs, err = FilterProperties(raw, opts)
+		if err != nil {
+			return View{}, err
+		}
+	}
+
+	var outputs property.Map
+	if v.Outputs != nil {
+		raw, err := propertyrpc.Unmarshal(v.Outputs)
+		if err != nil {
+			return View{}, err
+		}
+		outputs, err = FilterProperties(raw, opts)
+		if err != nil {
+			return View{}, err
+		}
+	}
+
+	return View{
+		Type:       tokens.Type(v.Type),
+		Name:       v.Name,
+		ParentType: tokens.Type(v.ParentType),
+		ParentName: v.ParentName,
+		Inputs:     inputs,
+		Outputs:    outputs,
+	}, nil
+}

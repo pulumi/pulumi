@@ -16,7 +16,6 @@ package diy
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,13 +30,14 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/fileblob"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -48,9 +48,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -190,6 +189,12 @@ func TestMassageBlobPath(t *testing.T) {
 		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected+noTmpDirSuffix)
 	})
 
+	t.Run("DriveLetterURI", func(t *testing.T) {
+		t.Parallel()
+
+		testMassagePath(t, FilePathPrefix+"/C:/Users/steve", FilePathPrefix+"/C:/Users/steve"+noTmpDirSuffix)
+	})
+
 	t.Run("AlreadySuffixedWithNoTmpDir", func(t *testing.T) {
 		t.Parallel()
 
@@ -210,26 +215,12 @@ func TestMassageBlobPath(t *testing.T) {
 	})
 }
 
-func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
-	t.Parallel()
-
-	target := &deploy.Target{
-		Name:      tokens.MustParseStackName("test"),
-		Config:    config.Map{},
-		Decrypter: config.NopDecrypter,
-		Snapshot:  nil,
-	}
-	query := operations.LogQuery{}
-	res, err := GetLogsForTarget(target, query)
-	require.NoError(t, err)
-	assert.Nil(t, res)
-}
-
-func makeUntypedDeployment(name string, phrase, state string) (*apitype.UntypedDeployment, error) {
-	return makeUntypedDeploymentTimestamp(name, phrase, state, nil, nil)
+func makeUntypedDeployment(t *testing.T, name string, phrase, state string) (*apitype.UntypedDeployment, error) {
+	return makeUntypedDeploymentTimestamp(t, name, phrase, state, nil, nil)
 }
 
 func makeUntypedDeploymentTimestamp(
+	t *testing.T,
 	name string,
 	phrase, state string,
 	created, modified *time.Time,
@@ -239,7 +230,7 @@ func makeUntypedDeploymentTimestamp(
 		return nil, err
 	}
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
 			Type: "a:b:c",
@@ -251,10 +242,9 @@ func makeUntypedDeploymentTimestamp(
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
-	ctx := context.Background()
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 
-	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
+	udep, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil /*opts*/)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +270,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 		_, err := b.RemoveStack(ctx, aStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
-	deployment, err := makeUntypedDeployment("a", "abc123",
+	deployment, err := makeUntypedDeployment(t, "a", "abc123",
 		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	require.NoError(t, err)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
@@ -298,7 +288,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 		_, err := b.RemoveStack(ctx, bStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
-	deployment, err = makeUntypedDeployment("b", "123abc",
+	deployment, err = makeUntypedDeployment(t, "b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
 	require.NoError(t, err)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
@@ -306,8 +296,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	require.NoError(t, err)
 
 	// Remove the config passphrase so that we can no longer deserialize the checkpoints
-	err = os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-	require.NoError(t, err)
+	ptesting.Unsetenv(t, "PULUMI_CONFIG_PASSPHRASE")
 
 	// Ensure that we can list the stacks we created even without a passphrase
 	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
@@ -391,7 +380,7 @@ func TestCancel(t *testing.T) {
 	err = otherBackend.Lock(ctx, aStackRef)
 	require.NoError(t, err)
 	err = lb.checkForLock(ctx, aStackRef)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	// Now call CancelCurrentUpdate and check that checkForLocks no longer errors
 	err = lb.CancelCurrentUpdate(ctx, aStackRef)
 	require.NoError(t, err)
@@ -612,7 +601,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, stk)
 
-	rBase := &resource.State{
+	rBase := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -620,7 +609,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		},
 	}
 
-	rDependency := &resource.State{
+	rDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -629,7 +618,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		Dependencies: []resource.URN{rBase.URN},
 	}
 
-	rPropertyDependency := &resource.State{
+	rPropertyDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -640,7 +629,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		},
 	}
 
-	rDeletedWith := &resource.State{
+	rDeletedWith := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -649,7 +638,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		DeletedWith: rBase.URN,
 	}
 
-	rParent := &resource.State{
+	rParent := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
 		Type: "a:b:c",
 		Inputs: resource.PropertyMap{
@@ -658,7 +647,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		Parent: rBase.URN,
 	}
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		rBase,
 		rDependency,
 		rPropertyDependency,
@@ -666,7 +655,7 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 		rParent,
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 	ctx = t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
@@ -755,7 +744,7 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
 	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), fakeDir, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, b)
 }
 
@@ -769,7 +758,7 @@ func TestParseEmptyStackFails(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = b.ParseStackReference("")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/10439
@@ -777,7 +766,7 @@ func TestHtmlEscaping(t *testing.T) {
 	t.Parallel()
 
 	sm := b64.NewBase64SecretsManager()
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
@@ -787,7 +776,7 @@ func TestHtmlEscaping(t *testing.T) {
 		},
 	}
 
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
@@ -846,43 +835,12 @@ func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 	require.NoError(t, err)
 	_, err = diy.CreateStack(ctx, fakeStackRef, "", nil, illegalOptions)
 	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
-}
 
-func TestLegacyFolderStructure(t *testing.T) {
-	t.Parallel()
-
-	// Make a dummy stack file in the legacy location
-	tmpDir := t.TempDir()
-	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
+	_, err = diy.CreateStack(ctx, fakeStackRef, "", nil, &backend.CreateStackOptions{ManagedEnvironment: true})
+	assert.ErrorIs(t, err, backend.ErrManagedEnvironmentNotSupported)
+	s, err := diy.GetStack(ctx, fakeStackRef)
 	require.NoError(t, err)
-	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte("{}"), 0o600)
-	require.NoError(t, err)
-
-	// Login to a temp dir diy backend
-	ctx := t.Context()
-	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	require.NoError(t, err)
-	// Check the backend says it's NOT in project mode
-	lb, ok := b.(*diyBackend)
-	assert.True(t, ok)
-	require.NotNil(t, lb)
-	assert.IsType(t, &legacyReferenceStore{}, lb.store)
-
-	// Check that list stack shows that stack
-	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
-	require.NoError(t, err)
-	assert.Nil(t, token)
-	require.Len(t, stacks, 1)
-	assert.Equal(t, "a", stacks[0].Name().String())
-
-	// Create a new non-project stack
-	bRef, err := b.ParseStackReference("b")
-	require.NoError(t, err)
-	assert.Equal(t, "b", bRef.String())
-	bStack, err := b.CreateStack(ctx, bRef, "", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "b", bStack.Ref().String())
-	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "b.json"))
+	assert.Nil(t, s)
 }
 
 func TestListStacksFilter(t *testing.T) {
@@ -914,27 +872,6 @@ func TestListStacksFilter(t *testing.T) {
 	assert.Nil(t, token)
 	require.Len(t, stacks, 1)
 	assert.Equal(t, "organization/proj1/a", stacks[0].Name().String())
-}
-
-func TestOptIntoLegacyFolderStructure(t *testing.T) {
-	t.Parallel()
-
-	tmpDir := t.TempDir()
-	ctx := t.Context()
-	s := make(env.MapStore)
-	s[env.DIYBackendLegacyLayout.Var().Name()] = "true"
-	b, err := newDIYBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
-		&diyBackendOptions{Env: env.NewEnv(s)},
-	)
-	require.NoError(t, err)
-
-	// Verify that a new stack is created in the legacy location.
-	foo, err := b.ParseStackReference("foo")
-	require.NoError(t, err)
-
-	_, err = b.CreateStack(ctx, foo, "", nil, nil)
-	require.NoError(t, err)
-	assert.FileExists(t, filepath.Join(tmpDir, ".pulumi", "stacks", "foo.json"))
 }
 
 // Verifies that the StackReference.String method
@@ -981,7 +918,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 
 	projects := make([]*workspace.Project, N)
 	refs := make([]backend.StackReference, N)
-	for i := 0; i < N; i++ {
+	for i := range N {
 		name := fmt.Sprintf("proj%d", i)
 		projects[i] = &workspace.Project{Name: tokens.PackageName(name)}
 		refs[i], err = b.ParseStackReference(fmt.Sprintf("organization/%v/foo", name))
@@ -997,23 +934,19 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 	var wg sync.WaitGroup
 	ready := make(chan struct{}) // both goroutines wait on this
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-ready
-		for i := 0; i < N; i++ {
+		for i := range N {
 			_ = refs[i].String()
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-ready
-		for i := 0; i < N; i++ {
+		for i := range N {
 			b.SetCurrentProject(projects[i])
 		}
-	}()
+	})
 
 	close(ready) // start racing
 	wg.Wait()
@@ -1104,7 +1037,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "organization/not-my-project/b", bRef.String())
 	bStack, err := b.CreateStack(ctx, bRef, "", nil, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, bStack)
 
 	// Create a new project stack with the right project name
@@ -1191,284 +1124,6 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	}
 }
 
-func TestLegacyUpgrade(t *testing.T) {
-	t.Parallel()
-
-	// Make a dummy stack file in the legacy location
-	tmpDir := t.TempDir()
-	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
-	require.NoError(t, err)
-	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte(`{
-		"latest": {
-			"resources": [
-				{
-					"type": "package:module:resource",
-					"urn": "urn:pulumi:stack::project::package:module:resource::name"
-				}
-			]
-		}
-	}`), 0o600)
-	require.NoError(t, err)
-
-	var output bytes.Buffer
-	sink := diag.DefaultSink(&output, &output, diag.FormatOptions{Color: colors.Never})
-
-	// Login to a temp dir diy backend
-	ctx := t.Context()
-	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
-	require.NoError(t, err)
-	// Check the backend says it's NOT in project mode
-	lb, ok := b.(*diyBackend)
-	assert.True(t, ok)
-	require.NotNil(t, lb)
-	assert.IsType(t, &legacyReferenceStore{}, lb.store)
-
-	err = lb.Upgrade(ctx, nil /* opts */)
-	require.NoError(t, err)
-	assert.IsType(t, &projectReferenceStore{}, lb.store)
-
-	assert.Contains(t, output.String(), "Upgraded 1 stack(s) to project mode")
-
-	// Check that a has been moved
-	aStackRef, err := lb.parseStackReference("organization/project/a")
-	require.NoError(t, err)
-	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
-	require.NoError(t, err)
-	assert.True(t, stackFileExists)
-
-	// Write b.json and upgrade again
-	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "b.json"), []byte(`{
-		"latest": {
-			"resources": [
-				{
-					"type": "package:module:resource",
-					"urn": "urn:pulumi:stack::other-project::package:module:resource::name"
-				}
-			]
-		}
-	}`), 0o600)
-	require.NoError(t, err)
-
-	err = lb.Upgrade(ctx, nil /* opts */)
-	require.NoError(t, err)
-
-	// Check that b has been moved
-	bStackRef, err := lb.parseStackReference("organization/other-project/b")
-	require.NoError(t, err)
-	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, bStackRef))
-	require.NoError(t, err)
-	assert.True(t, stackFileExists)
-}
-
-func TestLegacyUpgrade_partial(t *testing.T) {
-	t.Parallel()
-
-	// Verifies that we can upgrade a subset of stacks.
-
-	stateDir := t.TempDir()
-	bucket, err := fileblob.OpenBucket(stateDir, nil)
-	require.NoError(t, err)
-
-	ctx := t.Context()
-	require.NoError(t,
-		bucket.WriteAll(ctx, ".pulumi/stacks/foo.json", []byte(`{
-		"latest": {
-			"resources": [
-				{
-					"type": "package:module:resource",
-					"urn": "urn:pulumi:stack::project::package:module:resource::name"
-				}
-			]
-		}
-	}`), nil))
-	require.NoError(t,
-		// no resources, can't guess project name
-		bucket.WriteAll(ctx, ".pulumi/stacks/bar.json",
-			[]byte(`{"latest": {"resources": []}}`), nil))
-
-	var buff bytes.Buffer
-	sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
-	require.NoError(t, err)
-
-	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
-	assert.Contains(t, buff.String(), `Skipping stack "bar": no project name found`)
-
-	exists, err := bucket.Exists(ctx, ".pulumi/stacks/project/foo.json")
-	require.NoError(t, err)
-	assert.True(t, exists, "foo was not migrated")
-
-	ref, err := b.ParseStackReference("organization/project/foo")
-	require.NoError(t, err)
-	assert.Equal(t, tokens.QName("organization/project/foo"), ref.FullyQualifiedName())
-}
-
-// When a stack project could not be determined,
-// we should fill it in with ProjectsForDetachedStacks.
-func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
-	t.Parallel()
-
-	stateDir := t.TempDir()
-	bucket, err := fileblob.OpenBucket(stateDir, nil)
-	require.NoError(t, err)
-
-	// Write a few empty stacks.
-	// These stacks have no resources, so we can't guess the project name.
-	ctx := t.Context()
-	for _, stack := range []string{"foo", "bar", "baz"} {
-		statePath := path.Join(".pulumi", "stacks", stack+".json")
-		require.NoError(t,
-			bucket.WriteAll(ctx, statePath,
-				[]byte(`{"latest": {"resources": []}}`), nil),
-			"write stack %s", stack)
-	}
-
-	var stderr bytes.Buffer
-	sink := diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
-	require.NoError(t, err)
-
-	// For the first two stacks, we'll return project names to upgrade them.
-	// For the third stack, we will not set a project name, and it should be skipped.
-	err = b.Upgrade(ctx, &UpgradeOptions{
-		ProjectsForDetachedStacks: func(stacks []tokens.StackName) (projects []tokens.Name, err error) {
-			assert.ElementsMatch(t, []tokens.StackName{
-				tokens.MustParseStackName("foo"),
-				tokens.MustParseStackName("bar"),
-				tokens.MustParseStackName("baz"),
-			}, stacks)
-
-			projects = make([]tokens.Name, len(stacks))
-			for idx, stack := range stacks {
-				switch stack.String() {
-				case "foo":
-					projects[idx] = "proj1"
-				case "bar":
-					projects[idx] = "proj2"
-				case "baz":
-					// Leave baz detached.
-				}
-			}
-			return projects, nil
-		},
-	})
-	require.NoError(t, err)
-
-	for _, stack := range []string{"foo", "bar"} {
-		assert.NotContains(t, stderr.String(), fmt.Sprintf("Skipping stack %q", stack))
-	}
-	assert.Contains(t, stderr.String(), fmt.Sprintf("Skipping stack %q", "baz"))
-
-	wantFiles := []string{
-		".pulumi/stacks/proj1/foo.json",
-		".pulumi/stacks/proj2/bar.json",
-		".pulumi/stacks/baz.json",
-	}
-	for _, file := range wantFiles {
-		exists, err := bucket.Exists(ctx, file)
-		require.NoError(t, err, "exists(%q)", file)
-		assert.True(t, exists, "file %q must exist", file)
-	}
-}
-
-// When a stack project could not be determined
-// and ProjectsForDetachedStacks returns an error,
-// the upgrade should fail.
-func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
-	t.Parallel()
-
-	stateDir := t.TempDir()
-	bucket, err := fileblob.OpenBucket(stateDir, nil)
-	require.NoError(t, err)
-
-	ctx := t.Context()
-
-	// We have one stack with a guessable project name, and one without.
-	// If ProjectsForDetachedStacks returns an error, the upgrade should
-	// fail for both because the user likely cancelled the upgrade.
-	require.NoError(t,
-		bucket.WriteAll(ctx, ".pulumi/stacks/foo.json", []byte(`{
-		"latest": {
-			"resources": [
-				{
-					"type": "package:module:resource",
-					"urn": "urn:pulumi:stack::project::package:module:resource::name"
-				}
-			]
-		}
-	}`), nil))
-	require.NoError(t,
-		bucket.WriteAll(ctx, ".pulumi/stacks/bar.json",
-			[]byte(`{"latest": {"resources": []}}`), nil))
-
-	sink := diag.DefaultSink(io.Discard, iotest.LogWriter(t), diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
-	require.NoError(t, err)
-
-	giveErr := errors.New("canceled operation")
-	err = b.Upgrade(ctx, &UpgradeOptions{
-		ProjectsForDetachedStacks: func(stacks []tokens.StackName) (projects []tokens.Name, err error) {
-			assert.Equal(t, []tokens.StackName{
-				tokens.MustParseStackName("bar"),
-			}, stacks)
-			return nil, giveErr
-		},
-	})
-	require.Error(t, err)
-	assert.ErrorIs(t, err, giveErr)
-
-	wantFiles := []string{
-		".pulumi/stacks/foo.json",
-		".pulumi/stacks/bar.json",
-	}
-	for _, file := range wantFiles {
-		exists, err := bucket.Exists(ctx, file)
-		require.NoError(t, err, "exists(%q)", file)
-		assert.True(t, exists, "file %q must exist", file)
-	}
-}
-
-// If an upgrade failed because we couldn't write the meta.yaml,
-// the stacks should be left in legacy mode.
-func TestLegacyUpgrade_writeMetaError(t *testing.T) {
-	t.Parallel()
-
-	stateDir := t.TempDir()
-	bucket, err := fileblob.OpenBucket(stateDir, nil)
-	require.NoError(t, err)
-
-	ctx := t.Context()
-	require.NoError(t,
-		bucket.WriteAll(ctx, ".pulumi/stacks/foo.json", []byte(`{
-		"latest": {
-			"resources": [
-				{
-					"type": "package:module:resource",
-					"urn": "urn:pulumi:stack::project::package:module:resource::name"
-				}
-			]
-		}
-	}`), nil))
-
-	// To prevent a write to meta.yaml, we'll create a directory with that name.
-	// The system will reject creating a file with the same name.
-	require.NoError(t, os.MkdirAll(filepath.Join(stateDir, ".pulumi", "meta.yaml"), 0o755))
-
-	var buff bytes.Buffer
-	sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
-	require.NoError(t, err)
-
-	require.Error(t, b.Upgrade(ctx, nil /* opts */))
-
-	stderr := buff.String()
-	assert.Contains(t, stderr, "error: Could not write new state metadata file")
-	assert.Contains(t, stderr, "Please verify that the storage is writable")
-
-	assert.FileExists(t, filepath.Join(stateDir, ".pulumi", "stacks", "foo.json"),
-		"foo.json should not have been upgraded")
-}
-
 func TestNew_unsupportedStoreVersion(t *testing.T) {
 	t.Parallel()
 
@@ -1497,7 +1152,7 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 	created := time.Now().UTC()
 	modified := created.Add(time.Hour)
 
-	deployment, err := makeUntypedDeploymentTimestamp("b", "123abc",
+	deployment, err := makeUntypedDeploymentTimestamp(t, "b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==", &created, &modified)
 	require.NoError(t, err)
 
@@ -1505,38 +1160,6 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 	modifiedStr := modified.Format(time.RFC3339Nano)
 	assert.Contains(t, string(deployment.Deployment), createdStr)
 	assert.Contains(t, string(deployment.Deployment), modifiedStr)
-}
-
-func TestUpgrade_manyFailures(t *testing.T) {
-	t.Parallel()
-
-	const (
-		numStacks    = 100
-		badStackBody = `{"latest": {"resources": []}}`
-	)
-
-	tmpDir := t.TempDir()
-
-	bucket, err := fileblob.OpenBucket(tmpDir, nil)
-	require.NoError(t, err)
-	ctx := t.Context()
-	for i := 0; i < numStacks; i++ {
-		stackPath := path.Join(".pulumi", "stacks", fmt.Sprintf("stack-%d.json", i))
-		require.NoError(t, bucket.WriteAll(ctx, stackPath, []byte(badStackBody), nil))
-	}
-
-	var output bytes.Buffer
-	sink := diag.DefaultSink(io.Discard, &output, diag.FormatOptions{Color: colors.Never})
-
-	// Login to a temp dir diy backend
-	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
-	require.NoError(t, err)
-
-	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
-	out := output.String()
-	for i := 0; i < numStacks; i++ {
-		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))
-	}
 }
 
 func TestCreateStack_gzip(t *testing.T) {
@@ -1707,7 +1330,7 @@ func TestResolveCompression(t *testing.T) {
 
 			got, err := resolveCompression(env.NewEnv(tt.store))
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 
@@ -1935,7 +1558,7 @@ func TestParallelStackFetch(t *testing.T) {
 	// Create multiple stacks to test parallel fetching
 	numStacks := 10
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -1959,7 +1582,7 @@ func TestParallelStackFetch(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
@@ -1984,7 +1607,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	// Create multiple stacks to test parallel fetching with default value
 	numStacks := 5
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -2008,7 +1631,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
@@ -2032,7 +1655,7 @@ func TestListStackNames(t *testing.T) {
 	// Create test stacks
 	numStacks := 3
 	expectedStackNames := make([]string, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		expectedStackNames[i] = stackName
 		stackRef, err := b.ParseStackReference(stackName)
@@ -2104,4 +1727,159 @@ func TestJSONCasing(t *testing.T) {
 	assert.NotContains(t, string(data), `"Latest"`)
 	assert.Contains(t, string(data), `"stack"`)
 	assert.NotContains(t, string(data), `"Stack"`)
+}
+
+func TestJSONCheckpointIsCompact(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := t.Context()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	deployment := &apitype.UntypedDeployment{
+		Version: apitype.DeploymentSchemaVersionCurrent,
+		Deployment: json.RawMessage(`{
+			"manifest": {
+				"time": "2026-03-18T00:00:00Z"
+			},
+			"resources": []
+		}`),
+	}
+	err = b.ImportDeployment(ctx, s, deployment)
+	require.NoError(t, err)
+
+	stackFile := path.Join(stateDir, ".pulumi", "stacks", "testproj", "stack.json")
+	data, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+
+	var checkpoint apitype.VersionedCheckpoint
+	require.NoError(t, json.Unmarshal(data, &checkpoint))
+	assert.Equal(t, deployment.Version, checkpoint.Version)
+
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, data))
+	assert.Equal(t, compact.String(), string(data))
+}
+
+// TestDescribeBackendURL checks that a failed bucket open names the URL the user configured,
+// and adds the normalized form only when normalization changed something they did not write.
+func TestDescribeBackendURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		original   string
+		normalized string
+		cause      error
+		expected   string
+	}{
+		{
+			name:       "injected no_tmp_dir is not worth reporting",
+			original:   "file:///tmp/state",
+			normalized: "file:///tmp/state?no_tmp_dir=true",
+			expected:   `"file:///tmp/state"`,
+		},
+		{
+			name:       "a resolved tilde path is new information",
+			original:   "file://~/state",
+			normalized: "file:///home/someone/state?no_tmp_dir=true",
+			expected:   `"file://~/state" (resolved to "file:///home/someone/state")`,
+		},
+		{
+			name:       "no_tmp_dir set by the user is theirs to see",
+			original:   "file:///tmp/state?no_tmp_dir=yes",
+			normalized: "file:///tmp/state?no_tmp_dir=yes",
+			expected:   `"file:///tmp/state?no_tmp_dir=yes"`,
+		},
+		{
+			name:       "no_tmp_dir on another scheme is not ours to strip",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000",
+			normalized: "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000"` +
+				` (resolved to "s3://bucket?endpoint=http%3A%2F%2F127.0.0.1%3A9000&no_tmp_dir=true")`,
+		},
+		{
+			name:       "translated S3 parameters are new information",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
+			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true"` +
+				` (resolved to "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000")`,
+		},
+		{
+			name:       "a cause that already names the resolved URL is not repeated",
+			original:   "s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true",
+			normalized: "s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000",
+			cause: errors.New(
+				"open bucket s3://bucket?disable_https=true&endpoint=http%3A%2F%2F127.0.0.1%3A9000: no credentials"),
+			expected: `"s3://bucket?endpoint=127.0.0.1:9000&disableSSL=true"`,
+		},
+		{
+			name:       "an untouched cloud URL is reported once",
+			original:   "azblob://container",
+			normalized: "azblob://container",
+			expected:   `"azblob://container"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cause := tt.cause
+			if cause == nil {
+				cause = errors.New("some failure")
+			}
+			assert.Equal(t, tt.expected, describeBackendURL(tt.original, tt.normalized, cause))
+		})
+	}
+}
+
+// TestStateStoreNoun checks that errors do not call a local directory or a database a
+// "bucket", which is go-cloud's vocabulary rather than the user's.
+func TestStateStoreNoun(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		url      string
+		expected string
+	}{
+		{"file:///tmp/state", "state directory"},
+		{"file://~", "state directory"},
+		{"postgres://user:pw@localhost:5432/pulumi", "state database"},
+		{"s3://my-state", "bucket"},
+		{"gs://my-state", "bucket"},
+		{"azblob://my-state", "bucket"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, stateStoreNoun(tt.url))
+		})
+	}
+}
+
+func TestDIYRejectsCoherenceWindows(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(t.TempDir()), nil)
+	require.NoError(t, err)
+	ref, err := b.ParseStackReference("organization/project/stack")
+	require.NoError(t, err)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	_, _, err = b.Preview(ctx, s, backend.UpdateOperation{
+		CoherenceWindow: "d333a711-4aa0-402f-be6d-72af9665fc37",
+	}, nil)
+	require.EqualError(t, err, "coherence windows are only supported by the Pulumi Cloud backend")
 }

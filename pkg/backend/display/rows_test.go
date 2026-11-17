@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,6 +89,98 @@ func TestResourceRowDataColorizedColumns(t *testing.T) {
 	}
 }
 
+func TestResourceRowDataInterruptedStatus(t *testing.T) {
+	t.Parallel()
+
+	customCreate := engine.StepEventMetadata{
+		URN: "urn:pulumi:stack::proj::aws:eks/nodeGroup:NodeGroup::ng",
+		Op:  deploy.OpCreate,
+		New: &engine.StepEventStateMetadata{Custom: true},
+	}
+	componentCreate := engine.StepEventMetadata{
+		URN: "urn:pulumi:stack::proj::my:component:Thing::c",
+		Op:  deploy.OpCreate,
+		New: &engine.StepEventStateMetadata{Custom: false},
+	}
+	customToComponentUpdate := engine.StepEventMetadata{
+		URN: "urn:pulumi:stack::proj::my:component:Thing::c",
+		Op:  deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Custom: true},
+		New: &engine.StepEventStateMetadata{Custom: false},
+		Res: &engine.StepEventStateMetadata{Custom: false},
+	}
+
+	for _, tt := range []struct {
+		name        string
+		step        engine.StepEventMetadata
+		hasOutputs  bool
+		displayDone bool
+		expectMatch string
+		rejectMatch string
+	}{
+		{
+			name:        "custom create interrupted",
+			step:        customCreate,
+			displayDone: true,
+			expectMatch: "creating (interrupted)",
+			rejectMatch: "created",
+		},
+		{
+			name:        "custom create completed",
+			step:        customCreate,
+			hasOutputs:  true,
+			displayDone: true,
+			expectMatch: "created",
+		},
+		{
+			name:        "component create without outputs is not interrupted",
+			step:        componentCreate,
+			displayDone: true,
+			expectMatch: "created",
+		},
+		{
+			name:        "still running is not interrupted",
+			step:        customCreate,
+			displayDone: false,
+			rejectMatch: "interrupted",
+		},
+		{
+			name:        "custom converted to component without outputs is not interrupted",
+			step:        customToComponentUpdate,
+			displayDone: true,
+			expectMatch: "updated",
+			rejectMatch: "interrupted",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := bytes.Buffer{}
+			term := terminal.NewMockTerminal(&out, 200, 20, true)
+			_, display := createRendererAndDisplay(term, true)
+			display.opts.SuppressTimings = true
+			display.done.Store(tt.displayDone)
+
+			row := &resourceRowData{
+				display:  display,
+				diagInfo: &DiagInfo{},
+				step:     tt.step,
+			}
+			if tt.hasOutputs {
+				row.outputSteps = []engine.StepEventMetadata{tt.step}
+			}
+
+			status := row.ColorizedColumns()[statusColumn]
+			if tt.expectMatch != "" {
+				require.Contains(t, status, tt.expectMatch)
+			}
+			if tt.rejectMatch != "" {
+				require.NotContains(t, status, tt.rejectMatch)
+			}
+		})
+	}
+}
+
 // TestGetDiffInfo_FiltersInternalProperties tests that internal properties like __defaults
 // are not shown in the short diff display. This is a regression test for issue #2586.
 func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
@@ -95,61 +188,61 @@ func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		oldInputs      resource.PropertyMap
-		newInputs      resource.PropertyMap
+		oldInputs      property.Map
+		newInputs      property.Map
 		expectDiff     bool
 		shouldMatch    string
 		shouldNotMatch string
 	}{
 		{
 			name: "__defaults should be filtered out",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{
-					resource.NewProperty("default1"),
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+				"__defaults": property.New([]property.Value{
+					property.New("default1"),
 				}),
-			},
+			}),
 			expectDiff:     false,
 			shouldNotMatch: "__defaults",
 		},
 		{
 			name: "normal property changes should still be shown",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value2"),
-			},
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value2"),
+			}),
 			expectDiff:  true,
 			shouldMatch: "normalProp",
 		},
 		{
 			name: "both normal and __defaults changes - only normal shown",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value2"),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{
-					resource.NewProperty("default1"),
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value2"),
+				"__defaults": property.New([]property.Value{
+					property.New("default1"),
 				}),
-			},
+			}),
 			expectDiff:     true,
 			shouldMatch:    "normalProp",
 			shouldNotMatch: "__defaults",
 		},
 		{
 			name: "other internal properties should also be filtered",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-				"__meta":     resource.NewProperty("metadata"),
-			},
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+				"__meta":     property.New("metadata"),
+			}),
 			expectDiff:     false,
 			shouldNotMatch: "__meta",
 		},

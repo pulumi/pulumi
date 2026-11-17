@@ -1,0 +1,5 @@
+engine: dasel
+scopes:
+  - name: body
+    expr: body
+    type: md

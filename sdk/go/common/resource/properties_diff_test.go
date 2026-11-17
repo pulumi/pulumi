@@ -385,3 +385,43 @@ func TestComputedProperyValueDiff(t *testing.T) {
 	a4 := NewPropertyValue("a")
 	assert.False(t, a1.DeepEquals(a4))
 }
+
+func TestSecretVsNonSecretWholeObjectDiff(t *testing.T) {
+	t.Parallel()
+
+	inner := PropertyMap{"k": NewProperty("v")}
+	plain := NewObjectProperty(inner)
+	secret := MakeSecret(NewObjectProperty(inner))
+
+	assert.False(t, plain.DeepEquals(secret))
+	assert.False(t, secret.DeepEquals(plain))
+
+	// At the value level the secret wrapper makes the whole thing differ —
+	// the diff is a flat Old/New replacement, not a recursive Object diff.
+	vd := plain.Diff(secret)
+	require.NotNil(t, vd)
+	assert.Nil(t, vd.Object)
+	assert.Nil(t, vd.Array)
+	assert.True(t, vd.Old.IsObject())
+	assert.True(t, vd.New.IsSecret())
+}
+
+func TestSecretVsNonSecretWholeArrayDiff(t *testing.T) {
+	t.Parallel()
+
+	inner := []PropertyValue{NewProperty("a"), NewProperty("b")}
+	plain := NewArrayProperty(inner)
+	secret := MakeSecret(NewArrayProperty(inner))
+
+	assert.False(t, plain.DeepEquals(secret))
+	assert.False(t, secret.DeepEquals(plain))
+
+	// As with objects, wrapping the whole array in a secret produces a flat
+	// Old/New replacement rather than a recursive Array diff.
+	vd := plain.Diff(secret)
+	require.NotNil(t, vd)
+	assert.Nil(t, vd.Array)
+	assert.Nil(t, vd.Object)
+	assert.True(t, vd.Old.IsArray())
+	assert.True(t, vd.New.IsSecret())
+}

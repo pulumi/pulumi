@@ -46,7 +46,26 @@ function getPackageDefinition(path: string): PackageDefinition | undefined {
         if (last === undefined || lastFullPath === undefined) {
             throw new Error(`no package.json found for ${path}`);
         }
-        const packageDefinitionAbsPath = lastFullPath.slice(0, lastFullPath.indexOf(last)) + last + "/package.json";
+        // Locate the package's directory within the resolved path so we can read its package.json. `last` is the bare
+        // package specifier (e.g. "lodash" or "@scope/pkg") and its installed directory is `node_modules/<last>`.
+        //
+        // We anchor on `node_modules/<last>` rather than the first occurrence of `last` because:
+        //
+        //   - under pnpm the path is
+        //     `.../node_modules/.pnpm/<name>@<version>/node_modules/<name>/...`,
+        //   - some packages have a main file whose name repeats the package name
+        //     (e.g. lodash resolves to `.../node_modules/lodash/lodash.js`).
+        // The last occurrence of the `node_modules/<last>` marker is the package's real directory.
+        const resolvedPath = upath.normalize(lastFullPath);
+        const marker = `node_modules/${last}`;
+        const markerIndex = resolvedPath.lastIndexOf(marker);
+        const packageDefinitionAbsPath =
+            markerIndex >= 0
+                ? resolvedPath.slice(0, markerIndex + marker.length) + "/package.json"
+                : // For packages resolved outside of node_modules (e.g. `yarn link`ed or workspace
+                  // packages) there is no marker to anchor on, so fall back to the first occurrence of
+                  // the name in the resolved path.
+                  resolvedPath.slice(0, resolvedPath.indexOf(last)) + last + "/package.json";
         return require(packageDefinitionAbsPath);
     } catch (err) {
         return undefined;

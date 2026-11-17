@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -44,20 +44,20 @@ class ConfigMap(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 api_version: Optional[_builtins.str] = None,
+                 api_version: Optional[Literal['v1']] = None,
                  binary_data: Optional[Mapping[str, _builtins.str]] = None,
                  data: Optional[Mapping[str, _builtins.str]] = None,
                  immutable: Optional[_builtins.bool] = None,
-                 kind: Optional[_builtins.str] = None,
+                 kind: Optional[Literal['ConfigMap']] = None,
                  metadata: Optional['_meta.v1.outputs.ObjectMeta'] = None):
         """
         ConfigMap holds configuration data for pods to consume.
 
-        :param _builtins.str api_version: APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+        :param Literal['v1'] api_version: APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
         :param Mapping[str, _builtins.str] binary_data: BinaryData contains the binary data. Each key must consist of alphanumeric characters, '-', '_' or '.'. BinaryData can contain byte sequences that are not in the UTF-8 range. The keys stored in BinaryData must not overlap with the ones in the Data field, this is enforced during validation process. Using this field will require 1.10+ apiserver and kubelet.
         :param Mapping[str, _builtins.str] data: Data contains the configuration data. Each key must consist of alphanumeric characters, '-', '_' or '.'. Values with non-UTF-8 byte sequences must use the BinaryData field. The keys stored in Data must not overlap with the keys in the BinaryData field, this is enforced during validation process.
         :param _builtins.bool immutable: Immutable, if set to true, ensures that data stored in the ConfigMap cannot be updated (only object metadata can be modified). If not set to true, the field can be modified at any time. Defaulted to nil.
-        :param _builtins.str kind: Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+        :param Literal['ConfigMap'] kind: Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
         :param '_meta.v1.ObjectMetaArgs' metadata: Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         """
         if api_version is not None:
@@ -75,7 +75,7 @@ class ConfigMap(dict):
 
     @_builtins.property
     @pulumi.getter(name="apiVersion")
-    def api_version(self) -> Optional[_builtins.str]:
+    def api_version(self) -> Optional[Literal['v1']]:
         """
         APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
         """
@@ -107,7 +107,7 @@ class ConfigMap(dict):
 
     @_builtins.property
     @pulumi.getter
-    def kind(self) -> Optional[_builtins.str]:
+    def kind(self) -> Optional[Literal['ConfigMap']]:
         """
         Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
         """

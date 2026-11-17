@@ -1,13 +1,14 @@
 import pulumi
 from pulumi import Input
 from typing import Optional, Dict, TypedDict, Any
+import builtins as _builtins
 import pulumi_primitive as primitive
 
-class PrimitiveComponentArgs(TypedDict, total=False):
-    boolean: Input[bool]
-    float: Input[float]
-    integer: Input[int]
-    string: Input[str]
+class PrimitiveComponentArgs(TypedDict):
+    boolean: Input[_builtins.bool]
+    float: Input[_builtins.float]
+    integer: Input[_builtins.int]
+    string: Input[_builtins.str]
 
 class PrimitiveComponent(pulumi.ComponentResource):
     def __init__(self, name: str, args: PrimitiveComponentArgs, opts:Optional[pulumi.ResourceOptions] = None):
@@ -19,9 +20,9 @@ class PrimitiveComponent(pulumi.ComponentResource):
             integer=args["integer"],
             string=args["string"],
             number_array=[
-                -1,
-                0,
-                1,
+                float(-1),
+                float(0),
+                float(1),
             ],
             boolean_map={
                 "t": True,

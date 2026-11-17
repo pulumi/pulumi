@@ -18,12 +18,14 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func createGCPKey(ctx context.Context, t *testing.T) string {
@@ -42,6 +44,8 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 			VersionTemplate: &kmspb.CryptoKeyVersionTemplate{
 				Algorithm: kmspb.CryptoKeyVersion_GOOGLE_SYMMETRIC_ENCRYPTION,
 			},
+			// Minimum allowed by KMS; keeps abandoned test keys from lingering 30 days.
+			DestroyScheduledDuration: durationpb.New(24 * time.Hour),
 		},
 	}
 
@@ -59,6 +63,10 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 }
 
 func skipIfNoCredentials(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping GCP integration test in short mode")
+	}
+
 	// In CI we always set GOOGLE_APPLICATION_CREDENTIALS to a filename, but that file might be
 	// empty if we have no credentials.  Check for that here.
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {

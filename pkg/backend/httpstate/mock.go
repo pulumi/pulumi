@@ -16,24 +16,24 @@ package httpstate
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 type MockHTTPBackend struct {
 	backend.MockBackend
-	FClient   func() *client.Client
-	FCloudURL func() string
-	FSearch   func(ctx context.Context,
+	FClient    func() *client.Client
+	FESCClient func() esc_client.Client
+	FCloudURL  func() string
+	FSearch    func(ctx context.Context,
 		orgName string,
 		queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
 	FNaturalLanguageSearch func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
-	FPromptAI              func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 	FStackConsoleURL       func(stackRef backend.StackReference) (string, error)
 	FRunDeployment         func(
 		ctx context.Context,
@@ -43,11 +43,16 @@ type MockHTTPBackend struct {
 		deploymentInitiator string,
 		suppressStreamLogs bool,
 	) error
-	FGetCloudRegistry func() (backend.CloudRegistry, error)
+	FGetCloudRegistry      func() (backend.CloudRegistry, error)
+	FGetLatestStackPreview func(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
 }
 
 func (b *MockHTTPBackend) Client() *client.Client {
 	return b.FClient()
+}
+
+func (b *MockHTTPBackend) ESCClient() esc_client.Client {
+	return b.FESCClient()
 }
 
 func (b *MockHTTPBackend) CloudURL() string {
@@ -58,12 +63,6 @@ func (b *MockHTTPBackend) NaturalLanguageSearch(
 	ctx context.Context, orgName string, query string,
 ) (*apitype.ResourceSearchResponse, error) {
 	return b.FNaturalLanguageSearch(ctx, orgName, query)
-}
-
-func (b *MockHTTPBackend) PromptAI(
-	ctx context.Context, requestBody AIPromptRequestBody,
-) (*http.Response, error) {
-	return b.FPromptAI(ctx, requestBody)
 }
 
 func (b *MockHTTPBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -93,6 +92,12 @@ func (b *MockHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
 
 func (b *MockHTTPBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
 	return b.FGetCloudRegistry()
+}
+
+func (b *MockHTTPBackend) GetLatestStackPreview(
+	ctx context.Context, stackRef backend.StackReference,
+) (*apitype.StackPreview, error) {
+	return b.FGetLatestStackPreview(ctx, stackRef)
 }
 
 var _ Backend = (*MockHTTPBackend)(nil)

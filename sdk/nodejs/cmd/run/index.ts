@@ -129,7 +129,7 @@ process.on("beforeExit", () => {
 
 let hasSignaled = false;
 async function beforeExitHandler(code: number) {
-    // Signal and wait for shutdown means a succesful program execution, so
+    // Signal and wait for shutdown means a successful program execution, so
     // first check if there were any errors and bail out immediately if so.
     if (uncaughtErrors.size > 0) {
         return;

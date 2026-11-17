@@ -18,7 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -56,7 +59,7 @@ Setting the 'protect' bit on a resource in your stack's state is not sufficient 
 all cases. If your program does not also set the 'protect' resource option, Pulumi will
 unprotect the resource the next time your program runs (e.g. as part of a ` + "`pulumi up`" + `).
 
-See https://www.pulumi.com/docs/iac/concepts/options/protect/ for more information on
+See https://www.pulumi.com/docs/iac/concepts/resources/options/protect/ for more information on
 the 'protect' resource option and how it can be used to protect resources in your program.
 
 To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
@@ -71,12 +74,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			showPrompt := !yes
 
 			if protectAll {
-				return protectAllResources(ctx, sink, ws, stack, showPrompt)
+				return protectAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt)
 			}
 
 			// If URN arguments were provided, use those
 			if len(args) > 0 {
-				return protectMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return protectMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
 			}
 
 			// Otherwise, use interactive selection
@@ -89,7 +92,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return protectMultipleResources(ctx, sink, ws, stack, []string{string(urn)}, showPrompt)
+			return protectMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, []string{string(urn)}, showPrompt)
 		},
 	}
 
@@ -111,7 +114,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 }
 
 func protectAllResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
 ) error {
 	err := runTotalStateEditWithPrompt(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
@@ -133,7 +137,7 @@ func protectAllResources(
 	if err != nil {
 		return err
 	}
-	fmt.Println("All resources protected")
+	fmt.Fprintln(stdout, "All resources protected")
 	return nil
 }
 
@@ -147,10 +151,12 @@ func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 	resourceCount := 0
 
 	// Build a map of URNs to resources, excluding those pending deletion.
-	urnToResource := make(map[resource.URN]*resource.State)
+	urnToResource := make(map[resource.URN]*pkgresource.State)
+	eligibleURNs := slice.Prealloc[resource.URN](len(snap.Resources))
 	for _, res := range snap.Resources {
 		if !res.Delete {
 			urnToResource[res.URN] = res
+			eligibleURNs = append(eligibleURNs, res.URN)
 		}
 	}
 
@@ -162,7 +168,7 @@ func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 			res.Protect = true
 			resourceCount++
 		} else {
-			errs = append(errs, fmt.Errorf("No such resource %q exists in the current state", urn))
+			errs = append(errs, resourceNotFoundError(eligibleURNs, urn))
 		}
 	}
 
@@ -171,7 +177,8 @@ func protectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 
 // protectMultipleResources protects multiple resources specified by their URNs.
 func protectMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEditWithPrompt(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot,
@@ -179,7 +186,7 @@ func protectMultipleResources(
 			resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
 			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources protected\n", resourceCount)
+				fmt.Fprintf(stdout, "%d resources protected\n", resourceCount)
 			}
 
 			if len(errs) > 0 {

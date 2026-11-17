@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -28,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -36,14 +34,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -52,13 +52,17 @@ import (
 
 func NewRefreshCmd() *cobra.Command {
 	var runProgram bool
+	var skipConfigValidation bool
 	var debug bool
 	var expectNop bool
 	var message string
+	var coherenceWindow string
 	var execKind string
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -67,6 +71,7 @@ func NewRefreshCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var output string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -84,6 +89,7 @@ func NewRefreshCmd() *cobra.Command {
 	var targetDependents bool
 	var excludes *[]string
 	var excludeDependents bool
+	var skipPluginPreInstall bool
 
 	// Flags for handling pending creates
 	var skipPendingCreates bool
@@ -110,13 +116,18 @@ func NewRefreshCmd() *cobra.Command {
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
+			var proj *workspace.Project
+			var root string
+			if !remoteArgs.Remote {
+				var err error
+				proj, root, err = readProjectForUpdate(ws, client)
+				if err != nil {
+					return err
+				}
 
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
+				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+					return err
+				}
 			}
 
 			// Remote implies we're skipping previews.
@@ -129,6 +140,16 @@ func NewRefreshCmd() *cobra.Command {
 			if !interactive && !yes && !previewOnly {
 				return errors.New("--yes or --skip-preview or --preview-only " +
 					"must be passed in to proceed when running in non-interactive mode")
+			}
+
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch output {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
@@ -154,6 +175,7 @@ func NewRefreshCmd() *cobra.Command {
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
 				JSONDisplay:          jsonDisplay,
+				SummaryJSON:          output == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -166,9 +188,9 @@ func NewRefreshCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
-					nil, "", showConfig, false, showReplacementSteps, showSames, false,
+					nil, "", showConfig, false, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					false, "", cmdStack.ConfigFile, runProgram)
+					false, "", configFile, runProgram, coherenceWindow)
 				if err != nil {
 					return err
 				}
@@ -185,7 +207,7 @@ func NewRefreshCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -206,16 +228,20 @@ func NewRefreshCmd() *cobra.Command {
 				stackName,
 				cmdStack.OfferNew,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
-
-			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path); err != nil {
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
+				return err
+			}
+
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -230,16 +256,30 @@ func NewRefreshCmd() *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter)
-			if configErr != nil {
-				return fmt.Errorf("validating stack config: %w", configErr)
+			// Skip config validation when the program is not being run (the default for refresh),
+			// or when explicitly requested via --skip-config-validation. This allows stacks with
+			// missing or invalid config to be refreshed in scenarios such as ephemeral PR environments
+			// where config may diverge between branches.
+			if runProgram && !skipConfigValidation {
+				// Running the program: validate the stack config (and apply project defaults).
+				configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
+					ctx,
+					stackName,
+					proj,
+					cfg.Environment,
+					cfg.Config,
+					encrypter,
+					decrypter)
+				if configErr != nil {
+					return fmt.Errorf("validating stack config: %w", configErr)
+				}
+			} else {
+				// The program isn't run, or validation was explicitly skipped: still apply
+				// project config defaults onto the stack config, but skip validation.
+				if configErr := pkgWorkspace.ApplyProjectConfig(
+					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+					return fmt.Errorf("applying stack config: %w", configErr)
+				}
 			}
 
 			if skipPendingCreates && clearPendingCreates {
@@ -250,7 +290,7 @@ func NewRefreshCmd() *cobra.Command {
 			if importPendingCreates != nil && len(*importPendingCreates) > 0 {
 				stderr := opts.Display.Stderr
 				if stderr == nil {
-					stderr = os.Stderr
+					stderr = cmd.ErrOrStderr()
 				}
 				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
 					return err
@@ -266,7 +306,7 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 			if err != nil {
 				return fmt.Errorf("getting snapshot: %w", err)
 			}
@@ -282,7 +322,7 @@ func NewRefreshCmd() *cobra.Command {
 			// We remove remaining pending creates
 			if clearPendingCreates && hasPendingCreates(snap) {
 				// Remove all pending creates.
-				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
+				removePendingCreates := func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 					return nil, nil
 				}
 				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
@@ -297,7 +337,12 @@ func NewRefreshCmd() *cobra.Command {
 			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts.Engine = engine.UpdateOptions{
+				CloudCredentialEnv:        cloudCredentialEnv,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
@@ -313,6 +358,7 @@ func NewRefreshCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
 				RefreshProgram:            runProgram,
+				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
@@ -322,8 +368,9 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
+				CoherenceWindow:    coherenceWindow,
 			})
 
 			switch {
@@ -351,6 +398,10 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources")
+	cmd.PersistentFlags().BoolVar(
+		&skipConfigValidation, "skip-config-validation", false,
+		"Skip validation of stack config values against the project config schema. "+
+			"Config validation is skipped automatically when --run-program is not set.")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
@@ -362,8 +413,9 @@ func NewRefreshCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the refresh and save to the stack config file")
@@ -391,6 +443,12 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the refresh diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&output, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -441,6 +499,10 @@ func NewRefreshCmd() *cobra.Command {
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
 	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
+
+	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
 			"(can also be set with PULUMI_NEO environment variable)")
@@ -465,6 +527,8 @@ func NewRefreshCmd() *cobra.Command {
 	}
 
 	// internal flags
+	cmd.PersistentFlags().StringVar(&coherenceWindow, "coherence-window", "", "")
+	_ = cmd.PersistentFlags().MarkHidden("coherence-window")
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
@@ -479,7 +543,7 @@ func NewRefreshCmd() *cobra.Command {
 	return cmd
 }
 
-type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
+type editPendingOp = func(op pkgresource.Operation) (*pkgresource.Operation, error)
 
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
 // is deleted. Otherwise is replaced by the returned op.
@@ -487,12 +551,12 @@ func filterMapPendingCreates(
 	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
 ) error {
 	return state.TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
-		var pending []resource.Operation
+		var pending []pkgresource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
 				return errors.New("found operation without resource")
 			}
-			if op.Type != resource.OperationTypeCreating {
+			if op.Type != pkgresource.OperationTypeCreating {
 				pending = append(pending, op)
 				continue
 			}
@@ -523,10 +587,10 @@ func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opt
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	err := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+	err := filterMapPendingCreates(ctx, s, opts, yes, func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
-			op.Type = resource.OperationTypeImporting
+			op.Type = pkgresource.OperationTypeImporting
 			delete(alteredOps, string(op.Resource.URN))
 			return &op, nil
 		}
@@ -544,14 +608,14 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 		return false
 	}
 	for _, op := range snap.PendingOperations {
-		if op.Type == resource.OperationTypeCreating {
+		if op.Type == pkgresource.OperationTypeCreating {
 			return true
 		}
 	}
 	return false
 }
 
-func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
+func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operation, error) {
 	for {
 		option := ""
 		options := []string{
@@ -559,7 +623,7 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 			"skip (do nothing)",
 			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 		}
-		if err := survey.AskOne(&survey.Select{
+		if err := ui.AskOne(&survey.Select{
 			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
 			Options: options,
 		}, &option, nil); err != nil {
@@ -574,12 +638,12 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 			return &op, nil
 		case options[2]:
 			var id string
-			err = survey.AskOne(&survey.Input{
+			err = ui.AskOne(&survey.Input{
 				Message: "ID: ",
 			}, &id, nil)
 			if err == nil {
 				op.Resource.ID = resource.ID(id)
-				op.Type = resource.OperationTypeImporting
+				op.Type = pkgresource.OperationTypeImporting
 				return &op, nil
 			}
 		default:

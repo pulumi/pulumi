@@ -1,0 +1,5 @@
+values:
+  password:
+    # Here's a header comment
+    fn::secret:
+      ciphertext: ZXNjeAAAAAHo9e705fKyKo30VQ== # Here's a line comment, too

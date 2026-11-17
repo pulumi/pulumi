@@ -15,10 +15,11 @@
 package client
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 //nolint:paralleltest // sets env var, must be run in isolation
@@ -33,7 +34,7 @@ func TestConsoleURL(t *testing.T) {
 
 		// Unset the variable, confirm the "standard behavior" where we
 		// replace "api." with "app.".
-		os.Unsetenv("PULUMI_CONSOLE_DOMAIN")
+		ptesting.Unsetenv(t, "PULUMI_CONSOLE_DOMAIN")
 		assert.Equal(t,
 			"https://app.pulumi.contoso.com/1/2",
 			CloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))
@@ -55,8 +56,38 @@ func TestConsoleURL(t *testing.T) {
 			CloudConsoleURL("http://localhost:8080", "pulumi-bot", "my-stack"))
 	})
 
+	t.Run("TokenSettingsURL", func(t *testing.T) {
+		assert.Equal(t,
+			"https://app.pulumi.com/user/settings/tokens",
+			CloudConsoleURL("https://api.pulumi.com", "user", "settings", "tokens"))
+
+		assert.Equal(t,
+			"http://localhost:3000/user/settings/tokens",
+			CloudConsoleURL("http://localhost:8080", "user", "settings", "tokens"))
+
+		assert.Equal(t,
+			"http://app.pulumi.example.com/user/settings/tokens",
+			CloudConsoleURL("http://api.pulumi.example.com", "user", "settings", "tokens"))
+	})
+
 	t.Run("ConsoleDomainUnknown", func(t *testing.T) {
 		assert.Equal(t, "", CloudConsoleURL("https://pulumi.example.com", "pulumi-bot", "my-stack"))
 		assert.Equal(t, "", CloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
 	})
+}
+
+func TestAgentClaimURL(t *testing.T) {
+	assert.Equal(t,
+		"https://app.pulumi.com/claim/abc123",
+		AgentClaimURL("https://api.pulumi.com", "abc123"))
+
+	t.Run("HonorEnvVar", func(t *testing.T) {
+		t.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
+		assert.Equal(t,
+			"https://pulumi-console.contoso.com/claim/abc123",
+			AgentClaimURL("https://api.pulumi.contoso.com", "abc123"))
+	})
+
+	assert.Equal(t, "", AgentClaimURL("https://api.pulumi.com", ""))
+	assert.Equal(t, "", AgentClaimURL("https://pulumi.example.com", "abc123"))
 }

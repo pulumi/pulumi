@@ -46,7 +46,7 @@ class InstanceArgs:
 @pulumi.input_type
 class _InstanceState:
     def __init__(__self__, *,
-                 boot_disk: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']] = None):
+                 boot_disk: pulumi.Input[Optional['_compute.instancebootdisk.InstanceBootDiskArgs']] = None):
         """
         Input properties used for looking up and filtering Instance resources.
 
@@ -58,7 +58,7 @@ class _InstanceState:
 
     @_builtins.property
     @pulumi.getter(name="bootDisk")
-    def boot_disk(self) -> Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']]:
+    def boot_disk(self) -> pulumi.Input[Optional['_compute.instancebootdisk.InstanceBootDiskArgs']]:
         """
         The boot disk for the instance.
         Structure is documented below.
@@ -66,7 +66,7 @@ class _InstanceState:
         return pulumi.get(self, "boot_disk")
 
     @boot_disk.setter
-    def boot_disk(self, value: Optional[pulumi.Input['_compute.instancebootdisk.InstanceBootDiskArgs']]):
+    def boot_disk(self, value: pulumi.Input[Optional['_compute.instancebootdisk.InstanceBootDiskArgs']]):
         pulumi.set(self, "boot_disk", value)
 
 
@@ -76,15 +76,14 @@ class Instance(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 boot_disk: Optional[pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']]] = None,
+                 boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']]] = None,
                  __props__=None):
         """
         A mock of an instance.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']] boot_disk: The boot disk for the instance.
+        :param pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']] boot_disk: The boot disk for the instance.
                Structure is documented below.
         """
         ...
@@ -95,7 +94,6 @@ class Instance(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A mock of an instance.
-
 
         :param str resource_name: The name of the resource.
         :param InstanceArgs args: The arguments to use to populate this resource's properties.
@@ -112,7 +110,7 @@ class Instance(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 boot_disk: Optional[pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']]] = None,
+                 boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -135,7 +133,7 @@ class Instance(pulumi.CustomResource):
     def get(resource_name: str,
             id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None,
-            boot_disk: Optional[pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']]] = None) -> 'Instance':
+            boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']]] = None) -> 'Instance':
         """
         Get an existing Instance resource's state with the given name, id, and optional extra
         properties used to qualify the lookup.
@@ -143,7 +141,7 @@ class Instance(pulumi.CustomResource):
         :param str resource_name: The unique name of the resulting resource.
         :param pulumi.Input[str] id: The unique provider ID of the resource to lookup.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict']] boot_disk: The boot disk for the instance.
+        :param pulumi.Input[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']] boot_disk: The boot disk for the instance.
                Structure is documented below.
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
@@ -152,6 +150,14 @@ class Instance(pulumi.CustomResource):
 
         __props__.__dict__["boot_disk"] = boot_disk
         return Instance(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None,
+            boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']]] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        __props__["bootDisk"] = boot_disk
+        return pulumi.runtime.exists_resource(None, 'gcp:compute/instance:Instance', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="bootDisk")

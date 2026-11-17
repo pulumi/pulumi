@@ -22,15 +22,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewDefaultRegistry(
 	ctx context.Context,
+	lm cmdBackend.LoginManager,
 	workspace pkgWorkspace.Context,
 	project *workspace.Project,
 	diag diag.Sink,
@@ -38,7 +39,7 @@ func NewDefaultRegistry(
 ) registry.Registry {
 	return registry.NewOnDemandRegistry(func() (registry.Registry, error) {
 		b, err := cmdBackend.NonInteractiveCurrentBackend(
-			ctx, workspace, cmdBackend.DefaultLoginManager, project,
+			ctx, workspace, lm, project,
 		)
 		if err == nil && b != nil {
 			return b.GetReadOnlyCloudRegistry(), nil

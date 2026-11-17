@@ -14,6 +14,7 @@ func main() {
 		}
 		ctx.Export("plain", ref.GetOutput(pulumi.String("plain")))
 		ctx.Export("secret", ref.GetOutput(pulumi.String("secret")))
+		ctx.Export("secret_unsecret", pulumi.Unsecret(ref.GetOutput(pulumi.String("secret"))).(pulumi.AnyOutput))
 		return nil
 	})
 }

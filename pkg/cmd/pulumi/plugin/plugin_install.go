@@ -20,29 +20,33 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/blang/semver"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newPluginInstallCmd() *cobra.Command {
@@ -52,17 +56,35 @@ func newPluginInstallCmd() *cobra.Command {
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"This command is used to manually install plugins required by your program. It\n" +
-			"may be run with a specific KIND, NAME, and optionally, VERSION, or by omitting\n" +
-			"these arguments and letting Pulumi compute the set of plugins required by the\n" +
-			"current project. When Pulumi computes the download set automatically, it may\n" +
-			"download more plugins than are strictly necessary.\n" +
+			"Pulumi installs the plugins your program requires automatically, so most users\n" +
+			"never need to run this command. Use it to install plugins ahead of time, for\n" +
+			"example to warm a CI cache or to prepare a machine that will run without\n" +
+			"network access.\n" +
+			"\n" +
+			"It may be run with a specific KIND, NAME, and optionally, VERSION, or by\n" +
+			"omitting these arguments and letting Pulumi compute the set of plugins required\n" +
+			"by the current project. When Pulumi computes the download set automatically, it\n" +
+			"may download more plugins than are strictly necessary.\n" +
+			"\n" +
+			"KIND must be one of:\n" +
+			"\n" +
+			"  - `analyzer`: a resource analyzer, which enforces policies against resources.\n" +
+			"  - `language`: a language host, which runs Pulumi programs written in a given\n" +
+			"    language. The languages Pulumi supports ship with the CLI, so you only need\n" +
+			"    to install a language plugin to use a third-party one.\n" +
+			"  - `resource`: a resource provider, which performs CRUD operations on the\n" +
+			"    resources of a cloud or service.\n" +
+			"  - `converter`: a converter, which converts from another ecosystem to Pulumi.\n" +
+			"  - `tool`: an arbitrary plugin that can be run as a tool.\n" +
 			"\n" +
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
-			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
-			"the plugin, though the result is not guaranteed.",
+			"If VERSION is unspecified, a language plugin that is distributed separately from\n" +
+			"the CLI installs the version this release of the CLI is pinned to. For any other\n" +
+			"plugin, Pulumi will attempt to look up the latest version, though the result is\n" +
+			"not guaranteed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			picmd.stderr = cmd.ErrOrStderr()
 			return picmd.Run(ctx, args)
 		},
 	}
@@ -90,6 +112,9 @@ func newPluginInstallCmd() *cobra.Command {
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().StringVar(&picmd.checksum,
 		"checksum", "", "The expected SHA256 checksum for the plugin archive")
+	cmd.PersistentFlags().IntVar(&picmd.parallel,
+		"parallel", 4, "The max number of concurrent installs to perform. "+
+			"Parallelism of less than 1 implies unbounded parallelism")
 
 	return cmd
 }
@@ -100,11 +125,13 @@ type pluginInstallCmd struct {
 	file      string
 	reinstall bool
 	checksum  string
+	parallel  int
 
 	diag     diag.Sink
 	env      env.Env
 	color    colors.Colorization
 	registry registry.Registry
+	stderr   io.Writer
 
 	pluginGetLatestVersion func(
 		workspace.PluginDescriptor, context.Context,
@@ -113,7 +140,7 @@ type pluginInstallCmd struct {
 	installPluginSpec func(
 		ctx context.Context, label string,
 		install workspace.PluginDescriptor, file string,
-		sink diag.Sink, color colors.Colorization, reinstall bool,
+		sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
 	) error // == installPluginSpec
 }
 
@@ -128,13 +155,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.color = cmdutil.GetGlobalColorization()
 	}
 	if cmd.pluginGetLatestVersion == nil {
-		cmd.pluginGetLatestVersion = (workspace.PluginDescriptor).GetLatestVersion
+		cmd.pluginGetLatestVersion = workspace.PluginDescriptor.GetLatestVersion
 	}
 	if cmd.installPluginSpec == nil {
 		cmd.installPluginSpec = installPluginSpec
 	}
+	if cmd.stderr == nil {
+		cmd.stderr = io.Discard
+	}
 	if cmd.registry == nil {
-		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
+		cmd.registry = cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -142,7 +173,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		var kind apitype.PluginKind
 		if !apitype.IsPluginKind(args[0]) {
-			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
+			return fmt.Errorf(
+				"unrecognized plugin kind: %s (must be one of: analyzer, language, resource, converter, tool)",
+				args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")
 		}
@@ -230,13 +263,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				}
 				pluginSpec = updatedSpec
 			}
-		} else if version == nil && pluginSpec.Version == nil {
-			// If we don't have a version try to look one up
-			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
-			if err != nil {
-				return err
+		} else {
+			// Unbundled language runtimes the CLI knows about are pinned to the release it auto-installs,
+			// which may live outside the default pulumi/pulumi-<name> repository.
+			util.SetKnownPluginDownloadURL(&pluginSpec)
+			if pluginSpec.Version == nil {
+				latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
+				if err != nil {
+					return err
+				}
+				pluginSpec.Version = latestVersion
 			}
-			pluginSpec.Version = latestVersion
 		}
 		installs = append(installs, pluginSpec)
 	} else {
@@ -262,6 +299,12 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	// Now for each kind, name, version pair, download it from the release website, and install it.
+	bars := progress.NewGroup(cmd.stderr)
+	var group errgroup.Group
+	if cmd.parallel > 0 {
+		group.SetLimit(cmd.parallel)
+	}
+
 	for _, install := range installs {
 		label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
 
@@ -269,40 +312,43 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 		if !cmd.reinstall {
 			if cmd.exact {
-				if pluginstorage.Instance.HasPlugin(ctx, install) {
-					logging.V(1).Infof("%s skipping install (existing == match)", label)
+				if pluginstorage.Instance.HasPlugin(ctx, install).Available() {
+					slog.InfoContext(ctx, "skipping install (existing == match)", "label", label)
 					continue
 				}
 			} else {
 				if has, _, _ := pluginstorage.Instance.HasPluginGTE(ctx, install); has {
-					logging.V(1).Infof("%s skipping install (existing >= match)", label)
+					slog.InfoContext(ctx, "skipping install (existing >= match)", "label", label)
 					continue
 				}
 			}
 		}
 
-		cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
-		err := cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.color, cmd.reinstall)
-		if err != nil {
-			return err
-		}
+		group.Go(func() error {
+			cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
+			return cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, bars, cmd.color, cmd.reinstall)
+		})
 	}
 
-	return nil
+	return group.Wait()
 }
 
 func installPluginSpec(
 	ctx context.Context, label string,
 	install workspace.PluginDescriptor, file string,
-	sink diag.Sink, color colors.Colorization, reinstall bool,
+	sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
 	var payload pluginstorage.Content
-	var err error
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+	if err != nil {
+		return err
+	}
 	if file == "" {
 		withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-			return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", color)
+			return bars.Wrap(stream, size, fmt.Sprintf("Downloading plugin %s", install), color)
 		}
 		retry := func(err error, attempt int, limit int, delay time.Duration) {
 			sink.Warningf(
@@ -315,19 +361,27 @@ func installPluginSpec(
 		}
 		defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
-		payload = pluginstorage.TarPlugin(r)
+		// Wrap the downloaded tarball with a progress bar sized by the downloaded tarball, so extraction shows progress
+		// during unpacking. [pluginstorage.UnpackContents], called via [pkgWorkspace.InstallPluginContent] closes the
+		// content (and thus this stream) when it returns, which is what finishes the bar.
+		var unpackStream io.ReadCloser = r
+		if fi, statErr := r.Stat(); statErr == nil {
+			unpackStream = bars.Wrap(r, fi.Size(), fmt.Sprintf("Unpacking plugin %s", install), color)
+		}
+
+		payload = pluginstorage.TarPlugin(unpackStream)
 	} else {
 		source = file
-		logging.V(1).Infof("%s opening tarball from %s", label, file)
+		slog.InfoContext(ctx, "opening tarball", "label", label, "file", file)
 		payload, err = getFilePayload(file, install)
 		if err != nil {
 			return err
 		}
 	}
-	logging.V(1).Infof("%s installing tarball ...", label)
+	slog.InfoContext(ctx, "installing tarball ...", "label", label)
 	if err = pkgWorkspace.InstallPluginContent(
-		ctx, install, payload, reinstall, schema.NewLoaderServerFromHost,
-	); err != nil {
+		ctx, install, payload, reinstall, schema.NewLoaderServerFromContext,
+		cloudCredentialEnv); err != nil {
 		return fmt.Errorf("installing %s from %s: %w", label, source, err)
 	}
 	return nil
@@ -378,8 +432,7 @@ func (cmd *pluginInstallCmd) resolvePluginSpec(
 			AllowNonInvertableLocalWorkspaceResolution: cmd.reinstall,
 		})
 	if err != nil {
-		var packageNotFoundErr *packageresolution.PackageNotFoundError
-		if errors.As(err, &packageNotFoundErr) {
+		if packageNotFoundErr, ok := errors.AsType[*packageresolution.PackageNotFoundError](err); ok {
 			for _, suggested := range packageNotFoundErr.Suggestions() {
 				cmd.diag.Infof(diag.Message("", "%s/%s/%s@%s is a similar package"),
 					suggested.Source, suggested.Publisher, suggested.Name,

@@ -44,7 +44,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -81,8 +80,11 @@ type PulumiPluginJSON struct {
 	Version string `json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
 	Server string `json:"server,omitempty"`
-	// Parameterization information for the package.
+	// Replacement parameterization for the package.
 	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
+	// Extension parameterization for the package. The package extends the base
+	// plugin in place rather than replacing it.
+	ExtensionParameterization *PulumiParameterizationJSON `json:"extensionParameterization,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
@@ -112,6 +114,10 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
+
+	// shutdownAcknowledged is set when the plugin has acknowledged a Cancel RPC (returned success or Unimplemented). If
+	// the plugin exits after that, it's expected — not a premature crash.
+	shutdownAcknowledged atomic.Bool
 
 	// The unstructured output of the process.
 	//
@@ -255,7 +261,7 @@ func newPlugin[T any](
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
 ) (_ *Plugin, _ *T, retErr error) {
-	if logging.V(9) {
+	if logging.V(9).Enabled() {
 		var argstr strings.Builder
 		for i, arg := range args {
 			if i > 0 {
@@ -466,6 +472,19 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
+// cloudCredentialEnvVars returns the KEY=value environment entries the context injects into a
+// plugin. They are passed to every plugin kind as part of `ExecPlugin`.
+func cloudCredentialEnvVars(ctx *Context) []string {
+	if ctx == nil {
+		return nil
+	}
+	vars := make([]string, 0, len(ctx.CloudCredentialEnv))
+	for k, v := range ctx.CloudCredentialEnv {
+		vars = append(vars, k+"="+v)
+	}
+	return vars
+}
+
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
 func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, e env.Env, attachDebugger bool,
@@ -488,6 +507,12 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
 		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
+	if logEP := cmdutil.LogReceiverEndpoint(); logEP != "" {
+		environment = append(environment, "PULUMI_LOG_OTLP_ENDPOINT="+logEP)
+	}
+
+	// Appended last to win over ambient values.
+	environment = append(environment, cloudCredentialEnvVars(ctx)...)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
@@ -531,7 +556,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
+		runtime, err := ctx.Host.LanguageRuntime(ctx, runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
@@ -546,7 +571,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Env:              environment,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
-			LoaderAddress:    ctx.Host.LoaderAddr(),
+			LoaderAddress:    ctx.LoaderAddr(),
 		})
 		if err != nil {
 			return nil, err //nolint:govet // lostcancel
@@ -718,54 +743,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
-func (p *Plugin) healthCheck() bool {
-	if p.Conn == nil {
-		return false
-	}
-
-	// Check that the plugin looks alive by calling gRPC's Health Check service.
-	// Most plugins don't actually implement this service, which is OK as we treat
-	// an unimplemented status as OK.
-
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-
-	healthy := make(chan bool, 1)
-	go func() {
-		health := grpc_health_v1.NewHealthClient(p.Conn)
-		req := &grpc_health_v1.HealthCheckRequest{}
-
-		resp, err := health.Check(ctx, req)
-		if err != nil {
-			// Treat this as healthy as most plugins don't implement gRPC's Health
-			// Check service. An unimplemented status is enough for us to know the
-			// plugin is alive.
-			if status.Code(err) == codes.Unimplemented {
-				healthy <- true
-				return
-			}
-
-			logging.V(9).Infof("healthCheck(): failed with: %v", err)
-			healthy <- false
-			return
-		}
-
-		healthy <- resp.Status == grpc_health_v1.HealthCheckResponse_SERVING
-	}()
-
-	select {
-	case result := <-healthy:
-		return result
-	case <-ctx.Done(): // hit deadline
-		return false
-	}
-}
-
 func (p *Plugin) Close() error {
-	// Something has gone wrong with the plugin if it is not healthy and we have not yet
-	// shut it down.
-	pluginCrashed := !p.healthCheck()
-
 	if p.Conn != nil {
 		contract.IgnoreClose(p.Conn)
 	}
@@ -780,12 +758,13 @@ func (p *Plugin) Close() error {
 		<-p.stderrDone
 	}
 
-	// If the plugin has crashed and p.unstructuredOutput != nil is non-nil, then we
-	// have not displayed any unstructured output to the user - including any
-	// potential stack trace.
+	// If the plugin exited before we had a chance to shut it down, then we have not displayed any unstructured output
+	// to the user - including any potential stack trace.
 	//
 	// To help debug (and to avoid attempting to detect the stack trace), we dump the captured stdout.
-	if pluginCrashed && p.unstructuredOutput != nil && p.unstructuredOutput.done.CompareAndSwap(false, true) {
+	if !p.shutdownAcknowledged.Load() &&
+		p.unstructuredOutput != nil &&
+		p.unstructuredOutput.done.CompareAndSwap(false, true) {
 		id := atomic.AddInt32(&nextStreamID, 1)
 		d := p.unstructuredOutput.diag
 		// This outputs an error block:

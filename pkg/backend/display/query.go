@@ -93,6 +93,9 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	case engine.StartDebuggingEvent:
 		return ""
 
+	case engine.UpdateStartedEvent:
+		return ""
+
 	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
 		engine.ResourceOutputsEvent, engine.ResourcePreEvent:
 

@@ -40,6 +40,21 @@ type UpdateProgramRequest struct {
 	Config map[string]ConfigValue `json:"config"`
 
 	Metadata UpdateMetadata `json:"metadata"`
+
+	CoherenceWindow string `json:"coherenceWindow,omitempty"`
+
+	// Environment pins the managed ESC environment revision the update was evaluated against.
+	Environment *UpdateProgramEnvironment `json:"environment,omitempty"`
+}
+
+// UpdateProgramEnvironment identifies the managed ESC environment content an update was evaluated against.
+type UpdateProgramEnvironment struct {
+	// BaseRevision is the environment revision the stack's definition was compared with.
+	BaseRevision int `json:"baseRevision"`
+	// ChangeRequestID is the change request of the draft created when the definition differed.
+	ChangeRequestID string `json:"changeRequestID,omitempty"`
+	// DraftRevision is the draft revision that was evaluated. Meaningful only with ChangeRequestID; 0 is valid.
+	DraftRevision int `json:"draftRevision"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update.
@@ -110,6 +125,10 @@ type UpdateProgramResponse struct {
 
 	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
 }
+
+// LatestJournalVersion is the maximum journal version supported by this version of the code. Version 1 is the
+// initial journaling protocol; version 2 adds state migration entries.
+const LatestJournalVersion int64 = 2
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
 type StartUpdateRequest struct {
@@ -245,6 +264,9 @@ const (
 // CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
 type CompleteUpdateRequest struct {
 	Status UpdateStatus `json:"status"`
+
+	Outputs          map[string]any      `json:"outputs,omitempty"`
+	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
 }
 
 // PatchUpdateCheckpointRequest defines the body of a request to the patch update checkpoint endpoint of the service
@@ -302,4 +324,24 @@ type AppendUpdateLogEntryRequest struct {
 type StackRenameRequest struct {
 	NewName    string `json:"newName"`
 	NewProject string `json:"newProject"`
+}
+
+// BeginUpdateRequest is the combined request for creating and starting an update.
+// This endpoint combines the functionality of CreateUpdate and StartUpdate into a single
+// API call to reduce latency during startup.
+type BeginUpdateRequest struct {
+	UpdateKind UpdateKind           `json:"updateKind"`
+	Program    UpdateProgramRequest `json:"program"`
+	StartUpdateRequest
+}
+
+// BeginUpdateResponse is the combined response from creating and starting an update.
+// It includes all data needed to begin the engine execution, including the deployment
+// and stack metadata, eliminating the need for separate API calls.
+type BeginUpdateResponse struct {
+	StartUpdateResponse
+	UpdateProgramResponse
+	// Deployment may be omitted by the service; the client then fetches it separately.
+	Deployment *UntypedDeployment `json:"deployment,omitempty"`
+	Stack      Stack              `json:"stack"`
 }

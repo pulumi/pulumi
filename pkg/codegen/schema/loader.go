@@ -17,21 +17,26 @@ package schema
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/natefinch/atomic"
 
 	"github.com/blang/semver"
 	"github.com/segmentio/encoding/json"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -103,11 +108,28 @@ type ReferenceLoader interface {
 	LoadPackageReferenceV2(ctx context.Context, descriptor *PackageDescriptor) (PackageReference, error)
 }
 
+// RawLoader is an optional interface implemented by loaders that can return the raw JSON schema bytes for a
+// package descriptor without binding the schema.
+type RawLoader interface {
+	ReferenceLoader
+
+	// LoadRawSchemaBytes returns the raw JSON schema bytes for the given package descriptor.
+	//
+	// ok reports whether the bytes faithfully represent the package that LoadPackageReferenceV2 would load for the
+	// same descriptor; when ok is false the caller must fall back to a bind-based load.
+	LoadRawSchemaBytes(ctx context.Context, descriptor *PackageDescriptor) (data []byte, ok bool, err error)
+}
+
 type pluginLoader struct {
-	host plugin.Host
+	pctx *plugin.Context
 
 	cacheOptions pluginLoaderCacheOptions
 }
+
+var (
+	_ ReferenceLoader = (*pluginLoader)(nil)
+	_ RawLoader       = (*pluginLoader)(nil)
+)
 
 // Caching options intended for benchmarking or debugging:
 type pluginLoaderCacheOptions struct {
@@ -119,14 +141,16 @@ type pluginLoaderCacheOptions struct {
 	disableMmap bool
 }
 
-func NewPluginLoader(host plugin.Host) ReferenceLoader {
-	return newPluginLoaderWithOptions(host, pluginLoaderCacheOptions{})
+// NewPluginLoader creates a loader that resolves and boots provider plugins through the given
+// plugin context's host to load package schemas.
+func NewPluginLoader(pctx *plugin.Context) ReferenceLoader {
+	return newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{})
 }
 
-func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
+func newPluginLoaderWithOptions(pctx *plugin.Context, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
 	var l ReferenceLoader
 	l = &pluginLoader{
-		host: host,
+		pctx: pctx,
 
 		cacheOptions: cacheOptions,
 	}
@@ -215,11 +239,54 @@ func (l *pluginLoader) LoadPackageReferenceV2(
 		spec.Version = pluginVersion.String()
 	}
 
-	p, err := ImportPartialSpec(spec, nil, l)
+	p, err := ImportPartialSpecWithContext(ctx, spec, nil, l)
 	if err != nil {
 		return nil, err
 	}
 	return p, nil
+}
+
+func (l *pluginLoader) LoadRawSchemaBytes(
+	ctx context.Context, descriptor *PackageDescriptor,
+) ([]byte, bool, error) {
+	if descriptor.Name == "pulumi" {
+		// DefaultPulumiPackage is served from memory; there are no raw bytes for it.
+		return nil, false, nil
+	}
+
+	schemaBytes, pluginVersion, err := l.loadSchemaBytes(ctx, descriptor)
+	if err != nil {
+		return nil, false, err
+	}
+	if schemaIsEmpty(schemaBytes) {
+		return nil, false, getSchemaNotImplemented{}
+	}
+
+	// LoadPackageReferenceV2 defaults a missing schema version to the resolved plugin version. Raw bytes can't
+	// carry that fix-up, so when it would apply the caller has to take the bind-based path instead.
+	if pluginVersion != nil && descriptor.Parameterization == nil && !hasTopLevelVersion(schemaBytes) {
+		return nil, false, nil
+	}
+
+	return schemaBytes, true, nil
+}
+
+// hasTopLevelVersion reports whether the top-level JSON object in schemaBytes has a "version" key with a
+// non-empty string value.
+func hasTopLevelVersion(schemaBytes []byte) bool {
+	wantValue := false
+	for tok := json.NewTokenizer(schemaBytes); tok.Next(); {
+		if tok.Depth != 1 || tok.Delim == ':' || tok.Delim == ',' {
+			continue
+		}
+		if wantValue {
+			return tok.Value.String() && len(tok.String()) > 0
+		}
+		if tok.IsKey && string(tok.String()) == "version" {
+			wantValue = true
+		}
+	}
+	return false
 }
 
 // LoadPackageReference loads a package reference for the given pkg+version using the
@@ -360,6 +427,33 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
+// schemaFilePath returns the path to the schema cache file for the given package descriptor.
+// Schemas are cached in ~/.pulumi/schemas/ with a filename encoding name, version, and
+// hashes of the download URL and parameterization so different sources remain distinct.
+func schemaFilePath(
+	name string,
+	version *semver.Version,
+	downloadURL string,
+	parameterization *ParameterizationDescriptor,
+) (string, error) {
+	fileName := name
+	if version != nil {
+		fileName += "-" + version.String()
+	}
+	if downloadURL != "" {
+		h := sha256.Sum256([]byte(downloadURL))
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	if parameterization != nil {
+		paramBytes, err := json.Marshal(parameterization)
+		contract.AssertNoErrorf(err, "ParameterizationDescriptor should be marshalable to JSON")
+		h := sha256.Sum256(paramBytes)
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	fileName += ".json"
+	return workspace.GetPulumiPath("schemas", fileName)
+}
+
 func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginDescriptor {
 	return workspace.PluginDescriptor{
 		Name:              descriptor.Name,
@@ -397,11 +491,11 @@ func (l *pluginLoader) loadSchemaBytes(
 		return schemaBytes, pluginVersion, nil
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
+	pluginInfo, err := l.pctx.Host.ResolvePlugin(l.pctx, pluginSpecFromPackageDescriptor(descriptor))
 	if err != nil {
 		// Try and install the plugin if it was missing and try again, unless auto plugin installs are turned off.
-		var missingError *workspace.MissingError
-		if !errors.As(err, &missingError) || env.DisableAutomaticPluginAcquisition.Value() {
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		if !ok || env.DisableAutomaticPluginAcquisition.Value() {
 			return nil, nil, err
 		}
 
@@ -413,15 +507,15 @@ func (l *pluginLoader) loadSchemaBytes(
 		}
 
 		log := func(sev diag.Severity, msg string) {
-			l.host.Log(sev, "", msg, 0)
+			l.pctx.Host.Log(sev, "", msg, 0)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromHost)
+		_, err = pkgWorkspace.InstallPlugin(ctx, spec, log, NewLoaderServerFromContext, l.pctx.CloudCredentialEnv)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		pluginInfo, err = l.host.ResolvePlugin(pluginSpecFromPackageDescriptor(descriptor))
+		pluginInfo, err = l.pctx.Host.ResolvePlugin(l.pctx, pluginSpecFromPackageDescriptor(descriptor))
 		if err != nil {
 			return nil, descriptor.Version, err
 		}
@@ -433,12 +527,28 @@ func (l *pluginLoader) loadSchemaBytes(
 		pluginVersion = pluginInfo.Version
 	}
 
-	canCache := pluginInfo.SchemaPath != "" && pluginVersion != nil && descriptor.Parameterization == nil
+	var schemaPath string
+	// Only cache versioned plugins
+	if pluginVersion != nil {
+		var pathErr error
+		schemaPath, pathErr = schemaFilePath(
+			descriptor.Name, pluginVersion, descriptor.DownloadURL, descriptor.Parameterization)
+		if pathErr != nil {
+			// Non-fatal: log and proceed without file caching.
+			schemaPath = ""
+		}
+	}
 
-	if canCache {
-		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
-		if ok {
-			return schemaBytes, nil, nil
+	if schemaPath != "" {
+		installTime := pluginInfo.InstallTime()
+		if installTime.IsZero() {
+			// Non-fatal: log and proceed without file caching.
+			logging.V(3).Infof("failed to get install time for plugin %s@%v: %v", descriptor.Name, pluginVersion, err)
+		} else {
+			schemaBytes, ok := l.loadCachedSchemaBytes(schemaPath, installTime)
+			if ok {
+				return schemaBytes, nil, nil
+			}
 		}
 	}
 
@@ -447,10 +557,15 @@ func (l *pluginLoader) loadSchemaBytes(
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
 
-	if canCache {
-		err = atomic.WriteFile(pluginInfo.SchemaPath, bytes.NewReader(schemaBytes))
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
+	if schemaPath != "" {
+		if mkdirErr := os.MkdirAll(filepath.Dir(schemaPath), 0o700); mkdirErr == nil {
+			if writeErr := atomic.WriteFile(schemaPath, bytes.NewReader(schemaBytes)); writeErr != nil {
+				// Cache writes are best-effort. On Windows, os.Rename (used internally
+				// by atomic.WriteFile) fails with "Access Denied" when a concurrent
+				// loader has already written and memory-mapped the same file. The
+				// schema bytes are still valid — we just lost the race to cache them.
+				logging.V(3).Infof("failed to cache schema at %s: %v", schemaPath, writeErr)
+			}
 		}
 	}
 
@@ -472,7 +587,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(
 		Kind:              apitype.ResourcePlugin,
 	}
 
-	provider, err := l.host.Provider(wsDescriptor, env.Global())
+	provider, err := l.pctx.Host.Provider(l.pctx.WithoutProviderDebugging(), wsDescriptor, env.Global())
 	if err != nil {
 		return nil, nil, err
 	}

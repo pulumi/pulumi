@@ -70,12 +70,13 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.GetRequiredPackagesResponse,
     ]
     """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-    by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-    to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-    back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-    determine which plugins are required to service the import of a given resource, since given the presence of
-    [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-    with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+    by a program or plugin. It is used to pre-install packages before running a program with
+    [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+    registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+    resources into a stack, it is used to determine which plugins are required to service the import of a given
+    resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+    true that a package name corresponds 1:1 with a plugin name. It replaces
+    [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
     providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
     provide multiple packages.
     """
@@ -197,16 +198,6 @@ class LanguageRuntimeStub:
     user on how to use the linked package in the project.
     """
 
-    RunPlugin2: grpc.StreamStreamMultiCallable[
-        pulumi.language_pb2.RunPlugin2Request,
-        pulumi.language_pb2.RunPluginResponse,
-    ]
-    """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-    in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-    containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-    the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-    """
-
     Cancel: grpc.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
         google.protobuf.empty_pb2.Empty,
@@ -250,12 +241,13 @@ class LanguageRuntimeAsyncStub:
         pulumi.language_pb2.GetRequiredPackagesResponse,
     ]
     """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-    by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-    to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-    back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-    determine which plugins are required to service the import of a given resource, since given the presence of
-    [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-    with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+    by a program or plugin. It is used to pre-install packages before running a program with
+    [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+    registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+    resources into a stack, it is used to determine which plugins are required to service the import of a given
+    resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+    true that a package name corresponds 1:1 with a plugin name. It replaces
+    [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
     providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
     provide multiple packages.
     """
@@ -377,16 +369,6 @@ class LanguageRuntimeAsyncStub:
     user on how to use the linked package in the project.
     """
 
-    RunPlugin2: grpc.aio.StreamStreamMultiCallable[
-        pulumi.language_pb2.RunPlugin2Request,
-        pulumi.language_pb2.RunPluginResponse,
-    ]
-    """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-    in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-    containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-    the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-    """
-
     Cancel: grpc.aio.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
         google.protobuf.empty_pb2.Empty,
@@ -436,12 +418,13 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[pulumi.language_pb2.GetRequiredPackagesResponse, collections.abc.Awaitable[pulumi.language_pb2.GetRequiredPackagesResponse]]:
         """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-        by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-        to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-        back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-        determine which plugins are required to service the import of a given resource, since given the presence of
-        [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-        with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+        by a program or plugin. It is used to pre-install packages before running a program with
+        [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+        registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+        resources into a stack, it is used to determine which plugins are required to service the import of a given
+        resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+        true that a package name corresponds 1:1 with a plugin name. It replaces
+        [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
         providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
         provide multiple packages.
         """
@@ -587,18 +570,6 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
         `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
         user on how to use the linked package in the project.
-        """
-
-    
-    def RunPlugin2(
-        self,
-        request_iterator: _MaybeAsyncIterator[pulumi.language_pb2.RunPlugin2Request],
-        context: _ServicerContext,
-    ) -> typing.Union[collections.abc.Iterator[pulumi.language_pb2.RunPluginResponse], collections.abc.AsyncIterator[pulumi.language_pb2.RunPluginResponse]]:
-        """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-        in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-        containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-        the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
         """
 
     

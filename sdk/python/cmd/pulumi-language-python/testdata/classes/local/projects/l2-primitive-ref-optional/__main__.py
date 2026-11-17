@@ -1,0 +1,51 @@
+import pulumi
+import pulumi_optional_primitive_ref as optional_primitive_ref
+
+set_res = optional_primitive_ref.Resource("setRes",
+    data=optional_primitive_ref.DataArgs(
+        boolean=True,
+        float=3.14,
+        integer=42,
+        string="hello",
+        number_array=[
+            float(-1),
+            float(0),
+            float(1),
+        ],
+        boolean_map={
+            "t": True,
+            "f": False,
+        },
+    ),
+    optional_data=optional_primitive_ref.DataArgs(
+        string="optional parent",
+    ))
+unset_res = optional_primitive_ref.Resource("unsetRes", data=optional_primitive_ref.DataArgs())
+from_nested_optional = optional_primitive_ref.Resource("fromNestedOptional", data=optional_primitive_ref.DataArgs(
+    string=set_res.optional_data.string,
+))
+pulumi.export("setBoolean", set_res.data.boolean)
+pulumi.export("setFloat", set_res.data.float)
+pulumi.export("setInteger", set_res.data.integer)
+pulumi.export("setString", set_res.data.string)
+pulumi.export("setNumberArray", set_res.data.number_array)
+pulumi.export("setBooleanMap", set_res.data.boolean_map)
+pulumi.export("unsetBoolean", unset_res.data.apply(lambda data: "null" if data.boolean is None else "not null"))
+pulumi.export("unsetFloat", unset_res.data.apply(lambda data: "null" if data.float is None else "not null"))
+pulumi.export("unsetInteger", unset_res.data.apply(lambda data: "null" if data.integer is None else "not null"))
+pulumi.export("unsetString", unset_res.data.apply(lambda data: "null" if data.string is None else "not null"))
+pulumi.export("unsetNumberArray", unset_res.data.apply(lambda data: "null" if data.number_array is None else "not null"))
+pulumi.export("unsetBooleanMap", unset_res.data.apply(lambda data: "null" if data.boolean_map is None else "not null"))
+pulumi.export("setOptionalData", set_res.optional_data.apply(lambda optional_data: "null" if optional_data is None else "not null"))
+pulumi.export("unsetOptionalData", unset_res.optional_data.apply(lambda optional_data: "null" if optional_data is None else "not null"))
+pulumi.export("tupleOfOptional", [
+    set_res.data.string,
+    unset_res.data.string,
+])
+optional_lists = [
+    set_res.data.number_array,
+    unset_res.data.number_array,
+]
+from_optional_lists = optional_primitive_ref.Resource("fromOptionalLists", data=optional_primitive_ref.DataArgs(
+    number_array=optional_lists[0],
+))

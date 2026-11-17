@@ -31,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestArgumentConstruction(t *testing.T) {
@@ -84,7 +85,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{
-			Program: "foobar",
+			Program: "foobar", //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    "/foo/bar",
 				ProgramDirectory: "/foo/bar",
@@ -94,6 +95,29 @@ func TestArgumentConstruction(t *testing.T) {
 		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "foobar")
 	})
+}
+
+func TestTemplateWritesPnpmWorkspace(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	opts, err := structpb.NewStruct(map[string]any{"packagemanager": "pnpm"})
+	require.NoError(t, err)
+	indo := &pulumirpc.ProgramInfo{
+		RootDirectory:    dir,
+		ProgramDirectory: dir,
+		EntryPoint:       ".",
+		Options:          opts,
+	}
+	host := &nodeLanguageHost{}
+
+	_, err = host.Template(t.Context(),
+		&pulumirpc.TemplateRequest{Info: indo, ProjectName: "p"})
+
+	require.NoError(t, err)
+	b, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "allowBuilds:")
+	assert.Contains(t, string(b), "protobufjs: false")
 }
 
 func TestConfig(t *testing.T) {
@@ -392,6 +416,56 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	return dir
 }
 
+func TestAbout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("With typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test", "dependencies": { "typescript": "^5.4.5" } }`,
+			},
+			{
+				path:    filepath.Join("node_modules", "typescript", "package.json"),
+				content: `{ "name": "typescript", "version": "5.4.5", "main": "./lib/typescript.js" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "5.4.5", resp.Metadata["typescriptVersion"])
+	})
+
+	t.Run("Without typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.NotContains(t, resp.Metadata, "typescriptVersion")
+	})
+}
+
 func TestGetProgramDependencies(t *testing.T) {
 	t.Parallel()
 
@@ -406,7 +480,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		_, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -431,7 +505,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		_, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -467,7 +541,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -507,7 +581,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: subdir,
+			Program: subdir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    subdir,
 				ProgramDirectory: subdir,
@@ -546,7 +620,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -601,7 +675,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		})
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: testDir,
+			Program: testDir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    testDir,
 				ProgramDirectory: testDir,
@@ -658,7 +732,7 @@ func TestGetProgramDependencies(t *testing.T) {
 		subdir := filepath.Join(testDir, "subdir")
 		host := &nodeLanguageHost{}
 		resp, err := host.GetProgramDependencies(t.Context(), &pulumirpc.GetProgramDependenciesRequest{
-			Program: subdir,
+			Program: subdir, //nolint:staticcheck
 			Info: &pulumirpc.ProgramInfo{
 				RootDirectory:    subdir,
 				ProgramDirectory: subdir,
@@ -688,6 +762,21 @@ func TestParseOptions(t *testing.T) {
 		"packagemanager": "poetry",
 	}, "nodejs")
 	require.ErrorContains(t, err, "packagemanager option must be one of")
+
+	opts, err = parseOptions(nil, "nodejs")
+	require.NoError(t, err)
+	require.False(t, opts.production)
+
+	opts, err = parseOptions(map[string]any{
+		"production": true,
+	}, "nodejs")
+	require.NoError(t, err)
+	require.True(t, opts.production)
+
+	_, err = parseOptions(map[string]any{
+		"production": "yes",
+	}, "nodejs")
+	require.ErrorContains(t, err, "production option must be a boolean")
 
 	for _, tt := range []struct {
 		input    string
@@ -898,7 +987,7 @@ func TestNodeInstall(t *testing.T) {
 	// We expect the file written by our mock fnm executable to not exist.
 	stdout = &bytes.Buffer{}
 	err = installNodeVersion(tmpDir, stdout)
-	require.Error(t, err, errVersionFileNotFound)
+	require.Error(t, err, errVersionFileNotFound) //nolint:forbidigo // pre-existing
 
 	// Create a .node-version file
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("20.1.2"), 0o600))
@@ -927,4 +1016,80 @@ func TestNodeInstall(t *testing.T) {
 	commands = strings.Split(strings.TrimSpace(string(b)), "\n")
 	require.Equal(t, "use 20.1.2 --install-if-missing", commands[0])
 	require.Equal(t, "alias 20.1.2 default", commands[1])
+}
+
+func TestRuntimeOptionsPromptsPackageManager(t *testing.T) {
+	tests := []struct {
+		name            string
+		installed       []string
+		expectedChoices map[string]string
+		expectedDefault string
+	}{
+		{
+			name:      "none installed",
+			installed: nil,
+			expectedChoices: map[string]string{
+				"npm": "npm [not found]", "pnpm": "pnpm [not found]", "yarn": "yarn [not found]", "bun": "bun [not found]",
+			},
+			expectedDefault: "npm",
+		},
+		{
+			name:            "only npm installed",
+			installed:       []string{"npm"},
+			expectedChoices: map[string]string{"npm": "npm"},
+			expectedDefault: "npm",
+		},
+		{
+			name:            "only pnpm installed",
+			installed:       []string{"pnpm"},
+			expectedChoices: map[string]string{"pnpm": "pnpm"},
+			expectedDefault: "pnpm",
+		},
+		{
+			name:      "npm and yarn installed",
+			installed: []string{"npm", "yarn"},
+			expectedChoices: map[string]string{
+				"npm": "npm (recommended)", "pnpm": "pnpm [not found]", "yarn": "yarn", "bun": "bun [not found]",
+			},
+			expectedDefault: "npm",
+		},
+		{
+			name:      "pnpm and bun installed",
+			installed: []string{"pnpm", "bun"},
+			expectedChoices: map[string]string{
+				"npm": "npm [not found]", "pnpm": "pnpm", "yarn": "yarn [not found]", "bun": "bun",
+			},
+			expectedDefault: "npm",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			binDir := t.TempDir()
+			for _, pm := range tt.installed {
+				name := pm
+				if runtime.GOOS == "windows" {
+					name += ".bat"
+				}
+				//nolint:gosec // the file has to be executable to be found on PATH
+				require.NoError(t, os.WriteFile(filepath.Join(binDir, name), nil, 0o700))
+			}
+			t.Setenv("PATH", binDir)
+
+			host := &nodeLanguageHost{}
+			resp, err := host.RuntimeOptionsPrompts(t.Context(), &pulumirpc.RuntimeOptionsRequest{
+				Info: &pulumirpc.ProgramInfo{},
+			})
+			require.NoError(t, err)
+			require.Len(t, resp.Prompts, 1)
+			prompt := resp.Prompts[0]
+			require.Equal(t, "packagemanager", prompt.Key)
+
+			displayNames := map[string]string{}
+			for _, choice := range prompt.Choices {
+				displayNames[choice.StringValue] = choice.DisplayName
+			}
+			require.Equal(t, tt.expectedChoices, displayNames)
+			require.Equal(t, tt.expectedDefault, prompt.Default.StringValue)
+		})
+	}
 }

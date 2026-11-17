@@ -29,6 +29,8 @@ class DataArgsDict(TypedDict):
     integer: pulumi.Input[_builtins.int]
     string: pulumi.Input[_builtins.str]
     string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]
+    inner_data_list: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['InnerDataArgsDict']]]]]
+    optional_inner: NotRequired[pulumi.Input[Optional['InnerDataArgsDict']]]
 
 @pulumi.input_type
 class DataArgs:
@@ -39,7 +41,9 @@ class DataArgs:
                  inner_data: pulumi.Input['InnerDataArgs'],
                  integer: pulumi.Input[_builtins.int],
                  string: pulumi.Input[_builtins.str],
-                 string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]):
+                 string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]],
+                 inner_data_list: pulumi.Input[Optional[Sequence[pulumi.Input['InnerDataArgs']]]] = None,
+                 optional_inner: pulumi.Input[Optional['InnerDataArgs']] = None):
         pulumi.set(__self__, "bool_array", bool_array)
         pulumi.set(__self__, "boolean", boolean)
         pulumi.set(__self__, "float", float)
@@ -47,6 +51,10 @@ class DataArgs:
         pulumi.set(__self__, "integer", integer)
         pulumi.set(__self__, "string", string)
         pulumi.set(__self__, "string_map", string_map)
+        if inner_data_list is not None:
+            pulumi.set(__self__, "inner_data_list", inner_data_list)
+        if optional_inner is not None:
+            pulumi.set(__self__, "optional_inner", optional_inner)
 
     @_builtins.property
     @pulumi.getter(name="boolArray")
@@ -110,6 +118,24 @@ class DataArgs:
     @string_map.setter
     def string_map(self, value: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]):
         pulumi.set(self, "string_map", value)
+
+    @_builtins.property
+    @pulumi.getter(name="innerDataList")
+    def inner_data_list(self) -> pulumi.Input[Optional[Sequence[pulumi.Input['InnerDataArgs']]]]:
+        return pulumi.get(self, "inner_data_list")
+
+    @inner_data_list.setter
+    def inner_data_list(self, value: pulumi.Input[Optional[Sequence[pulumi.Input['InnerDataArgs']]]]):
+        pulumi.set(self, "inner_data_list", value)
+
+    @_builtins.property
+    @pulumi.getter(name="optionalInner")
+    def optional_inner(self) -> pulumi.Input[Optional['InnerDataArgs']]:
+        return pulumi.get(self, "optional_inner")
+
+    @optional_inner.setter
+    def optional_inner(self, value: pulumi.Input[Optional['InnerDataArgs']]):
+        pulumi.set(self, "optional_inner", value)
 
 
 class InnerDataArgsDict(TypedDict):

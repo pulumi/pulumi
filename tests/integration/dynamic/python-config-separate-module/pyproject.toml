@@ -1,0 +1,4 @@
+[project]
+name = "dynamic-provider-config-main-py"
+version = "0.0.0"
+dependencies = []

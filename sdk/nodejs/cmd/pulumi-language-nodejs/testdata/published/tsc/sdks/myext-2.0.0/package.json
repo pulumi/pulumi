@@ -1,0 +1,24 @@
+{
+    "name": "@pulumi/myext",
+    "version": "2.0.0",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
+    },
+    "devDependencies": {
+        "@types/node": "^20",
+        "typescript": "^4.7.0"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "extbase",
+        "version": "45.0.0",
+        "extensionParameterization": {
+            "name": "myext",
+            "version": "2.0.0",
+            "value": "SGVsbG8="
+        }
+    }
+}

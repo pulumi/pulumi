@@ -10,7 +10,7 @@ export interface Tbool1 {
 }
 
 export interface Tbool1Args {
-    x?: pulumi.Input<boolean>;
+    x?: pulumi.Input<boolean | undefined>;
 }
 
 export interface Tbool2 {
@@ -18,7 +18,7 @@ export interface Tbool2 {
 }
 
 export interface Tbool2Args {
-    x?: pulumi.Input<boolean>;
+    x?: pulumi.Input<boolean | undefined>;
 }
 
 export interface Tbool3 {
@@ -26,7 +26,7 @@ export interface Tbool3 {
 }
 
 export interface Tbool3Args {
-    x?: pulumi.Input<boolean>;
+    x?: pulumi.Input<boolean | undefined>;
 }
 
 export interface Tint1 {
@@ -34,7 +34,7 @@ export interface Tint1 {
 }
 
 export interface Tint1Args {
-    x?: pulumi.Input<number>;
+    x?: pulumi.Input<number | undefined>;
 }
 
 export interface Tint2 {
@@ -42,7 +42,7 @@ export interface Tint2 {
 }
 
 export interface Tint2Args {
-    x?: pulumi.Input<number>;
+    x?: pulumi.Input<number | undefined>;
 }
 
 export interface Tint3 {
@@ -50,7 +50,7 @@ export interface Tint3 {
 }
 
 export interface Tint3Args {
-    x?: pulumi.Input<number>;
+    x?: pulumi.Input<number | undefined>;
 }
 
 export interface Tnum1 {
@@ -58,7 +58,7 @@ export interface Tnum1 {
 }
 
 export interface Tnum1Args {
-    x?: pulumi.Input<number>;
+    x?: pulumi.Input<number | undefined>;
 }
 
 export interface Tnum2 {
@@ -66,7 +66,7 @@ export interface Tnum2 {
 }
 
 export interface Tnum2Args {
-    x?: pulumi.Input<number>;
+    x?: pulumi.Input<number | undefined>;
 }
 
 export interface Tnum3 {
@@ -74,7 +74,7 @@ export interface Tnum3 {
 }
 
 export interface Tnum3Args {
-    x?: pulumi.Input<number>;
+    x?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretBool1 {
@@ -82,7 +82,7 @@ export interface TsecretBool1 {
 }
 
 export interface TsecretBool1Args {
-    secretX?: pulumi.Input<boolean>;
+    secretX?: pulumi.Input<boolean | undefined>;
 }
 
 export interface TsecretBool2 {
@@ -90,7 +90,7 @@ export interface TsecretBool2 {
 }
 
 export interface TsecretBool2Args {
-    secretX?: pulumi.Input<boolean>;
+    secretX?: pulumi.Input<boolean | undefined>;
 }
 
 export interface TsecretBool3 {
@@ -98,7 +98,7 @@ export interface TsecretBool3 {
 }
 
 export interface TsecretBool3Args {
-    secretX?: pulumi.Input<boolean>;
+    secretX?: pulumi.Input<boolean | undefined>;
 }
 
 export interface TsecretInt1 {
@@ -106,7 +106,7 @@ export interface TsecretInt1 {
 }
 
 export interface TsecretInt1Args {
-    secretX?: pulumi.Input<number>;
+    secretX?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretInt2 {
@@ -114,7 +114,7 @@ export interface TsecretInt2 {
 }
 
 export interface TsecretInt2Args {
-    secretX?: pulumi.Input<number>;
+    secretX?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretInt3 {
@@ -122,7 +122,7 @@ export interface TsecretInt3 {
 }
 
 export interface TsecretInt3Args {
-    secretX?: pulumi.Input<number>;
+    secretX?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretNum1 {
@@ -130,7 +130,7 @@ export interface TsecretNum1 {
 }
 
 export interface TsecretNum1Args {
-    secretX?: pulumi.Input<number>;
+    secretX?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretNum2 {
@@ -138,7 +138,7 @@ export interface TsecretNum2 {
 }
 
 export interface TsecretNum2Args {
-    secretX?: pulumi.Input<number>;
+    secretX?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretNum3 {
@@ -146,7 +146,7 @@ export interface TsecretNum3 {
 }
 
 export interface TsecretNum3Args {
-    secretX?: pulumi.Input<number>;
+    secretX?: pulumi.Input<number | undefined>;
 }
 
 export interface TsecretString1 {
@@ -154,7 +154,7 @@ export interface TsecretString1 {
 }
 
 export interface TsecretString1Args {
-    secretX?: pulumi.Input<string>;
+    secretX?: pulumi.Input<string | undefined>;
 }
 
 export interface TsecretString2 {
@@ -162,7 +162,7 @@ export interface TsecretString2 {
 }
 
 export interface TsecretString2Args {
-    secretX?: pulumi.Input<string>;
+    secretX?: pulumi.Input<string | undefined>;
 }
 
 export interface TsecretString3 {
@@ -170,7 +170,7 @@ export interface TsecretString3 {
 }
 
 export interface TsecretString3Args {
-    secretX?: pulumi.Input<string>;
+    secretX?: pulumi.Input<string | undefined>;
 }
 
 export interface Tstring1 {
@@ -178,7 +178,7 @@ export interface Tstring1 {
 }
 
 export interface Tstring1Args {
-    x?: pulumi.Input<string>;
+    x?: pulumi.Input<string | undefined>;
 }
 
 export interface Tstring2 {
@@ -186,7 +186,7 @@ export interface Tstring2 {
 }
 
 export interface Tstring2Args {
-    x?: pulumi.Input<string>;
+    x?: pulumi.Input<string | undefined>;
 }
 
 export interface Tstring3 {
@@ -194,5 +194,5 @@ export interface Tstring3 {
 }
 
 export interface Tstring3Args {
-    x?: pulumi.Input<string>;
+    x?: pulumi.Input<string | undefined>;
 }

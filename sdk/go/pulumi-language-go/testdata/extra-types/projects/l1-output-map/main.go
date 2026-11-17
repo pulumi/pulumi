@@ -11,6 +11,16 @@ func main() {
 			"greeting": pulumi.String("Hello, world!"),
 			"farewell": pulumi.String("Goodbye, world!"),
 		})
+		ctx.Export("adversarialStrings", pulumi.StringMap{
+			"__type":       pulumi.String("dunder type"),
+			"__internal":   pulumi.String("dunder internal"),
+			"__provider":   pulumi.String("dunder provider"),
+			"__version":    pulumi.String("dunder version"),
+			"":             pulumi.String("empty key"),
+			"empty value":  pulumi.String(""),
+			"dunder value": pulumi.String("__dunder"),
+			"Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \t (tab), \x1b (escape), \a (bell), \x00 (null), \U000e0021 (tag space)": pulumi.String("Some ${common} \"characters\" 'that' need escaping: \\ (backslash), \t (tab), \x1b (escape), \a (bell), \x00 (null), \U000e0021 (tag space)"),
+		})
 		ctx.Export("numbers", pulumi.IntMap{
 			"1": pulumi.Int(1),
 			"2": pulumi.Int(2),

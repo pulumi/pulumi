@@ -61,11 +61,18 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 	return buffer.Bytes(), nil
 }
 
-func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
-	// TODO: check the name to ensure that it does not contain path traversal characters.
-	//
-	//nolint:gosec
-	path := filepath.Join(dir, header.Name)
+func extractFile(r *tar.Reader, header *tar.Header, dir string, rename func(string) string) error {
+	// Guard against ZipSlip path traversal: ensure the resolved target stays inside dir.
+	cleanDir := filepath.Clean(dir)
+	relName := rename(header.Name)
+	if relName == "" {
+		return nil
+	}
+
+	path := filepath.Join(cleanDir, relName)
+	if path != cleanDir && !strings.HasPrefix(path, cleanDir+string(os.PathSeparator)) {
+		return fmt.Errorf("tar entry %q escapes destination directory", header.Name)
+	}
 
 	switch header.Typeflag {
 	case tar.TypeDir:
@@ -90,7 +97,6 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		if header.Mode > math.MaxUint32 {
 			return fmt.Errorf("unexpected file mode %v for %s", header.Mode, header.Name)
 		}
-		//nolint:gosec // int64 -> uint32 conversion guarded above
 		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
 			return fmt.Errorf("opening file %s for extraction: %w", path, err)
@@ -98,9 +104,35 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		defer contract.IgnoreClose(dst)
 
 		// We're not concerned with potential tarbombs, so disable gosec.
-		//nolint:gosec
 		if _, err = io.Copy(dst, r); err != nil {
 			return fmt.Errorf("untarring file %s: %w", path, err)
+		}
+	case tar.TypeSymlink:
+		// Guard against symlinks that point outside the extraction directory.
+		target := header.Linkname
+		if !filepath.IsAbs(target) {
+			//nolint:gosec // The resolved target is checked against the destination directory below.
+			target = filepath.Join(filepath.Dir(path), target)
+		}
+		target = filepath.Clean(target)
+		if target != cleanDir && !strings.HasPrefix(target, cleanDir+string(os.PathSeparator)) {
+			return fmt.Errorf("symlink %s points outside the extraction directory", header.Name)
+		}
+
+		linkDir := filepath.Dir(path)
+		if _, err := os.Stat(linkDir); err != nil {
+			if err = os.MkdirAll(linkDir, 0o0700); err != nil {
+				return fmt.Errorf("extracting dir %s: %w", linkDir, err)
+			}
+		}
+
+		if _, err := os.Lstat(path); err == nil {
+			if err = os.Remove(path); err != nil {
+				return fmt.Errorf("removing existing file %s before creating symlink: %w", path, err)
+			}
+		}
+		if err := os.Symlink(header.Linkname, path); err != nil {
+			return fmt.Errorf("extracting symlink %s: %w", path, err)
 		}
 	default:
 		return fmt.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
@@ -111,10 +143,25 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 
 // ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
 func ExtractTGZ(r io.Reader, dir string) error {
+	return ExtractTGZWithRemap(r, dir, func(path string) string { return path })
+}
+
+// ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
+//
+// rename is called on each file header and can be used to rename files during
+// unpacking. If rename returns "", the file will be dropped.
+func ExtractTGZWithRemap(r io.Reader, dir string, rename func(path string) string) error {
+	// Convert to absolute path so that path traversal checks in extractFile are reliable.
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("resolving destination path: %w", err)
+	}
+
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return fmt.Errorf("uncompressing: %w", err)
 	}
+	defer contract.IgnoreClose(gzr)
 	tr := tar.NewReader(gzr)
 	for {
 		header, err := tr.Next()
@@ -125,7 +172,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 			return fmt.Errorf("extracting: %w", err)
 		}
 
-		if err = extractFile(tr, header, dir); err != nil {
+		if err = extractFile(tr, header, absDir, rename); err != nil {
 			return err
 		}
 	}
@@ -193,7 +240,10 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 	}
 
 	for _, info := range infos {
-		fullName := filepath.Join(dir, info.Name())
+		// Precompose the entry name to NFC on filesystems that decompose Unicode
+		// (macOS), mirroring git's core.precomposeunicode, so NFC-authored ignore
+		// patterns match files the filesystem hands back in decomposed form.
+		fullName := filepath.Join(dir, precomposeUnicode(info.Name()))
 
 		if !info.IsDir() && ignores.IsIgnored(fullName) {
 			logging.V(9).Infof("skip archiving of %v due to ignore file", fullName)

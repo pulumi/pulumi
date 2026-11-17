@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -32,10 +33,12 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	stdiotest "testing/iotest"
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/go-git/go-git/v5/plumbing"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
@@ -597,7 +600,7 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 
-		chksum := "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81" //nolint:gosec
+		chksum := "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
 
 		t.Run("Invalid Checksum", func(t *testing.T) {
 			spec := PluginDescriptor{
@@ -614,7 +617,7 @@ func TestPluginDownload(t *testing.T) {
 			r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
-			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum)
+			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum) //nolint:forbidigo // pre-existing
 			assert.Equal(t, int(l), len(readBytes))
 			assert.Equal(t, expectedBytes, readBytes)
 		})
@@ -719,7 +722,6 @@ func TestPluginDownload(t *testing.T) {
 				return nil, -1, &downloadError{code: 401}
 			}
 
-			//nolint:lll
 			if req.URL.String() ==
 				"https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
 				assert.Equal(t, "", req.Header.Get("Authorization"))
@@ -1265,7 +1267,61 @@ func TestDownloadToFile_retries(t *testing.T) {
 	assert.Equal(t, numRequests, numRetries)
 }
 
-//nolint:paralleltest // changes directory for process
+func TestChecksumSource_finalReadWithEOF(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that bytes returned together with io.EOF are covered by the checksum.
+	// net/http returns the end of a body with a known Content-Length this way.
+
+	archive := []byte("plugin archive")
+	checksum := sha256.Sum256(archive)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(archive)
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	version := semver.MustParse("1.0.0")
+	spec := PluginDescriptor{
+		Name:              "myplugin",
+		Kind:              apitype.ResourcePlugin,
+		Version:           &version,
+		PluginDownloadURL: server.URL,
+		Checksums:         map[string][]byte{"linux-amd64": checksum[:]},
+	}
+	source, err := spec.GetSource()
+	require.NoError(t, err)
+
+	t.Run("valid archive", func(t *testing.T) {
+		t.Parallel()
+
+		r, _, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		defer r.Close()
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, archive, readBytes)
+	})
+
+	t.Run("trailing data", func(t *testing.T) {
+		t.Parallel()
+
+		// The archive matches the checksum, but more bytes follow it in the final read.
+		getHTTPResponse := func(*http.Request) (io.ReadCloser, int64, error) {
+			body := io.MultiReader(
+				bytes.NewReader(archive),
+				stdiotest.DataErrReader(strings.NewReader("trailing data")))
+			return io.NopCloser(body), -1, nil
+		}
+		r, _, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		_, err = io.ReadAll(r)
+		var checksumErr *checksumError
+		require.ErrorAs(t, err, &checksumErr)
+	})
+}
+
 func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	t.Parallel()
 	tempdir := t.TempDir()
@@ -1748,7 +1804,7 @@ func TestPluginInfoShimless(t *testing.T) {
 	pathDir := t.TempDir()
 
 	pluginPath := filepath.Join(pathDir, "pulumi-resource-mock")
-	err := os.MkdirAll(pluginPath, 0o700) //nolint: gosec
+	err := os.MkdirAll(pluginPath, 0o700)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(pluginPath, "PulumiPlugin.yaml"), []byte(`runtime: nodejs`), 0o600)
 	require.NoError(t, err)
@@ -1775,10 +1831,7 @@ func TestPluginInfoShimless(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, pluginPath, info.Path)
 	assert.Equal(t, uint64(23), info.Size())
-	assert.Equal(t, stat.ModTime(), info.InstallTime)
-	assert.Equal(t, stat.ModTime(), info.SchemaTime)
-	// schemaPaths are odd, they're one directory up from the plugin directory
-	assert.Equal(t, filepath.Join(filepath.Dir(pluginPath), "schema-mock.json"), info.SchemaPath)
+	assert.Equal(t, stat.ModTime(), info.InstallTime())
 }
 
 func TestProjectPluginsWithUncleanPath(t *testing.T) {
@@ -1823,6 +1876,60 @@ func TestProjectPluginsWithSymlink(t *testing.T) {
 		})
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(tempdir, "symlink", "pulumi-resource-aws"), path)
+}
+
+func TestLastUsedTimeFromMarker(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, "resource-mock-v1.0.0")
+	require.NoError(t, os.Mkdir(pluginDir, 0o700))
+
+	markPluginUsed(pluginDir)
+
+	stat, err := os.Stat(pluginDir + pluginLastUsedSuffix)
+	require.NoError(t, err)
+
+	version := semver.MustParse("1.0.0")
+	info := PluginInfo{
+		Name:    "mock",
+		Kind:    apitype.ResourcePlugin,
+		Version: &version,
+		Path:    pluginDir,
+	}
+	assert.Equal(t, stat.ModTime(), info.LastUsedTime())
+
+	require.NoError(t, info.Delete())
+	_, err = os.Stat(pluginDir + pluginLastUsedSuffix)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestGetPluginPathMarksLastUsed(t *testing.T) {
+	ctx := t.Context()
+	home := t.TempDir()
+	t.Setenv("PULUMI_HOME", home)
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
+
+	pluginDir := filepath.Join(home, "plugins", "resource-mock-v1.0.0")
+	require.NoError(t, os.MkdirAll(pluginDir, 0o700))
+	err := os.WriteFile(filepath.Join(pluginDir, "pulumi-resource-mock"), []byte{}, 0o700) //nolint:gosec
+	require.NoError(t, err)
+
+	version := semver.MustParse("1.0.0")
+	spec := PluginDescriptor{Name: "mock", Kind: apitype.ResourcePlugin, Version: &version}
+
+	// Querying plugin info is not a use.
+	_, err = GetPluginInfo(ctx, diagtest.LogSink(t), spec, nil)
+	require.NoError(t, err)
+	_, err = os.Stat(pluginDir + pluginLastUsedSuffix)
+	assert.True(t, os.IsNotExist(err))
+
+	// Resolving the plugin's path for execution is.
+	path, err := GetPluginPath(ctx, diagtest.LogSink(t), spec, nil)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(pluginDir, "pulumi-resource-mock"), path)
+	_, err = os.Stat(pluginDir + pluginLastUsedSuffix)
+	require.NoError(t, err)
 }
 
 func TestNewPluginSpec(t *testing.T) {
@@ -2080,6 +2187,72 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
 	require.Equal(t, "a string", string(buf))
+}
+
+func TestGitSourceDownloadUnprefixedTag(t *testing.T) {
+	t.Parallel()
+
+	prefixed := plumbing.ReferenceName("refs/tags/v1.0.0")
+	unprefixed := plumbing.ReferenceName("refs/tags/1.0.0")
+	prefixedNotFound := fmt.Errorf("%w: %s", git.ErrRemoteRefNotFound, prefixed)
+	unprefixedNotFound := fmt.Errorf("%w: %s", git.ErrRemoteRefNotFound, unprefixed)
+	errAuth := errors.New("authentication required")
+
+	cases := []struct {
+		name         string
+		cloneErrs    map[plumbing.ReferenceName]error
+		expectedRefs []plumbing.ReferenceName
+		expectedErrs []error
+	}{
+		{
+			name:         "only unprefixed tag exists",
+			cloneErrs:    map[plumbing.ReferenceName]error{prefixed: prefixedNotFound},
+			expectedRefs: []plumbing.ReferenceName{prefixed, unprefixed},
+		},
+		{
+			name: "no tag exists",
+			cloneErrs: map[plumbing.ReferenceName]error{
+				prefixed:   prefixedNotFound,
+				unprefixed: unprefixedNotFound,
+			},
+			expectedRefs: []plumbing.ReferenceName{prefixed, unprefixed},
+			expectedErrs: []error{prefixedNotFound, unprefixedNotFound},
+		},
+		{
+			name:         "other clone error",
+			cloneErrs:    map[plumbing.ReferenceName]error{prefixed: errAuth},
+			expectedRefs: []plumbing.ReferenceName{prefixed},
+			expectedErrs: []error{errAuth},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var refs []plumbing.ReferenceName
+			gitSource := &gitSource{
+				url: "https://example.com/repo/test",
+				cloneOrPull: func(_ context.Context, _ string, ref plumbing.ReferenceName, tmpdir string, _ bool) error {
+					refs = append(refs, ref)
+					if err := c.cloneErrs[ref]; err != nil {
+						return err
+					}
+					return os.WriteFile(filepath.Join(tmpdir, "test"), []byte("a string"), 0o600)
+				},
+			}
+			readCloser, _, err := gitSource.Download(t.Context(), semver.MustParse("1.0.0"), "unused", "unused",
+				func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
+			require.Equal(t, c.expectedRefs, refs)
+			if len(c.expectedErrs) > 0 {
+				for _, expected := range c.expectedErrs {
+					require.ErrorIs(t, err, expected)
+				}
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, readCloser)
+		})
+	}
 }
 
 func TestGitSourceDownloadHEAD(t *testing.T) {

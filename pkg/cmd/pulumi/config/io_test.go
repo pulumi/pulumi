@@ -24,12 +24,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,13 +39,10 @@ import (
 func TestPrettyKeyForProject(t *testing.T) {
 	t.Parallel()
 
-	proj := &workspace.Project{
-		Name:    tokens.PackageName("test-package"),
-		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-	}
+	projectName := tokens.PackageName("test-package")
 
-	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))
-	assert.Equal(t, "other-package:bar", prettyKeyForProject(config.MustMakeKey("other-package", "bar"), proj))
+	assert.Equal(t, "foo", PrettyKeyForProject(config.MustMakeKey("test-package", "foo"), projectName))
+	assert.Equal(t, "other-package:bar", PrettyKeyForProject(config.MustMakeKey("other-package", "bar"), projectName))
 	assert.Panics(t, func() { config.MustMakeKey("other:package", "bar") })
 }
 
@@ -91,6 +88,8 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 			},
 		},
 		nil,
+		"",
+		nil,
 	)
 }
 
@@ -126,6 +125,8 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 				}
 			},
 		},
+		nil,
+		"",
 		nil,
 	)
 	if !called {
@@ -187,7 +188,7 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte(""), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(t.Context(), stack, &projectStack)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
 }
 
@@ -201,8 +202,8 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(t.Context(), stack, &projectStack)
-	assert.Error(t, err)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockStack {
@@ -217,6 +218,7 @@ func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockSt
 			org string,
 			yaml []byte,
 			duration time.Duration,
+			_ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.NotEmpty(t, yaml)
@@ -253,7 +255,7 @@ func TestOpenStackEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -280,7 +282,145 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  imports:\n    - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestOpenStackEnvVersionPinned(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			_ map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Contains(t, string(yamlBody), "project/env@3")
+			assert.Contains(t, string(yamlBody), "project/other@stable")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - project/env@3\n  - project/other@stable"), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestOpenStackEnvOverrides(t *testing.T) {
+	t.Parallel()
+
+	var gotOverrides map[string]string
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			environmentOverrides map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			gotOverrides = environmentOverrides
+			return &esc.Environment{Properties: map[string]esc.Value{}}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - proj/env"), &projectStack)
+	require.NoError(t, err)
+
+	_, diags, err := openStackEnv(t.Context(), stack, &projectStack,
+		[]string{"proj/env=proj/other@tag", "proj/env2=proj/other2"})
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, map[string]string{
+		"proj/env":  "proj/other@tag",
+		"proj/env2": "proj/other2",
+	}, gotOverrides)
+}
+
+func TestParseEnvironmentOverrides(t *testing.T) {
+	t.Parallel()
+
+	overrides, err := parseEnvironmentOverrides(nil)
+	require.NoError(t, err)
+	assert.Nil(t, overrides)
+
+	overrides, err = parseEnvironmentOverrides([]string{"proj/env=proj/other@tag", "a=b"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"proj/env": "proj/other@tag", "a": "b"}, overrides)
+
+	for _, bad := range []string{"noequals", "=replacement", "match="} {
+		_, err := parseEnvironmentOverrides([]string{bad})
+		assert.ErrorContains(t, err, "invalid --override-env value")
+	}
+}
+
+func TestOpenStackEnvVersionPinnedLiteral(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			_ map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Contains(t, string(yamlBody), "project/env@3")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	stackYAML := "environment:\n  imports:\n    - project/env@3\n" +
+		"  values:\n    pulumiConfig:\n      test:string: esc"
+	err := yaml.Unmarshal([]byte(stackYAML), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
 	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
@@ -357,13 +497,16 @@ func TestStackEnvConfig(t *testing.T) {
 		&project,
 		mockSecretsManager,
 		&projectStack,
+		nil,
 	)
 	require.NoError(t, err)
 
 	assert.Nil(t, cfg.Config)
 	cfg.Config = config.Map{}
 
-	err = workspace.ApplyProjectConfig(ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
+	err = pkgWorkspace.ApplyProjectConfig(
+		ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter, config.NopDecrypter,
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
@@ -471,6 +614,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
+			_ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, []apitype.EnvironmentDiagnostic{{Summary: "diag"}}, nil
 		},
@@ -484,7 +628,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, diags, err := openStackEnv(t.Context(), stack, &projectStack)
+	_, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
 	require.Len(t, diags, 1)
 }
@@ -501,6 +645,7 @@ func TestOpenStackEnvError(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
+			_ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, nil, errors.New("error")
 		},
@@ -514,8 +659,8 @@ func TestOpenStackEnvError(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(t.Context(), stack, &projectStack)
-	assert.Error(t, err)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestParseConfigKey(t *testing.T) {
@@ -645,7 +790,7 @@ func TestParseConfigKey(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "test-project",
 			}, "/test/path", nil
@@ -657,7 +802,7 @@ func TestParseConfigKey(t *testing.T) {
 			t.Parallel()
 			got, err := ParseConfigKey(ws, tt.input, tt.path)
 			if tt.wantErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.wantErr)
 				return
 			}
@@ -665,4 +810,238 @@ func TestParseConfigKey(t *testing.T) {
 			assert.Equal(t, tt.wantKey, got)
 		})
 	}
+}
+
+// newManagedStack returns stack acme/otherproj/new managing environment p/old, so a test fails if the stack's project
+// or name leaks into an ESC call. Every ESC call and GetLatestConfiguration fails the test unless the test passes
+// evaluate or replaces the backend's function.
+func newManagedStack(
+	t *testing.T,
+	evaluate func(
+		org string,
+		project string,
+		name string,
+		definition []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error),
+) (*backend.MockStack, *backend.MockManagedEnvironmentsBackend) {
+	t.Helper()
+
+	if evaluate == nil {
+		evaluate = func(
+			string, string, string, []byte,
+		) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+			t.Error("unexpected EvaluateManagedEnvironment call")
+			return nil, nil, errors.New("unexpected call")
+		}
+	}
+	be := &backend.MockManagedEnvironmentsBackend{
+		MockEnvironmentsBackend: backend.MockEnvironmentsBackend{
+			MockBackend: backend.MockBackend{
+				NameF: func() string { return "test" },
+				GetLatestConfigurationF: func(context.Context, backend.Stack) (backend.LatestConfiguration, error) {
+					t.Error("unexpected GetLatestConfiguration call")
+					return backend.LatestConfiguration{}, nil
+				},
+			},
+			CheckYAMLEnvironmentF: func(
+				context.Context, string, []byte,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				t.Error("unexpected CheckYAMLEnvironment call")
+				return nil, nil, errors.New("unexpected call")
+			},
+			OpenYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration, map[string]string,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				t.Error("unexpected OpenYAMLEnvironment call")
+				return nil, nil, errors.New("unexpected call")
+			},
+		},
+		EvaluateManagedEnvironmentF: func(
+			_ context.Context, org string, project string, name string, definition []byte,
+		) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+			return evaluate(org, project, name, definition)
+		},
+		EncryptEnvironmentSecretsF: func(context.Context, string, string, string, [][]byte) ([]string, error) {
+			t.Error("unexpected EncryptEnvironmentSecrets call")
+			return nil, errors.New("unexpected call")
+		},
+	}
+	stack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "acme/otherproj/new",
+				NameV:               tokens.MustParseStackName("new"),
+				ProjectV:            "otherproj",
+				FullyQualifiedNameV: tokens.QName("acme/otherproj/new"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{ManagedEnvironment: "p/old"}
+		},
+		OrgNameF: func() string { return "acme" },
+		BackendF: func() backend.Backend { return be },
+	}
+	return stack, be
+}
+
+func loadTestProjectStack(t *testing.T, stackYAML string) *workspace.ProjectStack {
+	t.Helper()
+
+	var ps workspace.ProjectStack
+	require.NoError(t, yaml.Unmarshal([]byte(stackYAML), &ps))
+	return &ps
+}
+
+const managedStackYAML = `environment:
+  values:
+    pulumiConfig:
+      otherproj:key: env
+`
+
+func TestOpenStackEnvManaged(t *testing.T) {
+	t.Parallel()
+
+	var evaluated []string
+	stack, _ := newManagedStack(t, func(
+		org string,
+		project string,
+		name string,
+		definition []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+		evaluated = append(evaluated, org+"/"+project+"/"+name)
+		assert.YAMLEq(t, "values: {pulumiConfig: {otherproj:key: env}}", string(definition))
+		return &backend.ManagedEnvironmentEvaluation{
+			Environment: &esc.Environment{Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(map[string]esc.Value{"otherproj:key": esc.NewValue("env")}),
+			}},
+			BaseRevision:    7,
+			ChangeRequestID: "cr-1",
+		}, nil, nil
+	})
+
+	project := workspace.Project{Name: "otherproj"}
+	cfg, err := getStackConfigurationFromProjectStack(
+		t.Context(), stack, &project, nil, loadTestProjectStack(t, managedStackYAML), nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"acme/p/old"}, evaluated)
+	assert.Equal(t, &apitype.UpdateProgramEnvironment{
+		BaseRevision:    7,
+		ChangeRequestID: "cr-1",
+		DraftRevision:   0,
+	}, cfg.ManagedEnvironment)
+	assert.Equal(t, esc.NewValue(map[string]esc.Value{"otherproj:key": esc.NewValue("env")}), cfg.Environment)
+}
+
+func TestGetStackConfigurationManagedEnvironmentImports(t *testing.T) {
+	t.Parallel()
+
+	stack, _ := newManagedStack(t, func(
+		string, string, string, []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+		return &backend.ManagedEnvironmentEvaluation{Environment: &esc.Environment{}, BaseRevision: 7}, nil, nil
+	})
+
+	workspaceStack := loadTestProjectStack(t, `environment:
+  imports:
+    - proj/a
+  values:
+    pulumiConfig:
+      otherproj:key: env
+`)
+	project := workspace.Project{Name: "otherproj"}
+	cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &project, nil, workspaceStack, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"proj/a"}, cfg.EnvironmentImports)
+}
+
+func TestOpenStackEnvManagedErrors(t *testing.T) {
+	t.Parallel()
+
+	fileHint := stack.ManagedEnvironmentMissingFromFileHint("acme", "p/old", "new", "")
+	cases := []struct {
+		name         string
+		stackYAML    string
+		envOverrides []string
+		expected     string
+	}{
+		{"no environment", "", nil, fileHint},
+		{"empty mapping", "environment: {}", nil, fileHint},
+		{"list form", "environment:\n  - other", nil, fileHint},
+		{
+			"values under config",
+			managedStackYAML + "config:\n  otherproj:key: stack\n",
+			nil,
+			"has values under `config:`",
+		},
+		{
+			"override-env",
+			managedStackYAML,
+			[]string{"a=b"},
+			"--override-env is not supported on stacks with an ESC-managed environment yet",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			s, _ := newManagedStack(t, nil)
+			ps := loadTestProjectStack(t, c.stackYAML)
+
+			_, _, managedEnv, err := openStackEnvWithManaged(t.Context(), s, ps, c.envOverrides)
+			assert.ErrorContains(t, err, c.expected)
+			assert.Nil(t, managedEnv)
+
+			if c.envOverrides == nil {
+				_, _, err = checkStackEnv(t.Context(), s, ps)
+				assert.ErrorContains(t, err, c.expected)
+			}
+		})
+	}
+}
+
+func TestOpenStackEnvManagedEvaluateError(t *testing.T) {
+	t.Parallel()
+
+	s, _ := newManagedStack(t, func(
+		string, string, string, []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+		return nil, nil, errors.New("environment p/old not found")
+	})
+
+	_, _, managedEnv, err := openStackEnvWithManaged(t.Context(), s, loadTestProjectStack(t, managedStackYAML), nil)
+	assert.ErrorContains(t, err, "environment p/old not found")
+	assert.Nil(t, managedEnv)
+
+	_, err = getStackConfigurationFromProjectStack(
+		t.Context(), s, &workspace.Project{Name: "otherproj"}, nil, loadTestProjectStack(t, managedStackYAML), nil)
+	assert.ErrorContains(t, err, "environment p/old not found")
+}
+
+func TestCheckStackEnvManaged(t *testing.T) {
+	t.Parallel()
+
+	s, be := newManagedStack(t, nil)
+	checked := &esc.Environment{}
+	be.CheckYAMLEnvironmentF = func(
+		_ context.Context,
+		org string,
+		definition []byte,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		assert.Equal(t, "acme", org)
+		assert.YAMLEq(t, "values: {pulumiConfig: {otherproj:key: env}}", string(definition))
+		return checked, nil, nil
+	}
+
+	env, _, err := checkStackEnv(t.Context(), s, loadTestProjectStack(t, managedStackYAML))
+	require.NoError(t, err)
+	assert.Same(t, checked, env)
+}
+
+func TestGetStackConfigurationOrLatestManaged(t *testing.T) {
+	t.Parallel()
+
+	s, _ := newManagedStack(t, nil)
+	_, _, err := GetStackConfigurationOrLatest(t.Context(), nil, stack.SecretsManagerLoader{}, s, nil, "", nil)
+	assert.ErrorIs(t, err, errDestroyManagedOutsideProject)
 }

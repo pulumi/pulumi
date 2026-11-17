@@ -41,11 +41,10 @@ class ComponentCallable(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.str]] = None,
+                 value: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         A component resource that has callable methods.
-
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -58,7 +57,6 @@ class ComponentCallable(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A component resource that has callable methods.
-
 
         :param str resource_name: The name of the resource.
         :param ComponentCallableArgs args: The arguments to use to populate this resource's properties.
@@ -75,7 +73,7 @@ class ComponentCallable(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.str]] = None,
+                 value: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -101,6 +99,25 @@ class ComponentCallable(pulumi.ComponentResource):
     @pulumi.getter
     def value(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "value")
+
+    @pulumi.output_type
+    class EchoMapResult:
+        def __init__(__self__, string_map=None):
+            if string_map and not isinstance(string_map, dict):
+                raise TypeError("Expected argument 'string_map' to be a dict")
+            pulumi.set(__self__, "string_map", string_map)
+
+        @_builtins.property
+        @pulumi.getter(name="stringMap")
+        def string_map(self) -> Mapping[str, _builtins.str]:
+            return pulumi.get(self, "string_map")
+
+    def echo_map(__self__, *,
+                 string_map: pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]) -> pulumi.Output['ComponentCallable.EchoMapResult']:
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        __args__['stringMap'] = string_map
+        return pulumi.runtime.call('component:index:ComponentCallable/echoMap', __args__, res=__self__, typ=ComponentCallable.EchoMapResult)
 
     @pulumi.output_type
     class IdentityResult:

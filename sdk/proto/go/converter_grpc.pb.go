@@ -35,6 +35,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Converter_ConvertState_FullMethodName   = "/pulumirpc.Converter/ConvertState"
 	Converter_ConvertProgram_FullMethodName = "/pulumirpc.Converter/ConvertProgram"
+	Converter_ConvertSnippet_FullMethodName = "/pulumirpc.Converter/ConvertSnippet"
 )
 
 // ConverterClient is the client API for Converter service.
@@ -48,6 +49,9 @@ type ConverterClient interface {
 	ConvertState(ctx context.Context, in *ConvertStateRequest, opts ...grpc.CallOption) (*ConvertStateResponse, error)
 	// ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi.
 	ConvertProgram(ctx context.Context, in *ConvertProgramRequest, opts ...grpc.CallOption) (*ConvertProgramResponse, error)
+	// ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+	// callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
+	ConvertSnippet(ctx context.Context, in *ConvertSnippetRequest, opts ...grpc.CallOption) (*ConvertSnippetResponse, error)
 }
 
 type converterClient struct {
@@ -78,6 +82,16 @@ func (c *converterClient) ConvertProgram(ctx context.Context, in *ConvertProgram
 	return out, nil
 }
 
+func (c *converterClient) ConvertSnippet(ctx context.Context, in *ConvertSnippetRequest, opts ...grpc.CallOption) (*ConvertSnippetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConvertSnippetResponse)
+	err := c.cc.Invoke(ctx, Converter_ConvertSnippet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ConverterServer is the server API for Converter service.
 // All implementations must embed UnimplementedConverterServer
 // for forward compatibility.
@@ -89,6 +103,9 @@ type ConverterServer interface {
 	ConvertState(context.Context, *ConvertStateRequest) (*ConvertStateResponse, error)
 	// ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi.
 	ConvertProgram(context.Context, *ConvertProgramRequest) (*ConvertProgramResponse, error)
+	// ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+	// callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
+	ConvertSnippet(context.Context, *ConvertSnippetRequest) (*ConvertSnippetResponse, error)
 	mustEmbedUnimplementedConverterServer()
 }
 
@@ -104,6 +121,9 @@ func (UnimplementedConverterServer) ConvertState(context.Context, *ConvertStateR
 }
 func (UnimplementedConverterServer) ConvertProgram(context.Context, *ConvertProgramRequest) (*ConvertProgramResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConvertProgram not implemented")
+}
+func (UnimplementedConverterServer) ConvertSnippet(context.Context, *ConvertSnippetRequest) (*ConvertSnippetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConvertSnippet not implemented")
 }
 func (UnimplementedConverterServer) mustEmbedUnimplementedConverterServer() {}
 func (UnimplementedConverterServer) testEmbeddedByValue()                   {}
@@ -162,6 +182,24 @@ func _Converter_ConvertProgram_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Converter_ConvertSnippet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConvertSnippetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConverterServer).ConvertSnippet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Converter_ConvertSnippet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConverterServer).ConvertSnippet(ctx, req.(*ConvertSnippetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Converter_ServiceDesc is the grpc.ServiceDesc for Converter service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -176,6 +214,10 @@ var Converter_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ConvertProgram",
 			Handler:    _Converter_ConvertProgram_Handler,
+		},
+		{
+			MethodName: "ConvertSnippet",
+			Handler:    _Converter_ConvertSnippet_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

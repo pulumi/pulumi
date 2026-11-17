@@ -31,12 +31,15 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -57,13 +60,15 @@ type publishPackageArgs struct {
 	publisher       string
 	readmePath      string
 	installDocsPath string
+	serverURL       string
 }
 
 type packagePublishCmd struct {
-	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
+	stdout io.Writer
+
 	extractSchema func(
-		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-		registry registry.Registry, e env.Env, concurrency int,
+		ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+		registry registry.Registry, e env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
 
@@ -77,24 +82,24 @@ func newPackagePublishCmd() *cobra.Command {
 		Long: "Publish a package to the Private Registry.\n\n" +
 			"This command publishes a package to the Private Registry. The package can be a provider " +
 			"or a schema.\n\n" +
-			"When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to " +
+			"When `<provider>` is specified as a `PLUGIN[@VERSION]` reference, Pulumi attempts to " +
 			"resolve a resource plugin first, installing it on-demand, similarly to:\n\n" +
-			"  pulumi plugin install resource PLUGIN [VERSION]\n\n" +
-			"When <provider> is specified as a local path, Pulumi executes the provider " +
+			"    pulumi plugin install resource PLUGIN [VERSION]\n\n" +
+			"When `<provider>` is specified as a local path, Pulumi executes the provider " +
 			"binary to extract its package schema.\n\n" +
 			"For parameterized providers, parameters may be specified as additional " +
 			"arguments. The exact format of parameters is provider-specific; consult the " +
 			"provider's documentation for more information. If the parameters include flags " +
-			"that begin with dashes, you may need to use '--' to separate the provider name " +
+			"that begin with dashes, you may need to use `--` to separate the provider name " +
 			"from the parameters, as in:\n\n" +
-			"  pulumi package publish <provider> --readme ./README.md -- --provider-parameter-flag value\n\n" +
-			"When <schema> is a path to a local file with a '.json', '.yml' or '.yaml' " +
+			"    pulumi package publish <provider> --readme ./README.md -- --provider-parameter-flag value\n\n" +
+			"When `<schema>` is a path to a local file with a `.json`, `.yml` or `.yaml` " +
 			"extension, Pulumi package schema is read from it directly:\n\n" +
-			"  pulumi package publish ./my/schema.json --readme ./README.md",
+			"    pulumi package publish ./my/schema.json --readme ./README.md",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
 			pkgPublishCmd.extractSchema = packages.SchemaFromSchemaSource
+			pkgPublishCmd.stdout = cmd.OutOrStdout()
 			parameters := &plugin.ParameterizeArgs{Args: cliArgs[1:]}
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},
@@ -134,6 +139,9 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.installDocsPath, "installation-configuration", "",
 		"Path to the installation configuration markdown file")
+	cmd.Flags().StringVar(&args.serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }
@@ -144,7 +152,10 @@ func (cmd *packagePublishCmd) Run(
 	packageSrc string,
 	packageParams plugin.ParameterizeParameters,
 ) error {
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	if cmd.stdout == nil {
+		cmd.stdout = io.Discard
+	}
+	project, _, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return fmt.Errorf("failed to determine current project: %w", err)
 	}
@@ -159,14 +170,27 @@ func (cmd *packagePublishCmd) Run(
 		return err
 	}
 	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, wd, nil, false, nil, schema.NewLoaderServerFromHost)
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(b.GetReadOnlyCloudRegistry()))
+	if err != nil {
+		return err
+	}
+	// host is owned here, closed after the context
+	defer contract.IgnoreClose(pluginHost)
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+	if err != nil {
+		return err
+	}
+	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil, cloudCredentialEnv)
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
-		env.Global(), 0 /* unbounded concurrency */)
+	pkg, _, err := cmd.extractSchema(pkgWorkspace.Instance, pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
+		env.Global(), 0 /* unbounded concurrency */, false /* asExtension */, args.serverURL)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
 	}
@@ -191,7 +215,7 @@ func (cmd *packagePublishCmd) Run(
 	} else if pkg.Publisher != "" { // Otherwise, fall back to the publisher set in the package schema.
 		publisher = pkg.Publisher
 	} else { // As a last resort, try to determine the publisher from the default organization or fail if none is found.
-		publisher, err = cmd.defaultOrg(ctx, b, project)
+		publisher, err = b.GetDefaultOrg(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}
@@ -273,7 +297,7 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to publish package: %w", err)
 	}
 
-	fmt.Printf("Successfully published package %s/%s@%s\n", publisher, name, version)
+	fmt.Fprintf(cmd.stdout, "Successfully published package %s/%s@%s\n", publisher, name, version)
 
 	return nil
 }

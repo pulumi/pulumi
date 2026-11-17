@@ -73,7 +73,6 @@ def list_product_families(customer_subscription_details: Optional[Union['Custome
     The list of product families.
     API Version: 2020-12-01-preview.
 
-
     :param Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict'] customer_subscription_details: Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
     :param _builtins.str expand: $expand is supported on configurations parameter for product, which provides details on the configurations for the product.
     :param Mapping[str, Sequence[Union['FilterableProperty', 'FilterablePropertyDict']]] filterable_properties: Dictionary of filterable properties on product family.
@@ -90,15 +89,14 @@ def list_product_families(customer_subscription_details: Optional[Union['Custome
     return AwaitableListProductFamiliesResult(
         next_link=pulumi.get(__ret__, 'next_link'),
         value=pulumi.get(__ret__, 'value'))
-def list_product_families_output(customer_subscription_details: Optional[pulumi.Input[Optional[Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict']]]] = None,
-                                 expand: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
-                                 filterable_properties: Optional[pulumi.Input[Mapping[str, Sequence[Union['FilterableProperty', 'FilterablePropertyDict']]]]] = None,
-                                 skip_token: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def list_product_families_output(customer_subscription_details: pulumi.Input[Optional[Optional[Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict']]]] = None,
+                                 expand: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
+                                 filterable_properties: pulumi.Input[Optional[Mapping[str, Sequence[Union['FilterableProperty', 'FilterablePropertyDict']]]]] = None,
+                                 skip_token: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                                  opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ListProductFamiliesResult]:
     """
     The list of product families.
     API Version: 2020-12-01-preview.
-
 
     :param Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict'] customer_subscription_details: Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
     :param _builtins.str expand: $expand is supported on configurations parameter for product, which provides details on the configurations for the product.

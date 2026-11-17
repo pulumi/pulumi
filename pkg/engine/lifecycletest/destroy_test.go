@@ -21,19 +21,22 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -41,9 +44,9 @@ import (
 func TestDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -82,7 +85,7 @@ func TestDestroyWithProgram(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -112,7 +115,7 @@ func TestDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -126,13 +129,13 @@ func TestDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -149,9 +152,9 @@ func TestDestroyWithProgram(t *testing.T) {
 func TestTargetedDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -190,7 +193,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -220,7 +223,7 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -234,13 +237,13 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a targeted destroy against resA
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{snap.Resources[1].URN})
 	snap, err = lt.TestOp(DestroyV2).
@@ -259,9 +262,9 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -298,7 +301,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -351,7 +354,7 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -365,13 +368,13 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy with the new provider version
 	pkgVersion = "2.0.0"
 	snap, err = lt.TestOp(DestroyV2).
@@ -390,9 +393,9 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	var deleteCalled int32
 	loaders := []*deploytest.ProviderLoader{
@@ -416,7 +419,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -477,7 +480,7 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -491,13 +494,13 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy with the new provider version
 	pkgVersion = "2.0.0"
 	snap, err = lt.TestOp(DestroyV2).
@@ -515,9 +518,9 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 func TestDestroyWithProgramWithComponents(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -556,7 +559,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -580,7 +583,7 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -594,11 +597,11 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -616,9 +619,9 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -695,7 +698,7 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -709,11 +712,11 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -731,9 +734,9 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -814,7 +817,7 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -828,11 +831,11 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -850,12 +853,12 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 func TestDestroyWithProgramResourceRead(t *testing.T) {
 	t.Parallel()
 
-	readInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
-	createInputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
+	createInputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	deleteCalled := 0
 	loaders := []*deploytest.ProviderLoader{
@@ -900,8 +903,8 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
-								Inputs:  readInputs,
-								Outputs: readOutputs,
+								Inputs:  &readInputs,
+								Outputs: &readOutputs,
 								ID:      req.ID,
 							},
 							Status: resource.StatusOK,
@@ -923,7 +926,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 			"resA",
 			"id",
 			"",
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -942,7 +945,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -958,12 +961,12 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
 	assert.Equal(t, resource.PropertyMap{}, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a destroy
 	snap, err = lt.TestOp(DestroyV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -991,7 +994,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -1002,7 +1005,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		comp := &resource.State{
+		comp := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::compA",
 			Custom:   false,
@@ -1011,7 +1014,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, comp)
 
-		res := &resource.State{
+		res := &pkgresource.State{
 			Type:     "pkgA:m:typB",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::resA",
 			Custom:   true,
@@ -1049,7 +1052,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1070,7 +1073,7 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	t.Parallel()
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1107,7 +1110,7 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1132,7 +1135,7 @@ func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
 	t.Skip("Skipping test, see pulumi/pulumi#21277")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1164,7 +1167,7 @@ func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			T:     t,
@@ -1184,7 +1187,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 	t.Skip("Skipping test, see pulumi/pulumi#21347")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1222,7 +1225,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		require.NoError(t, err)
 
 		res1, err := monitor.RegisterResource("pkgA:m:typA", "future-parent", false, deploytest.ResourceOptions{
-			RetainOnDelete: ptr(true),
+			RetainOnDelete: new(true),
 			Provider:       prov0Ref.String(),
 		})
 		require.NoError(t, err)
@@ -1235,7 +1238,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1264,7 +1267,7 @@ func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
 	t.Skip("Skipping test, snapshot integrity error with aliased parent")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1328,7 +1331,7 @@ func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			T:     t,
@@ -1361,7 +1364,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -1372,7 +1375,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		resA1 := &resource.State{
+		resA1 := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   false,
@@ -1380,7 +1383,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA1)
 
-		resA2 := &resource.State{
+		resA2 := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   false,
@@ -1389,7 +1392,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA2)
 
-		resB := &resource.State{
+		resB := &pkgresource.State{
 			Type:               "pkgA:m:typB",
 			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typB::resB",
 			Custom:             true,
@@ -1418,7 +1421,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1439,7 +1442,7 @@ func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
 	t.Skip("Skipping test, repro for snapshot integrity issue")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::provA",
@@ -1493,7 +1496,7 @@ func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -1521,7 +1524,7 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 	project := p.GetProject()
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgB",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::provB",
@@ -1583,7 +1586,7 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,

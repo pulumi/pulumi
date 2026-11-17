@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,15 +38,15 @@ import (
 var (
 	// StacksDir is a path under the state's root directory
 	// where the diy backend stores stack information.
-	StacksDir = filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
+	StacksDir = filepath.Join(workspace.BookkeepingDir, pkgWorkspace.StackDir)
 
 	// HistoriesDir is a path under the state's root directory
 	// where the diy backend stores histories for all stacks.
-	HistoriesDir = filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir)
+	HistoriesDir = filepath.Join(workspace.BookkeepingDir, pkgWorkspace.HistoryDir)
 
 	// BackupsDir is a path under the state's root directory
 	// where the diy backend stores backups of stacks.
-	BackupsDir = filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
+	BackupsDir = filepath.Join(workspace.BookkeepingDir, pkgWorkspace.BackupDir)
 )
 
 // referenceStore stores and provides access to stack information.
@@ -175,8 +176,9 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*diyBackendRefe
 	if project == "" {
 		currentProject := p.currentProject()
 		if currentProject == nil {
-			return nil, errors.New("if you're using the --stack flag, " +
-				"pass the fully qualified name (organization/project/stack)")
+			return nil, errors.New("no Pulumi.yaml project file found; " +
+				"either run this command from a directory containing a Pulumi project, " +
+				"or pass the fully qualified stack name (organization/project/stack)")
 		}
 
 		project = currentProject.Name.String()

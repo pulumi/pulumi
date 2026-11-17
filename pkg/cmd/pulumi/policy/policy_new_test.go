@@ -15,6 +15,8 @@
 package policy
 
 import (
+	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -41,6 +43,32 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process
+func TestPolicyNewRuntimeOptions(t *testing.T) {
+	templateDir := t.TempDir()
+	err := os.WriteFile(filepath.Join(templateDir, "PulumiPolicy.yaml"), []byte(`runtime: python
+version: 0.0.1
+`), 0o600)
+	require.NoError(t, err)
+
+	targetDir := t.TempDir()
+	t.Chdir(targetDir)
+	cmd := newPolicyNewCmd()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{
+		templateDir,
+		"--generate-only",
+		"--runtime-options", "toolchain=uv,virtualenv=.venv",
+	})
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+
+	proj, _, _, err := ReadPolicyProject(targetDir)
+	require.NoError(t, err)
+	assert.Equal(t, "uv", proj.Runtime.Options()["toolchain"])
+	assert.Equal(t, ".venv", proj.Runtime.Options()["virtualenv"])
+}
+
+//nolint:paralleltest // changes directory for process
 func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
@@ -56,7 +84,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		}
 
 		err := runNewPolicyPack(t.Context(), args)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assertNotFoundError(t, err)
 	})
 
@@ -71,7 +99,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		}
 
 		err := runNewPolicyPack(t.Context(), args)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assertNotFoundError(t, err)
 	})
 }

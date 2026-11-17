@@ -13,18 +13,22 @@ _ := $(shell mkdir -p bin)
 _ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
 
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
-# nodejs and python codegen tests are much slower than go:
 PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(go|nodejs|python)')
+LANGUAGE_CONFORMANCE_PKG := github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language
+TEST_FAST_PKGS  = $(filter-out ${LANGUAGE_CONFORMANCE_PKG},${PROJECT_PKGS})
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
 TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python sdk/pcl
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/nodejs/cmd/pulumi-language-bun sdk/python/cmd/pulumi-language-python sdk/pcl
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
+
+PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION ?= true
+export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION
 
 ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
@@ -73,19 +77,40 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
+	SHELL=sh go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs && make ensure && npx --no-install biome format --write automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
+	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm run build && npm test
+
+.PHONY: generate-python-automation-api
+generate-python-automation-api:: generate-cli-spec
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python main.py ../../../../tools/automation/specification.json boilerplate/standard.py ../../lib/pulumi/automation/interface
+	cd sdk/python && uv run --frozen -m ruff format lib/pulumi/automation/interface
 
 .PHONY: test-python-automation-api
 test-python-automation-api::
 	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
+
+.PHONY: generate-go-automation-api
+generate-go-automation-api:: generate-cli-spec
+	go run -C sdk ./go/tools/automation \
+		../tools/automation/specification.json \
+		boilerplate/standard \
+		go/auto/automation \
+		github.com/pulumi/pulumi/sdk/v3/go/auto/automation
+
+.PHONY: test-go-automation-api
+test-go-automation-api::
+	cd sdk && go test ./go/tools/automation/...
+
+.PHONY: generate-automation-apis
+generate-automation-apis:: generate-nodejs-automation-api generate-python-automation-api generate-go-automation-api
 
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
@@ -126,7 +151,17 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_changelog
+
+lint_changelog::
+	@if [ -n "$$(find changelog/pending -maxdepth 1 -name '*.yaml' -print -quit)" ]; then \
+		changie batch auto --dry-run; \
+	else \
+		echo "No pending changelog entries; skipping changie batch."; \
+	fi
+
+lint_changelog_style::
+	vale changelog/pending
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
@@ -136,32 +171,61 @@ lint_pulumi_json::
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && npx biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && npx biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
+# bin/custom-gcl is a golangci-lint binary with the requiredfield and noosexit
+# linters baked in as module plugins. Built from .custom-gcl.yml and the
+# wrappers under .golangci/plugins/.
+#
+# It also depends on .make/go-version: golangci-lint's analysis loader rejects
+# source files that require a newer Go version than the linter binary itself,
+# so the binary must be rebuilt when the toolchain changes.
+CUSTOM_GCL := bin/custom-gcl
+CUSTOM_GCL_DEPS := .custom-gcl.yml \
+		   .make/go-version \
+		   .golangci/plugins/requiredfield/go.mod \
+		   .golangci/plugins/requiredfield/go.sum \
+		   .golangci/plugins/requiredfield/plugin.go \
+		   .golangci/plugins/noosexit/go.mod \
+		   .golangci/plugins/noosexit/go.sum \
+		   .golangci/plugins/noosexit/plugin.go
+
+$(CUSTOM_GCL): $(CUSTOM_GCL_DEPS) .make/ensure/golangci-lint
+	golangci-lint custom
+
+# .make/go-version records `go version` output; the recipe only rewrites the
+# file when the output changes, so dependents rebuild on toolchain upgrades
+# without being touched on every make invocation.
+.PHONY: .check-go-version
+.make/go-version: .check-go-version
+	@mkdir -p $(dir $@)
+	@version=$$(go version); \
+	if [ "$$version" != "$$(cat $@ 2>/dev/null)" ]; then \
+		echo "$$version" > $@; \
+	fi
+
 define lint_golang_pkg
 	@echo "[golangci-lint] Linting $(1)..."
-	@(cd $(1) && golangci-lint run $(GOLANGCI_LINT_ARGS) \
+	@(cd $(1) && $(abspath $(CUSTOM_GCL)) run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--max-same-issues 0 \
 			--max-issues-per-linter 0 \
 			--timeout 5m)
-	@echo "[requiredfield] Linting $(1)..."
-	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
 endef
 
 .PHONY: lint_golang lint_golang_fix
 lint_golang: GOLANGCI_LINT_CONFIG=$(shell pwd)/.golangci.yml
-lint_golang: .make/ensure/golangci-lint .make/ensure/requiredfield
+lint_golang: $(CUSTOM_GCL)
 	$(foreach pkg,$(LINT_GOLANG_PKGS),$(call lint_golang_pkg,${pkg}))
 
 lint_golang_fix: GOLANGCI_LINT_ARGS=--fix
@@ -172,10 +236,10 @@ lint_actions:
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 format:: ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && npx biome format --write ../../pkg/codegen/schema/pulumi.json
 
-test_fast:: build get_schemas
-	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
+test_fast:: get_schemas
+	@cd pkg && $(GO_TEST_FAST) ${TEST_FAST_PKGS}
 
 test_all:: test_pkg test_integration
 
@@ -188,6 +252,7 @@ test_lifecycle_fuzz:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
 		-tags all \
+		-timeout 0 \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false
@@ -246,11 +311,11 @@ version=$(word 2,$(subst !, ,$@))
 schema-%: .make/ensure/curl .make/ensure/jq
 	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
-	@[ -f pkg/codegen/testing/test/testdata/${name}-${version}.json ] || \
+	@[ -f pkg/codegen/testing/utils/schemas/${name}-${version}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
-		| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}-${version}.json
+		| jq '.version = "${version}"' >  pkg/codegen/testing/utils/schemas/${name}-${version}.json
 	@# Confirm that the correct version is present. If not, error out.
-	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}-${version}.json)" &&        \
+	@FOUND="$$(jq -r '.version' pkg/codegen/testing/utils/schemas/${name}-${version}.json)" &&        \
 		if ! [ "$$FOUND" = "${version}" ]; then									           \
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
@@ -261,26 +326,17 @@ schema-%: .make/ensure/curl .make/ensure/jq
 #
 # pkg/codegen/testing/test/helpers.go depends on some of this list, update that file on changes.
 #
-# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.0, update that file on changes.
+# pkg/codegen/schema/schema_test.go depends on random@4.11.2, update that file on changes.
 #
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
-			schema-aws!4.26.0           \
-			schema-aws!5.4.0            \
-			schema-aws!5.16.2           \
-			schema-azure!4.18.0         \
-			schema-kubernetes!3.0.0     \
-			schema-kubernetes!3.7.0     \
 			schema-random!4.11.2        \
-			schema-eks!0.40.0           \
-			schema-docker!4.0.0-alpha.0 \
-			schema-awsx!1.0.0-beta.5    \
 			schema-tls!4.10.0
 
 .PHONY: changelog
 changelog:
-	go run github.com/pulumi/go-change@v0.1.3 create
+	changie new
 
 clean::
 	rm -rf bin/*

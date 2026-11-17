@@ -19,18 +19,23 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -74,7 +79,24 @@ type Import struct {
 	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
 	Protect           bool              // Whether to mark the resource as protected after import
 	Properties        []string          // Which properties to include (Defaults to required properties)
-	Parameterization  *Parameterization // The parameterization to use for the resource, if any.
+	Parameterization  *Parameterization // The replacement parameterization to use for the resource, if any.
+
+	// Extension is the extension parameterization to apply to the resource's (base) provider, if any.
+	// Mutually exclusive with Parameterization.
+	Extension *apitype.Extension
+
+	// ProviderInputs holds the full inputs for this resource's explicit provider when it is not
+	// yet in state, as supplied by the import file's deprecated providerInputs section. Imports
+	// of providers themselves carry their configuration in Inputs instead.
+	ProviderInputs property.Map
+
+	// Inputs holds input properties supplied for the resource, if any. When the provider's Read cannot
+	// return a property supplied here (e.g. a write-only attribute), the supplied value is used instead.
+	// For an import of a provider, Inputs is its configuration.
+	Inputs property.Map
+	// Outputs holds the full output state supplied for the resource, if any. When set, the resource is
+	// imported from these values directly and the provider's Read is skipped entirely.
+	Outputs property.Map
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -122,7 +144,7 @@ func NewImportDeployment(
 	}
 
 	// Create a goal map for the deployment.
-	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
+	newGoals := &gsync.Map[resource.URN, *pkgresource.Goal]{}
 
 	builtins := newBuiltinProvider(
 		nil, /*backendClient*/
@@ -132,7 +154,7 @@ func NewImportDeployment(
 	)
 
 	// Create a new provider registry.
-	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
+	reg := providers.NewRegistry(ctx, opts.DryRun, builtins)
 
 	// Return the prepared deployment.
 	return &Deployment{
@@ -148,26 +170,30 @@ func NewImportDeployment(
 		goals:                           newGoals,
 		imports:                         imports,
 		isImport:                        true,
-		schemaLoader:                    schema.NewPluginLoader(ctx.Host),
+		schemaLoader:                    schema.NewPluginLoader(ctx),
 		source:                          NewErrorSource(projectName),
 		providers:                       reg,
 		newPlans:                        newResourcePlan(target.Config),
-		news:                            &gsync.Map[resource.URN, *resource.State]{},
+		news:                            &gsync.Map[resource.URN, *pkgresource.State]{},
+		extensions:                      map[sdkproviders.Reference][]inFlightExtension{},
 	}, nil
 }
 
 type noopEvent int
 
-func (noopEvent) event()                      {}
-func (noopEvent) Goal() *resource.Goal        { return nil }
-func (noopEvent) Done(result *RegisterResult) {}
+func (noopEvent) event()                                    {}
+func (noopEvent) Goal() *pkgresource.Goal                   { return nil }
+func (noopEvent) Done(result *RegisterResult)               {}
+func (noopEvent) Extension() *apitype.Extension             { return nil }
+func (noopEvent) ExtensionRef() apitype.ExtensionRef        { return "" }
+func (noopEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 type noopOutputsEvent resource.URN
 
-func (noopOutputsEvent) event()                        {}
-func (e noopOutputsEvent) URN() resource.URN           { return resource.URN(e) }
-func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.PropertyMap{} }
-func (noopOutputsEvent) Done()                         {}
+func (noopOutputsEvent) event()                {}
+func (e noopOutputsEvent) URN() resource.URN   { return resource.URN(e) }
+func (noopOutputsEvent) Outputs() property.Map { return property.Map{} }
+func (noopOutputsEvent) Done()                 {}
 
 type importer struct {
 	deployment *Deployment
@@ -200,7 +226,7 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 			new := r.Copy()
 			new.ID = ""
 			// Set a dummy goal so the resource is tracked as managed.
-			i.deployment.goals.Store(r.URN, &resource.Goal{})
+			i.deployment.goals.Store(r.URN, &pkgresource.Goal{})
 			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, new)) {
 				return false
 			}
@@ -222,7 +248,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
-	state := resource.NewState{
+	state := pkgresource.NewState{
 		Type:                    typ,
 		URN:                     urn,
 		Custom:                  false,
@@ -253,10 +279,11 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
@@ -280,18 +307,21 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			// Skip local component resources, they don't have providers.
 			continue
 		}
+		if sdkproviders.IsProviderType(imp.Type) {
+			// Providers declared as imports are collected below.
+			continue
+		}
 
 		if imp.Provider != "" {
-			// If the provider for this import exists, map its URN to its provider reference. If it does not exist,
-			// the import step will issue an appropriate error or errors.
-			ref := string(imp.Provider)
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
+				// Provider already exists in state — use it directly.
 				r, err := sdkproviders.NewReference(imp.Provider, state.ID)
 				contract.AssertNoErrorf(err,
 					"could not create provider reference with URN %q and ID %q", imp.Provider, state.ID)
-				ref = r.String()
+				urnToReference[imp.Provider] = r.String()
 			}
-			urnToReference[imp.Provider] = ref
+			// If the provider is not in state, it will be created below using its ProviderInputs.
+			// We don't add it to urnToReference yet — that happens after creation.
 			continue
 		}
 
@@ -304,7 +334,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, err
 		}
 		req := providers.NewProviderRequest(
-			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization,
+		)
 		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -321,15 +352,65 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviderRequests = append(defaultProviderRequests, req)
 		defaultProviders[urn] = struct{}{}
 	}
-	if len(defaultProviderRequests) == 0 {
+	// Collect explicit providers that are not in state. Their full inputs may come from the
+	// import file, or they may have no config at all (e.g. the random provider).
+	// Deduplicate by URN since multiple resources may reference the same explicit provider.
+	explicitProvidersByURN := map[resource.URN]Import{}
+	// Providers declared directly as imports are collected first so the declared entry, which carries
+	// the provider's own inputs and version, wins the dedupe over referencing imports.
+	for _, imp := range i.deployment.imports {
+		if !sdkproviders.IsProviderType(imp.Type) {
+			continue
+		}
+		urn := i.deployment.generateURN(imp.Parent, imp.Type, imp.Name)
+		if state, ok := i.deployment.olds[urn]; ok {
+			ref, err := sdkproviders.NewReference(urn, state.ID)
+			contract.AssertNoErrorf(err,
+				"could not create provider reference with URN %q and ID %q", urn, state.ID)
+			urnToReference[urn] = ref.String()
+			continue
+		}
+		if _, ok := explicitProvidersByURN[urn]; !ok {
+			imp.Provider = urn
+			explicitProvidersByURN[urn] = imp
+		}
+	}
+	for _, imp := range i.deployment.imports {
+		if imp.Provider == "" {
+			continue
+		}
+		if _, ok := i.deployment.olds[imp.Provider]; ok {
+			continue
+		}
+		if _, ok := urnToReference[imp.Provider]; ok {
+			continue
+		}
+		if _, ok := explicitProvidersByURN[imp.Provider]; !ok {
+			// This import describes a resource that references the provider rather than the
+			// provider itself, so carry over only the fields that describe the provider: its
+			// inputs and the plugin (version/parameterization) needed to load it.
+			explicitProvidersByURN[imp.Provider] = Import{
+				Type:              imp.Type,
+				Version:           imp.Version,
+				PluginDownloadURL: imp.PluginDownloadURL,
+				PluginChecksums:   imp.PluginChecksums,
+				Parameterization:  imp.Parameterization,
+				Inputs:            imp.ProviderInputs,
+			}
+		}
+	}
+
+	if len(defaultProviderRequests) == 0 && len(explicitProvidersByURN) == 0 {
 		return urnToReference, nil
 	}
 
-	steps := make([]Step, len(defaultProviderRequests))
+	steps := make([]Step, 0, len(defaultProviderRequests)+len(explicitProvidersByURN))
+
+	// Create steps for default providers.
 	sort.Slice(defaultProviderRequests, func(i, j int) bool {
 		return defaultProviderRequests[i].String() < defaultProviderRequests[j].String()
 	})
-	for idx, req := range defaultProviderRequests {
+	for _, req := range defaultProviderRequests {
 		if req.Package() == "" {
 			return nil, errors.New("incorrect package type specified")
 		}
@@ -338,10 +419,11 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
+		minputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
+		inputs := resource.ToResourcePropertyMap(minputs)
 
 		// Calculate the inputs for the provider using the ambient config.
 		if v := req.Version(); v != nil {
@@ -358,13 +440,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			providers.SetProviderParameterization(inputs, parameterization)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
-			URN:  urn,
-			News: inputs,
+			URN:       urn,
+			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate provider config: %w", err)
 		}
-		state := resource.NewState{
+		state := pkgresource.NewState{
 			Type:                    typ,
 			URN:                     urn,
 			Custom:                  true,
@@ -395,10 +477,11 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			IgnoreChanges:           nil,
 			HideDiff:                nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, resp.Failures) {
@@ -406,8 +489,100 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.Store(urn, &resource.Goal{})
-		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
+		i.deployment.goals.Store(urn, &pkgresource.Goal{})
+		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
+	}
+
+	// Create steps for explicit providers not in state, using their full inputs from the
+	// import file rather than ambient stack config.
+	explicitURNs := make([]resource.URN, 0, len(explicitProvidersByURN))
+	for urn := range explicitProvidersByURN {
+		explicitURNs = append(explicitURNs, urn)
+	}
+	slices.Sort(explicitURNs)
+
+	for _, providerURN := range explicitURNs {
+		imp := explicitProvidersByURN[providerURN]
+
+		if !sdkproviders.IsProviderType(providerURN.Type()) {
+			return nil, fmt.Errorf("imported provider URN %q is not a provider type", providerURN)
+		}
+		typ := providerURN.Type()
+
+		// Use the full provider inputs from the import file instead of ambient config.
+		// Some providers (e.g. random) don't need any config, so Inputs may be nil.
+		inputs := resource.ToResourcePropertyMap(imp.Inputs)
+
+		// Overlay version/URL/checksums/parameterization from the Import if present and not already
+		// in inputs.
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		if err != nil {
+			return nil, err
+		}
+		if version != nil {
+			providers.SetProviderVersion(inputs, version)
+		}
+		if imp.PluginDownloadURL != "" {
+			providers.SetProviderURL(inputs, imp.PluginDownloadURL)
+		}
+		if len(imp.PluginChecksums) > 0 {
+			providers.SetProviderChecksums(inputs, imp.PluginChecksums)
+		}
+		if parameterization != nil {
+			providers.SetProviderName(inputs, pkg)
+			providers.SetProviderParameterization(inputs, parameterization)
+		}
+
+		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
+			URN:       providerURN,
+			NewInputs: resource.FromResourcePropertyMap(inputs),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate explicit provider config for %s: %w", providerURN, err)
+		}
+		state := pkgresource.NewState{
+			Type:                    typ,
+			URN:                     providerURN,
+			Custom:                  true,
+			Delete:                  false,
+			ID:                      "",
+			Inputs:                  inputs,
+			Outputs:                 nil,
+			Parent:                  imp.Parent,
+			Protect:                 false,
+			Taint:                   false,
+			External:                false,
+			Dependencies:            nil,
+			InitErrors:              nil,
+			Provider:                "",
+			PropertyDependencies:    nil,
+			PendingReplacement:      false,
+			AdditionalSecretOutputs: nil,
+			Aliases:                 nil,
+			CustomTimeouts:          nil,
+			ImportID:                "",
+			RetainOnDelete:          false,
+			DeletedWith:             "",
+			ReplaceWith:             nil,
+			Created:                 nil,
+			Modified:                nil,
+			SourcePosition:          "",
+			StackTrace:              nil,
+			IgnoreChanges:           nil,
+			HideDiff:                nil,
+			ReplaceOnChanges:        nil,
+			ReplacementTrigger:      property.Value{},
+			RefreshBeforeUpdate:     false,
+			ViewOf:                  "",
+			ResourceHooks:           nil,
+			SnippetID:               "",
+		}.Make()
+		if issueCheckErrors(i.deployment, state, providerURN, resp.Failures) {
+			return nil, fmt.Errorf("explicit provider check failed for %s", providerURN)
+		}
+
+		i.deployment.goals.Store(providerURN, &pkgresource.Goal{})
+		steps = append(steps, NewCreateStep(i.deployment, noopEvent(0), state))
 	}
 
 	// Issue the create steps.
@@ -424,6 +599,63 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	}
 
 	return urnToReference, nil
+}
+
+// importProviderURN returns the URN of the provider that an import's resource should use. For default
+// providers this mirrors the computation in importResources, deriving the provider from the resource's
+// type/version (and any replacement parameterization).
+func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
+	if imp.Provider != "" {
+		return imp.Provider, nil
+	}
+	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+	if err != nil {
+		return "", err
+	}
+	req := providers.NewProviderRequest(pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+	typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
+	return i.deployment.generateURN("", typ, name), nil
+}
+
+// parameterizeExtensions applies each import's extension parameterization to its (base) provider. The
+// step is recorded in the snapshot's Extensions map, and dedupes so a provider is only parameterized
+// once per distinct extension even when multiple resources share it.
+func (i *importer) parameterizeExtensions(ctx context.Context, urnToReference map[resource.URN]string) error {
+	seen := map[extensionStepKey]bool{}
+	for _, imp := range i.deployment.imports {
+		if imp.Extension == nil {
+			continue
+		}
+
+		providerURN, err := i.importProviderURN(imp)
+		if err != nil {
+			return err
+		}
+		providerRefStr, ok := urnToReference[providerURN]
+		if !ok {
+			return fmt.Errorf("provider reference for URN %v not found", providerURN)
+		}
+		providerRef, err := sdkproviders.ParseReference(providerRefStr)
+		if err != nil {
+			return fmt.Errorf("invalid provider reference %v: %w", providerRefStr, err)
+		}
+		if _, ok := i.deployment.providers.GetProvider(providerRef); !ok {
+			return fmt.Errorf("provider %v not found for extension parameterization", providerRef)
+		}
+
+		extRef := apitype.ExtensionRef(hashExtension(*imp.Extension))
+		key := extensionStepKey{providerRef, extRef}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		step := NewExtensionParameterizeStep(
+			i.deployment, providerRef, extRef, *imp.Extension, &promise.CompletionSource[struct{}]{})
+		if !i.executeSerial(ctx, step) {
+			return i.executor.Errored()
+		}
+	}
+	return nil
 }
 
 func (i *importer) importResources(ctx context.Context) error {
@@ -443,11 +675,21 @@ func (i *importer) importResources(ctx context.Context) error {
 		return err
 	}
 
+	// Apply any extension parameterizations to their (base) providers before importing the resources
+	// that depend on them, so the provider understands the extension's resource types.
+	if err := i.parameterizeExtensions(ctx, urnToReference); err != nil {
+		return err
+	}
+
 	// Create a step per resource to import and execute them in parallel batches which don't depend on each other.
 	// If there are duplicates, fail the import.
 	urns := map[resource.URN]struct{}{}
 	steps := slice.Prealloc[Step](len(i.deployment.imports))
 	for _, imp := range i.deployment.imports {
+		if sdkproviders.IsProviderType(imp.Type) {
+			// Already created (or reused from state) by registerProviders.
+			continue
+		}
 		parent := imp.Parent
 		if parent == "" {
 			parent = stackURN
@@ -482,7 +724,8 @@ func (i *importer) importResources(ctx context.Context) error {
 				return err
 			}
 			req := providers.NewProviderRequest(
-				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization,
+			)
 			typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
@@ -494,15 +737,17 @@ func (i *importer) importResources(ctx context.Context) error {
 			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 		}
 
+		inputs := resource.ToResourcePropertyMap(imp.Inputs)
+
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
-		new := resource.NewState{
+		new := pkgresource.NewState{
 			Type:                    urn.Type(),
 			URN:                     urn,
 			Custom:                  !imp.Component,
 			Delete:                  false,
 			ID:                      "",
-			Inputs:                  resource.PropertyMap{},
-			Outputs:                 nil,
+			Inputs:                  inputs,
+			Outputs:                 resource.ToResourcePropertyMap(imp.Outputs),
 			Parent:                  parent,
 			Protect:                 imp.Protect,
 			Taint:                   false,
@@ -526,13 +771,17 @@ func (i *importer) importResources(ctx context.Context) error {
 			IgnoreChanges:           nil,
 			ReplaceOnChanges:        nil,
 			HideDiff:                nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
+			SnippetID:               "",
 		}.Make()
+		if imp.Extension != nil {
+			new.ExtensionRef = pkgresource.ExtensionRef(hashExtension(*imp.Extension))
+		}
 		// Set a dummy goal so the resource is tracked as managed.
-		i.deployment.goals.Store(urn, &resource.Goal{})
+		i.deployment.goals.Store(urn, &pkgresource.Goal{})
 
 		if imp.Component {
 			if imp.Remote {

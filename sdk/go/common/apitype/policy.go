@@ -14,7 +14,11 @@
 
 package apitype
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+)
 
 // DefaultPolicyGroup is the name of the default Policy Group for organizations.
 const DefaultPolicyGroup = "default-policy-group"
@@ -54,6 +58,10 @@ type CreatePolicyPackRequest struct {
 
 	// A URL to the repository where the policy pack is defined.
 	Repository string `json:"repository,omitempty"`
+
+	// Runtime identifies the analyzer SDK that produced the pack (e.g. "nodejs",
+	// "python", "opa"). Empty when produced by an older SDK that does not report it.
+	Runtime string `json:"runtime,omitempty"`
 
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
@@ -95,141 +103,105 @@ type RequiredPolicy struct {
 
 	// ESC environment references to resolve for this policy pack.
 	Environments []string `json:"environments,omitempty"`
+
+	// The active policy exceptions for this Policy Pack, keyed by exception ID. Each value is a PolicyException.
+	Exceptions map[string]json.RawMessage `json:"exceptions,omitempty"`
 }
 
-// Policy defines the metadata for an individual Policy within a Policy Pack.
-type Policy struct {
-	// Unique URL-safe name for the policy.  This is unique to a specific version
-	// of a Policy Pack.
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-
-	// Description is used to provide more context about the purpose of the policy.
-	Description      string           `json:"description"`
-	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
-
-	// Message is the message that will be displayed to end users when they violate
-	// this policy.
-	Message string `json:"message"`
-
-	// The JSON schema for the Policy's configuration.
-	ConfigSchema *PolicyConfigSchema `json:"configSchema,omitempty"`
-
-	// The severity of the policy.
-	Severity PolicySeverity `json:"severity,omitempty"`
-
-	// The compliance framework that this policy belongs to.
-	Framework *PolicyComplianceFramework `json:"framework,omitempty"`
-
-	// Tags associated with the policy.
-	Tags []string `json:"tags,omitempty"`
-
-	// A description of the steps to take to remediate a policy violation.
-	RemediationSteps string `json:"remediationSteps,omitempty"`
-
-	// A URL to more information about the policy.
-	URL string `json:"url,omitempty"`
+// PolicyException exempts the violations it matches, so that they don't fail an operation.
+type PolicyException struct {
+	// The justification for the exception.
+	Reason string `json:"reason"`
+	// The violations to exempt. A violation is exempted when it matches any entry.
+	Match []PolicyExceptionMatch `json:"match"`
 }
 
-// PolicyConfigSchema defines the JSON schema of a particular Policy's
-// configuration.
-type PolicyConfigSchema struct {
-	// Config property name to JSON Schema map.
-	Properties map[string]*json.RawMessage `json:"properties,omitempty"`
-	// Required config properties.
-	Required []string `json:"required,omitempty"`
+// PolicyExceptionMatch matches the violations of any of its policies on any of its targets.
+type PolicyExceptionMatch = cloudapitype.PolicyExceptionMatch
 
-	// Type defines the data type allowed for the schema.
-	Type JSONSchemaType `json:"type"`
-}
+// Policy is the Cloud SDK's AppPolicy.
+type Policy = cloudapitype.AppPolicy
 
-// JSONSchemaType in an enum of allowed data types for a schema.
-type JSONSchemaType string
+// PolicyConfigSchema is the Cloud SDK's AppPolicyConfigSchema.
+type PolicyConfigSchema = cloudapitype.AppPolicyConfigSchema
+
+// PolicyComplianceFramework is the Cloud SDK's AppPolicyComplianceFramework.
+type PolicyComplianceFramework = cloudapitype.AppPolicyComplianceFramework
+
+// JSONSchemaType is the Cloud SDK's AppJSONSchemaType.
+type JSONSchemaType = cloudapitype.AppJSONSchemaType
+
+// EnforcementLevel is the Cloud SDK's AppEnforcementLevel.
+type EnforcementLevel = cloudapitype.AppEnforcementLevel
+
+// PolicySeverity is the Cloud SDK's AppPolicySeverity.
+type PolicySeverity = cloudapitype.AppPolicySeverity
+
+// PolicyGroupMode is the Cloud SDK's PolicyGroupMode.
+type PolicyGroupMode = cloudapitype.PolicyGroupMode
+
+// EntityType is the Cloud SDK's AppEntityType.
+type EntityType = cloudapitype.AppEntityType
+
+// PolicyGroupEntityType is the Cloud SDK's PolicyGroupEntityType.
+type PolicyGroupEntityType = cloudapitype.PolicyGroupEntityType
+
+// GetPolicyGroupResponse is the Cloud SDK's PolicyGroup.
+type GetPolicyGroupResponse = cloudapitype.PolicyGroup
+
+// CreatePolicyGroupRequest is the Cloud SDK's NewPolicyGroupRequest.
+type CreatePolicyGroupRequest = cloudapitype.NewPolicyGroupRequest
+
+// UpdatePolicyGroupRequest is the Cloud SDK's AppUpdatePolicyGroupRequest.
+type UpdatePolicyGroupRequest = cloudapitype.AppUpdatePolicyGroupRequest
+
+// PulumiStackReference is the Cloud SDK's AppPulumiStackReference.
+type PulumiStackReference = cloudapitype.AppPulumiStackReference
+
+// InsightsAccountReference is the Cloud SDK's AppInsightsAccountReference.
+type InsightsAccountReference = cloudapitype.AppInsightsAccountReference
+
+// PolicyPackMetadata is the Cloud SDK's AppPolicyPackMetadata.
+type PolicyPackMetadata = cloudapitype.AppPolicyPackMetadata
+
+// PolicyIssue is the Cloud SDK's PolicyIssue.
+type PolicyIssue = cloudapitype.PolicyIssue
+
+// GetPolicyIssueResponse is the Cloud SDK's GetPolicyIssueResponse.
+type GetPolicyIssueResponse = cloudapitype.GetPolicyIssueResponse
+
+// ListPolicyIssuesRequest is the Cloud SDK's AngularGridGetRowsRequest.
+type ListPolicyIssuesRequest = cloudapitype.AngularGridGetRowsRequest
+
+// ListPolicyIssuesResponse is the Cloud SDK's ListPolicyIssuesResponse.
+type ListPolicyIssuesResponse = cloudapitype.ListPolicyIssuesResponse
+
+// PolicyIssueSortModel is the Cloud SDK's AngularGridSortModelItem.
+type PolicyIssueSortModel = cloudapitype.AngularGridSortModelItem
 
 const (
-	// Object is a dictionary.
-	Object JSONSchemaType = "object"
+	Object = cloudapitype.AppJSONSchemaTypeObject
+
+	Advisory  = cloudapitype.AppEnforcementLevelAdvisory
+	Mandatory = cloudapitype.AppEnforcementLevelMandatory
+	Remediate = cloudapitype.AppEnforcementLevelRemediate
+	Disabled  = cloudapitype.AppEnforcementLevelDisabled
+
+	PolicySeverityUnspecified = cloudapitype.AppPolicySeverityUnspecified
+	PolicySeverityLow         = cloudapitype.AppPolicySeverityLow
+	PolicySeverityMedium      = cloudapitype.AppPolicySeverityMedium
+	PolicySeverityHigh        = cloudapitype.AppPolicySeverityHigh
+	PolicySeverityCritical    = cloudapitype.AppPolicySeverityCritical
+
+	PolicyGroupModeAudit        = cloudapitype.PolicyGroupModeAudit
+	PolicyGroupModePreventative = cloudapitype.PolicyGroupModePreventative
+
+	Stacks   = cloudapitype.AppEntityTypeStacks
+	Accounts = cloudapitype.AppEntityTypeAccounts
+
+	PolicyGroupEntityTypeStacks   = cloudapitype.PolicyGroupEntityTypeStacks
+	PolicyGroupEntityTypeAccounts = cloudapitype.PolicyGroupEntityTypeAccounts
 )
-
-// EnforcementLevel indicates how a policy should be enforced
-type EnforcementLevel string
-
-const (
-	// Advisory is an enforcement level where the resource is still created, but a
-	// message is displayed to the user for informational / warning purposes.
-	Advisory EnforcementLevel = "advisory"
-
-	// Mandatory is an enforcement level that prevents a resource from being created.
-	Mandatory EnforcementLevel = "mandatory"
-
-	// Remediate is an enforcement level that fixes policy issues instead of issuing diagnostics.
-	Remediate EnforcementLevel = "remediate"
-
-	// Disabled is an enforcement level that disables the policy from being enforced.
-	Disabled EnforcementLevel = "disabled"
-)
-
-// Indicates the severity of a policy.
-type PolicySeverity string
-
-const (
-	PolicySeverityUnspecified PolicySeverity = ""
-	PolicySeverityLow         PolicySeverity = "low"
-	PolicySeverityMedium      PolicySeverity = "medium"
-	PolicySeverityHigh        PolicySeverity = "high"
-	PolicySeverityCritical    PolicySeverity = "critical"
-)
-
-// IsValid returns true if the EnforcementLevel is a valid value.
-func (el EnforcementLevel) IsValid() bool {
-	switch el {
-	case Advisory, Mandatory, Remediate, Disabled:
-		return true
-	}
-	return false
-}
-
-// EntityType indicates the type of entity a policy group applies to
-type EntityType string
-
-const (
-	// Stacks indicates the policy group applies to stacks
-	Stacks EntityType = "stacks"
-
-	// Accounts indicates the policy group applies to accounts
-	Accounts EntityType = "accounts"
-)
-
-// IsValid returns true if the EntityType is a valid value.
-func (et EntityType) IsValid() bool {
-	switch et {
-	case Stacks, Accounts:
-		return true
-	}
-	return false
-}
-
-// PolicyGroupMode indicates the enforcement mode of a policy group
-type PolicyGroupMode string
-
-const (
-	// PolicyGroupModePreventative enforces policies during pulumi up/preview operations,
-	// potentially blocking resource changes when mandatory policies fail
-	PolicyGroupModePreventative PolicyGroupMode = "preventative"
-
-	// PolicyGroupModeAudit monitors resource compliance without blocking operations,
-	// reporting policy violations for continuous compliance monitoring
-	PolicyGroupModeAudit PolicyGroupMode = "audit"
-)
-
-// IsValid returns true if the PolicyGroupMode is a valid value.
-func (m PolicyGroupMode) IsValid() bool {
-	switch m {
-	case PolicyGroupModePreventative, PolicyGroupModeAudit:
-		return true
-	}
-	return false
-}
 
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
 // metadata and policies.
@@ -250,51 +222,11 @@ type GetStackPolicyPacksResponse struct {
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
-// UpdatePolicyGroupRequest modifies a Policy Group.
-type UpdatePolicyGroupRequest struct {
-	NewName *string `json:"newName,omitempty"`
+// ListPolicyPacksResponse is the Cloud SDK's AppListPolicyPacksResponse.
+type ListPolicyPacksResponse = cloudapitype.AppListPolicyPacksResponse
 
-	AddStack    *PulumiStackReference `json:"addStack,omitempty"`
-	RemoveStack *PulumiStackReference `json:"removeStack,omitempty"`
-
-	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
-	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
-}
-
-// PulumiStackReference contains the StackName and ProjectName of the stack.
-type PulumiStackReference struct {
-	Name           string `json:"name"`
-	RoutingProject string `json:"routingProject"`
-}
-
-// PolicyPackMetadata is the metadata of a Policy Pack.
-type PolicyPackMetadata struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	Version     int    `json:"version"`
-	VersionTag  string `json:"versionTag"`
-
-	// The configuration that is to be passed to the Policy Pack. This
-	// map ties Policies with their configuration.
-	Config map[string]*json.RawMessage `json:"config,omitempty"`
-
-	// ESC environment references to resolve for this policy pack.
-	Environments []string `json:"environments,omitempty"`
-}
-
-// ListPolicyPacksResponse is the response to list an organization's
-// Policy Packs.
-type ListPolicyPacksResponse struct {
-	PolicyPacks []PolicyPackWithVersions `json:"policyPacks"`
-}
-
-// PolicyPackWithVersions details the specifics of a Policy Pack and all its available versions.
-type PolicyPackWithVersions struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"displayName"`
-	Versions    []int    `json:"versions"`
-	VersionTags []string `json:"versionTags"`
-}
+// PolicyPackWithVersions is the Cloud SDK's AppPolicyPackWithVersions.
+type PolicyPackWithVersions = cloudapitype.AppPolicyPackWithVersions
 
 // ListPolicyGroupsResponse lists a summary of the organization's Policy Groups.
 type ListPolicyGroupsResponse struct {
@@ -320,14 +252,33 @@ type GetPolicyPackConfigSchemaResponse struct {
 	ConfigSchema map[string]PolicyConfigSchema `json:"configSchema,omitempty"`
 }
 
-// PolicyComplianceFramework represents a compliance framework that a policy belongs to.
-type PolicyComplianceFramework struct {
-	// The compliance framework name.
-	Name string `json:"name,omitempty"`
-	// The compliance framework version.
-	Version string `json:"version,omitempty"`
-	// The compliance framework reference.
-	Reference string `json:"reference,omitempty"`
-	// The compliance framework specification.
-	Specification string `json:"specification,omitempty"`
+// GetPolicyComplianceResultsRequest is the request body for the compliance
+// results endpoint (POST /api/orgs/{orgName}/policy-results/compliance).
+type GetPolicyComplianceResultsRequest struct {
+	// Entity is how to group results: "stack", "account", or "severity".
+	Entity string `json:"entity"`
+	// ContinuationToken is the pagination token from a previous response.
+	ContinuationToken *string `json:"continuationToken,omitempty"`
+	// Size is the number of results per page (max 1000).
+	Size *int `json:"size,omitempty"`
+}
+
+// GetPolicyComplianceResultsResponse is the response from the compliance
+// results endpoint.
+type GetPolicyComplianceResultsResponse struct {
+	// Columns lists the policy group/pack identifiers or severity levels.
+	Columns []string `json:"columns"`
+	// Rows contains one entry per entity (stack, account, or policy pack).
+	Rows []PolicyComplianceResult `json:"rows"`
+	// ContinuationToken is set when more pages are available.
+	ContinuationToken *string `json:"continuationToken,omitempty"`
+}
+
+// PolicyComplianceResult is a single row in the compliance results table.
+type PolicyComplianceResult struct {
+	// EntityName identifies the entity (e.g. "project/stack" or account name).
+	EntityName string `json:"entityName"`
+	// Scores is an array correlating 1:1 with Columns. Values are 0-100
+	// (compliance %), -1 (N/A), or -2 (config error).
+	Scores []int `json:"scores"`
 }

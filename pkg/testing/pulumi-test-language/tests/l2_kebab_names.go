@@ -1,0 +1,72 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tests
+
+import (
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func init() {
+	LanguageTests["l2-kebab-names"] = LanguageTest{
+		Providers: []func() plugin.Provider{
+			func() plugin.Provider { return &providers.KebabNamesProvider{} },
+		},
+		Runs: []TestRun{
+			{
+				Assert: func(l *L, res AssertArgs) {
+					RequireStackResource(l, res.Err, res.Changes)
+					require.Len(l, res.Snap.Resources, 4)
+
+					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:kebab-names")
+					first := RequireSingleNamedResource(l, res.Snap.Resources, "first")
+					second := RequireSingleNamedResource(l, res.Snap.Resources, "second")
+
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-input": property.New(true),
+						"nested": property.New(map[string]property.Value{
+							"nested-value": property.New("nested"),
+						}),
+					}), resource.FromResourcePropertyMap(first.Inputs))
+
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-output": property.New(map[string]property.Value{
+							"nested-output": property.New("nested"),
+						}),
+					}), resource.FromResourcePropertyMap(first.Outputs))
+
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-input": property.New("nested"),
+					}), resource.FromResourcePropertyMap(second.Inputs))
+
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-input": property.New("nested"),
+					}), resource.FromResourcePropertyMap(second.Outputs))
+
+					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "theOutput", property.New(map[string]property.Value{
+						"nested-output": property.New("nested"),
+					}))
+					AssertPropertyMapMember(l, stackOutputs, "invoked", property.New("hello nested"))
+				},
+			},
+		},
+	}
+}

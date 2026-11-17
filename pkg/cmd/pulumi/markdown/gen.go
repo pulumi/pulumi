@@ -60,6 +60,30 @@ func generateMetaDescription(title, commandName string) string {
 	return baseDesc
 }
 
+// aliasRedirectPaths returns the docs-site paths that should redirect to the given command's page, one per cobra alias.
+// For example `pulumi stack remove` yields redirect paths for `pulumi_stack_rm` under both the current
+// (`/docs/iac/cli/commands/`) and legacy (`/docs/reference/cli/`) CLI docs prefixes.
+func aliasRedirectPaths(cmd *cobra.Command) []string {
+	if cmd == nil || len(cmd.Aliases) == 0 {
+		return nil
+	}
+
+	var prefix string
+	if cmd.HasParent() {
+		prefix = strings.ReplaceAll(cmd.Parent().CommandPath(), " ", "_") + "_"
+	}
+
+	paths := make([]string, 0, len(cmd.Aliases)*2)
+	for _, alias := range cmd.Aliases {
+		slug := prefix + alias
+		paths = append(paths,
+			fmt.Sprintf("/docs/iac/cli/commands/%s/", slug),
+			fmt.Sprintf("/docs/reference/cli/%s/", slug),
+		)
+	}
+	return paths
+}
+
 // NewGenMarkdownCmd returns a new command that, when run, generates CLI documentation as Markdown files.
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
@@ -69,6 +93,16 @@ func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var files []string
+
+			commandsBySlug := map[string]*cobra.Command{}
+			var indexCommands func(c *cobra.Command)
+			indexCommands = func(c *cobra.Command) {
+				commandsBySlug[strings.ReplaceAll(c.CommandPath(), " ", "_")] = c
+				for _, child := range c.Commands() {
+					indexCommands(child)
+				}
+			}
+			indexCommands(root)
 
 			// filePrepender is used to add front matter to each file, and to keep track of all
 			// generated files.
@@ -87,6 +121,10 @@ func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				// Add redirect aliases to the front matter.
 				fmt.Fprint(buf, "aliases:\n")
 				fmt.Fprintf(buf, "%s- /docs/reference/cli/%s/\n", ymlIndent, fileNameWithoutExtension)
+				// Add a redirect for each of the command's cobra aliases
+				for _, aliasPath := range aliasRedirectPaths(commandsBySlug[fileNameWithoutExtension]) {
+					fmt.Fprintf(buf, "%s- %s\n", ymlIndent, aliasPath)
+				}
 				// Add meta description for SEO
 				metaDesc := generateMetaDescription(title, fileNameWithoutExtension)
 				fmt.Fprintf(buf, "meta_desc: %q\n", metaDesc)

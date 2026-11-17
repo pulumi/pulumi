@@ -59,13 +59,21 @@ Additional properties: [Property Definition](#property-definition)
 
 ---
 
+### `configurationDocsUrl`
+
+The URL of the provider's installation and configuration documentation, if any.
+
+`string`
+
+---
+
 ### `dependencies`
 
 A list of package descriptors that describes the set of dependencies for this package.
 
 `array`
 
-Items: [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/properties/dependencies/items`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemajsonpropertiesdependenciesitems)
+Items: [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/properties/dependencies/items`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemapulumijsonpropertiesdependenciesitems)
 
 ---
 
@@ -196,7 +204,7 @@ An optional object to define parameterization for the package.
 `object`
 
 All of:
-- [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/$defs/parameterization`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemajsondefsparameterization)
+- [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/$defs/parameterization`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemapulumijsondefsparameterization)
 
 ---
 
@@ -253,6 +261,14 @@ A map from type token to complexTypeSpec that describes the set of complex types
 Property names: [Token](#token)
 
 Additional properties: [Type Definition](#type-definition)
+
+---
+
+### `validateCredentialsOnNew`
+
+Indicates that `pulumi new` may configure the provider after creating a project in order to validate the user's credentials.
+
+`boolean`
 
 ---
 
@@ -966,7 +982,7 @@ Enum: `"boolean"` | `"integer"` | `"number"` | `"string"`
 
 ---
 
-## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/$defs/parameterization`
+## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/$defs/parameterization`
 
 `object`
 
@@ -1012,7 +1028,7 @@ The parameter for the provider.
 
 ---
 
-## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/properties/dependencies/items`
+## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/properties/dependencies/items`
 
 `object`
 

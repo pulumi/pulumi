@@ -63,30 +63,25 @@ func upsertIntoCache(key string, w W) {
 	cache[key] = w
 }
 
-// newW creates a new workspace using the current working directory. Requires a Pulumi.yaml file be present in the
-// folder hierarchy between the current working directory and the .pulumi folder.
-func newW() (W, error) {
-	cwd, err := os.Getwd()
+// newW creates a new workspace rooted at dir. Requires a Pulumi.yaml file be present in the
+// folder hierarchy between dir and the .pulumi folder.
+func newW(dir string) (W, error) {
+	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
+	dir = absDir
 
-	absDir, err := filepath.Abs(cwd)
-	if err != nil {
-		return nil, err
-	}
-	cwd = absDir
-
-	if w, ok := loadFromCache(cwd); ok {
+	if w, ok := loadFromCache(dir); ok {
 		return w, nil
 	}
 
-	path, err := workspace.DetectProjectPathFrom(cwd)
+	path, err := workspace.DetectProjectPathFrom(dir)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
 		return nil, fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-			"created a project yet, use `pulumi new` to do so", cwd)
+			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
 	proj, err := workspace.LoadProject(path)
@@ -104,7 +99,7 @@ func newW() (W, error) {
 		return nil, fmt.Errorf("unable to read workspace settings: %w", err)
 	}
 
-	upsertIntoCache(cwd, w)
+	upsertIntoCache(dir, w)
 	return w, nil
 }
 
@@ -114,6 +109,17 @@ func (pw *projectWorkspace) Settings() *Settings {
 
 func (pw *projectWorkspace) Save() error {
 	settingsFile := pw.settingsPath()
+
+	// We used to not follow symlinks when computing the settings
+	// file path.  If the settings file is present at the legacy
+	// path, delete it, as we'll write it to the correct location
+	// below.
+	if legacySettingsFile := pw.settingsPathFor(pw.project); legacySettingsFile != settingsFile {
+		err := os.Remove(legacySettingsFile)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
 
 	// If the settings file is empty, don't write an new one, and delete the old one if present. Since we put workspaces
 	// under ~/.pulumi/workspaces, cleaning them out when possible prevents us from littering a bunch of files in the
@@ -166,6 +172,10 @@ func (pw *projectWorkspace) readSettings() error {
 
 	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
+		settingsPath = pw.settingsPathFor(pw.project)
+		b, err = os.ReadFile(settingsPath)
+	}
+	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
 		pw.settings = &Settings{}
 		return nil
@@ -185,8 +195,16 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + workspace.WorkspaceFile
-	path, err := workspace.GetPulumiPath(workspace.WorkspaceDir, uniqueFileName)
+	project, err := filepath.EvalSymlinks(pw.project)
+	if err != nil {
+		project = pw.project
+	}
+	return pw.settingsPathFor(project)
+}
+
+func (pw *projectWorkspace) settingsPathFor(project string) string {
+	uniqueFileName := string(pw.name) + "-" + sha1HexString(project) + "-" + WorkspaceFile
+	path, err := workspace.GetPulumiPath(WorkspaceDir, uniqueFileName)
 	contract.AssertNoErrorf(err, "could not get workspace path")
 	return path
 }

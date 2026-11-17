@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -53,6 +52,9 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if socmd.Stdout == nil {
+				socmd.Stdout = cmd.OutOrStdout()
+			}
 			return socmd.Run(cmd.Context(), args)
 		},
 	}
@@ -90,7 +92,7 @@ type stackOutputCmd struct {
 	// from tests.
 	requireStack func(
 		ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-		name string, lopt LoadOption, opts display.Options,
+		name string, lopt LoadOption, opts display.Options, configFile string,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -115,10 +117,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		osys = cmd.OS
 	}
 
-	stdout := io.Writer(os.Stdout)
-	if cmd.Stdout != nil {
-		stdout = cmd.Stdout
-	}
+	stdout := cmd.Stdout
 
 	var outw stackOutputWriter
 	if cmd.shellOut && cmd.jsonOut {
@@ -140,11 +139,17 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		cmd.stackName,
 		LoadOnly,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
 	}
-	snapshotStackOutputs, err := s.SnapshotStackOutputs(ctx, secrets.DefaultProvider)
+	// When we're not showing secrets, use a blinding provider to prevent secrets from being disclosed.
+	secretsProvider := cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)
+	if !cmd.showSecrets {
+		secretsProvider = secrets.BlindingProvider
+	}
+	snapshotStackOutputs, err := s.SnapshotStackOutputs(ctx, secretsProvider)
 	if err != nil {
 		return err
 	}
@@ -153,7 +158,9 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
 	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
-	outputs, err := stack.SerializeProperties(ctx, display.MassageSecrets(snapshotStackOutputsMap, cmd.showSecrets),
+	outputs, err := stack.SerializeProperties(ctx,
+		resource.ToResourcePropertyMap(display.MassageSecrets(
+			resource.FromResourcePropertyMap(snapshotStackOutputsMap), cmd.showSecrets)),
 		config.NewPanicCrypter(), cmd.showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting outputs: %w", err)
@@ -308,6 +315,7 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]any, e
 	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
 	ctx := context.TODO()
-	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),
+	return stack.SerializeProperties(ctx,
+		resource.ToResourcePropertyMap(display.MassageSecrets(resource.FromResourcePropertyMap(state.Outputs), showSecrets)),
 		config.NewPanicCrypter(), showSecrets)
 }

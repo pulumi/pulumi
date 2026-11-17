@@ -17,6 +17,7 @@ package plugin
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"google.golang.org/grpc"
 
@@ -29,6 +30,9 @@ type GrpcServer struct {
 
 	cancel chan bool
 	handle rpcutil.ServeHandle
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 // NewServer creates a new GrpcServer wired up to the given services and context.
@@ -57,13 +61,11 @@ func NewServer(ctx *Context, registrations ...func(server *grpc.Server)) (*GrpcS
 }
 
 func (s *GrpcServer) Close() error {
-	if s.cancel != nil {
+	s.closeOnce.Do(func() {
 		s.cancel <- true
-		err := <-s.handle.Done
-		s.cancel = nil
-		return err
-	}
-	return nil
+		s.closeErr = <-s.handle.Done
+	})
+	return s.closeErr
 }
 
 func (s *GrpcServer) Addr() string {

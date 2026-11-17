@@ -1,0 +1,18 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%reset%}>  urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev: (same)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:dev::myproject::aws:s3/bucket:Bucket::completed-bucket: (create)
+<{%fg 2%}>        acl: <{%reset%}><{%fg 2%}>"private"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>        --outputs:--<{%reset%}>
+<{%fg 2%}>        arn: <{%reset%}><{%fg 2%}>"arn:aws:s3:::completed-bucket-1234567"<{%reset%}><{%fg 2%}>
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:dev::myproject::my:component:WebService::interrupted-component: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:dev::myproject::aws:ec2/instance:Instance::interrupted-instance: (create)
+<{%fg 2%}>            ami         : <{%reset%}><{%fg 2%}>"ami-12345678"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            instanceType: <{%reset%}><{%fg 2%}>"t3.micro"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>    <{%fg 3%}>~ urn:pulumi:dev::myproject::aws:rds/instance:Instance::interrupted-db: (update)
+<{%reset%}>        [id=interrupted-db-7654321]
+<{%reset%}><{%fg 3%}>      ~ instanceClass: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>db.t3.<{%reset%}><{%fg 1%}>micro<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>db.t3.<{%reset%}><{%fg 2%}>small<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s

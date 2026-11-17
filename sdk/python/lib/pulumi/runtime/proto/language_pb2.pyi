@@ -365,22 +365,35 @@ class GetRequiredPackagesResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PACKAGES_FIELD_NUMBER: builtins.int
+    SPECS_FIELD_NUMBER: builtins.int
     @property
     def packages(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageDependency]:
         """The packages required by the program specified by the request."""
+
+    @property
+    def specs(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.plugin_pb2.PackageSpec]:
+        """The package specs required by the program specified by the request.
+
+        Only specs not included in packages should be included.
+        """
 
     def __init__(
         self,
         *,
         packages: collections.abc.Iterable[pulumi.plugin_pb2.PackageDependency] | None = ...,
+        specs: collections.abc.Iterable[pulumi.plugin_pb2.PackageSpec] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["packages", b"packages"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["packages", b"packages", "specs", b"specs"]) -> None: ...
 
 global___GetRequiredPackagesResponse = GetRequiredPackagesResponse
 
 @typing.final
 class RunRequest(google.protobuf.message.Message):
-    """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call."""
+    """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
+    NOTE: execution context fields (project/stack/config/dryRun/parallel/organization) remain for
+    backward compatibility. Newer language runtimes may read monitor execution context via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitor_address`.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -416,6 +429,7 @@ class RunRequest(google.protobuf.message.Message):
     INFO_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     project: builtins.str
     """The project name."""
     stack: builtins.str
@@ -448,6 +462,8 @@ class RunRequest(google.protobuf.message.Message):
     """The target of a codegen.LoaderServer to use for loading schemas."""
     attach_debugger: builtins.bool
     """True if and only if the host should start the program under a debugger."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Any arguments to pass to the program."""
@@ -489,9 +505,10 @@ class RunRequest(google.protobuf.message.Message):
         info: global___ProgramInfo | None = ...,
         loader_target: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["configPropertyMap", b"configPropertyMap", "info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "config", b"config", "configPropertyMap", b"configPropertyMap", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "info", b"info", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "monitor_address", b"monitor_address", "organization", b"organization", "parallel", b"parallel", "program", b"program", "project", b"project", "pwd", b"pwd", "queryMode", b"queryMode", "stack", b"stack"]) -> None: ...
 
 global___RunRequest = RunRequest
 
@@ -855,60 +872,6 @@ class RunPluginResponse(google.protobuf.message.Message):
 global___RunPluginResponse = RunPluginResponse
 
 @typing.final
-class RunPlugin2Request(google.protobuf.message.Message):
-    """`RunPlugin2Request` is the type of requests streamed by a [](pulumirpc.LanguageRuntime.RunPlugin2) call.
-    The first message must contain a `start` request with the plugin configuration. Subsequent messages may contain
-    a `cancel` request to signal graceful shutdown of the plugin.
-    """
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    START_FIELD_NUMBER: builtins.int
-    CANCEL_FIELD_NUMBER: builtins.int
-    @property
-    def start(self) -> global___RunPluginRequest:
-        """The initial request to start the plugin."""
-
-    @property
-    def cancel(self) -> global___RunPluginCancelRequest:
-        """A request to cancel the running plugin."""
-
-    def __init__(
-        self,
-        *,
-        start: global___RunPluginRequest | None = ...,
-        cancel: global___RunPluginCancelRequest | None = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["cancel", b"cancel", "request", b"request", "start", b"start"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["cancel", b"cancel", "request", b"request", "start", b"start"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["request", b"request"]) -> typing.Literal["start", "cancel"] | None: ...
-
-global___RunPlugin2Request = RunPlugin2Request
-
-@typing.final
-class RunPluginCancelRequest(google.protobuf.message.Message):
-    """`RunPluginCancelRequest` is sent on a [](pulumirpc.LanguageRuntime.RunPlugin2) stream to request shutdown of the
-    running plugin. By default (`force` = false), the plugin receives a graceful shutdown signal (e.g. SIGINT). If
-    `force` is true, the plugin is killed immediately (e.g. SIGKILL).
-    """
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    FORCE_FIELD_NUMBER: builtins.int
-    force: builtins.bool
-    """If true, forcefully kill the plugin process immediately.
-    If false (default), send a graceful shutdown signal.
-    """
-    def __init__(
-        self,
-        *,
-        force: builtins.bool = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["force", b"force"]) -> None: ...
-
-global___RunPluginCancelRequest = RunPluginCancelRequest
-
-@typing.final
 class GenerateProgramRequest(google.protobuf.message.Message):
     """`GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
     call.
@@ -935,10 +898,13 @@ class GenerateProgramRequest(google.protobuf.message.Message):
     SOURCE_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     STRICT_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
     strict: builtins.bool
     """True if [PCL binding](pcl-binding) should be strict."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """The source of the project, represented as a map of file names to [PCL](pcl) source code."""
@@ -949,8 +915,9 @@ class GenerateProgramRequest(google.protobuf.message.Message):
         source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         loader_target: builtins.str = ...,
         strict: builtins.bool = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "source", b"source", "strict", b"strict"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "mapper_target", b"mapper_target", "source", b"source", "strict", b"strict"]) -> None: ...
 
 global___GenerateProgramRequest = GenerateProgramRequest
 
@@ -1024,6 +991,7 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     STRICT_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """The directory containing [PCL](pcl) source code, from which the project should be generated."""
     target_directory: builtins.str
@@ -1036,6 +1004,8 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     """True if [PCL binding](pcl-binding) should be strict."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """Local dependencies that the generated project should reference explicitly, instead of e.g. using the language's
@@ -1054,8 +1024,9 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         strict: builtins.bool = ...,
         loader_target: builtins.str = ...,
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "mapper_target", b"mapper_target", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 

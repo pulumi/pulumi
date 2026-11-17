@@ -52,16 +52,16 @@ func (p pathRepr) appendSplat() pathRepr {
 func (p pathRepr) appendKey(s string) pathRepr {
 	contract.Assertf(len(s) < 1<<14, "string exceeded max length")
 	var hdr [2]byte
-	binary.BigEndian.PutUint16(hdr[:], uint16(2<<14|len(s))) //nolint:gosec // checked above
+	binary.BigEndian.PutUint16(hdr[:], uint16(2<<14|len(s)))
 	return pathRepr{p.string + string(hdr[:]) + s}
 }
 
 func (p pathRepr) appendIndex(i uint64) pathRepr {
 	if i < 64 {
-		return pathRepr{p.string + string([]byte{byte(i)})} //nolint:gosec // checked above
+		return pathRepr{p.string + string([]byte{byte(i)})}
 	}
 	var buf [9]byte
-	buf[0] = 0xC0 //nolint:gosec // https://github.com/securego/gosec/issues/1495 (fixed in golangci-lint 2.10.0)
+	buf[0] = 0xC0
 	binary.BigEndian.PutUint64(buf[1:], i)
 	return pathRepr{p.string + string(buf[:])}
 }

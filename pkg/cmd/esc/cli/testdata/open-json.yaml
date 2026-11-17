@@ -1,0 +1,58 @@
+run: |
+  esc open default/test --format json
+  esc open default/test@stable
+  esc open default/test@latest
+  esc open default/test@1
+  esc open default/test@2
+  esc open default/test@3
+environments:
+  test-user/default/test:
+    revisions:
+      - yaml:
+          values:
+            foo: bar
+        tags:
+          - stable
+      - yaml:
+          imports:
+            - test-2
+          values:
+            foo: bar
+  test-user/default/test-2:
+    values:
+      foo: baz
+      hello: world
+
+---
+> esc open default/test --format json
+{
+  "foo": "bar",
+  "hello": "world"
+}
+> esc open default/test@stable
+{
+  "foo": "bar"
+}
+> esc open default/test@latest
+{
+  "foo": "bar",
+  "hello": "world"
+}
+> esc open default/test@1
+> esc open default/test@2
+{
+  "foo": "bar"
+}
+> esc open default/test@3
+{
+  "foo": "bar",
+  "hello": "world"
+}
+
+---
+> esc open default/test --format json
+> esc open default/test@stable
+> esc open default/test@latest
+> esc open default/test@1
+> esc open default/test@2
+> esc open default/test@3

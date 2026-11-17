@@ -1,0 +1,7 @@
+{
+  "name": "package-add-standalone-nodejs",
+  "main": "index.ts",
+  "dependencies": {
+    "@pulumi/pulumi": "latest"
+  }
+}

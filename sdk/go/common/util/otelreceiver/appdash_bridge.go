@@ -259,10 +259,10 @@ func convertAppDashToOTLP(
 	}
 
 	if !startTime.IsZero() {
-		span.StartTimeUnixNano = uint64(startTime.UnixNano()) //nolint:gosec // timestamps are always positive
+		span.StartTimeUnixNano = uint64(startTime.UnixNano())
 	}
 	if !endTime.IsZero() {
-		span.EndTimeUnixNano = uint64(endTime.UnixNano()) //nolint:gosec // timestamps are always positive
+		span.EndTimeUnixNano = uint64(endTime.UnixNano())
 	}
 
 	if serviceName == "" {

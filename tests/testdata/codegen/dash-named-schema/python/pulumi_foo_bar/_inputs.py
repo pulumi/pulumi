@@ -20,22 +20,22 @@ __all__ = [
 ]
 
 class TopLevelArgsDict(TypedDict):
-    buzz: NotRequired[pulumi.Input[_builtins.str]]
+    buzz: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class TopLevelArgs:
     def __init__(__self__, *,
-                 buzz: Optional[pulumi.Input[_builtins.str]] = None):
+                 buzz: pulumi.Input[Optional[_builtins.str]] = None):
         if buzz is not None:
             pulumi.set(__self__, "buzz", buzz)
 
     @_builtins.property
     @pulumi.getter
-    def buzz(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def buzz(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "buzz")
 
     @buzz.setter
-    def buzz(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def buzz(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "buzz", value)
 
 

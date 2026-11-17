@@ -1,16 +1,16 @@
 {
     "name": "example",
     "resources": {
-        "example:cloudtrail:Trail": {
+        "example:mod1:Wrapper": {
             "inputProperties": {
-                "advancedEventSelectors": {
+                "configs": {
                     "type": "array",
                     "items": {
-                        "$ref": "/aws/v5.4.0/schema.json#/types/aws:cloudtrail%2FTrailAdvancedEventSelector:TrailAdvancedEventSelector"
+                        "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod1%2Fv1:Config"
                     }
                 },
-                "trail": {
-                    "$ref": "/aws/v5.4.0/schema.json#/resources/aws:cloudtrail%2Ftrail:Trail"
+                "res": {
+                    "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
                 }
             },
             "isComponent": true
@@ -20,7 +20,7 @@
         "python": {
             "requires": {
                 "pulumi": ">=3.0.0,<4.0.0",
-                "pulumi-aws": ">=5.4.0,<6.0.0"
+                "pulumi-goalias": ">=1.0.0,<2.0.0"
             }
         }
     }

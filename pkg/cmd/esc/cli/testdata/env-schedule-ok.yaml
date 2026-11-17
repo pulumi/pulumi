@@ -1,0 +1,64 @@
+run: |
+  esc env schedule new test-user/default/src --cron "0 0 * * *"
+  esc env schedule list test-user/default/src --utc
+  esc env schedule ls test-user/default/src --utc
+  esc env schedule get test-user/default/src sched-1 --utc
+  esc env schedule edit test-user/default/src sched-1 --cron "30 0 * * *"
+  esc env schedule get test-user/default/src sched-1 --utc
+  esc env schedule history test-user/default/src sched-1 --utc
+  esc env schedule remove test-user/default/src sched-1 --yes
+  esc env schedule list test-user/default/src --utc
+environments:
+  test-user/default/src:
+    yaml:
+      values: {}
+
+---
+> esc env schedule new test-user/default/src --cron 0 0 * * *
+Created schedule sched-1 for test-user/default/src
+> esc env schedule list test-user/default/src --utc
+┌─────────┬──────────────────────┬───────────┬──────────────────────┬───────┐
+│ ID      │ KIND                 │ SCHEDULE  │ NEXT                 │ LAST  │
+├─────────┼──────────────────────┼───────────┼──────────────────────┼───────┤
+│ sched-1 │ environment_rotation │ 0 0 * * * │ 2026-05-14T00:00:00Z │ never │
+└─────────┴──────────────────────┴───────────┴──────────────────────┴───────┘
+> esc env schedule ls test-user/default/src --utc
+┌─────────┬──────────────────────┬───────────┬──────────────────────┬───────┐
+│ ID      │ KIND                 │ SCHEDULE  │ NEXT                 │ LAST  │
+├─────────┼──────────────────────┼───────────┼──────────────────────┼───────┤
+│ sched-1 │ environment_rotation │ 0 0 * * * │ 2026-05-14T00:00:00Z │ never │
+└─────────┴──────────────────────┴───────────┴──────────────────────┴───────┘
+> esc env schedule get test-user/default/src sched-1 --utc
+ID: sched-1
+Kind: environment_rotation
+Schedule: 0 0 * * *
+Next execution: 2026-05-14T00:00:00Z
+Last executed: never
+> esc env schedule edit test-user/default/src sched-1 --cron 30 0 * * *
+Updated schedule sched-1 for test-user/default/src
+> esc env schedule get test-user/default/src sched-1 --utc
+ID: sched-1
+Kind: environment_rotation
+Schedule: 30 0 * * *
+Next execution: 2026-05-14T00:00:00Z
+Last executed: never
+> esc env schedule history test-user/default/src sched-1 --utc
+┌───────┬──────────────────────┬─────────┬───────────┐
+│ ID    │ EXECUTED             │ VERSION │ RESULT    │
+├───────┼──────────────────────┼─────────┼───────────┤
+│ evt-1 │ 2026-05-13T12:30:00Z │       1 │ succeeded │
+└───────┴──────────────────────┴─────────┴───────────┘
+> esc env schedule remove test-user/default/src sched-1 --yes
+Removed schedule sched-1 from test-user/default/src
+> esc env schedule list test-user/default/src --utc
+
+---
+> esc env schedule new test-user/default/src --cron 0 0 * * *
+> esc env schedule list test-user/default/src --utc
+> esc env schedule ls test-user/default/src --utc
+> esc env schedule get test-user/default/src sched-1 --utc
+> esc env schedule edit test-user/default/src sched-1 --cron 30 0 * * *
+> esc env schedule get test-user/default/src sched-1 --utc
+> esc env schedule history test-user/default/src sched-1 --utc
+> esc env schedule remove test-user/default/src sched-1 --yes
+> esc env schedule list test-user/default/src --utc

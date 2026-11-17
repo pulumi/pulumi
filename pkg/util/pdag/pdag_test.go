@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -261,20 +262,19 @@ func TestDAG_Walk_ErrorPropogation(t *testing.T) {
 	require.NoError(t, dag.NewEdge(h1, h2))
 
 	var completed atomic.Int32
-	expectedErr := errors.New("processing error")
 
 	err := dag.Walk(t.Context(), func(ctx context.Context, v int) error {
 		completed.Add(1)
 		if v == 1 {
 			// Error on the middle node after the first node has completed
-			return expectedErr
+			return assert.AnError
 		}
 		return nil
 	})
 
-	assert.ErrorIs(t, err, expectedErr)
+	assert.ErrorIs(t, err, assert.AnError)
 	// Node 0 should have completed, node 1 errored (but was added), node 2 should not run
-	assert.Equal(t, int(completed.Load()), 2)
+	assert.Equal(t, 2, int(completed.Load()))
 }
 
 // TestDAG_Walk_MaxProcs checks that we saturate up to the maximum allows procs, but no
@@ -476,7 +476,7 @@ func BenchmarkDAG_NewEdge_DenseGraph(b *testing.B) {
 				b.StopTimer()
 				dag := pdag.New[int]()
 				nodes := make([]pdag.Node, size)
-				for j := 0; j < size; j++ {
+				for j := range size {
 					nodes[j] = newFinishedNode(dag, j)
 				}
 				b.StartTimer()
@@ -512,7 +512,7 @@ func BenchmarkDAG_NewEdge_CycleDetection(b *testing.B) {
 			// Build a long chain once
 			dag := pdag.New[int]()
 			nodes := make([]pdag.Node, size)
-			for j := 0; j < size; j++ {
+			for j := range size {
 				nodes[j] = newFinishedNode(dag, j)
 			}
 			// Create chain: 0 -> 1 -> 2 -> ... -> size-1
@@ -777,6 +777,46 @@ func TestNewEdge_ErrorReentrant(t *testing.T) {
 		err = dag.NewEdge(n1, n2)
 		require.NoError(t, err, "should allow edge from done to done")
 	})
+}
+
+func TestDAG_Predecessors(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	a := newFinishedNode(dag, "a")
+	b := newFinishedNode(dag, "b")
+	c := newFinishedNode(dag, "c")
+	d := newFinishedNode(dag, "d")
+
+	require.NoError(t, dag.NewEdge(a, b))
+	require.NoError(t, dag.NewEdge(a, c))
+	require.NoError(t, dag.NewEdge(b, c))
+	require.NoError(t, dag.NewEdge(c, d))
+
+	assert.Empty(t, slices.Collect(dag.Predecessors(a)))
+	assert.Equal(t, []pdag.Node{a}, slices.Collect(dag.Predecessors(b)))
+	assert.ElementsMatch(t, []pdag.Node{a, b}, slices.Collect(dag.Predecessors(c)))
+	assert.Equal(t, []pdag.Node{c}, slices.Collect(dag.Predecessors(d)))
+}
+
+func TestDAG_Successors(t *testing.T) {
+	t.Parallel()
+
+	dag := pdag.New[string]()
+	a := newFinishedNode(dag, "a")
+	b := newFinishedNode(dag, "b")
+	c := newFinishedNode(dag, "c")
+	d := newFinishedNode(dag, "d")
+
+	require.NoError(t, dag.NewEdge(a, b))
+	require.NoError(t, dag.NewEdge(a, c))
+	require.NoError(t, dag.NewEdge(b, c))
+	require.NoError(t, dag.NewEdge(c, d))
+
+	assert.ElementsMatch(t, []pdag.Node{b, c}, slices.Collect(dag.Successors(a)))
+	assert.Equal(t, []pdag.Node{c}, slices.Collect(dag.Successors(b)))
+	assert.Equal(t, []pdag.Node{d}, slices.Collect(dag.Successors(c)))
+	assert.Empty(t, slices.Collect(dag.Successors(d)))
 }
 
 func TestWalk_DynamicNodeAddition(t *testing.T) {

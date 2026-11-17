@@ -28,7 +28,6 @@ interface ILanguageRuntimeService extends grpc.ServiceDefinition<grpc.UntypedSer
     generatePackage: ILanguageRuntimeService_IGeneratePackage;
     pack: ILanguageRuntimeService_IPack;
     link: ILanguageRuntimeService_ILink;
-    runPlugin2: ILanguageRuntimeService_IRunPlugin2;
     cancel: ILanguageRuntimeService_ICancel;
 }
 
@@ -176,15 +175,6 @@ interface ILanguageRuntimeService_ILink extends grpc.MethodDefinition<pulumi_lan
     responseSerialize: grpc.serialize<pulumi_language_pb.LinkResponse>;
     responseDeserialize: grpc.deserialize<pulumi_language_pb.LinkResponse>;
 }
-interface ILanguageRuntimeService_IRunPlugin2 extends grpc.MethodDefinition<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse> {
-    path: "/pulumirpc.LanguageRuntime/RunPlugin2";
-    requestStream: true;
-    responseStream: true;
-    requestSerialize: grpc.serialize<pulumi_language_pb.RunPlugin2Request>;
-    requestDeserialize: grpc.deserialize<pulumi_language_pb.RunPlugin2Request>;
-    responseSerialize: grpc.serialize<pulumi_language_pb.RunPluginResponse>;
-    responseDeserialize: grpc.deserialize<pulumi_language_pb.RunPluginResponse>;
-}
 interface ILanguageRuntimeService_ICancel extends grpc.MethodDefinition<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty> {
     path: "/pulumirpc.LanguageRuntime/Cancel";
     requestStream: false;
@@ -214,7 +204,6 @@ export interface ILanguageRuntimeServer extends grpc.UntypedServiceImplementatio
     generatePackage: grpc.handleUnaryCall<pulumi_language_pb.GeneratePackageRequest, pulumi_language_pb.GeneratePackageResponse>;
     pack: grpc.handleUnaryCall<pulumi_language_pb.PackRequest, pulumi_language_pb.PackResponse>;
     link: grpc.handleUnaryCall<pulumi_language_pb.LinkRequest, pulumi_language_pb.LinkResponse>;
-    runPlugin2: grpc.handleBidiStreamingCall<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse>;
     cancel: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty>;
 }
 
@@ -265,9 +254,6 @@ export interface ILanguageRuntimeClient {
     link(request: pulumi_language_pb.LinkRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
     link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
     link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
-    runPlugin2(): grpc.ClientDuplexStream<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse>;
-    runPlugin2(options: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse>;
-    runPlugin2(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse>;
     cancel(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
@@ -321,8 +307,6 @@ export class LanguageRuntimeClient extends grpc.Client implements ILanguageRunti
     public link(request: pulumi_language_pb.LinkRequest, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
     public link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
     public link(request: pulumi_language_pb.LinkRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_language_pb.LinkResponse) => void): grpc.ClientUnaryCall;
-    public runPlugin2(options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse>;
-    public runPlugin2(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<pulumi_language_pb.RunPlugin2Request, pulumi_language_pb.RunPluginResponse>;
     public cancel(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;

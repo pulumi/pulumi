@@ -42,5 +42,5 @@ export class Provider extends pulumi.ProviderResource {
  * The set of arguments for constructing a Provider resource.
  */
 export interface ProviderArgs {
-    text?: pulumi.Input<string>;
+    text?: pulumi.Input<string | undefined>;
 }

@@ -168,7 +168,7 @@ func TestInstallNoDeps(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 
-	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
+	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil, nil)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -188,7 +188,7 @@ func TestReinstall(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 
-	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
+	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil, nil)
 	require.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -200,7 +200,7 @@ func TestReinstall(t *testing.T) {
 	content = []byte("world\n")
 	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
 
-	err = InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), true, nil)
+	err = InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), true, nil, nil)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -233,16 +233,13 @@ func TestConcurrentInstalls(t *testing.T) {
 	// Run several installs concurrently.
 	const iterations = 12
 	var wg sync.WaitGroup
-	for i := 0; i < iterations; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
+	for range iterations {
+		wg.Go(func() {
+			err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil, nil)
 			require.NoError(t, err)
 
 			assertSuccess()
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -272,7 +269,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	err = os.WriteFile(partialPath, nil, 0o600)
 	require.NoError(t, err)
 
-	err = InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
+	err = InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil, nil)
 	require.NoError(t, err)
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -291,7 +288,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
-	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
+	err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil, nil)
 	require.NoError(t, err)
 
 	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0o600)

@@ -14,7 +14,39 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"context"
+	"errors"
+
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+)
+
+// OperationResult is the high-level outcome of an operation.
+type OperationResult string
+
+const (
+	// OperationResultSucceeded indicates the operation completed without error.
+	OperationResultSucceeded OperationResult = "succeeded"
+	// OperationResultFailed indicates the operation returned an error.
+	OperationResultFailed OperationResult = "failed"
+	// OperationResultCanceled indicates the operation was canceled by the user.
+	OperationResultCanceled OperationResult = "canceled"
+)
+
+// OperationResultFromError maps an operation's terminal error to the high-level
+// OperationResult reported on the summary event. context.Canceled (including
+// wrapped) is treated as user cancellation; any other error is a failure.
+func OperationResultFromError(err error) OperationResult {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return OperationResultCanceled
+	case err != nil:
+		return OperationResultFailed
+	default:
+		return OperationResultSucceeded
+	}
+}
 
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
@@ -52,22 +84,11 @@ type StartDebuggingEvent struct {
 	Config map[string]any `json:"config,omitempty"`
 }
 
-// PolicyEvent is emitted whenever there is Policy violation.
-type PolicyEvent struct {
-	ResourceURN          string `json:"resourceUrn,omitempty"`
-	Message              string `json:"message"`
-	Color                string `json:"color"`
-	PolicyName           string `json:"policyName"`
-	PolicyPackName       string `json:"policyPackName"`
-	PolicyPackVersion    string `json:"policyPackVersion"`
-	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+// PolicyEvent is the Cloud SDK's AppPolicyEvent.
+type PolicyEvent = cloudapitype.AppPolicyEvent
 
-	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
-	EnforcementLevel string `json:"enforcementLevel"`
-	// Severity is one of "low", "medium", "high", or "critical".
-	// An empty string is omitted and represents an unspecified severity.
-	Severity string `json:"severity,omitempty"`
-}
+// PolicyEventException is the Cloud SDK's AppPolicyEventException.
+type PolicyEventException = cloudapitype.AppPolicyEventException
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.
 type PolicyRemediationEvent struct {
@@ -150,6 +171,8 @@ type SummaryEvent struct {
 	PolicyPacks map[string]string `json:"PolicyPacks"`
 	// IsPreview indicates whether this is a preview or an update.
 	IsPreview bool `json:"isPreview"`
+	// Result is the high-level outcome of the operation.
+	Result OperationResult `json:"result"`
 }
 
 // ErrorEvent is emitted when an internal error occurs in the engine. This is not meant
@@ -267,6 +290,10 @@ type ResOpFailedEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Status   int               `json:"status"`
 	Steps    int               `json:"steps"`
+	// Awaited is true if the failure was caused by the provider returning AwaitError — i.e. the
+	// operation could not be awaited to completion. Consumers can use this to distinguish an
+	// await failure from a genuine resource failure.
+	Awaited bool `json:"awaited,omitempty"`
 }
 
 // PolicyLoadEvent is emitted when a policy starts loading

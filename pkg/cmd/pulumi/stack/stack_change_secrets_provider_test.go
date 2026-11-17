@@ -21,14 +21,20 @@ import (
 	"os"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -47,7 +53,7 @@ func TestChangeSecretsProvider_Invalid(t *testing.T) {
 		stack:  "test",
 	}
 	err := cmd.Run(t.Context(), []string{"not_a_secret"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "unknown secrets provider type 'not_a_secret' "+
 		"(supported values: default,passphrase,awskms,azurekeyvault,gcpkms,hashivault)")
 }
@@ -86,7 +92,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 	// backend.
 	snapshot := &deploy.Snapshot{
 		SecretsManager: b64.NewBase64SecretsManager(),
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:     resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type:    resource.RootStackType,
@@ -95,6 +101,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
+	var mockStack *backend.MockStack
 	mockBackend := &backend.MockBackend{
 		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
 			return stack.SerializeUntypedDeployment(ctx, snapshot, &stack.SerializeOptions{
@@ -109,16 +116,20 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			snapshot = snap
 			return nil
 		},
+		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
+			return mockStack, nil
+		},
 	}
 
-	mockStack := &backend.MockStack{
+	mockStack = &backend.MockStack{
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:             "testStack",
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "organization/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
@@ -127,9 +138,17 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
-		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
-			return mockStack, nil
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -183,7 +202,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 	secretsManager := b64.NewBase64SecretsManager()
 	snapshot := &deploy.Snapshot{
 		SecretsManager: secretsManager,
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:  resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type: resource.RootStackType,
@@ -194,6 +213,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
+	var mockStack *backend.MockStack
 	mockBackend := &backend.MockBackend{
 		ExportDeploymentF: func(ctx context.Context, _ backend.Stack) (*apitype.UntypedDeployment, error) {
 			return stack.SerializeUntypedDeployment(ctx, snapshot, &stack.SerializeOptions{
@@ -208,16 +228,20 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			snapshot = snap
 			return nil
 		},
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return mockStack, nil
+		},
 	}
 
-	mockStack := &backend.MockStack{
+	mockStack = &backend.MockStack{
 		BackendF: func() backend.Backend {
 			return mockBackend
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:             "testStack",
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "organization/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
@@ -229,9 +253,17 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 	}
 
-	testutil.MockBackendInstance(t, &backend.MockBackend{
-		GetStackF: func(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
-			return mockStack, nil
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return mockBackend, nil
 		},
 	})
 
@@ -282,4 +314,39 @@ runtime: mock
 	val, err := cfgValue.Value(passphraseDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", val)
+}
+
+//nolint:paralleltest // mutates global state
+func TestChangeSecretsProvider_ManagedEnvironment(t *testing.T) {
+	mockStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) { return mockStack, nil },
+	}
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization, ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
+	t.Chdir(t.TempDir())
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+	const stackFile = "secretsprovider: awskms://alias/key\nenvironment:\n  values:\n    pulumiConfig: {}\n"
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte(stackFile), 0o600))
+
+	cmd := stackChangeSecretsProviderCmd{stdout: &bytes.Buffer{}, stack: "dev"}
+	err := cmd.Run(t.Context(), []string{"passphrase"})
+	require.EqualError(t, err, "`pulumi stack change-secrets-provider` is not supported on stacks with an "+
+		"ESC-managed environment yet; use a customer-managed key (CMK) in Pulumi Cloud to control the encryption key "+
+		"instead")
+	written, err := os.ReadFile("Pulumi.dev.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, stackFile, string(written))
 }

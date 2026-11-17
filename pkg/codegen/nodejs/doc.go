@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -31,10 +32,27 @@ type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
-// GetDocLinkForPulumiType returns the NodeJS API doc link for a Pulumi type.
+// pulumiTypeDocRoot is the TypeDoc reference for the `@pulumi/pulumi` package.
+const pulumiTypeDocRoot = "/docs/reference/pkg/nodejs/pulumi/pulumi/"
+
+// pulumiTypeDocKinds maps linked `@pulumi/pulumi` types to their TypeDoc kind directory.
+var pulumiTypeDocKinds = map[string]string{
+	"ComponentResourceOptions": "interfaces",
+	"CustomResourceOptions":    "interfaces",
+	"InvokeOptions":            "interfaces",
+	"InvokeOutputOptions":      "interfaces",
+	"ID":                       "types",
+}
+
+// GetDocLinkForPulumiType returns the TypeDoc page for a `@pulumi/pulumi` type. Unknown types link to
+// the package index, since TypeDoc does not generate per-type anchors there.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return "/docs/reference/pkg/nodejs/pulumi/pulumi/#" + typeName
+	kind, ok := pulumiTypeDocKinds[typeName]
+	if !ok {
+		return pulumiTypeDocRoot
+	}
+	return pulumiTypeDocRoot + kind + "/" + typeName + ".html"
 }
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.
@@ -115,11 +133,26 @@ func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	funcName := d.GetFunctionName(f)
-	return title(funcName) + "Result"
+	return cgstrings.UppercaseFirst(funcName) + "Result"
+}
+
+// ResolveDocRef renders a single doc ref as a NodeJS name.
+func (d DocLanguageHelper) ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error) {
+	var info NodePackageInfo
+	if a, err := pkg.Language("nodejs"); err == nil {
+		info, _ = a.(NodePackageInfo)
+	}
+	mod := &modContext{
+		pkg:      pkg,
+		modToPkg: info.ModuleToPackage,
+		mod:      "\x00docrefresolver",
+	}
+	name, ok := mod.docRefResolver(selfRef)(ref)
+	return name, ok, nil
 }
 
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
-	return camel(m.Name)
+	return cgstrings.Camel(m.Name)
 }
 
 func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
@@ -150,7 +183,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 		}
 		return modCtx.typeString(objectReturnType.Properties[0].Type, false, nil)
 	}
-	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
+	return fmt.Sprintf("%s.%sResult", resourceName(r), cgstrings.UppercaseFirst(d.GetMethodName(m)))
 }
 
 // GetPropertyName returns the property name specific to NodeJS.

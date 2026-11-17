@@ -1,0 +1,4 @@
+[project]
+name = "python_await_error_handling"
+version = "0.0.0"
+dependencies = []

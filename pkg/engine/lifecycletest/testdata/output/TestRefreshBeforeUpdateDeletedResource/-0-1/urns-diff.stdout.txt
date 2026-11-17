@@ -1,9 +1,24 @@
-<{%reset%}>  urn:pulumi:test::test::pulumi:pulumi:Stack::test: (same)
+<{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::res0: (refresh)
+<{%reset%}>    [id=1]
+<{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - input : <{%reset%}><{%fg 1%}>"value"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>  - result: <{%reset%}><{%fg 1%}>"value"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resA: (refresh)
+<{%reset%}>    [id=1]
+<{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>    input : <{%reset%}><{%fg 3%}>"value"<{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>    result: <{%reset%}><{%fg 3%}>"value"<{%reset%}><{%fg 3%}>
+<{%reset%}><{%reset%}>  urn:pulumi:test::test::pulumi:pulumi:Stack::test: (same)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res0: (create)
+<{%fg 2%}>    input: <{%reset%}><{%fg 2%}>"value"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>    result: <{%reset%}><{%fg 2%}>"value"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same)
 <{%reset%}>    [id=1]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%reset%}>    result: <{%reset%}><{%reset%}>"value"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 1 created<{%reset%}>
     2 unchanged
 

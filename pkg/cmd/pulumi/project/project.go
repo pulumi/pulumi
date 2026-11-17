@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 )
 
 // NewProjectCmd creates a new command that manages Pulumi projects.
@@ -34,7 +35,8 @@ func NewProjectCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	// Add subcommands
-	cmd.AddCommand(newProjectLsCmd())
+	cmd.AddCommand(newProjectListCmd())
+	cmd.AddCommand(newcmd.NewNewCmd())
 
 	return cmd
 }

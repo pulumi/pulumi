@@ -20,8 +20,8 @@ __all__ = ['ResArgs', 'Res']
 @pulumi.input_type
 class ResArgs:
     def __init__(__self__, *,
-                 id: Optional[pulumi.Input[_builtins.str]] = None,
-                 urn: Optional[pulumi.Input[_builtins.str]] = None):
+                 id: pulumi.Input[Optional[_builtins.str]] = None,
+                 urn: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a Res resource.
         """
@@ -32,20 +32,20 @@ class ResArgs:
 
     @_builtins.property
     @pulumi.getter
-    def id(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def id(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "id")
 
     @id.setter
-    def id(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def id(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "id", value)
 
     @_builtins.property
     @pulumi.getter
-    def urn(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def urn(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "urn")
 
     @urn.setter
-    def urn(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def urn(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "urn", value)
 
 
@@ -55,12 +55,11 @@ class Res(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 id: Optional[pulumi.Input[_builtins.str]] = None,
-                 urn: Optional[pulumi.Input[_builtins.str]] = None,
+                 id: pulumi.Input[Optional[_builtins.str]] = None,
+                 urn: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         It's fine to use urn and id as input properties
-
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -73,7 +72,6 @@ class Res(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         It's fine to use urn and id as input properties
-
 
         :param str resource_name: The name of the resource.
         :param ResArgs args: The arguments to use to populate this resource's properties.
@@ -90,8 +88,8 @@ class Res(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 id: Optional[pulumi.Input[_builtins.str]] = None,
-                 urn: Optional[pulumi.Input[_builtins.str]] = None,
+                 id: pulumi.Input[Optional[_builtins.str]] = None,
+                 urn: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -128,6 +126,12 @@ class Res(pulumi.CustomResource):
 
         __props__.__dict__["output"] = None
         return Res(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'urnid:index:Res', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

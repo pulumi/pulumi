@@ -14,6 +14,7 @@
 
 from inspect import isclass
 import sys
+import warnings
 from types import ModuleType
 from typing import Optional
 
@@ -47,6 +48,8 @@ def component_provider_host(
         return
     is_hosting = True
 
+    components = _validate_explicit_components(components)
+
     # When the languge runtime runs the plugin, the first argument is the path
     # to the plugin's installation directory. This is followed by the engine
     # address and other optional arguments flags, like `--logtostderr`.
@@ -56,6 +59,35 @@ def component_provider_host(
     if version is None:
         version = "0.0.0"
     main(ComponentProvider(components, name, namespace, version), args)
+
+
+def _validate_explicit_components(
+    components: list[type[ComponentResource]],
+) -> list[type[ComponentResource]]:
+    """
+    Filter the explicit `components` list passed to `component_provider_host`,
+    emitting a warning for each entry that is not a `ComponentResource` subclass.
+
+    Source-based component plugins only support classes that extend
+    `ComponentResource`. Anything else (e.g. a `CustomResource` subclass, a plain
+    class, or a non-class value) is silently dropped from the generated
+    schema/SDK, which is a footgun. This helper surfaces a clear diagnostic
+    naming the offending value while still allowing the host to run with the
+    valid components.
+    """
+    valid: list[type[ComponentResource]] = []
+    for c in components:
+        if isclass(c) and issubclass(c, ComponentResource):
+            valid.append(c)
+        else:
+            label = getattr(c, "__name__", repr(c))
+            warnings.warn(
+                f"component_provider_host: '{label}' is not a ComponentResource subclass and "
+                f"will be excluded from the generated schema/SDK. Source-based component plugins "
+                f"only support classes that extend ComponentResource.",
+                stacklevel=3,
+            )
+    return valid
 
 
 def components_from_module(mod: ModuleType) -> list[type[ComponentResource]]:

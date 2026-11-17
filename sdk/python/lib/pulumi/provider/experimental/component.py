@@ -85,7 +85,7 @@ class ComponentProvider(Provider):
         options: Optional[ResourceOptions] = None,
     ) -> ConstructResult:
         self.validate_resource_type(self._name, resource_type)
-        component_name = resource_type.split(":")[-1]
+        component_name = resource_type.rsplit(":", maxsplit=1)[-1]
         constructor = self._components[component_name]
         component_def = self._component_defs[component_name]
         mapped_args = self.map_inputs(inputs, component_def)

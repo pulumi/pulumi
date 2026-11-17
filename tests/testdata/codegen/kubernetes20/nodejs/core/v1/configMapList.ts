@@ -22,6 +22,16 @@ export class ConfigMapList extends pulumi.CustomResource {
         return new ConfigMapList(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing ConfigMapList resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("kubernetes:core/v1:ConfigMapList", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'kubernetes:core/v1:ConfigMapList';
 
@@ -89,7 +99,7 @@ export interface ConfigMapListArgs {
     /**
      * APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
      */
-    apiVersion?: pulumi.Input<"v1">;
+    apiVersion?: pulumi.Input<"v1" | undefined>;
     /**
      * Items is the list of ConfigMaps.
      */
@@ -97,9 +107,9 @@ export interface ConfigMapListArgs {
     /**
      * Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
      */
-    kind?: pulumi.Input<"ConfigMapList">;
+    kind?: pulumi.Input<"ConfigMapList" | undefined>;
     /**
      * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
      */
-    metadata?: pulumi.Input<inputs.meta.v1.ListMeta>;
+    metadata?: pulumi.Input<inputs.meta.v1.ListMeta | undefined>;
 }

@@ -39,6 +39,21 @@ class ResourceMonitorStub:
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
+    GetDeploymentInfo: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.DeploymentInfo,
+    ]
+    """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+    This is an additive API intended to reduce duplicated state passed through
+    environment variables and per-request protobuf fields. New clients should
+    prefer this over piecemeal feature probing via SupportsFeature.
+
+    Backward compatibility:
+    - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    """
+
     SupportsFeature: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.SupportsFeatureRequest,
         pulumi.resource_pb2.SupportsFeatureResponse,
@@ -46,7 +61,7 @@ class ResourceMonitorStub:
 
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
+        pulumi.resource_pb2.ResourceInvokeResponse,
     ]
 
     Call: grpc.UnaryUnaryMultiCallable[
@@ -57,6 +72,11 @@ class ResourceMonitorStub:
     ReadResource: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ReadResourceRequest,
         pulumi.resource_pb2.ReadResourceResponse,
+    ]
+
+    ExistsResource: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ExistsResourceRequest,
+        pulumi.resource_pb2.ExistsResourceResponse,
     ]
 
     RegisterResource: grpc.UnaryUnaryMultiCallable[
@@ -121,6 +141,21 @@ class ResourceMonitorStub:
 class ResourceMonitorAsyncStub:
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
+    GetDeploymentInfo: grpc.aio.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.DeploymentInfo,
+    ]
+    """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+    This is an additive API intended to reduce duplicated state passed through
+    environment variables and per-request protobuf fields. New clients should
+    prefer this over piecemeal feature probing via SupportsFeature.
+
+    Backward compatibility:
+    - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    """
+
     SupportsFeature: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.SupportsFeatureRequest,
         pulumi.resource_pb2.SupportsFeatureResponse,
@@ -128,7 +163,7 @@ class ResourceMonitorAsyncStub:
 
     Invoke: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
+        pulumi.resource_pb2.ResourceInvokeResponse,
     ]
 
     Call: grpc.aio.UnaryUnaryMultiCallable[
@@ -139,6 +174,11 @@ class ResourceMonitorAsyncStub:
     ReadResource: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ReadResourceRequest,
         pulumi.resource_pb2.ReadResourceResponse,
+    ]
+
+    ExistsResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ExistsResourceRequest,
+        pulumi.resource_pb2.ExistsResourceResponse,
     ]
 
     RegisterResource: grpc.aio.UnaryUnaryMultiCallable[
@@ -204,6 +244,23 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
     
+    def GetDeploymentInfo(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.DeploymentInfo, collections.abc.Awaitable[pulumi.resource_pb2.DeploymentInfo]]:
+        """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+        This is an additive API intended to reduce duplicated state passed through
+        environment variables and per-request protobuf fields. New clients should
+        prefer this over piecemeal feature probing via SupportsFeature.
+
+        Backward compatibility:
+        - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+        - Clients should fall back to existing request fields/env vars/SupportsFeature.
+        """
+
+    
     def SupportsFeature(
         self,
         request: pulumi.resource_pb2.SupportsFeatureRequest,
@@ -215,7 +272,7 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.resource_pb2.ResourceInvokeRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.provider_pb2.InvokeResponse, collections.abc.Awaitable[pulumi.provider_pb2.InvokeResponse]]: ...
+    ) -> typing.Union[pulumi.resource_pb2.ResourceInvokeResponse, collections.abc.Awaitable[pulumi.resource_pb2.ResourceInvokeResponse]]: ...
 
     
     def Call(
@@ -230,6 +287,13 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.ReadResourceRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.resource_pb2.ReadResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ReadResourceResponse]]: ...
+
+    
+    def ExistsResource(
+        self,
+        request: pulumi.resource_pb2.ExistsResourceRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.ExistsResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ExistsResourceResponse]]: ...
 
     
     def RegisterResource(

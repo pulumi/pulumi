@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"testing"
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -458,10 +460,10 @@ func TestProvider_DeleteRequests(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 			// We have to configure before we can use Delete.
-			_, err := p.Configure(t.Context(), ConfigureRequest{})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err, "Configure failed")
 
 			// Act.
@@ -492,9 +494,6 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			// Zero value of a slice or map is nil.
 			v.Set(reflect.Zero(v.Type()))
 		}
-	}
-	ptr := func(v bool) *bool {
-		return &v
 	}
 
 	tests := []struct {
@@ -540,10 +539,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "protect",
 			give: ConstructOptions{
-				Protect: ptr(true),
+				Protect: new(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				Protect: ptr(true),
+				Protect: new(true),
 			},
 		},
 		{
@@ -614,10 +613,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "delete before replace",
 			give: ConstructOptions{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 		},
 		{
@@ -641,7 +640,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "replacement trigger",
 			give: ConstructOptions{
-				ReplacementTrigger: resource.NewProperty("trigger-value"),
+				ReplacementTrigger: property.New("trigger-value"),
 			},
 			want: &pulumirpc.ConstructRequest{
 				ReplacementTrigger: structpb.NewStringValue("trigger-value"),
@@ -650,10 +649,10 @@ func TestProvider_ConstructOptions(t *testing.T) {
 		{
 			desc: "retain on delete",
 			give: ConstructOptions{
-				RetainOnDelete: ptr(true),
+				RetainOnDelete: new(true),
 			},
 			want: &pulumirpc.ConstructRequest{
-				RetainOnDelete: ptr(true),
+				RetainOnDelete: new(true),
 			},
 		},
 	}
@@ -666,6 +665,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			// and are not affected by ConstructOptions.
 			tt.want.Project = "project"
 			tt.want.Stack = "stack"
+			tt.want.Organization = "organization"
 			tt.want.Type = "type"
 			tt.want.Name = "name"
 			tt.want.Config = make(map[string]string)
@@ -697,15 +697,15 @@ func TestProvider_ConstructOptions(t *testing.T) {
 				},
 			}
 
-			p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 			// Must configure before we can use Construct.
-			_, err := p.Configure(t.Context(), ConfigureRequest{})
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 			require.NoError(t, err, "configure failed")
 
 			_, err = p.Construct(t.Context(),
 				ConstructRequest{
-					Info:    ConstructInfo{Project: "project", Stack: "stack"},
+					Info:    ConstructInfo{Project: "project", Stack: "stack", Organization: "organization"},
 					Type:    "type",
 					Name:    "name",
 					Parent:  tt.parent,
@@ -746,7 +746,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 	props := resource.PropertyMap{
 		"foo": resource.NewProperty(&resource.Secret{
@@ -777,7 +777,10 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	// Wait until delete request has been sent to Configure
 	// and then wait until Delete has finished.
 	<-deleting
-	_, err := p.Configure(t.Context(), ConfigureRequest{Inputs: props})
+	_, err := p.Configure(t.Context(), ConfigureRequest{
+		Type:   new(tokens.Type("pulumi:providers:test")),
+		Inputs: props,
+	})
 	require.NoError(t, err)
 	<-done
 
@@ -799,7 +802,8 @@ func newTestContext(t testing.TB) *Context {
 	ctx, err := NewContext(
 		t.Context(),
 		sink, sink,
-		nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */, nil)
+		// The tests using this context wire up in-process stub clients, so the host is never used.
+		&MockHost{}, nil /* source */, cwd, nil /* options */, false, nil /* span */)
 	require.NoError(t, err, "build context")
 
 	return ctx
@@ -815,6 +819,7 @@ type stubClient struct {
 	DeleteF        func(*pulumirpc.DeleteRequest) error
 	GetSchemaF     func(*pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error)
 	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
+	ListF          func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error)
 	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
 	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
 }
@@ -897,6 +902,17 @@ func (c *stubClient) GetPluginInfo(
 	return c.ResourceProviderClient.GetPluginInfo(ctx, in, opts...)
 }
 
+func (c *stubClient) List(
+	ctx context.Context,
+	req *pulumirpc.ListRequest,
+	opts ...grpc.CallOption,
+) (pulumirpc.ResourceProvider_ListClient, error) {
+	if f := c.ListF; f != nil {
+		return f(ctx, req)
+	}
+	return c.ResourceProviderClient.List(ctx, req, opts...)
+}
+
 func (c *stubClient) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
@@ -908,6 +924,28 @@ func (c *stubClient) Read(
 	return c.ResourceProviderClient.Read(ctx, req, opts...)
 }
 
+// stubListStream is a fake [pulumirpc.ResourceProvider_ListClient] that drains a pre-populated slice of responses.
+// It only implements the Recv method exercised by [provider.List]; other grpc.ClientStream methods panic on the
+// embedded nil interface if invoked.
+type stubListStream struct {
+	grpc.ClientStream
+
+	responses []*pulumirpc.ListResponse
+	err       error
+}
+
+func (s *stubListStream) Recv() (*pulumirpc.ListResponse, error) {
+	if len(s.responses) == 0 {
+		if s.err != nil {
+			return nil, s.err
+		}
+		return nil, io.EOF
+	}
+	resp := s.responses[0]
+	s.responses = s.responses[1:]
+	return resp, nil
+}
+
 func (c *stubClient) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
@@ -917,6 +955,304 @@ func (c *stubClient) Update(
 		return f(req)
 	}
 	return c.ResourceProviderClient.Update(ctx, req, opts...)
+}
+
+// drainListStream iterates stream.Items, collecting results into a slice and stopping at the first error.
+func drainListStream(t *testing.T, stream *ListStream) []ListResult {
+	t.Helper()
+	var got []ListResult
+	for item, err := range stream.Items {
+		require.NoError(t, err)
+		got = append(got, item)
+	}
+	return got
+}
+
+func TestProvider_List(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id, name string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id, Name: name},
+			},
+		}
+	}
+	continuationMsg := func(token string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Continuation_{
+				Continuation: &pulumirpc.ListResponse_Continuation{ContinuationToken: token},
+			},
+		}
+	}
+	computedMsg := &pulumirpc.ListResponse{
+		Response: &pulumirpc.ListResponse_Computed_{
+			Computed: &pulumirpc.ListResponse_Computed{},
+		},
+	}
+
+	tests := []struct {
+		desc                  string
+		responses             []*pulumirpc.ListResponse
+		wantResults           []ListResult
+		wantComputed          bool
+		wantContinuationToken string
+	}{
+		{
+			desc: "single page",
+			responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a", "alpha"),
+				resultMsg("id-b", "beta"),
+			},
+			wantResults: []ListResult{
+				{ID: "id-a", Name: "alpha"},
+				{ID: "id-b", Name: "beta"},
+			},
+		},
+		{
+			desc: "page with continuation",
+			responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a", "alpha"),
+				continuationMsg("next-cursor"),
+			},
+			wantResults:           []ListResult{{ID: "id-a", Name: "alpha"}},
+			wantContinuationToken: "next-cursor",
+		},
+		{
+			desc:      "empty page",
+			responses: nil,
+		},
+		{
+			desc:         "computed",
+			responses:    []*pulumirpc.ListResponse{computedMsg},
+			wantComputed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var got *pulumirpc.ListRequest
+			client := &stubClient{
+				ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+					return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+				},
+				ListF: func(_ context.Context, req *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+					got = req
+					return &stubListStream{responses: tt.responses}, nil
+				},
+			}
+
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+			_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+			require.NoError(t, err)
+
+			stream, err := p.List(t.Context(), ListRequest{
+				Token:             tokens.Type("pkgA:index:Thing"),
+				Limit:             10,
+				PageSize:          5,
+				ContinuationToken: "cursor",
+			})
+			require.NoError(t, err)
+
+			gotResults := drainListStream(t, stream)
+			assert.Equal(t, tt.wantResults, gotResults)
+			assert.Equal(t, tt.wantComputed, stream.Computed)
+			assert.Equal(t, tt.wantContinuationToken, stream.ContinuationToken)
+
+			require.NotNil(t, got, "List was not called")
+			assert.Equal(t, "pkgA:index:Thing", got.Token)
+			assert.Equal(t, int64(10), got.Limit)
+			assert.Equal(t, int64(5), got.PageSize)
+			assert.Equal(t, "cursor", got.ContinuationToken)
+		})
+	}
+}
+
+func TestProvider_List_YieldsStreamError(t *testing.T) {
+	t.Parallel()
+
+	streamErr := status.Error(codes.Internal, "upstream blew up")
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			return &stubListStream{err: streamErr}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+
+	var gotErr error
+	var gotItems []ListResult
+	for item, err := range stream.Items {
+		if err != nil {
+			gotErr = err
+			break
+		}
+		gotItems = append(gotItems, item)
+	}
+	require.Error(t, gotErr) //nolint:forbidigo // pre-existing
+	assert.Contains(t, gotErr.Error(), "upstream blew up")
+	assert.Empty(t, gotItems)
+}
+
+// TestProvider_List_EarlyBreakCancelsRPC asserts that breaking out of the Items range loop early cancels the
+// context that was passed to the underlying gRPC call. Without that, the server stream would leak until the
+// provider's request context tears down.
+func TestProvider_List_EarlyBreakCancelsRPC(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id},
+			},
+		}
+	}
+	var rpcCtx context.Context
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(ctx context.Context, _ *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			rpcCtx = ctx
+			return &stubListStream{responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a"), resultMsg("id-b"), resultMsg("id-c"),
+			}}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+	require.NotNil(t, rpcCtx, "ListF should have been called")
+	require.NoError(t, rpcCtx.Err(), "context should be live before iteration starts")
+
+	for item := range stream.Items {
+		_ = item
+		break
+	}
+
+	assert.Error(t, rpcCtx.Err(), "context should be cancelled after early break") //nolint:forbidigo // pre-existing
+	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
+}
+
+// TestProvider_List_FullDrainCancelsRPC asserts that draining Items naturally (via EOF) also cancels the
+// per-call context so gRPC resources are released.
+func TestProvider_List_FullDrainCancelsRPC(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id},
+			},
+		}
+	}
+	var rpcCtx context.Context
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(ctx context.Context, _ *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			rpcCtx = ctx
+			return &stubListStream{responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a"),
+			}}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+	for item, err := range stream.Items {
+		_ = item
+		require.NoError(t, err)
+	}
+	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
+}
+
+// TestProvider_List_StreamErrorCancelsRPC asserts that mid-stream errors also release the per-call context.
+func TestProvider_List_StreamErrorCancelsRPC(t *testing.T) {
+	t.Parallel()
+
+	streamErr := status.Error(codes.Internal, "boom")
+	var rpcCtx context.Context
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(ctx context.Context, _ *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			rpcCtx = ctx
+			return &stubListStream{err: streamErr}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+	for _, err := range stream.Items {
+		if err != nil {
+			break
+		}
+	}
+	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
+}
+
+func TestProvider_List_StopsEarly(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id},
+			},
+		}
+	}
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			return &stubListStream{responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a"), resultMsg("id-b"), resultMsg("id-c"),
+			}}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+
+	var got []ListResult
+	for item, err := range stream.Items {
+		require.NoError(t, err)
+		got = append(got, item)
+		if len(got) == 1 {
+			break
+		}
+	}
+	require.Len(t, got, 1)
 }
 
 // Test for https://github.com/pulumi/pulumi/issues/14529, ensure a kubernetes DiffConfig error is ignored
@@ -935,9 +1271,9 @@ func TestKubernetesDiffError(t *testing.T) {
 	}
 
 	// Test that the error from 14529 is NOT ignored if reported by something other than kubernetes
-	az := NewProviderWithClient(newTestContext(t), "azure", client, false /* disablePreview */)
+	az := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 	_, err := az.DiffConfig(t.Context(), DiffConfigRequest{
-		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:azure", "qux"),
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:azure", "qux"),
 		"",
 		"",
 		resource.PropertyMap{},
@@ -949,9 +1285,9 @@ func TestKubernetesDiffError(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to parse kubeconfig")
 
 	// Test that the error from 14529 is ignored if reported by kubernetes
-	k8s := NewProviderWithClient(newTestContext(t), "kubernetes", client, false /* disablePreview */)
+	k8s := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 	diff, err := k8s.DiffConfig(t.Context(), DiffConfigRequest{
-		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:kubernetes", "qux"),
 		"",
 		"",
 		resource.PropertyMap{},
@@ -966,7 +1302,7 @@ func TestKubernetesDiffError(t *testing.T) {
 	// Test that some other error is not ignored if reported by kubernetes
 	diffErr = status.Errorf(codes.Unknown, "some other error")
 	_, err = k8s.DiffConfig(t.Context(), DiffConfigRequest{
-		resource.NewURN("org/proj/dev", "foo", "", "pulumi:provider:kubernetes", "qux"),
+		resource.NewURN("org/proj/dev", "foo", "", "pulumi:providers:kubernetes", "qux"),
 		"",
 		"",
 		resource.PropertyMap{},
@@ -997,7 +1333,7 @@ func TestOverrideVersion(t *testing.T) {
 
 	version := semver.MustParse("1.2.3")
 
-	prov := NewProviderWithVersionOverride(newTestContext(t), "azure", client, false /* disablePreview */, &version)
+	prov := NewProviderWithVersionOverride(newTestContext(t), client, false /* disablePreview */, &version)
 	resp, err := prov.GetPluginInfo(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, &version, resp.Version)
@@ -1046,7 +1382,7 @@ func TestGetProviderAttachPort(t *testing.T) {
 		t.Setenv("PULUMI_DEBUG_PROVIDERS", "aws:port")
 		aws := tokens.Package("aws")
 		port, err := GetProviderAttachPort(aws)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Nil(t, port)
 	})
 }
@@ -1089,9 +1425,9 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 		},
 	}
 
-	p := NewProviderWithClient(newTestContext(t), "foo", client, false /* disablePreview */)
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
-	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err, "configure failed")
 
 	var initErr *InitError

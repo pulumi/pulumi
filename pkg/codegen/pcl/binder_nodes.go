@@ -18,9 +18,10 @@ import (
 	"context"
 	"slices"
 
+	mapset "github.com/deckarep/golang-set/v2"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -106,6 +107,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 	case *Resource:
 		diags := b.bindResource(ctx, node)
 		diagnostics = append(diagnostics, diags...)
+	case *ReadResource:
+		diags := b.bindReadResource(ctx, node)
+		diagnostics = append(diagnostics, diags...)
 	case *Component:
 		diags := b.bindComponent(node)
 		diagnostics = append(diagnostics, diags...)
@@ -128,9 +132,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 
 // getDependencies returns the dependencies for the given node.
 func (b *binder) getDependencies(node Node) []Node {
-	depSet := codegen.Set{}
+	depSet := mapset.NewSet[Node]()
 	var deps []Node
-	diags := hclsyntax.VisitAll(node.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
+	visit := func(node hclsyntax.Node) hcl.Diagnostics {
 		var depName string
 		switch node := node.(type) {
 		case *hclsyntax.FunctionCallExpr:
@@ -144,14 +148,64 @@ func (b *binder) getDependencies(node Node) []Node {
 
 		// Missing reference errors will be issued during expression binding.
 		referent, _ := b.root.BindReference(depName)
-		if node, ok := referent.(Node); ok && !depSet.Has(node) {
+		if node, ok := referent.(Node); ok && !depSet.Contains(node) {
 			depSet.Add(node)
 			deps = append(deps, node)
 		}
 		return nil
-	})
-	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
+
+	if body := resourceSyntaxBody(node); body != nil {
+		walkResourceBodyForDeps(body, visit)
+	} else {
+		diags := hclsyntax.VisitAll(node.SyntaxNode(), visit)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
 	return SourceOrderNodes(deps)
+}
+
+func resourceSyntaxBody(node Node) *hclsyntax.Body {
+	switch n := node.(type) {
+	case *Resource:
+		if n.syntax != nil {
+			return n.syntax.Body
+		}
+	case *ReadResource:
+		if n.syntax != nil {
+			return n.syntax.Body
+		}
+	}
+	return nil
+}
+
+// walkResourceBodyForDeps mirrors optionsScopes.GetScopeForAttribute: the
+// property-name attributes resolve identifiers against the resource's own
+// properties, not the root scope, so the dep walker must skip them or it will
+// report spurious circular references.
+func walkResourceBodyForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
+	for _, attr := range body.Attributes {
+		_ = hclsyntax.VisitAll(attr.Expr, visit)
+	}
+	for _, block := range body.Blocks {
+		if block.Type == "options" {
+			walkOptionsBlockForDeps(block.Body, visit)
+			continue
+		}
+		_ = hclsyntax.VisitAll(block, visit)
+	}
+}
+
+func walkOptionsBlockForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
+	for _, attr := range body.Attributes {
+		switch attr.Name {
+		case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
+			continue
+		}
+		_ = hclsyntax.VisitAll(attr.Expr, visit)
+	}
+	for _, block := range body.Blocks {
+		_ = hclsyntax.VisitAll(block, visit)
+	}
 }
 
 func expressionIsLiteralNull(expr model.Expression) bool {
@@ -254,6 +308,7 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 
 type hookScope struct {
 	root *model.Scope
+	kind HookKind
 }
 
 func (s *hookScope) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
@@ -266,13 +321,16 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 
 		properties := map[string]model.Type{
 			"urn":        model.StringType,
-			"id":         model.StringType,
+			"id":         model.IDType,
 			"name":       model.StringType,
 			"type":       model.StringType,
 			"newInputs":  model.NewMapType(model.DynamicType),
 			"oldInputs":  model.NewMapType(model.DynamicType),
-			"newOutputs": model.NewMapType(model.DynamicType),
 			"oldOutputs": model.NewMapType(model.DynamicType),
+		}
+		// Error hooks fire after an operation fails, so there are no new outputs.
+		if s.kind != HookKindError {
+			properties["newOutputs"] = model.NewMapType(model.DynamicType)
 		}
 
 		scope.Define("args", &model.Variable{
@@ -286,7 +344,7 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 
 func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 	// Create a child scope that exposes the resource data to the hook.
-	hookScope := &hookScope{root: b.root}
+	hookScope := &hookScope{root: b.root, kind: node.Kind}
 	block, diagnostics := model.BindBlock(node.syntax, hookScope, b.tokens, b.options.modelOptions()...)
 
 	if cmd, ok := block.Body.Attribute("command"); ok {
@@ -312,9 +370,20 @@ func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 		}
 	}
 
-	// Error on any other attribute
+	if ignoreErrors, ok := block.Body.Attribute("ignoreErrors"); ok {
+		node.IgnoreErrors = ignoreErrors.Value
+		if model.InputType(model.BoolType).ConversionFrom(node.IgnoreErrors.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.BoolType), node.IgnoreErrors))
+		}
+	}
+
+	// Error on any other attribute. Error hooks always run on failures of actual operations,
+	// so onDryRun and ignoreErrors do not apply to them.
+	valid := []string{"onDryRun", "ignoreErrors", "command"}
+	if node.Kind == HookKindError {
+		valid = []string{"command"}
+	}
 	for _, i := range block.Body.Items {
-		valid := []string{"onDryRun", "command"}
 		switch item := i.(type) {
 		case *model.Attribute:
 			if !slices.Contains(valid, item.Name) {

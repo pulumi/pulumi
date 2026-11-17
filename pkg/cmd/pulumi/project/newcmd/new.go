@@ -1,0 +1,935 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package newcmd
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"log/slog"
+	"maps"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+)
+
+type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
+	isValidFn func(value string) error, opts display.Options) (string, error)
+
+type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
+
+type languageTemplateFunc func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+	projectName tokens.PackageName) error
+
+const aiRetiredMessage = "Pulumi AI project generation has been retired. Run 'pulumi new' to choose a template, " +
+	"or 'pulumi neo -p \"prompt\"'."
+
+type newArgs struct {
+	configArray          []string
+	configPath           bool
+	description          string
+	dir                  string
+	force                bool
+	generateOnly         bool
+	interactive          bool
+	name                 string
+	offline              bool
+	prompt               promptForValueFunc
+	promptRuntimeOptions runtimeOptionsFunc
+	languageTemplate     languageTemplateFunc
+	selectOne            selectFunc
+	secretsProvider      string
+	stack                string
+	templateNameOrURL    string
+	yes                  bool
+	listTemplates        bool
+	aiPrompt             string
+	aiLanguage           string
+	templateMode         bool
+	runtimeOptions       []string
+	remoteStackConfig    bool
+	escConfig            bool
+	stdout               io.Writer
+	stderr               io.Writer
+}
+
+func runNew(ctx context.Context, args newArgs) (err error) {
+	if args.aiPrompt != "" || args.aiLanguage != "" {
+		return errors.New(aiRetiredMessage)
+	}
+
+	if !args.interactive && !args.yes {
+		return backenderr.ErrNonInteractiveRequiresYes
+	}
+
+	// Default to discarding output and to the real prompt when callers (e.g. tests) don't provide
+	// their own.
+	if args.stdout == nil {
+		args.stdout = io.Discard
+	}
+	if args.stderr == nil {
+		args.stderr = io.Discard
+	}
+	if args.selectOne == nil {
+		args.selectOne = surveySelect
+	}
+
+	// Prepare options.
+	opts := display.Options{
+		Color:         cmdutil.GetGlobalColorization(),
+		IsInteractive: args.interactive,
+		Stdout:        args.stdout,
+	}
+
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	ws := pkgWorkspace.Instance
+
+	// Validate name (if specified) before further prompts/operations.
+	if args.name != "" && pkgWorkspace.ValidateProjectName(args.name) != nil {
+		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, pkgWorkspace.ValidateProjectName(args.name))
+	}
+
+	// Validate secrets provider type
+	if err := cmdStack.ValidateSecretsProvider(args.secretsProvider); err != nil {
+		return err
+	}
+
+	// Get the current working directory.
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting the working directory: %w", err)
+	}
+	originalCwd := cwd
+
+	// If dir was specified, ensure it exists and use it as the
+	// current working directory.
+	if args.dir != "" {
+		cwd, err = UseSpecifiedDir(args.dir)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Return an error if the directory isn't empty.
+	if !args.force {
+		if err = ErrorIfNotEmptyDirectory(cwd); err != nil {
+			return err
+		}
+	}
+
+	// If we're going to be creating a stack, get the current backend, which
+	// will kick off the login flow (if not already logged-in).
+	var b backend.Backend
+	if !args.generateOnly {
+		// There is no current project at this point to pass into currentBackend
+		b, err = cmdBackend.CurrentBackendWithOptions(
+			ctx, ws, cmdBackend.DefaultLoginManager, nil, opts, cmdBackend.WithoutNewProjectHint())
+		if err != nil {
+			return err
+		}
+
+		// Check project name and stack reference project name are the same, we skip this check if
+		// --generate-only is set because we're not going to actually use the --stack argument given.
+		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
+			return err
+		}
+
+		if args.escConfig {
+			if _, err := backend.AsManagedEnvironmentsBackend(b); err != nil {
+				return fmt.Errorf("--esc-config: %w", err)
+			}
+		}
+	}
+
+	// Ensure the project doesn't already exist.
+	if args.name != "" {
+		// There is no --org flag at the moment. The backend determines the orgName value if it is "".
+		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
+			return err
+		}
+	}
+
+	// Retrieve the template repo.
+	scope := cmdTemplates.ScopeAll
+	if args.offline {
+		scope = cmdTemplates.ScopeLocal
+	}
+	templateSource := cmdTemplates.New(ctx,
+		args.templateNameOrURL, scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
+	defer contract.IgnoreClose(templateSource)
+
+	cmdTemplate, err := resolveTemplate(templateSource, args, opts, args.selectOne)
+	if err != nil {
+		return err
+	}
+
+	var template cmdTemplates.ProjectTemplate
+	if cmdTemplate == nil {
+		// Template might be nil if we're running in non-interactive mode and didn't pass a template to choose. In
+		// that case we'll write a minimal Pulumi.yaml.
+		temp, err := os.MkdirTemp("", "pulumi-new")
+		if err != nil {
+			return fmt.Errorf("creating temporary directory for template: %w", err)
+		}
+		// Write the minimal template to the temp directory
+		err = os.WriteFile(filepath.Join(temp, "Pulumi.yaml"), []byte(`name: ${PROJECT}`), 0o600)
+		if err != nil {
+			return fmt.Errorf("writing minimal Pulumi.yaml: %w", err)
+		}
+
+		template = cmdTemplates.ProjectTemplate{
+			Dir:         temp,
+			ProjectName: "${PROJECT}",
+		}
+	} else {
+		template, err = cmdTemplate.Download(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if template.Errored() {
+		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
+	}
+
+	// Do a dry run, if we're not forcing files to be overwritten.
+	if !args.force {
+		if err = cmdTemplates.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
+			}
+			return err
+		}
+	}
+
+	// If a stack was specified via --stack, see if it already exists.
+	// Only do the lookup for fully-qualified stack names `org/project/stack` because
+	// otherwise `getStack` will fail to detect the project folder and fail.
+	// The main purpose of this lookup is getting a proper start with a project
+	// created via the web app.
+	var s backend.Stack
+	var orgName string
+	if !args.generateOnly && args.stack != "" && strings.Count(args.stack, "/") == 2 {
+		parts := strings.SplitN(args.stack, "/", 3)
+
+		// Set the org name for future use.
+		orgName = parts[0]
+		projectName := parts[1]
+
+		stackName, err := buildStackName(ctx, b, args.stack)
+		if err != nil {
+			return err
+		}
+
+		existingStack, _, existingDesc, err := GetStack(ctx, b, stackName, opts)
+		if err != nil {
+			return err
+		}
+		if existingStack != nil {
+			if err := cmdStack.RejectManagedStack(existingStack, "`pulumi new --stack`"); err != nil {
+				return err
+			}
+			if args.escConfig {
+				return fmt.Errorf("--esc-config creates a new stack: %w",
+					&backenderr.StackAlreadyExistsError{StackName: args.stack})
+			}
+			s = existingStack
+			if args.description == "" {
+				args.description = existingDesc
+			}
+		}
+		args.name = projectName
+	}
+
+	answers, err := askSetupQuestions(ctx, ws, b, orgName, s, template, args, opts, cwd)
+	if err != nil {
+		return friendlyInterrupt(err, errNoProjectCreated)
+	}
+	args.name, args.description = answers.name, answers.description
+
+	// Actually copy the files.
+	if err = cmdTemplates.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
+		}
+		return err
+	}
+
+	if !answers.guided {
+		fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
+		fmt.Fprintln(args.stdout)
+	}
+
+	// Load the project, update the name & description, remove the template section, and save it.
+	proj, root, err := ws.ReadProject("")
+	if err != nil {
+		return err
+	}
+	proj.Name = tokens.PackageName(args.name)
+	if args.description != "" {
+		proj.Description = &args.description
+	}
+	proj.Template = nil
+
+	// Set the pulumi:template tag to the template name or URL.
+	templateTag := template.Name
+	if args.templateNameOrURL != "" {
+		templateTag = sanitizeTemplate(args.templateNameOrURL)
+	}
+	if templateTag != "" {
+		proj.AddConfigStackTags(map[string]string{
+			apitype.ProjectTemplateTag: templateTag,
+		})
+	}
+
+	if err = setRuntimeOptionFlags(&proj.Runtime, args.runtimeOptions); err != nil {
+		return err
+	}
+	for k, v := range answers.runtimeOptions {
+		proj.Runtime.SetOption(k, v)
+	}
+
+	if err = pkgWorkspace.SaveProject(proj); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+	if b != nil {
+		b.SetCurrentProject(proj)
+	}
+
+	appendFileName := "Pulumi.yaml.append"
+	appendFile := filepath.Join(root, appendFileName)
+	err = os.Remove(appendFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+
+	// Create the stack, if needed.
+	var createdStackName string
+	sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
+	var unsavedManagedStack backend.Stack
+	defer func() {
+		if err != nil && unsavedManagedStack != nil {
+			err = cmdStack.ManagedStackCreatedError(err, unsavedManagedStack.Ref(),
+				"no config was saved, so "+cmdStack.SetEachConfigValueHint)
+		}
+	}()
+	if !args.generateOnly && s == nil {
+		if s, createdStackName, err = answers.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
+			return err
+		}
+		if s.ConfigLocation().ManagedEnvironment != "" {
+			unsavedManagedStack = s
+		}
+	}
+
+	pluginHost, pluginCtx, entryPoint, err := newProjectPluginContext(ctx, ws, proj, root)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	defer pluginCtx.Close()
+
+	// If we're creating an empty project we won't have a runtime name
+	if proj.Runtime.Name() != "" {
+		lang, err := pluginCtx.Host.LanguageRuntime(pluginCtx, proj.Runtime.Name())
+		if err != nil {
+			return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+		}
+		defer lang.Close()
+
+		programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
+
+		// Let the language runtime do some templating
+		if err := args.languageTemplate(pluginCtx.Request(), lang, programInfo, proj.Name); err != nil {
+			return fmt.Errorf("language template: %w", err)
+		}
+	}
+
+	// Prompt for config values (if needed) and save.
+	var savedConfig config.Map
+	if !args.generateOnly {
+		if savedConfig, err = answers.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
+			return err
+		}
+	}
+	unsavedManagedStack = nil
+
+	// Ensure the stack is selected.
+	if !args.generateOnly && s != nil {
+		contract.IgnoreError(state.SetCurrentStack(ws, state.BackendURLKey(b), s.Ref().FullyQualifiedName().String()))
+	}
+
+	// Install dependencies, but only if we have a runtime to install with.
+	var packages []workspace.PackageDescriptor
+	if !args.generateOnly && proj.Runtime.Name() != "" {
+		registry := cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
+		)
+		continuation, err := InstallPackagesFromProject(ctx, proj, root,
+			registry, -1, false, args.stderr, args.stderr, env.Global(), pluginCtx.CloudCredentialEnv)
+		if err != nil {
+			return err
+		}
+		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
+			return err
+		}
+		packages, err = InstallRequiredPackages(ctx, pluginCtx, proj, root, entryPoint,
+			continuation, -1, false, registry, args.stderr, args.stderr)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintln(args.stdout,
+		opts.Color.Colorize(
+			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset,
+		)+
+			" "+cmdutil.EmojiOr("✨", ""))
+	fmt.Fprintln(args.stdout)
+
+	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, savedConfig, opts)
+
+	if answers.guided {
+		// Any other stack announced itself as it was created, or already existed.
+		rows := []field{{"Project name", args.name}}
+		if createdStackName != "" {
+			rows = append(rows, field{"Stack name", createdStackName})
+			if managedEnv := s.ConfigLocation().ManagedEnvironment; managedEnv != "" {
+				rows = append(rows, field{"ESC environment", managedEnv})
+			}
+		}
+		printFields(args.stdout, opts.Color, "    ", rows)
+		fmt.Fprintln(args.stdout)
+	}
+
+	// Print out next steps.
+	printNextSteps(args.stdout, proj, originalCwd, cwd, args.generateOnly, opts)
+
+	if template.Quickstart != "" {
+		fmt.Fprintln(args.stdout, template.Quickstart)
+	}
+
+	return nil
+}
+
+// newProjectPluginContext starts a plugin host and context for proj. Close the context before the host.
+func newProjectPluginContext(
+	ctx context.Context, ws pkgWorkspace.Context, proj *workspace.Project, root string,
+) (plugin.Host, *plugin.Context, string, error) {
+	hostReg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
+	)
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(hostReg),
+	)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+	if err != nil {
+		contract.IgnoreClose(pluginHost)
+		return nil, nil, "", err
+	}
+	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		ctx,
+		&engine.Projinfo{Proj: proj, Root: root},
+		pluginHost,
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		false, /* disableProviderPreview */
+		nil,   /* tracingSpan */
+		nil,   /* config */
+		cloudCredentialEnv,
+	)
+	if err != nil {
+		contract.IgnoreClose(pluginHost)
+		return nil, nil, "", err
+	}
+	return pluginHost, pluginCtx, entryPoint, nil
+}
+
+// setRuntimeOptionFlags applies --runtime-options (key=value pairs) to runtime.
+func setRuntimeOptionFlags(runtime *workspace.ProjectRuntimeInfo, flags []string) error {
+	for _, opt := range flags {
+		parts := strings.Split(strings.TrimSpace(opt), "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid runtime option: %s", opt)
+		}
+		runtime.SetOption(parts[0], parts[1])
+	}
+	return nil
+}
+
+// isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
+func isInteractive() bool {
+	test, ok := os.LookupEnv("PULUMI_TEST_INTERACTIVE")
+	return cmdutil.Interactive() || ok && cmdutil.IsTruthy(test)
+}
+
+// NewNewCmd creates a New command with default dependencies.
+func NewNewCmd() *cobra.Command {
+	args := newArgs{
+		prompt:               ui.PromptForValue,
+		selectOne:            surveySelect,
+		promptRuntimeOptions: promptRuntimeOptions,
+		languageTemplate: func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
+			projectName tokens.PackageName,
+		) error {
+			return language.Template(ctx, programInfo, projectName)
+		},
+	}
+
+	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
+		scope := cmdTemplates.ScopeAll
+		if args.offline {
+			scope = cmdTemplates.ScopeLocal
+		}
+		// Attempt to retrieve available templates.
+		s := cmdTemplates.New(ctx, "", scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
+		t, err := s.Templates()
+		return t, s, err
+	}
+
+	cmd := &cobra.Command{
+		Use:        "new [template|url]",
+		Aliases:    []string{"create", "setup"},
+		SuggestFor: []string{"init"},
+		Short:      "Create a new Pulumi project",
+		Long: "Create a new Pulumi project and stack from a template.\n" +
+			"\n" +
+			"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
+			"or `azure-python`). If no template name is provided, a list of suggested templates will be presented\n" +
+			"which can be selected interactively.\n" +
+			"For testing, a path to a local template may be passed instead (such as `~/templates/aws-typescript`)\n" +
+			"\n" +
+			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
+			"provider and a stack created using the local or cloud object storage backend will use the\n" +
+			"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
+			"`--secrets-provider` flag.\n" +
+			"\n" +
+			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
+			"* `pulumi new --secrets-provider=passphrase`\n" +
+			"\n" +
+			"To use a cloud secrets provider with any backend, use one of the following:\n" +
+			"* `pulumi new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
+			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`" +
+			"\n\n" +
+			"To create a project from a specific source control location, pass the url as follows e.g.\n" +
+			"* `pulumi new https://gitlab.com/<user>/<repo>`\n" +
+			"* `pulumi new https://bitbucket.org/<user>/<repo>`\n" +
+			"* `pulumi new https://github.com/<user>/<repo>`\n" +
+			"\n" +
+			"  Note: If the URL doesn't follow the usual scheme of the given host (e.g. for GitLab subprojects)\n" +
+			"        you can append `.git` to the repository to disambiguate and point to the correct repository.\n" +
+			"        For example `https://gitlab.com/<project>/<subproject>/<repository>.git`.\n" +
+			"\n" +
+			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
+			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
+			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
+			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n" +
+			"\n" +
+			"To use a private repository as a template source, provide an HTTPS or SSH URL with relevant credentials.\n" +
+			"Ensure your SSH agent has the correct identity (ssh-add) or you may be prompted for your key's passphrase.\n" +
+			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
+			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
+			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n" +
+			"Any missing but required information will be prompted for.\n",
+		RunE: func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := cmd.Context()
+			if len(cliArgs) > 0 {
+				args.templateNameOrURL = cliArgs[0]
+			}
+			if args.listTemplates {
+				templates, closer, err := getTemplates(ctx)
+				defer contract.IgnoreClose(closer)
+				if err != nil {
+					slog.WarnContext(ctx, "could not list templates", "err", err)
+					return err
+				}
+				sorted := sortedForDisplay(templates)
+				label := templateLabeler(sorted)
+				fmt.Fprintln(cmd.OutOrStdout())
+				fmt.Fprintln(cmd.OutOrStdout(), "Available Templates:")
+				for _, t := range sorted {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", label(t))
+				}
+				return nil
+			}
+
+			args.yes = args.yes || env.SkipConfirmations.Value()
+			args.interactive = isInteractive()
+			args.stdout = cmd.OutOrStdout()
+			args.stderr = cmd.ErrOrStderr()
+			return runNew(ctx, args)
+		},
+	}
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "template-or-url", Usage: "[template|url]"}},
+		Required:  0,
+	})
+
+	cmd.PersistentFlags().StringArrayVarP(
+		&args.configArray, "config", "c", []string{},
+		"Config to save",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&args.configPath, "config-path", false,
+		"Config keys contain a path to a property in a map or list to set",
+	)
+	cmd.PersistentFlags().StringVarP(
+		&args.description, "description", "d", "",
+		"The project description; if not specified, a prompt will request it",
+	)
+	cmd.PersistentFlags().StringVar(
+		&args.dir, "dir", "",
+		"The location to place the generated project; if not specified, the current directory is used",
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.force, "force", "f", false,
+		"Forces content to be generated even if it would change existing files",
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.generateOnly, "generate-only", "g", false,
+		"Generate the project only; do not create a stack, save config, or install dependencies",
+	)
+	cmd.PersistentFlags().StringVarP(
+		&args.name, "name", "n", "",
+		"The project name; if not specified, a prompt will request it",
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.offline, "offline", "o", false,
+		"Use locally cached templates without making any network requests",
+	)
+	cmd.PersistentFlags().StringVarP(
+		&args.stack, "stack", "s", "",
+		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it",
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.yes, "yes", "y", false,
+		"Skip prompts and proceed with default values",
+	)
+	cmd.PersistentFlags().StringVar(
+		&args.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)",
+	)
+	cmd.PersistentFlags().BoolVarP(
+		&args.listTemplates, "list-templates", "l", false,
+		"List locally installed templates and exit",
+	)
+	cmd.PersistentFlags().StringVar(
+		&args.aiPrompt, "ai", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
+	)
+	_ = cmd.PersistentFlags().MarkDeprecated("ai", "use 'pulumi neo -p \"prompt\"' instead")
+	cmd.PersistentFlags().StringVar(
+		&args.aiLanguage, "language", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
+	)
+	_ = cmd.PersistentFlags().MarkDeprecated("language", "use 'pulumi neo -p \"prompt\"' instead")
+	cmd.PersistentFlags().BoolVarP(
+		&args.templateMode, "template-mode", "t", false,
+		"Deprecated: template mode is now the only mode; this flag is a no-op",
+	)
+	_ = cmd.PersistentFlags().MarkDeprecated("template-mode",
+		"template mode is now the only mode; this flag is a no-op")
+	cmd.PersistentFlags().StringSliceVar(
+		&args.runtimeOptions, "runtime-options", []string{},
+		"Additional options for the language runtime (format: key1=value1,key2=value2)",
+	)
+
+	cmd.PersistentFlags().BoolVar(
+		&args.remoteStackConfig, "remote-stack-config", false,
+		"Store stack configuration remotely",
+	)
+	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
+	cmdStack.AddESCConfigFlag(cmd, &args.escConfig, "remote-stack-config", "generate-only")
+
+	return cmd
+}
+
+func validateProjectName(ctx context.Context, b backend.Backend,
+	orgName string, projectName string, generateOnly bool, opts display.Options,
+) error {
+	handleExistingProjectName := func(projectName string) error {
+		prompt := "\b\n" + opts.Color.Colorize(colors.SpecPrompt+
+			fmt.Sprintf("A project with the name `%s` already exists.", projectName)+
+			colors.Reset)
+
+		accept := fmt.Sprintf("Use '%s' anyway", projectName)
+		retry := "Specify a different project name"
+		response := ui.PromptUser(prompt, []string{accept, retry}, accept, opts.Color)
+
+		if response != accept {
+			return ui.ErrRetryPromptForValue
+		}
+		return nil
+	}
+	if !opts.IsInteractive {
+		handleExistingProjectName = func(projectName string) error {
+			return fmt.Errorf("a project with this name already exists: %s", projectName)
+		}
+	}
+	return validateProjectNameInternal(
+		ctx, b, orgName, projectName, generateOnly, opts, handleExistingProjectName,
+	)
+}
+
+func validateProjectNameInternal(ctx context.Context, b backend.Backend,
+	orgName string, projectName string, generateOnly bool, opts display.Options,
+	handleExistingProjectName func(string) error,
+) error {
+	err := pkgWorkspace.ValidateProjectName(projectName)
+	if err != nil {
+		return err
+	}
+
+	if !generateOnly {
+		contract.Requiref(b != nil, "b", "must not be nil")
+
+		exists, err := b.DoesProjectExist(ctx, orgName, projectName)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			return handleExistingProjectName(projectName)
+		}
+	}
+
+	return nil
+}
+
+func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
+) (map[string]any, error) {
+	options := make(map[string]any, len(info.Options()))
+	maps.Copy(options, info.Options())
+
+	// Keep querying for prompts until there are no more.
+	for {
+		// Update the program info with the latest runtime options.
+		programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, options)
+		prompts, err := language.RuntimeOptionsPrompts(ctx.Request(), programInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get runtime options prompts: %w", err)
+		}
+
+		if len(prompts) == 0 {
+			break
+		}
+
+		surveycore.DisableColor = true
+		for _, optionPrompt := range prompts {
+			if yes {
+				if optionPrompt.Default == nil {
+					return nil, fmt.Errorf("must provide a runtime option for '%s' in non-interactive mode", optionPrompt.Key)
+				}
+				options[optionPrompt.Key] = optionPrompt.Default.Value()
+				continue
+			}
+
+			if len(optionPrompt.Choices) == 1 {
+				// We got exactly one choice, so use that as default value without prompting the user.
+				choice := optionPrompt.Choices[0]
+				options[optionPrompt.Key] = choice.Value()
+			} else if len(optionPrompt.Choices) > 0 {
+				// Pick one among the choices
+				choices := make([]string, 0, len(optionPrompt.Choices))
+				// Map choice display string to the actual value
+				choiceMap := make(map[string]any, len(optionPrompt.Choices))
+				for _, choice := range optionPrompt.Choices {
+					displayName := choice.DisplayName
+					if displayName == "" {
+						displayName = choice.String()
+					}
+					choices = append(choices, displayName)
+					choiceMap[displayName] = choice.Value()
+				}
+
+				var response string
+				message := opts.Color.Colorize(colors.SpecPrompt + "\r" + optionPrompt.Description + colors.Reset)
+				if err := ui.AskOne(&survey.Select{
+					Message: message,
+					Options: choices,
+				}, &response, ui.SurveyIcons(opts.Color), nil); err != nil {
+					return nil, err
+				}
+				options[optionPrompt.Key] = choiceMap[response]
+			} else {
+				// Free form input
+				val, err := prompt(yes, optionPrompt.Description, "", false, makePromptValidator(optionPrompt), opts)
+				if err != nil {
+					return nil, err
+				}
+				r, err := plugin.RuntimeOptionValueFromString(optionPrompt.PromptType, val)
+				if err != nil {
+					return nil, err
+				}
+				options[optionPrompt.Key] = r.Value()
+			}
+		}
+	}
+
+	return options, nil
+}
+
+func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
+	return func(value string) error {
+		switch prompt.PromptType {
+		case plugin.PromptTypeInt32:
+			_, err := strconv.ParseInt(value, 10, 32)
+			if err != nil {
+				return fmt.Errorf("expected an integer value, got %q", value)
+			}
+		case plugin.PromptTypeString:
+			// No validation needed for strings.
+		default:
+			return fmt.Errorf("unexpected prompt type: %v", prompt.PromptType)
+		}
+		return nil
+	}
+}
+
+// printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
+func printNextSteps(
+	w io.Writer, proj *workspace.Project, originalCwd, cwd string, generateOnly bool, opts display.Options,
+) {
+	var commands []string
+
+	// If the target working directory is not the same as our current WD, tell the user to
+	// CD to the target directory.
+	if originalCwd != cwd {
+		// If we can determine a relative path, use that, otherwise use the full path.
+		var cd string
+		if rel, err := filepath.Rel(originalCwd, cwd); err == nil {
+			cd = rel
+		} else {
+			cd = cwd
+		}
+
+		// Surround the path with double quotes if it contains whitespace.
+		if ui.ContainsWhiteSpace(cd) {
+			cd = fmt.Sprintf("\"%s\"", cd)
+		}
+
+		cd = "cd " + cd
+		commands = append(commands, cd)
+	}
+
+	if generateOnly {
+		// We didn't install dependencies, so instruct the user to do so.
+		commands = append(commands, "pulumi install")
+		// We didn't create a stack so show that as a command to run before `pulumi up`.
+		commands = append(commands, "pulumi stack init")
+	}
+
+	if len(commands) == 0 { // No additional commands need to be run.
+		deployMsg := "To perform an initial deployment, run `pulumi up`"
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
+		fmt.Fprintln(w, opts.Color.Colorize(deployMsg))
+		fmt.Fprintln(w)
+		return
+	}
+
+	if len(commands) == 1 { // Only one additional command need to be run.
+		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run `pulumi up`", commands[0])
+		deployMsg = colors.Highlight(deployMsg, commands[0], colors.BrightBlue+colors.Bold)
+		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
+		fmt.Fprintln(w, opts.Color.Colorize(deployMsg))
+		fmt.Fprintln(w)
+		return
+	}
+
+	// One or more additional commands needs to be run.
+	fmt.Fprintln(w, "To perform an initial deployment, run the following commands:")
+	fmt.Fprintln(w)
+	for i, cmd := range commands {
+		cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
+		fmt.Fprintf(w, "   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
+	}
+	fmt.Fprintln(w)
+
+	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
+	fmt.Fprintln(w, opts.Color.Colorize(upMsg))
+	fmt.Fprintln(w)
+}
+
+// compareStackProjectName takes a stack name and a project name and returns an error if they are not the same.
+//   - projectName comes from the --name flag.
+//   - stackName comes from the --stack flag. stackName can be a stack name or a fully qualified stack reference
+//     i.e org/project/stack
+func compareStackProjectName(b backend.Backend, stackName, projectName string) error {
+	if stackName == "" || projectName == "" {
+		// No potential for conflicting project names.
+		return nil
+	}
+
+	// Catch the case where the user has specified a fully qualified stack reference.
+	ref, err := b.ParseStackReference(stackName)
+	if err != nil {
+		// If we can't parse the stack reference, we can't compare the project names.
+		// We assume the project names don't conflict and that this parsing issue will be handled downstream.
+		return nil
+	}
+	stackProjectName, hasProject := ref.Project()
+	if !hasProject {
+		return nil
+	}
+	if projectName == stackProjectName.String() {
+		return nil
+	}
+	return fmt.Errorf("project name (--name %s) and stack reference project name (--stack %s) must be the same",
+		projectName, stackProjectName)
+}

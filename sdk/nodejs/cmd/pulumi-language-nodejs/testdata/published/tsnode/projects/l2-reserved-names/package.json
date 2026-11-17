@@ -1,0 +1,11 @@
+{
+	"name": "l2-reserved-names",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/reservednames": "ROOT/artifacts/pulumi-reservednames-51.0.0.tgz"
+	}
+}

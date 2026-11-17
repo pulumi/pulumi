@@ -75,6 +75,13 @@ var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 var DisableAutomaticPluginAcquisition = env.Bool("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION",
 	"Disables the automatic installation of missing plugins.")
 
+var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
+	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
+		"creating a project for providers that opt in through their schema.")
+
+var EnableAutomaticAgentSignup = env.Bool("ENABLE_AUTOMATIC_AGENT_SIGNUP",
+	"Automatically create a temporary Pulumi Cloud account when an AI agent runs the CLI without credentials.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.
@@ -99,6 +106,10 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
+
+var DefaultOrg = env.String("DEFAULT_ORGANIZATION",
+	"Set the default organization to use when the organization is not otherwise specified. Takes precedence over "+
+		"any default organization set with `pulumi org set-default`.")
 
 // Neo environment variables
 
@@ -126,7 +137,10 @@ var NeoSummaryMaxLen = env.Int("NEO_SUMMARY_MAXLEN",
 var CopilotSummaryMaxLen = NeoSummaryMaxLen
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
-	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete. "+
+		"Set this if you see secret decryption errors when running from a workspace that doesn't carry local "+
+		"stack configuration between invocations, such as the Automation API or a saved update plan applied "+
+		"from a different directory (see https://github.com/pulumi/pulumi/issues/16412).")
 
 var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
@@ -134,6 +148,17 @@ var Parallel = env.Int("PARALLEL",
 var AccessToken = env.String("ACCESS_TOKEN",
 	"The access token used to authenticate with the Pulumi Service.",
 	env.Secret)
+
+var CredentialStore = env.String("CREDENTIAL_STORE",
+	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
+		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
+		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
+var CredentialHelper = env.String("CREDENTIAL_HELPER",
+	`[EXPERIMENTAL] Path to the credentials helper executable, or "none" to disable it.`)
+
+var CredentialHelperArgs = env.String("CREDENTIAL_HELPER_ARGS",
+	"[EXPERIMENTAL] JSON array of arguments passed to the credentials helper.", env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
@@ -168,13 +193,6 @@ var (
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
 
-	DIYBackendIgnoreDeprecationWarning = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_WARNING",
-		"Disables the warning about legacy stack mode being deprecated.")
-
-	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
-		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
-		env.Alternative("SELF_MANAGED_STATE_LEGACY_LAYOUT"))
-
 	DIYBackendGzip = env.Bool("DIY_BACKEND_GZIP",
 		"Enables gzip compression when writing state files.",
 		env.Alternative("SELF_MANAGED_STATE_GZIP"))
@@ -193,11 +211,6 @@ var (
 
 	DIYBackendParallel = env.Int("DIY_BACKEND_PARALLEL",
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
-)
-
-// Environment variables which affect Pulumi AI integrations
-var (
-	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
 )
 
 var DisableValidation = env.Bool(
@@ -223,6 +236,10 @@ var (
 	// It is used in sandboxed environments where the classic policy template folder may not be writable.
 	PolicyTemplatePath = env.String("POLICY_TEMPLATE_PATH", "Path to a writable policy template cache directory.")
 
+	// PackageTemplatePath is a path to the folder where package templates are stored.
+	// It is used in sandboxed environments where the classic package template folder may not be writable.
+	PackageTemplatePath = env.String("PACKAGE_TEMPLATE_PATH", "Path to a writable package template cache directory.")
+
 	// TemplateGitRepository is the Git URL for Pulumi program templates.
 	// If set, it overrides the compile-time default pulumiTemplateGitRepository.
 	TemplateGitRepository = env.String("TEMPLATE_GIT_REPOSITORY",
@@ -240,6 +257,16 @@ var (
 	// PolicyTemplateBranch is the branch name for the policy pack template repository.
 	// If set, it overrides the compile-time default pulumiPolicyTemplateBranch.
 	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
+
+	// PackageTemplateGitRepository is the Git URL for Pulumi package templates.
+	// If set, it overrides the compile-time default pulumiPackageTemplateGitRepository.
+	PackageTemplateGitRepository = env.String("PACKAGE_TEMPLATE_GIT_REPOSITORY",
+		"Git URL for Pulumi package templates (overrides default).")
+
+	// PackageTemplateBranch is the branch name for the package template repository.
+	// If set, it overrides the compile-time default pulumiPackageTemplateBranch.
+	PackageTemplateBranch = env.String("PACKAGE_TEMPLATE_BRANCH",
+		"Branch name for Pulumi package templates repository.")
 )
 
 var DisableJournaling = env.Bool("DISABLE_JOURNALING",

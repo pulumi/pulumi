@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +46,7 @@ func newPackagePublishSdkCmd() *cobra.Command {
 
 			switch lang {
 			case "nodejs":
-				err := publishToNPM(path)
+				err := publishToNPM(cmd.OutOrStdout(), cmd.ErrOrStderr(), path)
 				if err != nil {
 					return err
 				}
@@ -111,7 +112,11 @@ func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (strin
 	return determineNPMTagFromCommandResult(currentVersion, string(output), stderr.String(), err)
 }
 
-func publishToNPM(path string) error {
+func shouldRunNPMWhoami(nodeAuthToken, actionsIDTokenRequestURL, actionsIDTokenRequestToken string) bool {
+	return nodeAuthToken != "" || actionsIDTokenRequestURL == "" || actionsIDTokenRequestToken == ""
+}
+
+func publishToNPM(stdout, stderr io.Writer, path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("reading path %s: %w", path, err)
@@ -123,18 +128,27 @@ func publishToNPM(path string) error {
 	// Verify npm exists and is set up: npm, user login
 	npm, err := executable.FindExecutable("npm")
 	if err != nil {
-		return fmt.Errorf("npm whoami: %w", err)
+		return fmt.Errorf("find npm executable: %w", err)
 	}
 
-	// verify auth for npm
-	whoamiCmd := exec.Command(npm, "whoami")
-	whoamiCmd.Stderr = os.Stderr
-	whoami, err := whoamiCmd.Output()
-	if err != nil {
-		return err
-	}
+	// verify auth for npm. npm whoami returns 401 under trusted publishing, even though
+	// npm publish can later succeed via the GitHub Actions OIDC environment.
+	if shouldRunNPMWhoami(
+		os.Getenv("NODE_AUTH_TOKEN"),
+		os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"),
+		os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"),
+	) {
+		whoamiCmd := exec.Command(npm, "whoami")
+		whoamiCmd.Stderr = stderr
+		whoami, err := whoamiCmd.Output()
+		if err != nil {
+			return err
+		}
 
-	logging.V(1).Infof("Logged in as %s", whoami)
+		slog.Info("Logged in as", "user", whoami)
+	} else {
+		slog.Info("Skipping npm whoami; npm authentication will use GitHub Actions OIDC")
+	}
 
 	// TODO: possibly check package dependencies
 
@@ -178,40 +192,40 @@ func publishToNPM(path string) error {
 
 	// Verify version doesn't already exist
 	infoCmd := exec.Command(npm, "info", pkgNameWithVersion)
-	infoCmd.Stderr = os.Stderr
-	logging.V(1).Infof("Running %s", infoCmd)
+	infoCmd.Stderr = stderr
+	slog.Info("Running", "cmd", infoCmd)
 	// we actually do not care about the error here; we care whether the output is empty.
 	output, _ := infoCmd.Output()
 
 	if len(output) > 0 {
 		// the package already exists, and we no-op.
-		fmt.Printf("did not publish %s because version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
+		fmt.Fprintf(stdout, "did not publish %s because version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
 		return nil
 	}
 
-	logging.V(1).Infof("The version does not exist yet, and it is safe to publish")
-	fmt.Printf("Publishing %s to npm package registry...\n", pkgInfo.Name)
+	slog.Info("The version does not exist yet, and it is safe to publish")
+	fmt.Fprintf(stdout, "Publishing %s to npm package registry...\n", pkgInfo.Name)
 	npmPublishCmd := exec.Command(npm, "publish", path, "-tag", npmTag)
-	npmPublishCmd.Stdout = os.Stdout
-	npmPublishCmd.Stderr = os.Stderr
+	npmPublishCmd.Stdout = stdout
+	npmPublishCmd.Stderr = stderr
 	err = npmPublishCmd.Run()
 	if err != nil {
-		logging.V(1).Infof("error publishing package, verifying...")
+		slog.Info("error publishing package, verifying...")
 		// first, check if the package was published after all, by re-running npm info
 		// to verify we're not encountering a time-of-check to time-of-use (TOC/TOU) issue.
 		infoCheckCmd := exec.Command("npm", "info", pkgNameWithVersion)
-		infoCheckCmd.Stderr = os.Stderr
+		infoCheckCmd.Stderr = stderr
 		// Ignore error. stdout will be empty if the package was not published.
 		checkOutput, _ := infoCheckCmd.Output()
 
 		if len(checkOutput) > 0 {
 			// this means the package was published after all
-			fmt.Println("success! published to npm")
+			fmt.Fprintln(stdout, "success! published to npm")
 			return nil
 		}
 		// if we get here, this means the package was not published. We bail.
 		return fmt.Errorf("publish package: %w", err)
 	}
-	fmt.Println("success! published to npm")
+	fmt.Fprintln(stdout, "success! published to npm")
 	return nil
 }

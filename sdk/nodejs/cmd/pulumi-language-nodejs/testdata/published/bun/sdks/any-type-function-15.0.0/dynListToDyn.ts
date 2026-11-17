@@ -28,5 +28,5 @@ export function dynListToDynOutput(args?: DynListToDynOutputArgs, opts?: pulumi.
 }
 
 export interface DynListToDynOutputArgs {
-    inputs?: pulumi.Input<any[]>;
+    inputs?: pulumi.Input<any[] | undefined>;
 }

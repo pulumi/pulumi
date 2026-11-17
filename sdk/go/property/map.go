@@ -15,6 +15,8 @@
 package property
 
 import (
+	"iter"
+	"maps"
 	"slices"
 )
 
@@ -78,6 +80,12 @@ func (m Map) AllStable(yield func(string, Value) bool) {
 	}
 }
 
+// Keys returns an iterator over the keys of the [Map] in unspecified order. Combine
+// with [slices.Sorted] for a stable []string, or [slices.Collect] for an unordered one.
+func (m Map) Keys() iter.Seq[string] {
+	return maps.Keys(m.m)
+}
+
 // Get retrieves the [Value] associated with key in the [Map]. If key is not in [Map],
 // then a [Null] value is returned.
 //
@@ -120,6 +128,26 @@ func (m Map) Delete(keys ...string) Map {
 // NewMap creates a new map from m.
 func NewMap(m map[string]Value) Map { return Map{copyMapMaybeNil(m)} }
 
+// HasComputed returns true if any [Value] in the Map, or any nested Value, is computed.
+func (m Map) HasComputed() bool {
+	for _, v := range m.m {
+		if v.HasComputed() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSecrets returns true if any [Value] in the Map, or any nested Value, is secret.
+func (m Map) HasSecrets() bool {
+	for _, v := range m.m {
+		if v.HasSecrets() {
+			return true
+		}
+	}
+	return false
+}
+
 func copyMapMaybeNil(m map[string]Value) map[string]Value {
 	if len(m) == 0 {
 		return nil
@@ -129,8 +157,6 @@ func copyMapMaybeNil(m map[string]Value) map[string]Value {
 
 func copyMapNonNil(m map[string]Value) map[string]Value {
 	cp := make(map[string]Value, len(m))
-	for k, v := range m {
-		cp[k] = v
-	}
+	maps.Copy(cp, m)
 	return cp
 }

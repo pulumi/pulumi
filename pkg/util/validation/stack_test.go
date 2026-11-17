@@ -40,8 +40,8 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
-			//nolint:paralleltest // golangci-lint v2 upgrade
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
 				tags := map[apitype.StackTagName]string{
 					name: "tag-value",
 				}

@@ -1,0 +1,87 @@
+{
+    "syntax": {
+        "object": [
+            {
+                "key": {
+                    "literal": "fold",
+                    "range": {
+                        "Filename": "blocks",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 1,
+                            "Byte": 0
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 5,
+                            "Byte": 4
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "replace newlines with spaces\n",
+                    "range": {
+                        "Filename": "blocks",
+                        "Start": {
+                            "Line": 1,
+                            "Column": 7,
+                            "Byte": 6
+                        },
+                        "End": {
+                            "Line": 1,
+                            "Column": 36,
+                            "Byte": 35
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "literal",
+                    "range": {
+                        "Filename": "blocks",
+                        "Start": {
+                            "Line": 6,
+                            "Column": 1,
+                            "Byte": 45
+                        },
+                        "End": {
+                            "Line": 6,
+                            "Column": 8,
+                            "Byte": 52
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "keep\nnewlines\nintact\n",
+                    "range": {
+                        "Filename": "blocks",
+                        "Start": {
+                            "Line": 6,
+                            "Column": 10,
+                            "Byte": 54
+                        },
+                        "End": {
+                            "Line": 9,
+                            "Column": 10,
+                            "Byte": 83
+                        }
+                    }
+                }
+            }
+        ],
+        "range": {
+            "Filename": "blocks",
+            "Start": {
+                "Line": 1,
+                "Column": 1,
+                "Byte": 0
+            },
+            "End": {
+                "Line": 9,
+                "Column": 10,
+                "Byte": 83
+            }
+        }
+    }
+}

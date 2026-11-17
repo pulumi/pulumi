@@ -80,13 +80,13 @@ func pulumiTest(t *testing.T, name string, testBody func(*pulumi.Context) error)
 }
 
 func waitOut(t *testing.T, output pulumi.Output) interface{} {
-	result, err := waitOutput(output, 1*time.Second)
+	result, err := waitOutput(t, output, 1*time.Second)
 	require.NoError(t, err, "output not received")
 	return result
 }
 
-func waitOutput(output pulumi.Output, timeout time.Duration) (interface{}, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func waitOutput(t *testing.T, output pulumi.Output, timeout time.Duration) (interface{}, error) {
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	ch := make(chan interface{})

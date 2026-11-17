@@ -303,6 +303,13 @@ class Server implements grpc.UntypedServiceImplementation {
         }
     }
 
+    public list(call: grpc.ServerWritableStream<provproto.ListRequest, provproto.ListResponse>): void {
+        call.emit("error", {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "Not yet implemented: List",
+        });
+    }
+
     public async update(call: any, callback: any): Promise<void> {
         try {
             const req: provproto.UpdateRequest = call.request;

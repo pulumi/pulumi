@@ -29,17 +29,24 @@ class Callback(google.protobuf.message.Message):
 
     TARGET_FIELD_NUMBER: builtins.int
     TOKEN_FIELD_NUMBER: builtins.int
+    ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     target: builtins.str
     """the gRPC target of the callback service."""
     token: builtins.str
     """the service specific unique token for this callback."""
+    accepts_byte_string: builtins.bool
+    """True if and only if the callback host supports strings containing bytes that are not valid UTF-8, marshaled
+    as objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    caller may pass such values to the callback.
+    """
     def __init__(
         self,
         *,
         target: builtins.str = ...,
         token: builtins.str = ...,
+        accepts_byte_string: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["target", b"target", "token", b"token"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accepts_byte_string", b"accepts_byte_string", "target", b"target", "token", b"token"]) -> None: ...
 
 global___Callback = Callback
 

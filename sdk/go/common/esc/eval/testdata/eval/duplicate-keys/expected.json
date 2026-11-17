@@ -1,0 +1,832 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 3,
+                    "Column": 3,
+                    "Byte": 21
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 6,
+                    "Byte": 24
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.foo"
+        },
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 6,
+                    "Column": 5,
+                    "Byte": 54
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 8,
+                    "Byte": 57
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.qux.foo"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "duplicate-keys",
+                    "begin": {
+                        "line": 2,
+                        "column": 8,
+                        "byte": 15
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "qux": {
+                "range": {
+                    "environment": "duplicate-keys",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 41
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 13,
+                        "byte": 62
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 54
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 57
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 46
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 49
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "qux": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "duplicate-keys",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 46
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 49
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 41
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 13,
+                            "byte": 62
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "qux": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo",
+                "qux"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "duplicate-keys",
+                            "trace": {
+                                "def": {
+                                    "environment": "duplicate-keys",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "duplicate-keys",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "duplicate-keys",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "duplicate-keys",
+                            "trace": {
+                                "def": {
+                                    "environment": "duplicate-keys",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "duplicate-keys"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "duplicate-keys"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "foo": "bar",
+        "qux": {
+            "foo": "bar"
+        }
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 3,
+                    "Column": 3,
+                    "Byte": 21
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 6,
+                    "Byte": 24
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.foo"
+        },
+        {
+            "Severity": 1,
+            "Summary": "duplicate key \"foo\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "duplicate-keys",
+                "Start": {
+                    "Line": 6,
+                    "Column": 5,
+                    "Byte": 54
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 8,
+                    "Byte": 57
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.qux.foo"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "duplicate-keys",
+                    "begin": {
+                        "line": 2,
+                        "column": 8,
+                        "byte": 15
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "qux": {
+                "range": {
+                    "environment": "duplicate-keys",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 41
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 13,
+                        "byte": 62
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 54
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 57
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 46
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 49
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "literal": "bar"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "qux": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "duplicate-keys",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 46
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 49
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "duplicate-keys",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 41
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 13,
+                            "byte": 62
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "qux": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo",
+                "qux"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "duplicate-keys",
+                            "trace": {
+                                "def": {
+                                    "environment": "duplicate-keys",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "duplicate-keys",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "duplicate-keys",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "duplicate-keys",
+                            "trace": {
+                                "def": {
+                                    "environment": "duplicate-keys",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "duplicate-keys",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "duplicate-keys"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "duplicate-keys"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "foo": "bar",
+        "qux": {
+            "foo": "bar"
+        }
+    },
+    "evalJSONRevealed": {
+        "foo": "bar",
+        "qux": {
+            "foo": "bar"
+        }
+    }
+}

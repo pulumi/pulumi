@@ -17,6 +17,8 @@ package state
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -33,7 +35,7 @@ func TestUnprotectResourceWithDeleteTrue(t *testing.T) {
 
 	// Create a snapshot with both a resource marked for deletion and a normal resource with the same URN
 	// This simulates a replacement scenario
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -54,7 +56,7 @@ func TestUnprotectResourceWithDeleteTrue(t *testing.T) {
 			Delete:  false, // This is the replacement resource
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to unprotect the resource
 	urns := []string{string(resourceURN)}
@@ -74,7 +76,7 @@ func TestUnprotectAllResourcesWithDeleteTrue(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 
 	// Create a snapshot with some resources marked for deletion
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -102,7 +104,7 @@ func TestUnprotectAllResourcesWithDeleteTrue(t *testing.T) {
 			Delete:  false,
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to unprotect all resources
 	urns := []string{
@@ -130,7 +132,7 @@ func TestUnprotectOnlyDeletedResource(t *testing.T) {
 	deletedURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "deleted")
 
 	// Create a snapshot with only a deleted resource
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -144,7 +146,7 @@ func TestUnprotectOnlyDeletedResource(t *testing.T) {
 			Delete:  true, // Resource is marked for deletion
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to unprotect the deleted resource
 	urns := []string{string(deletedURN)}
@@ -167,7 +169,7 @@ func TestUnprotectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 
 	// Create a snapshot with multiple resources having the same URN
 	// but some marked for deletion (replacement scenario)
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -195,7 +197,7 @@ func TestUnprotectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 			Delete:  false, // The current active resource
 			Protect: true,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to unprotect the resource
 	urns := []string{string(sharedURN)}

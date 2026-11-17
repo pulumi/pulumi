@@ -29,8 +29,6 @@ const (
 	DisplayProgress Type = iota
 	// DisplayDiff displays a rich diff.
 	DisplayDiff
-	// DisplayWatch displays watch output.
-	DisplayWatch
 )
 
 // Options controls how the output of events are rendered
@@ -38,6 +36,7 @@ type Options struct {
 	Color                    colors.Colorization // colorization to apply to events.
 	ShowConfig               bool                // true if we should show configuration information.
 	ShowPolicyRemediations   bool                // true if we should show detailed policy remediations.
+	ShowPolicyExceptions     bool                // true if we should show detailed exempted policy violations.
 	ShowResourceChanges      bool                // true if we should print detailed resource changes.
 	ShowReplacementSteps     bool                // true to show the replacement steps in the plan.
 	ShowSameResources        bool                // true to show the resources that aren't updated in addition to updates.
@@ -45,10 +44,12 @@ type Options struct {
 	TruncateOutput           bool                // true if we should truncate long outputs
 	SuppressOutputs          bool                // true to suppress output summarization, e.g. if contains sensitive info.
 	SuppressPermalink        bool                // true to suppress state permalink (including in DIY backends)
+	PermalinkLabel           string              // overrides the label shown before the permalink
 	SummaryDiff              bool                // true if diff display should be summarized.
 	IsInteractive            bool                // true if we should display things interactively.
 	Type                     Type                // type of display (rich diff, progress, or query).
 	JSONDisplay              bool                // true if we should emit the entire diff as JSON.
+	SummaryJSON              bool                // true to emit a one-line JSON summary on stdout when the operation ends.
 	EventLogPath             string              // the path to the file to use for logging events, if any.
 	Debug                    bool                // true to enable debug output.
 	Stdin                    io.Reader           // the reader to use for stdin. Defaults to os.Stdin if unset.
@@ -59,6 +60,10 @@ type Options struct {
 	ShowSecrets              bool                // true to display secrets in the output.
 	ShowURNs                 bool                // true to display full URNs instead of short resource names.
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
+
+	SuppressStackRow bool // true to hide the synthetic stack row when no stack is involved.
+
+	ShowDiff bool // true to print the full diff after the preview and the update, and omit the "details" prompt choice.
 
 	// Neo options
 	ShowLinkToNeo       bool // true to display a 'explainFailure' link to Neo.

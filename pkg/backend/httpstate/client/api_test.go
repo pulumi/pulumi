@@ -16,15 +16,28 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -128,7 +141,7 @@ func TestHTTPClientUserAgent(t *testing.T) {
 
 	var inReq *http.Request
 	client := &defaultHTTPClient{
-		&http.Client{
+		client: &http.Client{
 			Transport: &errorTransport{
 				roundTripFunc: func(req *http.Request) (*http.Response, error) {
 					inReq = req
@@ -153,6 +166,39 @@ func TestHTTPClientUserAgent(t *testing.T) {
 	assert.Equal(t, UserAgent(), inReq.Header.Get("User-Agent"))
 }
 
+//nolint:paralleltest // mutates the package-level state observed by UserAgent()
+func TestUserAgentExtras(t *testing.T) {
+	t.Cleanup(func() {
+		SetUserAgentCommand("")
+		SetUserAgentAIAgent("")
+	})
+
+	SetUserAgentCommand("")
+	SetUserAgentAIAgent("")
+	base := UserAgent()
+	assert.Regexp(t, `^pulumi-cli/1 \([^()]*\)$`, base)
+	assert.NotContains(t, base, "cmd=")
+	assert.NotContains(t, base, "agent=")
+
+	SetUserAgentCommand("stack ls")
+	withCmd := UserAgent()
+	assert.Contains(t, withCmd, "; cmd=stack-ls)")
+	assert.NotContains(t, withCmd, "agent=")
+
+	SetUserAgentAIAgent("claude")
+	withBoth := UserAgent()
+	assert.Contains(t, withBoth, "; cmd=stack-ls;")
+	assert.Contains(t, withBoth, "; agent=claude)")
+
+	SetUserAgentCommand("")
+	withAgentOnly := UserAgent()
+	assert.NotContains(t, withAgentOnly, "cmd=")
+	assert.Contains(t, withAgentOnly, "; agent=claude)")
+
+	SetUserAgentCommand("weird (cmd; with) bits")
+	assert.Contains(t, UserAgent(), "; cmd=weird-cmd-with-bits;")
+}
+
 func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 	t.Parallel()
 
@@ -164,7 +210,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 			Message: "Unauthorized",
 		})
 		httpClient := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -208,7 +254,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 				},
 			})
 			httpClient := &defaultHTTPClient{
-				&http.Client{
+				client: &http.Client{
 					Transport: &errorTransport{
 						roundTripFunc: func(req *http.Request) (*http.Response, error) {
 							return &http.Response{
@@ -240,7 +286,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		t.Parallel()
 
 		httpClient := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -263,4 +309,430 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 
 		assert.True(t, errors.Is(err, backenderr.LoginRequiredError{}))
 	})
+}
+
+func TestCall_RefreshOn401(t *testing.T) {
+	t.Parallel()
+
+	// errBody401 is the on-wire shape the service returns for an expired access token.
+	errBody401, err := json.Marshal(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+	require.NoError(t, err)
+
+	// newRESTClient builds a defaultRESTClient whose underlying HTTP transport is the given func.
+	newRESTClient := func(rt func(req *http.Request) (*http.Response, error)) *defaultRESTClient {
+		return &defaultRESTClient{
+			client: &defaultHTTPClient{
+				client: &http.Client{Transport: &errorTransport{roundTripFunc: rt}},
+			},
+		}
+	}
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
+	t.Run("refreshes once and retries the request when the access token is rejected", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		var auths []string
+		authsMu := make(chan struct{}, 1)
+		authsMu <- struct{}{}
+
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			<-authsMu
+			auths = append(auths, req.Header.Get("Authorization"))
+			authsMu <- struct{}{}
+			n := calls.Add(1)
+			if n == 1 {
+				return &http.Response{
+					StatusCode: 401, Status: "401 Unauthorized",
+					Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: 200, Status: "200 OK",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader([]byte(`{}`))),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, rt string) (string, time.Time, string, error) {
+				refreshCalls.Add(1)
+				assert.Equal(t, "rt", rt, "the wrapper sends the current refresh token")
+				return "fresh", time.Time{}, "rt", nil
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), calls.Load(), "the request should be tried twice")
+		assert.Equal(t, int32(1), refreshCalls.Load(), "refresh should fire exactly once")
+		require.Len(t, auths, 2)
+		assert.Equal(t, "token stale", auths[0], "first attempt uses the stale token")
+		assert.Equal(t, "token fresh", auths[1], "retry uses the refreshed token")
+	})
+
+	t.Run("surfaces LoginRequiredError when the refresh itself fails", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt-revoked",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				return "", time.Time{}, "", errors.New("invalid_grant")
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		var loginErr backenderr.LoginRequiredError
+		assert.ErrorAs(t, err, &loginErr)
+		assert.Equal(t, int32(1), calls.Load(), "no retry when the refresh attempt fails")
+	})
+
+	t.Run("plain (non-refreshable) tokens fall through to LoginRequiredError unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil,
+			apiAccessToken("plain"), httpCallOptions{})
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		var loginErr backenderr.LoginRequiredError
+		assert.ErrorAs(t, err, &loginErr)
+		assert.Equal(t, int32(1), calls.Load())
+	})
+
+	t.Run("retries at most once even if the refreshed token is also rejected", func(t *testing.T) {
+		t.Parallel()
+
+		var calls atomic.Int32
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			calls.Add(1)
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				refreshCalls.Add(1)
+				return "still-stale", time.Time{}, "rt", nil
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+
+		err := rest.Call(t.Context(), sink,
+			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		var loginErr backenderr.LoginRequiredError
+		assert.ErrorAs(t, err, &loginErr)
+		assert.Equal(t, int32(2), calls.Load(), "retry once, then surface")
+		assert.Equal(t, int32(1), refreshCalls.Load(), "refresh fires only once even if retry still 401s")
+	})
+
+	t.Run("concurrent 401s dedupe to a single refresh-grant exchange", func(t *testing.T) {
+		t.Parallel()
+
+		// A Pulumi operation can fan out parallel API calls, so an expired access token may
+		// come back as N concurrent 401s. The wrapper must dedupe into a single refresh
+		// exchange rather than N.
+		const N = 5
+
+		rest := newRESTClient(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("Authorization") == "token fresh" {
+				return &http.Response{
+					StatusCode: 200, Status: "200 OK",
+					Header: http.Header{}, Body: io.NopCloser(bytes.NewReader([]byte(`{}`))),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: 401, Status: "401 Unauthorized",
+				Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(errBody401)),
+			}, nil
+		})
+
+		var refreshCalls atomic.Int32
+		firstRefresh := make(chan struct{})
+		releaseRefresh := make(chan struct{})
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale",
+			refreshToken: "rt",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				if refreshCalls.Add(1) == 1 {
+					close(firstRefresh)
+					<-releaseRefresh
+				}
+				return "fresh", time.Time{}, "rt", nil
+			},
+			writeback: func(_ string, _ time.Time, _ string) error { return nil },
+		}
+
+		results := make(chan error, N)
+		for range N {
+			go func() {
+				results <- rest.Call(t.Context(), sink,
+					"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
+			}()
+		}
+
+		// Once the first goroutine is in refresh, give the rest a moment to queue on the wrapper's
+		// mutex — no Go primitive surfaces "goroutine blocked on Mutex."
+		<-firstRefresh
+		time.Sleep(100 * time.Millisecond)
+		close(releaseRefresh)
+
+		for range N {
+			require.NoError(t, <-results,
+				"all concurrent callers should authenticate after the deduped refresh")
+		}
+		assert.Equal(t, int32(1), refreshCalls.Load(),
+			"concurrent 401s must dedupe to a single /api/oauth/token call")
+	})
+}
+
+//nolint:paralleltest //  subtests mutate the global otel tracer provider.
+func TestDoCreatesPerAttemptSpans(t *testing.T) {
+	t.Run("single successful request", func(t *testing.T) {
+		recorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+		prev := otel.GetTracerProvider()
+		otel.SetTracerProvider(tp)
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prev)
+		})
+
+		client := &defaultHTTPClient{
+			client: &http.Client{
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							StatusCode: 200,
+							Status:     "200 OK",
+							Body:       io.NopCloser(bytes.NewReader(nil)),
+						}, nil
+					},
+				},
+			},
+		}
+
+		req, err := http.NewRequest("GET", "https://api.example.com/test", nil)
+		require.NoError(t, err)
+
+		resp, err := client.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		tp.ForceFlush(t.Context())
+		spans := recorder.Ended()
+
+		// Should have an "HTTP attempt" span nested under an "HTTP request" span.
+		attemptSpans := filterSpansByName(spans, "HTTP attempt")
+		require.Len(t, attemptSpans, 1)
+		assertSpanAttribute(t, attemptSpans[0], "http.attempt", int64(1))
+		assertSpanAttribute(t, attemptSpans[0], "http.status_code", int64(200))
+	})
+
+	t.Run("retries on 500", func(t *testing.T) {
+		recorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+		prev := otel.GetTracerProvider()
+		otel.SetTracerProvider(tp)
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prev)
+		})
+
+		var callCount atomic.Int32
+		client := &defaultHTTPClient{
+			client: &http.Client{
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						n := callCount.Add(1)
+						if n <= 2 {
+							return &http.Response{
+								StatusCode: 500,
+								Status:     "500 Internal Server Error",
+								Body:       io.NopCloser(bytes.NewReader(nil)),
+							}, nil
+						}
+						return &http.Response{
+							StatusCode: 200,
+							Status:     "200 OK",
+							Body:       io.NopCloser(bytes.NewReader(nil)),
+						}, nil
+					},
+				},
+			},
+		}
+
+		req, err := http.NewRequest("GET", "https://api.example.com/test", nil)
+		require.NoError(t, err)
+
+		resp, err := client.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode)
+
+		tp.ForceFlush(t.Context())
+		spans := recorder.Ended()
+
+		attemptSpans := filterSpansByName(spans, "HTTP attempt")
+		require.Len(t, attemptSpans, 3, "expected 2 failed + 1 successful attempt")
+
+		// Verify attempt numbers are sequential.
+		for i, span := range attemptSpans {
+			assertSpanAttribute(t, span, "http.attempt", int64(i+1))
+		}
+		// First two should have 500 status, last should have 200.
+		assertSpanAttribute(t, attemptSpans[0], "http.status_code", int64(500))
+		assertSpanAttribute(t, attemptSpans[1], "http.status_code", int64(500))
+		assertSpanAttribute(t, attemptSpans[2], "http.status_code", int64(200))
+	})
+
+	t.Run("propagates each attempt span to the API", func(t *testing.T) {
+		recorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+		prevProvider := otel.GetTracerProvider()
+		prevPropagator := otel.GetTextMapPropagator()
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(propagation.TraceContext{})
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prevProvider)
+			otel.SetTextMapPropagator(prevPropagator)
+		})
+
+		var mu sync.Mutex
+		var traceparents []string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			traceparents = append(traceparents, r.Header.Get("traceparent"))
+			if len(traceparents) == 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}))
+		t.Cleanup(server.Close)
+
+		pc := NewClient(server.URL, "", false, nil)
+		require.NoError(t, pc.restCall(t.Context(), "GET", "/api/test", nil, nil, nil))
+
+		require.NoError(t, tp.ForceFlush(t.Context()))
+		attemptSpans := filterSpansByName(recorder.Ended(), "HTTP attempt")
+		require.Len(t, attemptSpans, 2)
+		expected := make([]string, 0, len(attemptSpans))
+		for _, span := range attemptSpans {
+			sc := span.SpanContext()
+			expected = append(expected, fmt.Sprintf("00-%s-%s-01", sc.TraceID(), sc.SpanID()))
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		assert.Equal(t, expected, traceparents)
+	})
+
+	t.Run("does not propagate to other hosts", func(t *testing.T) {
+		prevProvider := otel.GetTracerProvider()
+		prevPropagator := otel.GetTextMapPropagator()
+		otel.SetTracerProvider(sdktrace.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.TraceContext{})
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prevProvider)
+			otel.SetTextMapPropagator(prevPropagator)
+		})
+
+		var header http.Header
+		other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			header = r.Header.Clone()
+		}))
+		t.Cleanup(other.Close)
+
+		pc := NewClient("https://api.example.com", "", false, nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, other.URL, nil)
+		require.NoError(t, err)
+		resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+
+		assert.Empty(t, header.Get("traceparent"))
+	})
+}
+
+// TestNoTraceparentWithoutOTel checks that the CLI sends no trace context when OTel is not set up.
+// A call to otel.SetTextMapPropagator changes the default global propagator for the rest of the
+// process, so the check runs in a new test process.
+func TestNoTraceparentWithoutOTel(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv("PULUMI_TEST_NO_OTEL") == "" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestNoTraceparentWithoutOTel$", "-test.count=1", "-test.v")
+		cmd.Env = append(os.Environ(), "PULUMI_TEST_NO_OTEL=1")
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+		require.Contains(t, string(out), "--- PASS: TestNoTraceparentWithoutOTel")
+		return
+	}
+
+	var header http.Header
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header = r.Header.Clone()
+	}))
+	t.Cleanup(server.Close)
+
+	// A valid parent span context shows that the propagator, not a missing span, suppresses the header.
+	ctx := trace.ContextWithRemoteSpanContext(t.Context(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    trace.TraceID{1},
+		SpanID:     trace.SpanID{1},
+		TraceFlags: trace.FlagsSampled,
+	}))
+	pc := NewClient(server.URL, "", false, nil)
+	require.NoError(t, pc.restCall(ctx, "GET", "/api/test", nil, nil, nil))
+
+	assert.Empty(t, header.Get("traceparent"))
+}
+
+func filterSpansByName(spans []sdktrace.ReadOnlySpan, name string) []sdktrace.ReadOnlySpan {
+	var result []sdktrace.ReadOnlySpan
+	for _, s := range spans {
+		if s.Name() == name {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
+func assertSpanAttribute(t *testing.T, span sdktrace.ReadOnlySpan, key string, want int64) {
+	t.Helper()
+	for _, attr := range span.Attributes() {
+		if string(attr.Key) == key {
+			require.Equal(t, want, attr.Value.AsInt64(), "attribute %s", key)
+			return
+		}
+	}
+	require.Failf(t, "attribute not found", "attribute %q not found on span %q", key, span.Name())
 }

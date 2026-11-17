@@ -169,6 +169,10 @@ func (p *PolicyProxy) Attach(ctx context.Context, cmd *exec.Cmd) error {
 	return err
 }
 
+func (p *PolicyProxy) Abort(err error) {
+	p.client.Reject(fmt.Errorf("policy pack failed to start: %w", err))
+}
+
 func (p *PolicyProxy) ConfigureStack(
 	ctx context.Context,
 	req *pulumirpc.AnalyzerStackConfigureRequest,

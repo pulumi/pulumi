@@ -23,7 +23,7 @@ class ResourceArgs:
     def __init__(__self__, *,
                  data: 'DataArgs',
                  data_list: Optional[Sequence['InnerDataArgs']] = None,
-                 non_plain_data: Optional[pulumi.Input['DataArgs']] = None):
+                 non_plain_data: pulumi.Input[Optional['DataArgs']] = None):
         """
         The set of arguments for constructing a Resource resource.
 
@@ -55,14 +55,14 @@ class ResourceArgs:
 
     @_builtins.property
     @pulumi.getter(name="nonPlainData")
-    def non_plain_data(self) -> Optional[pulumi.Input['DataArgs']]:
+    def non_plain_data(self) -> pulumi.Input[Optional['DataArgs']]:
         """
         A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         return pulumi.get(self, "non_plain_data")
 
     @non_plain_data.setter
-    def non_plain_data(self, value: Optional[pulumi.Input['DataArgs']]):
+    def non_plain_data(self, value: pulumi.Input[Optional['DataArgs']]):
         pulumi.set(self, "non_plain_data", value)
 
 
@@ -72,16 +72,16 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
-                 data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict']]] = None,
-                 non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
+                 data: Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']] = None,
+                 data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict', 'outputs.InnerData']]] = None,
+                 non_plain_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Union['DataArgs', 'DataArgsDict']] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
+        :param pulumi.Input[Union['DataArgs', 'DataArgsDict', 'outputs.Data']] non_plain_data: A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         ...
     @overload
@@ -107,9 +107,9 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
-                 data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict']]] = None,
-                 non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
+                 data: Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']] = None,
+                 data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict', 'outputs.InnerData']]] = None,
+                 non_plain_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict', 'outputs.Data']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -150,6 +150,12 @@ class Resource(pulumi.CustomResource):
         __props__.__dict__["data_list"] = None
         __props__.__dict__["non_plain_data"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'plain:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

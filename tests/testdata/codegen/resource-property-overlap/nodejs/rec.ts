@@ -4,8 +4,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import {Rec} from "./index";
-
 export class Rec extends pulumi.CustomResource {
     /**
      * Get an existing Rec resource's state with the given name, ID, and optional extra
@@ -17,6 +15,16 @@ export class Rec extends pulumi.CustomResource {
      */
     public static get(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): Rec {
         return new Rec(name, undefined as any, { ...opts, id: id });
+    }
+
+    /**
+     * Check whether an existing Rec resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example::Rec", id, {}, { ...opts }, undefined);
     }
 
     /** @internal */

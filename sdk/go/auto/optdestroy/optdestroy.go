@@ -165,6 +165,13 @@ func RunProgram(f bool) Option {
 	})
 }
 
+// Diff displays operation as a rich diff showing the overall change
+func Diff() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Diff = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -216,6 +223,8 @@ type Options struct {
 	ConfigFile string
 	// When set to true, run the program in the workspace to perform the destroy.
 	RunProgram *bool
+	// Diff displays operation as a rich diff showing the overall change
+	Diff bool
 }
 
 type optionFunc func(*Options)

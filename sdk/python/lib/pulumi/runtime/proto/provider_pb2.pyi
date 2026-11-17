@@ -47,6 +47,14 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     SUPPORTS_VIEWS_FIELD_NUMBER: builtins.int
     SUPPORTS_REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
     INVOKE_WITH_PREVIEW_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
+    RESOLVER_TARGET_FIELD_NUMBER: builtins.int
+    ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    SENDS_OLD_OUTPUTS_TO_CHECK_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUTS_IN_INVOKE_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUTS_IN_CALL_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUTS_IN_CHECK_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -72,6 +80,44 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     """If true the engine supports letting the provider mark resource states as requiring refresh before update."""
     invoke_with_preview: builtins.bool
     """If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up."""
+    mapper_target: builtins.str
+    """The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
+    Pulumi. May be empty on older engines.
+    """
+    loader_target: builtins.str
+    """The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
+    May be empty on older engines.
+    """
+    resolver_target: builtins.str
+    """The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
+    concrete package dependencies. May be empty on older engines.
+    """
+    accepts_byte_string: builtins.bool
+    """True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as objects
+    carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
+    return such values to the engine.
+    """
+    sends_old_outputs_to_check: builtins.bool
+    """If true the engine populates `old_outputs` on `CheckRequest` for update-path Check calls. Older engines never
+    set this field, so providers should treat an absent value as false and fall back to legacy behavior that does
+    not rely on previously persisted outputs during Check.
+    """
+    accepts_outputs_in_invoke: builtins.bool
+    """If true the engine can send OutputValues nested in `InvokeRequest.args` and will accept OutputValues in
+    `InvokeResponse.return`. Providers that opt in should set `accepts_outputs_in_invoke` on
+    `ProviderHandshakeResponse`. Older engines never set this field.
+    """
+    accepts_outputs_in_call: builtins.bool
+    """If true the engine can send OutputValues nested in `ResourceCallRequest.args` and will accept OutputValues in
+    `CallResponse.return`. Providers that opt in should set `accepts_outputs_in_call` on
+    `ProviderHandshakeResponse`. Older engines never set this field.
+    """
+    accepts_outputs_in_check: builtins.bool
+    """If true the engine can send OutputValues nested in `CheckRequest.olds`, `CheckRequest.news`, and
+    `CheckRequest.old_outputs`, and will accept OutputValues in `CheckResponse.inputs`. Providers that opt
+    in should set `accepts_outputs_in_check` on `ProviderHandshakeResponse`. Older engines never set this
+    field.
+    """
     def __init__(
         self,
         *,
@@ -82,11 +128,25 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         supports_views: builtins.bool = ...,
         supports_refresh_before_update: builtins.bool = ...,
         invoke_with_preview: builtins.bool = ...,
+        mapper_target: builtins.str | None = ...,
+        loader_target: builtins.str | None = ...,
+        resolver_target: builtins.str | None = ...,
+        accepts_byte_string: builtins.bool = ...,
+        sends_old_outputs_to_check: builtins.bool = ...,
+        accepts_outputs_in_invoke: builtins.bool = ...,
+        accepts_outputs_in_call: builtins.bool = ...,
+        accepts_outputs_in_check: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "program_directory", b"program_directory", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_program_directory", b"_program_directory", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "program_directory", b"program_directory", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "accepts_byte_string", b"accepts_byte_string", "accepts_outputs_in_call", b"accepts_outputs_in_call", "accepts_outputs_in_check", b"accepts_outputs_in_check", "accepts_outputs_in_invoke", b"accepts_outputs_in_invoke", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "sends_old_outputs_to_check", b"sends_old_outputs_to_check", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_loader_target", b"_loader_target"]) -> typing.Literal["loader_target"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_mapper_target", b"_mapper_target"]) -> typing.Literal["mapper_target"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_program_directory", b"_program_directory"]) -> typing.Literal["program_directory"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_resolver_target", b"_resolver_target"]) -> typing.Literal["resolver_target"] | None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_root_directory", b"_root_directory"]) -> typing.Literal["root_directory"] | None: ...
 
@@ -102,6 +162,10 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
     ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
+    ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUTS_IN_INVOKE_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUTS_IN_CALL_FIELD_NUMBER: builtins.int
+    ACCEPTS_OUTPUTS_IN_CHECK_FIELD_NUMBER: builtins.int
     accept_secrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
@@ -120,6 +184,26 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     """
+    accepts_byte_string: builtins.bool
+    """True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+    objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    caller may pass such values to the provider.
+    """
+    accepts_outputs_in_invoke: builtins.bool
+    """True if and only if the provider accepts OutputValues nested in `InvokeRequest.args` and may return
+    OutputValues in `InvokeResponse.return`. Only meaningful when the engine advertised
+    `accepts_outputs_in_invoke` on the handshake request.
+    """
+    accepts_outputs_in_call: builtins.bool
+    """True if and only if the provider accepts OutputValues nested in `ResourceCallRequest.args` and may return
+    OutputValues in `CallResponse.return`. Only meaningful when the engine advertised
+    `accepts_outputs_in_call` on the handshake request.
+    """
+    accepts_outputs_in_check: builtins.bool
+    """True if and only if the provider accepts OutputValues nested in `CheckRequest.olds`, `CheckRequest.news`,
+    and `CheckRequest.old_outputs`, and may return OutputValues in `CheckResponse.inputs`. Only meaningful
+    when the engine advertised `accepts_outputs_in_check` on the handshake request.
+    """
     def __init__(
         self,
         *,
@@ -127,8 +211,12 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
         accept_resources: builtins.bool = ...,
         accept_outputs: builtins.bool = ...,
         supports_autonaming_configuration: builtins.bool = ...,
+        accepts_byte_string: builtins.bool = ...,
+        accepts_outputs_in_invoke: builtins.bool = ...,
+        accepts_outputs_in_call: builtins.bool = ...,
+        accepts_outputs_in_check: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "accepts_byte_string", b"accepts_byte_string", "accepts_outputs_in_call", b"accepts_outputs_in_call", "accepts_outputs_in_check", b"accepts_outputs_in_check", "accepts_outputs_in_invoke", b"accepts_outputs_in_invoke", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
@@ -640,7 +728,12 @@ class CallRequest(google.protobuf.message.Message):
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     tok: builtins.str
-    """the function token to invoke."""
+    """NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    remain for backward compatibility. Newer providers may read these via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
+    the function token to invoke.
+    """
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -824,6 +917,7 @@ class CheckRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
     AUTONAMING_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the resource whose inputs are being checked. In the case of
     [](pulumirpc.ResourceProvider.CheckConfig), this will be the URN of the provider resource being constructed,
@@ -858,6 +952,13 @@ class CheckRequest(google.protobuf.message.Message):
 
     @property
     def autonaming(self) -> global___CheckRequest.AutonamingOptions: ...
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The previously persisted output properties of the resource, if any. Only populated by engines that advertise
+        `sends_old_outputs_to_check` on the provider handshake, and only for Check calls that follow an existing
+        resource state (i.e. not create or replace). Providers must not assume this is populated.
+        """
+
     def __init__(
         self,
         *,
@@ -868,9 +969,10 @@ class CheckRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         type: builtins.str = ...,
         autonaming: global___CheckRequest.AutonamingOptions | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["autonaming", b"autonaming", "news", b"news", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["autonaming", b"autonaming", "name", b"name", "news", b"news", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["autonaming", b"autonaming", "news", b"news", "old_outputs", b"old_outputs", "olds", b"olds"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["autonaming", b"autonaming", "name", b"name", "news", b"news", "old_outputs", b"old_outputs", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CheckRequest = CheckRequest
 
@@ -935,6 +1037,117 @@ class CheckFailure(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
 
 global___CheckFailure = CheckFailure
+
+@typing.final
+class CheckConfigRequest(google.protobuf.message.Message):
+    """`CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    RANDOM_SEED_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """The URN of the provider resource whose configuration is being checked, which may or may not be a [default
+    provider](default-providers).
+    """
+    name: builtins.str
+    """The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
+    passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the provider resource being checked. This must match the type specified by the `urn` field, and is
+    passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    random_seed: builtins.bytes
+    """A random but deterministically computed hash, intended to be used for generating globally unique names."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old input configuration for the provider, if any."""
+
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The new input configuration for the provider."""
+
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The previously persisted output properties of the provider resource, if any. Providers must not assume this is
+        populated.
+        """
+
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        random_seed: builtins.bytes = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "random_seed", b"random_seed", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___CheckConfigRequest = CheckConfigRequest
+
+@typing.final
+class CheckConfigResponse(google.protobuf.message.Message):
+    """`CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. It
+    contains either checked `inputs`, which may subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig)
+    and [](pulumirpc.ResourceProvider.Configure), or a set of `failures` detailing invalid inputs.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INPUTS_FIELD_NUMBER: builtins.int
+    FAILURES_FIELD_NUMBER: builtins.int
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """A valid, checked set of inputs. May contain defaults."""
+
+    @property
+    def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckConfigFailure]:
+        """Any validation failures that occurred."""
+
+    def __init__(
+        self,
+        *,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        failures: collections.abc.Iterable[global___CheckConfigFailure] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["failures", b"failures", "inputs", b"inputs"]) -> None: ...
+
+global___CheckConfigResponse = CheckConfigResponse
+
+@typing.final
+class CheckConfigFailure(google.protobuf.message.Message):
+    """A `CheckConfigFailure` describes a single validation error that arose as part of a
+    [](pulumirpc.ResourceProvider.CheckConfig2) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROPERTY_FIELD_NUMBER: builtins.int
+    REASON_FIELD_NUMBER: builtins.int
+    property: builtins.str
+    """The provider configuration property that failed validation."""
+    reason: builtins.str
+    """The reason that the named property failed validation."""
+    def __init__(
+        self,
+        *,
+        property: builtins.str = ...,
+        reason: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
+
+global___CheckConfigFailure = CheckConfigFailure
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):
@@ -1305,6 +1518,7 @@ class ReadRequest(google.protobuf.message.Message):
     RESOURCE_STATUS_ADDRESS_FIELD_NUMBER: builtins.int
     RESOURCE_STATUS_TOKEN_FIELD_NUMBER: builtins.int
     OLD_VIEWS_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the resource to read."""
     urn: builtins.str
@@ -1321,6 +1535,8 @@ class ReadRequest(google.protobuf.message.Message):
     """The address of a [](pulumirpc.ResourceStatus) service which can be used to e.g. create or update view resources."""
     resource_status_token: builtins.str
     """The [](pulumirpc.ResourceStatus) service context token to pass when calling methods on the service."""
+    timeout: builtins.float
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """Any current state for the resource being read. This state should be sufficient to uniquely identify the resource."""
@@ -1349,9 +1565,10 @@ class ReadRequest(google.protobuf.message.Message):
         resource_status_address: builtins.str = ...,
         resource_status_token: builtins.str = ...,
         old_views: collections.abc.Iterable[global___View] | None = ...,
+        timeout: builtins.float = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "type", b"type", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "old_views", b"old_views", "properties", b"properties", "resource_status_address", b"resource_status_address", "resource_status_token", b"resource_status_token", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ReadRequest = ReadRequest
 
@@ -1393,6 +1610,134 @@ class ReadResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___ReadResponse = ReadResponse
+
+@typing.final
+class ListRequest(google.protobuf.message.Message):
+    """`ListRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.List) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    QUERY_FIELD_NUMBER: builtins.int
+    LIMIT_FIELD_NUMBER: builtins.int
+    PAGE_SIZE_FIELD_NUMBER: builtins.int
+    CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """The resource token (type) to list."""
+    limit: builtins.int
+    """The maximum number of resources to return. If less than 1 then no limit is applied."""
+    page_size: builtins.int
+    """The requested page size for this streaming call. The provider is free to return less, but should not return more."""
+    continuation_token: builtins.str
+    """An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+    should be the values used to fetch the first page.
+    """
+    @property
+    def query(self) -> google.protobuf.struct_pb2.Struct:
+        """An optional provider-defined filter over resource state. This is a property map and could contain
+        unknown/computed values.
+        """
+
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        query: google.protobuf.struct_pb2.Struct | None = ...,
+        limit: builtins.int = ...,
+        page_size: builtins.int = ...,
+        continuation_token: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["query", b"query"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token", "limit", b"limit", "page_size", b"page_size", "query", b"query", "token", b"token"]) -> None: ...
+
+global___ListRequest = ListRequest
+
+@typing.final
+class ListResponse(google.protobuf.message.Message):
+    """`ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List). It must follow one of
+    the following orders. Either it returns a single [](pulumirpc.ListResponse.Computed) or it should return one or more
+    [](pulumirpc.ListResponse.Result) items followed optionally by a [](pulumirpc.ListResponse.Continuation).
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class Computed(google.protobuf.message.Message):
+        """`Computed` is returned if [](pulumirpc.ResourceProvider.List) can't compute the result due to unknown values in the query."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        def __init__(
+            self,
+        ) -> None: ...
+
+    @typing.final
+    class Result(google.protobuf.message.Message):
+        """`Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        ID_FIELD_NUMBER: builtins.int
+        NAME_FIELD_NUMBER: builtins.int
+        id: builtins.str
+        """The ID of the resource. This should be an importable ID that can be passed to a
+        [](pulumirpc.ResourceProvider.Read) call to read the resource.
+        """
+        name: builtins.str
+        """The resource name, if the provider can supply one. If empty no name was given."""
+        def __init__(
+            self,
+            *,
+            id: builtins.str = ...,
+            name: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name"]) -> None: ...
+
+    @typing.final
+    class Continuation(google.protobuf.message.Message):
+        """`Continuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+        continuation_token: builtins.str
+        """An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are
+        no more results.
+        """
+        def __init__(
+            self,
+            *,
+            continuation_token: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token"]) -> None: ...
+
+    COMPUTED_FIELD_NUMBER: builtins.int
+    RESULT_FIELD_NUMBER: builtins.int
+    CONTINUATION_FIELD_NUMBER: builtins.int
+    @property
+    def computed(self) -> global___ListResponse.Computed:
+        """A computed marker."""
+
+    @property
+    def result(self) -> global___ListResponse.Result:
+        """A resource entry."""
+
+    @property
+    def continuation(self) -> global___ListResponse.Continuation:
+        """A continuation marker."""
+
+    def __init__(
+        self,
+        *,
+        computed: global___ListResponse.Computed | None = ...,
+        result: global___ListResponse.Result | None = ...,
+        continuation: global___ListResponse.Continuation | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["computed", b"computed", "continuation", b"continuation", "response", b"response", "result", b"result"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["computed", b"computed", "continuation", b"continuation", "response", b"response", "result", b"result"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["computed", "result", "continuation"] | None: ...
+
+global___ListResponse = ListResponse
 
 @typing.final
 class UpdateRequest(google.protobuf.message.Message):
@@ -1620,6 +1965,7 @@ class ConstructRequest(google.protobuf.message.Message):
         CREATE_FIELD_NUMBER: builtins.int
         UPDATE_FIELD_NUMBER: builtins.int
         DELETE_FIELD_NUMBER: builtins.int
+        READ_FIELD_NUMBER: builtins.int
         create: builtins.str
         """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Create) operation
         to complete.
@@ -1632,14 +1978,19 @@ class ConstructRequest(google.protobuf.message.Message):
         """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
         to complete.
         """
+        read: builtins.str
+        """How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Read) operation
+        to complete.
+        """
         def __init__(
             self,
             *,
             create: builtins.str = ...,
             update: builtins.str = ...,
             delete: builtins.str = ...,
+            read: builtins.str = ...,
         ) -> None: ...
-        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+        def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "read", b"read", "update", b"update"]) -> None: ...
 
     @typing.final
     class ConfigEntry(google.protobuf.message.Message):
@@ -1759,7 +2110,12 @@ class ConstructRequest(google.protobuf.message.Message):
     ALIASES_FIELD_NUMBER: builtins.int
     REPLACEMENT_TRIGGER_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """The project to which this resource and its nested resources will belong."""
+    """NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    remain for backward compatibility. Newer providers may read these via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
+    The project to which this resource and its nested resources will belong.
+    """
     stack: builtins.str
     """The name of the stack being deployed into."""
     dryRun: builtins.bool
@@ -2037,6 +2393,22 @@ class ErrorResourceInitFailed(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "reasons", b"reasons", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___ErrorResourceInitFailed = ErrorResourceInitFailed
+
+@typing.final
+class ErrorResourceAwaitFailed(google.protobuf.message.Message):
+    """ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the provider had
+    to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource state was written (Create) or the
+    prior state is preserved unchanged (Update). The engine reports the resource as failed to the SDK and continues the
+    deployment, but the CLI exits with a dedicated non-zero code.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___ErrorResourceAwaitFailed = ErrorResourceAwaitFailed
 
 @typing.final
 class GetMappingRequest(google.protobuf.message.Message):

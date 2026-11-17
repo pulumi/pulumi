@@ -1,0 +1,17 @@
+run: esc open default/test --format json
+error: exit status 1
+environments:
+  test-user/default/test:
+    values:
+      object: {}
+      missing: ${foo}
+      invalid: {'fn::toBase64': "${object}"}
+
+---
+> esc open default/test --format json
+
+---
+> esc open default/test --format json
+test:3:16: unknown property "foo"
+test:4:31: expected string, got object
+Error: opening environment: too many errors

@@ -16,11 +16,7 @@
 package nodejs
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -72,14 +68,8 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 
 // Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
-	// Some tests have do not have mocha as a dependency.
-	hasMocha := false
-	for _, c := range getYarnCommands(t, pwd) {
-		if c == "mocha" {
-			hasMocha = true
-			break
-		}
-	}
+	_, mochaErr := os.Stat(filepath.Join(pwd, "node_modules", ".bin", "mocha"))
+	hasMocha := mochaErr == nil
 
 	// We are attempting to ensure that we don't write tests that are not run. The `nodejs-extras`
 	// folder exists to mixin tests of the form `*.spec.ts`. We assume that if this folder is
@@ -101,68 +91,13 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 	if hasMocha {
 		// If mocha is a dev dependency but no test files exist, this will fail.
 		test.RunCommand(t, "mocha", pwd,
-			"yarn", "run", "mocha",
+			filepath.Join(pwd, "node_modules", ".bin", "mocha"),
+			"--timeout", "120000",
 			"--require", "ts-node/register",
 			"tests/**/*.spec.ts")
 	} else {
 		t.Logf("No mocha tests found for %s", pwd)
 	}
-}
-
-// Get the commands runnable with yarn run
-func getYarnCommands(t *testing.T, pwd string) []string {
-	cmd := exec.Command("yarn", "run", "--json")
-	cmd.Dir = pwd
-	out, err := cmd.Output()
-	if err != nil {
-		t.Errorf("Got error determining valid commands: %s", err)
-	}
-	dec := json.NewDecoder(bytes.NewReader(out))
-	parsed := []map[string]any{}
-	for {
-		var m map[string]any
-		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
-				break
-			}
-			t.FailNow()
-		}
-		parsed = append(parsed, m)
-	}
-	var cmds []string
-
-	addProvidedCmds := func(c map[string]any) {
-		// If this fails, we want the test to fail. We don't want to accidentally skip tests.
-		data := c["data"].(map[string]any)
-		if data["type"] == "possibleCommands" {
-			return
-		}
-		for _, cmd := range data["items"].([]any) {
-			cmds = append(cmds, cmd.(string))
-		}
-	}
-
-	addBinaryCmds := func(c map[string]any) {
-		data := c["data"].(string)
-		if !strings.HasPrefix(data, "Commands available from binary scripts:") {
-			return
-		}
-		cmdList := data[strings.Index(data, ":")+1:]
-		for _, cmd := range strings.Split(cmdList, ",") {
-			cmds = append(cmds, strings.TrimSpace(cmd))
-		}
-	}
-
-	for _, c := range parsed {
-		switch c["type"] {
-		case "list":
-			addProvidedCmds(c)
-		case "info":
-			addBinaryCmds(c)
-		}
-	}
-	t.Logf("Found yarn commands in %s: %v", pwd, cmds)
-	return cmds
 }
 
 func TestGenerateTypeNames(t *testing.T) {
@@ -192,6 +127,51 @@ func TestGenerateTypeNames(t *testing.T) {
 			return root.typeString(t, false, nil)
 		}
 	}, filepath.FromSlash("../testing/test/testdata/"))
+}
+
+func TestGenerateSelfReferencingResource(t *testing.T) {
+	t.Parallel()
+
+	for _, shape := range []string{"direct", "array", "map", "union"} {
+		t.Run(shape, func(t *testing.T) {
+			t.Parallel()
+
+			properties := map[string]schema.PropertySpec{}
+			for _, name := range []string{"Node", "Other"} {
+				ref := schema.TypeSpec{Ref: "#/resources/example:index:" + name}
+				typ := ref
+				switch shape {
+				case "array":
+					typ = schema.TypeSpec{Type: "array", Items: &ref}
+				case "map":
+					typ = schema.TypeSpec{Type: "object", AdditionalProperties: &ref}
+				case "union":
+					typ = schema.TypeSpec{OneOf: []schema.TypeSpec{typ, {Type: "string"}}}
+				}
+				properties[strings.ToLower(name)] = schema.PropertySpec{TypeSpec: typ}
+			}
+			pkg, err := schema.ImportSpec(schema.PackageSpec{
+				Name: "example",
+				Resources: map[string]schema.ResourceSpec{
+					"example:index:Node":  {InputProperties: properties},
+					"example:index:Other": {},
+				},
+			}, nil, schema.NewNullLoader(), schema.ValidationOptions{})
+			require.NoError(t, err)
+
+			files, err := GeneratePackage("test", pkg, nil, nil, false, nil)
+			require.NoError(t, err)
+			require.Contains(t, files, "node.ts")
+			source := string(files["node.ts"])
+			require.Contains(t, source, "export class Node extends pulumi.CustomResource")
+			require.Contains(t, source, `import {Other} from "./index";`)
+			for line := range strings.SplitSeq(source, "\n") {
+				if strings.HasPrefix(line, "import ") {
+					require.NotContains(t, line, "Node")
+				}
+			}
+		})
+	}
 }
 
 func TestPascalCases(t *testing.T) {

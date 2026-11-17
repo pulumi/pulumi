@@ -1,0 +1,723 @@
+{
+    "check": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "merge-replace",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 34
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 13,
+                        "byte": 42
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "bar": {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "bar"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "bar"
+                    },
+                    "literal": "bar"
+                },
+                "keyRanges": {
+                    "bar": {
+                        "environment": "merge-replace",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 37
+                        }
+                    }
+                },
+                "object": {
+                    "bar": {
+                        "range": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 42
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "literal": "baz"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": {
+                    "bar": {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "merge-replace",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 42
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "merge-replace",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 42
+                        }
+                    },
+                    "base": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 8,
+                                    "byte": 15
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 11,
+                                    "byte": 18
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "properties": {
+                        "bar": {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "bar"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-replace",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-replace",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "merge-replace",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-replace",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-replace",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-replace",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-replace"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-replace"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "foo": {
+            "bar": "baz"
+        }
+    },
+    "eval": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "merge-replace",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 34
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 13,
+                        "byte": 42
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "bar": {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "bar"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "bar"
+                    },
+                    "literal": "bar"
+                },
+                "keyRanges": {
+                    "bar": {
+                        "environment": "merge-replace",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 37
+                        }
+                    }
+                },
+                "object": {
+                    "bar": {
+                        "range": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 42
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "baz"
+                        },
+                        "literal": "baz"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": {
+                    "bar": {
+                        "value": "baz",
+                        "trace": {
+                            "def": {
+                                "environment": "merge-replace",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 42
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "merge-replace",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 42
+                        }
+                    },
+                    "base": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 8,
+                                    "byte": 15
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 11,
+                                    "byte": 18
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "properties": {
+                        "bar": {
+                            "type": "string",
+                            "const": "baz"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "bar"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-replace",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-replace",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "merge-replace",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-replace",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "merge-replace",
+                            "trace": {
+                                "def": {
+                                    "environment": "merge-replace",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "merge-replace",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-replace"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "merge-replace"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "foo": {
+            "bar": "baz"
+        }
+    },
+    "evalJSONRevealed": {
+        "foo": {
+            "bar": "baz"
+        }
+    }
+}

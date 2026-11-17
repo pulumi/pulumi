@@ -34,8 +34,8 @@ func TestMapStructTypes(t *testing.T) {
 		Foo string
 	}
 
-	atype := reflect.TypeOf(A{})
-	btype := reflect.TypeOf(B{})
+	atype := reflect.TypeFor[A]()
+	btype := reflect.TypeFor[B]()
 	getMappedField := MapStructTypes(atype, btype)
 
 	// We'll build two structs with the same fields
@@ -62,7 +62,7 @@ func TestMapStructTypes_sameType(t *testing.T) {
 		Bar int
 	}
 
-	atype := reflect.TypeOf(A{})
+	atype := reflect.TypeFor[A]()
 	getMappedField := MapStructTypes(atype, atype)
 
 	// Values returned by getMappedField

@@ -27,19 +27,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
-	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackagePublishCmd_Run(t *testing.T) {
 	tests := []struct {
 		name                  string
@@ -361,23 +360,21 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 				},
 			}
 
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockCurrentBackend(t, &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
 				GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return tt.mockOrg, tt.mockOrgErr
+				},
 			})
 
-			// Setup defaultOrg mock
-			defaultOrg := func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-				return tt.mockOrg, tt.mockOrgErr
-			}
-
 			cmd := &packagePublishCmd{
-				defaultOrg: defaultOrg,
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env, _ int,
+					registry registry.Registry, _ env.Env, _ int, _ bool, _ string,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					if tt.mockSchema == nil && tt.schemaExtractionErr == nil {
 						return nil, nil, errors.New("mock schema extraction failed")
@@ -388,7 +385,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			err := cmd.Run(t.Context(), tt.args, packageSource, tt.packageParams)
 			if tt.expectedErr != "" {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)
@@ -397,9 +394,8 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackagePublishCmd_IOErrors(t *testing.T) {
-	t.Parallel()
 	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
 		Publisher: "testpublisher",
@@ -457,7 +453,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			}
 
 			// Mock the backend
-			testutil.MockBackendInstance(t, &backend.MockBackend{
+			mockCurrentBackend(t, &backend.MockBackend{
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return &backend.MockCloudRegistry{
 						PublishPackageF: func(ctx context.Context, op apitype.PackagePublishOp) error {
@@ -466,28 +462,29 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 					}, nil
 				},
 				GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return "default-org", nil
+				},
 			})
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-					return "default-org", nil
-				},
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env, _ int,
+					registry registry.Registry, _ env.Env, _ int, _ bool, _ string,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return tt.mockSchema, nil, nil
 				},
 			}
 
 			err := cmd.Run(t.Context(), tt.args, "testpackage", nil /* packageParams */)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
 }
 
-//nolint:paralleltest // This test uses the global backendInstance variable
+//nolint:paralleltest // This test uses the global login manager
 func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 	validSchema := &schema.PackageSpec{
 		Name:      "testpkg",
@@ -503,12 +500,15 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 		{
 			name: "error getting package registry",
 			setupBackend: func(t *testing.T) {
-				testutil.MockBackendInstance(t, &backend.MockBackend{
+				mockCurrentBackend(t, &backend.MockBackend{
 					GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 						return nil, errors.New("failed to get package registry")
 					},
 					GetReadOnlyCloudRegistryF: func() registry.Registry {
 						return &backend.MockCloudRegistry{}
+					},
+					GetDefaultOrgF: func(ctx context.Context) (string, error) {
+						return "default-org", nil
 					},
 				})
 			},
@@ -528,12 +528,10 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			tt.setupBackend(t)
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-					return "default-org", nil
-				},
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
-					registry registry.Registry, _ env.Env, _ int,
+					registry registry.Registry, _ env.Env, _ int, _ bool, _ string,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 					return validSchema, nil, nil
 				},
@@ -545,7 +543,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				readmePath: readmePath,
 			}, "testpackage", nil /* packageParams */)
 
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
@@ -553,8 +551,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 
 func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
-		NewF: func() (pkgWorkspace.W, error) { return nil, readProjectErr },
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) { return nil, readProjectErr },
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return nil, "", readProjectErr
 		},
 	}
@@ -563,15 +561,13 @@ func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
 func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	cmd := packagePublishCmd{
-		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-			return "", nil
-		},
 		extractSchema: func(
+			ws pkgWorkspace.Context,
 			pctx *plugin.Context,
 			packageSource string,
 			parameters plugin.ParameterizeParameters,
 			registry registry.Registry,
-			_ env.Env, _ int,
+			_ env.Env, _ int, _ bool, _ string,
 		) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 			pkg := &schema.PackageSpec{
 				Name:    "test-package",
@@ -589,7 +585,7 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	err := cmd.Run(t.Context(), publishPackageArgs{readmePath: "README.md"},
 		"test-source", nil /* packageParams */)
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, customErr)
 }
 
@@ -667,7 +663,7 @@ func TestFindReadme(t *testing.T) {
 		invalidPlugin := "my-cool-plugin@not-a-valid-version"
 		readme, err := cmd.findReadme(ctx, invalidPlugin)
 		assert.Empty(t, readme)
-		assert.Error(t, err, "Should return error for invalid plugin spec")
+		assert.Error(t, err, "Should return error for invalid plugin spec") //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "failed to create plugin spec")
 	})
 
@@ -732,6 +728,6 @@ func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginDescripto
 		require.NoError(t, err)
 	}
 	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pluginstorage.DirPlugin(dir),
-		true, schema.NewLoaderServerFromHost)
+		true, schema.NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 }

@@ -1,0 +1,17 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgB:m:parentType parent <{%bold%}><{%fg 3%}>refreshing<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
+ <{%fg 1%}>- <{%reset%}> pkgB:m:parentType parent <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgB:m:parentType parent <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:childType child <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgB provB <{%bold%}><{%fg 3%}>refreshing<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:providers:pkgB provB <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:childType child <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

@@ -27,7 +27,7 @@ func NewVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print Pulumi's version number",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("%v\n", version.Version)
+			fmt.Fprintf(cmd.OutOrStdout(), "%v\n", version.Version)
 			return nil
 		},
 	}

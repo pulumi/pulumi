@@ -12,136 +12,96 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import subprocess
-import unittest
-import platform
+import sys
+
 import pytest
+
 from pulumi.automation import (
-    create_stack,
+    CompilationError,
     InlineSourceRuntimeError,
     RuntimeError,
-    CompilationError,
+    create_stack,
 )
+
 from .test_local_workspace import stack_namer, get_test_path
 
 compilation_error_project = "compilation_error"
 runtime_error_project = "runtime_error"
 
 
-class TestErrors(unittest.TestCase):
-    def test_inline_runtime_error_python(self):
-        project_name = "inline_runtime_error_python"
-        stack_name = stack_namer(project_name)
-        stack = create_stack(
-            stack_name, program=failing_program, project_name=project_name
-        )
-        inline_error_text = "python inline source runtime error"
+def install_dependencies(project_dir: str) -> None:
+    subprocess.run(
+        ["pulumi", "install"], check=True, cwd=project_dir, capture_output=True
+    )
 
-        try:
-            self.assertRaises(InlineSourceRuntimeError, stack.up)
-            self.assertRaisesRegex(
-                InlineSourceRuntimeError, inline_error_text, stack.up
-            )
-            self.assertRaises(InlineSourceRuntimeError, stack.preview)
-            self.assertRaisesRegex(
-                InlineSourceRuntimeError, inline_error_text, stack.preview
-            )
-        finally:
-            stack.workspace.remove_stack(stack_name, force=True)
 
-    def test_runtime_errors(self):
-        for lang in ["python", "go", "dotnet", "javascript", "typescript"]:
-            stack_name = stack_namer(runtime_error_project)
-            project_dir = get_test_path("errors", runtime_error_project, lang)
+def test_inline_runtime_error_python():
+    project_name = "inline_runtime_error_python"
+    stack_name = stack_namer(project_name)
+    stack = create_stack(stack_name, program=failing_program, project_name=project_name)
+    inline_error_text = "python inline source runtime error"
 
-            if lang in ["javascript", "typescript"]:
-                subprocess.run(
-                    ["npm", "install"], check=True, cwd=project_dir, capture_output=True
-                )
-            if lang == "python":
-                subprocess.run(
-                    ["python3", "-m", "venv", "venv"],
-                    check=True,
-                    cwd=project_dir,
-                    capture_output=True,
-                )
+    try:
+        with pytest.raises(InlineSourceRuntimeError, match=inline_error_text):
+            stack.up()
+        with pytest.raises(InlineSourceRuntimeError, match=inline_error_text):
+            stack.preview()
+    finally:
+        stack.workspace.remove_stack(stack_name, force=True)
 
-                # Get the path to the python executable in the virtual environment.
-                python_venv_path = os.path.join("venv", "bin", "python")
-                if platform.system() == "Windows":
-                    python_venv_path = os.path.join("venv", "Scripts", "python.exe")
 
-                # Determine the locally built Pulumi SDK path.
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                env_src_dir = os.path.join(script_dir, "..", "..", "..")
+@pytest.mark.parametrize(
+    "lang,error",
+    [
+        ("python", "failed with an unhandled exception"),
+        ("go", "panic: runtime error"),
+        ("dotnet", "failed with an unhandled exception"),
+        ("javascript", "failed with an unhandled exception"),
+        ("typescript", "failed with an unhandled exception"),
+    ],
+)
+def test_runtime_errors(lang: str, error: str):
+    stack_name = stack_namer(runtime_error_project)
+    project_dir = get_test_path("errors", runtime_error_project, lang)
+    install_dependencies(project_dir)
 
-                # Install the locally built Pulumi SDK in the virtual environment.
-                subprocess.run(
-                    [python_venv_path, "-m", "pip", "install", "-e", env_src_dir],
-                    check=True,
-                    cwd=project_dir,
-                    capture_output=True,
-                )
+    stack = create_stack(stack_name, work_dir=project_dir)
 
-            stack = create_stack(stack_name, work_dir=project_dir)
+    try:
+        with pytest.raises(RuntimeError, match=error):
+            stack.up()
+    finally:
+        stack.workspace.remove_stack(stack_name, force=True)
 
-            try:
-                self.assertRaises(RuntimeError, stack.up)
-                if lang == "go":
-                    self.assertRaisesRegex(
-                        RuntimeError, "panic: runtime error", stack.up
-                    )
-                else:
-                    self.assertRaisesRegex(
-                        RuntimeError, "failed with an unhandled exception", stack.up
-                    )
-            finally:
-                stack.workspace.remove_stack(stack_name, force=True)
 
-    def test_compilation_error_go(self):
-        stack_name = stack_namer(compilation_error_project)
-        project_dir = get_test_path("errors", compilation_error_project, "go")
-        stack = create_stack(stack_name, work_dir=project_dir)
+@pytest.mark.parametrize(
+    "lang,error",
+    [
+        ("go", ": syntax error:|: undefined:"),
+        ("dotnet", "Build FAILED."),
+        pytest.param(
+            "typescript",
+            "Unable to compile TypeScript",
+            marks=pytest.mark.skipif(
+                sys.platform == "win32",
+                reason="environment setup fails on Windows",
+            ),
+        ),
+    ],
+)
+def test_compilation_errors(lang: str, error: str):
+    stack_name = stack_namer(compilation_error_project)
+    project_dir = get_test_path("errors", compilation_error_project, lang)
+    if lang == "typescript":
+        install_dependencies(project_dir)
+    stack = create_stack(stack_name, work_dir=project_dir)
 
-        try:
-            self.assertRaises(CompilationError, stack.up)
-            self.assertRaisesRegex(
-                CompilationError, ": syntax error:|: undefined:", stack.up
-            )
-        finally:
-            stack.workspace.remove_stack(stack_name, force=True)
-
-    def test_compilation_error_dotnet(self):
-        stack_name = stack_namer(compilation_error_project)
-        project_dir = get_test_path("errors", compilation_error_project, "dotnet")
-        stack = create_stack(stack_name, work_dir=project_dir)
-
-        try:
-            self.assertRaises(CompilationError, stack.up)
-            self.assertRaisesRegex(CompilationError, "Build FAILED.", stack.up)
-        finally:
-            stack.workspace.remove_stack(stack_name, force=True)
-
-    # This test fails on Windows related to the `subprocess.run` call associated with setting up the environment.
-    # Skipping for now.
-    @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
-    def test_compilation_error_typescript(self):
-        stack_name = stack_namer(compilation_error_project)
-        project_dir = get_test_path("errors", compilation_error_project, "typescript")
-        subprocess.run(
-            ["npm", "install"], check=True, cwd=project_dir, capture_output=True
-        )
-        stack = create_stack(stack_name, work_dir=project_dir)
-
-        try:
-            self.assertRaises(CompilationError, stack.up)
-            self.assertRaisesRegex(
-                CompilationError, "Unable to compile TypeScript", stack.up
-            )
-        finally:
-            stack.workspace.remove_stack(stack_name, force=True)
+    try:
+        with pytest.raises(CompilationError, match=error):
+            stack.up()
+    finally:
+        stack.workspace.remove_stack(stack_name, force=True)
 
 
 def failing_program():

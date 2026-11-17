@@ -17,6 +17,16 @@ export class Resource extends pulumi.CustomResource {
         return new Resource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Resource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("output:index:Resource", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'output:index:Resource';
 
@@ -32,6 +42,7 @@ export class Resource extends pulumi.CustomResource {
     }
 
     declare public /*out*/ readonly output: pulumi.Output<string>;
+    declare public /*out*/ readonly secretOutput: pulumi.Output<string>;
     declare public readonly value: pulumi.Output<number>;
 
     /**
@@ -50,11 +61,15 @@ export class Resource extends pulumi.CustomResource {
             }
             resourceInputs["value"] = args?.value;
             resourceInputs["output"] = undefined /*out*/;
+            resourceInputs["secretOutput"] = undefined /*out*/;
         } else {
             resourceInputs["output"] = undefined /*out*/;
+            resourceInputs["secretOutput"] = undefined /*out*/;
             resourceInputs["value"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+        const secretOpts = { additionalSecretOutputs: ["secretOutput"] };
+        opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, resourceInputs, opts);
     }
 }

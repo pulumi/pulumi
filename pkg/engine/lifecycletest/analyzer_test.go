@@ -15,7 +15,6 @@
 package lifecycletest
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,23 +23,24 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type testRequiredPolicy struct {
-	name    string
-	version string
-	config  map[string]*json.RawMessage
+	name       string
+	version    string
+	config     map[string]*json.RawMessage
+	exceptions map[string]json.RawMessage
 }
 
 func (p *testRequiredPolicy) Name() string {
@@ -51,26 +51,14 @@ func (p *testRequiredPolicy) Version() string {
 	return p.version
 }
 
-func (p *testRequiredPolicy) Installed() bool {
-	// For tests, we consider the policy already installed
-	return true
-}
-
 func (p *testRequiredPolicy) LocalPath() (string, error) {
 	// Return empty path for tests - the analyzer loader will handle it
 	return "", nil
 }
 
-func (p *testRequiredPolicy) Download(
-	_ context.Context,
-	_ func(stream io.ReadCloser, size int64) io.ReadCloser,
-) (io.ReadCloser, int64, error) {
-	// Not used in tests since Installed() returns true
-	return nil, 0, nil
-}
-
-func (p *testRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
-	// Not used in tests since Installed() returns true
+func (p *testRequiredPolicy) EnsureInstalled(
+	*plugin.Context, func(stream io.ReadCloser, size int64) io.ReadCloser, io.Writer,
+) error {
 	return nil
 }
 
@@ -80,6 +68,10 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 
 func (p *testRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
+}
+
+func (p *testRequiredPolicy) Exceptions() map[string]json.RawMessage {
+	return p.exceptions
 }
 
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
@@ -118,7 +110,7 @@ func TestSimpleAnalyzer(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	proj := "test-proj"
 	p := &lt.TestPlan{
@@ -187,10 +179,10 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -250,7 +242,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestSimpleAnalyzeStackFailure(t *testing.T) {
@@ -291,7 +283,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -338,7 +330,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestResourceRemediation tests a very simple sequence of remediations. We register two, to ensure that
@@ -385,21 +377,21 @@ func TestResourceRemediation(t *testing.T) {
 							PolicyPackName:    "analyzerA",
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that gets ignored because it runs first",
-							Properties: resource.PropertyMap{
-								"a":   resource.NewProperty("nope"),
-								"ggg": resource.NewProperty(true),
-							},
+							Properties: property.NewMap(map[string]property.Value{
+								"a":   property.New("nope"),
+								"ggg": property.New(true),
+							}),
 						},
 						{
 							PolicyName:        "real-deal",
 							PolicyPackName:    "analyzerA",
 							PolicyPackVersion: "1.0.0",
 							Description:       "a remediation that actually gets applied because it runs last",
-							Properties: resource.PropertyMap{
-								"a":   resource.NewProperty("foo"),
-								"fff": resource.NewProperty(true),
-								"z":   resource.NewProperty("bar"),
-							},
+							Properties: property.NewMap(map[string]property.Value{
+								"a":   property.New("foo"),
+								"fff": property.New(true),
+								"z":   property.New("bar"),
+							}),
 						},
 					}}, nil
 				},
@@ -412,7 +404,7 @@ func TestResourceRemediation(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -449,11 +441,11 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, "ignored", remediationPayload0.PolicyName)
 		assert.Equal(t, "analyzerA", remediationPayload0.PolicyPackName)
 		assert.Equal(t, "1.0.0", remediationPayload0.PolicyPackVersion)
-		assert.Equal(t, resource.PropertyMap{}, remediationPayload0.Before)
-		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("nope"),
-			"ggg": resource.NewProperty(true),
-		}, remediationPayload0.After)
+		assert.Equal(t, property.Map{}, remediationPayload0.Before)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"a":   property.New("nope"),
+			"ggg": property.New(true),
+		}), remediationPayload0.After)
 
 		require.IsType(t, PolicyRemediationEventPayload{}, remediationEvents[1].Payload())
 		remediationPayload1 := remediationEvents[1].Payload().(PolicyRemediationEventPayload)
@@ -461,15 +453,15 @@ func TestResourceRemediation(t *testing.T) {
 		assert.Equal(t, "real-deal", remediationPayload1.PolicyName)
 		assert.Equal(t, "analyzerA", remediationPayload1.PolicyPackName)
 		assert.Equal(t, "1.0.0", remediationPayload1.PolicyPackVersion)
-		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("nope"),
-			"ggg": resource.NewProperty(true),
-		}, remediationPayload1.Before)
-		assert.Equal(t, resource.PropertyMap{
-			"a":   resource.NewProperty("foo"),
-			"fff": resource.NewProperty(true),
-			"z":   resource.NewProperty("bar"),
-		}, remediationPayload1.After)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"a":   property.New("nope"),
+			"ggg": property.New(true),
+		}), remediationPayload1.Before)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"a":   property.New("foo"),
+			"fff": property.New(true),
+			"z":   property.New("bar"),
+		}), remediationPayload1.After)
 
 		require.Len(t, summaryEvents, 2)
 
@@ -538,7 +530,7 @@ func TestRemediationDiagnostic(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -582,7 +574,7 @@ func TestRemediateFailure(t *testing.T) {
 		assert.ErrorContains(t, err, "context canceled")
 		return nil
 	})
-	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -626,10 +618,10 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -694,7 +686,7 @@ func TestSimpleAnalyzeStackFailureRemediateDowngradedToMandatory(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -771,7 +763,7 @@ func TestAnalyzerCancellation(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -908,10 +900,10 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -925,7 +917,7 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Test data contains golden files for expected sorted output.
 }
@@ -977,10 +969,10 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1040,7 +1032,7 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestAnalyzeRunsInParallel verifies that per-resource Analyze calls across multiple
@@ -1089,7 +1081,7 @@ func TestAnalyzeRunsInParallel(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1169,7 +1161,7 @@ func TestAnalyzeStackRunsInParallel(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1204,89 +1196,28 @@ func TestAnalyzeStackRunsInParallel(t *testing.T) {
 	require.NoError(t, <-done)
 }
 
-// failingDownloadRequiredPolicy is a RequiredPolicy that fails during download, used to test that
-// policy pack installation errors are properly surfaced rather than silently dropped.
-type failingDownloadRequiredPolicy struct {
+// failingRequiredPolicy is a RequiredPolicy whose install fails, used to test that policy pack installation
+// errors are properly surfaced rather than silently dropped.
+type failingRequiredPolicy struct {
 	name string
 }
 
-func (p *failingDownloadRequiredPolicy) Name() string                        { return p.name }
-func (p *failingDownloadRequiredPolicy) Version() string                     { return "" }
-func (p *failingDownloadRequiredPolicy) Installed() bool                     { return false }
-func (p *failingDownloadRequiredPolicy) LocalPath() (string, error)          { return "", nil }
-func (p *failingDownloadRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
-func (p *failingDownloadRequiredPolicy) Download(
-	_ context.Context,
-	_ func(io.ReadCloser, int64) io.ReadCloser,
-) (io.ReadCloser, int64, error) {
-	return nil, 0, errors.New("policy pack download failed")
-}
+func (p *failingRequiredPolicy) Name() string                        { return p.name }
+func (p *failingRequiredPolicy) Version() string                     { return "" }
+func (p *failingRequiredPolicy) LocalPath() (string, error)          { return "", nil }
+func (p *failingRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
 
-func (p *failingDownloadRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
-	return nil
-}
-
-func (p *failingDownloadRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
-	return nil, nil
-}
-
-// failingInstallRequiredPolicy is a RequiredPolicy that fails during installation, used to test that
-// policy pack installation errors are properly surfaced rather than silently dropped.
-type failingInstallRequiredPolicy struct {
-	name string
-}
-
-func (p *failingInstallRequiredPolicy) Name() string                        { return p.name }
-func (p *failingInstallRequiredPolicy) Version() string                     { return "" }
-func (p *failingInstallRequiredPolicy) Installed() bool                     { return false }
-func (p *failingInstallRequiredPolicy) LocalPath() (string, error)          { return "", nil }
-func (p *failingInstallRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
-func (p *failingInstallRequiredPolicy) Download(
-	_ context.Context,
-	_ func(io.ReadCloser, int64) io.ReadCloser,
-) (io.ReadCloser, int64, error) {
-	return io.NopCloser(bytes.NewReader(nil)), 0, nil
-}
-
-func (p *failingInstallRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
+func (p *failingRequiredPolicy) EnsureInstalled(
+	*plugin.Context, func(io.ReadCloser, int64) io.ReadCloser, io.Writer,
+) error {
 	return errors.New("policy pack install failed")
 }
 
-func (p *failingInstallRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
+func (p *failingRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
 }
 
-// TestPolicyPackDownloadFailureReturnsError is a regression test verifying that errors from the download
-// step of policy pack installation are returned to the caller rather than silently dropped.
-func TestPolicyPackDownloadFailureReturnsError(t *testing.T) {
-	t.Parallel()
-
-	loaders := []*deploytest.PluginLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{}, nil
-		}),
-	}
-
-	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
-		return nil
-	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
-
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{
-			T:                t,
-			SkipDisplayTests: true,
-			UpdateOptions: UpdateOptions{
-				RequiredPolicies: []RequiredPolicy{&failingDownloadRequiredPolicy{name: "failing-download-policy"}},
-			},
-			HostF: hostF,
-		},
-	}
-
-	project := p.GetProject()
-	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	require.ErrorContains(t, err, "policy pack download failed")
-}
+func (p *failingRequiredPolicy) Exceptions() map[string]json.RawMessage { return nil }
 
 // TestPolicyPackInstallFailureReturnsError is a regression test verifying that errors from the install
 // step of policy pack installation are returned to the caller rather than silently dropped.
@@ -1302,14 +1233,14 @@ func TestPolicyPackInstallFailureReturnsError(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
 			T:                t,
 			SkipDisplayTests: true,
 			UpdateOptions: UpdateOptions{
-				RequiredPolicies: []RequiredPolicy{&failingInstallRequiredPolicy{name: "failing-install-policy"}},
+				RequiredPolicies: []RequiredPolicy{&failingRequiredPolicy{name: "failing-policy"}},
 			},
 			HostF: hostF,
 		},

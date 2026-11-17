@@ -15,6 +15,7 @@
 package packagecmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,15 +23,20 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -41,6 +47,9 @@ func newGenSdkCommand() *cobra.Command {
 	var out string
 	var version string
 	var local bool
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "gen-sdk",
 		Short: "Generate SDK(s) from a package or schema",
@@ -51,27 +60,42 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
+			agent := agentdetect.Detect(os.Getenv)
 
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(registry))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
+				nil, cloudCredentialEnv)
 			if err != nil {
 				return err
 			}
 			defer contract.IgnoreClose(pctx)
 
-			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
+			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
-			pkg, err := packages.BindSpec(*spec)
+			pkg, err := packages.BindSpec(*spec, schema.NewPluginLoader(pctx))
 			if err != nil {
 				return err
 			}
@@ -86,31 +110,27 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				}
 				pkg.Version = &pkgVersion
 			}
-			// Normalize from well known language names the matching runtime names.
-			switch language {
-			case "csharp", "c#":
-				language = "dotnet"
-			case "typescript":
-				language = "nodejs"
-			}
+			language = cmdCmd.NormalizeRuntimeName(language)
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					diags, err := packages.GenSDK(cmd.Context(), lang, out, pkg, overlays, local)
+					diags, err := packages.GenSDK(cmd.Context(), registry, lang, out, pkg, overlays, local)
 					cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 					if err != nil {
 						return err
 					}
 				}
-				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
+				fmt.Fprintf(cmd.ErrOrStderr(), "SDKs have been written to %s\n", out)
+				printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), registry, pkg)
 				return nil
 			}
-			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
+			diags, err := packages.GenSDK(cmd.Context(), registry, language, out, pkg, overlays, local)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stderr, "SDK has been written to %s\n", filepath.Join(out, language))
+			fmt.Fprintf(cmd.ErrOrStderr(), "SDK has been written to %s\n", filepath.Join(out, language))
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), registry, pkg)
 			return nil
 		},
 	}
@@ -135,6 +155,10 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
 	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
 	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }

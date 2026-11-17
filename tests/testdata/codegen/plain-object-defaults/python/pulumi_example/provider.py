@@ -20,7 +20,7 @@ __all__ = ['ProviderArgs', 'Provider']
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None):
+                 helm_release_settings: pulumi.Input[Optional['HelmReleaseSettingsArgs']] = None):
         """
         The set of arguments for constructing a Provider resource.
 
@@ -31,14 +31,14 @@ class ProviderArgs:
 
     @_builtins.property
     @pulumi.getter(name="helmReleaseSettings")
-    def helm_release_settings(self) -> Optional[pulumi.Input['HelmReleaseSettingsArgs']]:
+    def helm_release_settings(self) -> pulumi.Input[Optional['HelmReleaseSettingsArgs']]:
         """
         BETA FEATURE - Options to configure the Helm Release resource.
         """
         return pulumi.get(self, "helm_release_settings")
 
     @helm_release_settings.setter
-    def helm_release_settings(self, value: Optional[pulumi.Input['HelmReleaseSettingsArgs']]):
+    def helm_release_settings(self, value: pulumi.Input[Optional['HelmReleaseSettingsArgs']]):
         pulumi.set(self, "helm_release_settings", value)
 
 
@@ -48,11 +48,10 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[pulumi.Input[Union['HelmReleaseSettingsArgs', 'HelmReleaseSettingsArgsDict']]] = None,
+                 helm_release_settings: pulumi.Input[Optional[Union['HelmReleaseSettingsArgs', 'HelmReleaseSettingsArgsDict']]] = None,
                  __props__=None):
         """
         The provider type for the kubernetes package.
-
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -66,7 +65,6 @@ class Provider(pulumi.ProviderResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         The provider type for the kubernetes package.
-
 
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.
@@ -83,7 +81,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[pulumi.Input[Union['HelmReleaseSettingsArgs', 'HelmReleaseSettingsArgsDict']]] = None,
+                 helm_release_settings: pulumi.Input[Optional[Union['HelmReleaseSettingsArgs', 'HelmReleaseSettingsArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

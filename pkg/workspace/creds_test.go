@@ -15,11 +15,15 @@
 package workspace
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetCurrentCloudURL(t *testing.T) {
@@ -35,6 +39,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 		e              env.Env
 		project        *workspace.Project
 		expectedString string
+		expectedSource CloudURLSource
 		expectedError  error
 	}{
 		{
@@ -42,6 +47,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			ws:             &MockContext{},
 			e:              env.NewEnv(env.MapStore{}),
 			expectedString: "",
+			expectedSource: CloudURLSourceNone,
 		},
 		{
 			name: "stored credentials",
@@ -50,6 +56,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			},
 			e:              env.NewEnv(env.MapStore{}),
 			expectedString: "https://credentials.com",
+			expectedSource: CloudURLSourceCredentials,
 		},
 		{
 			name: "project setting takes precedence",
@@ -59,6 +66,17 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			e:              env.NewEnv(env.MapStore{}),
 			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
 			expectedString: "https://project.com",
+			expectedSource: CloudURLSourceProject,
+		},
+		{
+			name: "empty project setting falls back to stored credentials",
+			ws: &MockContext{
+				GetStoredCredentialsF: credsF,
+			},
+			e:              env.NewEnv(env.MapStore{}),
+			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: ""}},
+			expectedString: "https://credentials.com",
+			expectedSource: CloudURLSourceCredentials,
 		},
 		{
 			name: "envvar takes precedence",
@@ -70,6 +88,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			}),
 			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
 			expectedString: "https://env.com",
+			expectedSource: CloudURLSourceEnv,
 		},
 		{
 			name: "report error from stored credentials",
@@ -87,9 +106,107 @@ func TestGetCurrentCloudURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			str, err := GetCurrentCloudURL(tt.ws, tt.e, tt.project)
+			str, source, err := GetCurrentCloudURLWithSource(tt.ws, tt.e, tt.project)
+			assert.Equal(t, tt.expectedError, err)
+			assert.Equal(t, tt.expectedString, str)
+			assert.Equal(t, tt.expectedSource, source)
+
+			// GetCurrentCloudURL must stay in lockstep with the variant above.
+			str, err = GetCurrentCloudURL(tt.ws, tt.e, tt.project)
 			assert.Equal(t, tt.expectedError, err)
 			assert.Equal(t, tt.expectedString, str)
 		})
 	}
+}
+
+func TestGetCurrentCloudURLFallsBackToAgentCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	err := workspace.StoreAgentAccount("https://api.agent.example", workspace.Account{AccessToken: "token-value"}, true)
+	require.NoError(t, err)
+
+	ws := &MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	url, err := GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.agent.example", url)
+}
+
+func TestGetCurrentCloudURLReturnsEmptyAgentCurrent(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	ws := &MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	url, err := GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, url)
+}
+
+func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+	t.Setenv("CODEX_SANDBOX", "1")
+	agentDir := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(agentDir, []byte("not a directory"), 0o600))
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", agentDir)
+
+	ws := &MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	_, err := GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
+	require.ErrorContains(t, err, "could not get cloud url from agent credentials")
+}
+
+func TestGetCurrentCloudURLDoesNotFallbackWithExplicitPath(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "/explicit/pulumi")
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	ws := &MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	_, err := GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
+	require.ErrorIs(t, err, assert.AnError)
+}
+
+func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
+
+	ws := &MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{}, assert.AnError
+		},
+	}
+
+	_, err := GetCurrentCloudURLWithAgentFallback(ws, env.Global(), nil)
+	require.ErrorIs(t, err, assert.AnError)
+}
+
+func TestGetCurrentCloudURLReturnsDefaultCloudURL(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv(env.BackendURL.Var().Name(), "https://api.default-current.example.com")
+
+	url, err := GetCurrentCloudURLWithAgentFallback(&MockContext{}, env.Global(), nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.default-current.example.com", url)
 }

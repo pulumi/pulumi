@@ -17,6 +17,7 @@ package pulumi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"maps"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -252,10 +254,6 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 func TestResourceOptionComposite(t *testing.T) {
 	t.Parallel()
 
-	ptr := func(b bool) *bool {
-		return &b
-	}
-
 	tests := []struct {
 		name  string
 		input []ResourceOption
@@ -272,7 +270,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 		},
 		{
@@ -282,7 +280,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(false),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(false),
+				DeleteBeforeReplace: new(false),
 			},
 		},
 		{
@@ -293,7 +291,7 @@ func TestResourceOptionComposite(t *testing.T) {
 				DeleteBeforeReplace(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
+				DeleteBeforeReplace: new(true),
 			},
 		},
 		{
@@ -303,8 +301,8 @@ func TestResourceOptionComposite(t *testing.T) {
 				Protect(true),
 			},
 			want: &resourceOptions{
-				DeleteBeforeReplace: ptr(true),
-				Protect:             ptr(true),
+				DeleteBeforeReplace: new(true),
+				Protect:             new(true),
 			},
 		},
 	}
@@ -539,6 +537,80 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 		p2 := reflect.ValueOf(t2[i]).Pointer()
 		assert.Equal(t, p1, p2)
 	}
+}
+
+func TestTransformationPreservesParent(t *testing.T) {
+	t.Parallel()
+
+	identity := func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+		return &ResourceTransformationResult{
+			Props: args.Props,
+			Opts:  args.Opts,
+		}
+	}
+
+	var parents gsync.Map[string, string]
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{identity})))
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+
+	withoutParent, _ := parents.Load("without-transform")
+	withParent, _ := parents.Load("with-transform")
+	require.NotEmpty(t, withoutParent, "baseline should have a parent")
+	assert.Equal(t, withoutParent, withParent,
+		"transformation must not drop the parent")
+}
+
+func TestTransformationCannotChangeParent(t *testing.T) {
+	t.Parallel()
+
+	var parents gsync.Map[string, string]
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		return ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{
+				func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+					return &ResourceTransformationResult{
+						Props: args.Props,
+						Opts:  append(args.Opts, Parent(&withoutT)),
+					}
+				},
+			}))
+	}, WithMocks("project", "stack", monitor))
+	assert.ErrorIs(t, err, errTransformationsCannotChangeParent)
 }
 
 func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
@@ -1332,10 +1404,7 @@ func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirp
 		resp *pulumirpc.RegisterResourceResponse,
 		err error,
 	) {
-		deps := slice.Prealloc[URN](len(in.GetDependencies()))
-		for _, dep := range in.GetDependencies() {
-			deps = append(deps, URN(dep))
-		}
+		deps := slice.Cast[URN](in.GetDependencies())
 		dt.dependsOn.Store(URN(resp.Urn), deps)
 	}
 	return m
@@ -1447,7 +1516,7 @@ type DoEchoArgs struct {
 type DoEchoResultOutput struct{ *OutputState }
 
 func (DoEchoResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*DoEchoResult)(nil)).Elem()
+	return reflect.TypeFor[DoEchoResult]()
 }
 
 func TestInvokeDependsOn(t *testing.T) {
@@ -1580,6 +1649,215 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 		require.False(t, secret)
 		require.Len(t, deps, 1)
 		require.True(t, deps[0] == comp) // The component, not the child
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+type DoEchoOutputArgs struct {
+	Echo StringPtrInput `pulumi:"echo"`
+}
+
+func (DoEchoOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeFor[DoEchoArgs]()
+}
+
+// An invoke's resource dependencies are inferred from its arguments and recorded on the result
+// output. (pulumi/pulumi#18298)
+func TestInvokeOutputArgsDependencies(t *testing.T) {
+	t.Parallel()
+
+	resolved := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": args.Args["echo"],
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			time.Sleep(1 * time.Second)
+			resolved = true
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "dep")
+		args := DoEchoOutputArgs{
+			Echo: dep.URN().ApplyT(func(urn URN) *string {
+				return new(string(urn))
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		v, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.False(t, secret)
+		require.True(t, resolved, "expected the invoke to wait for its argument dependency")
+		require.NotEmpty(t, *v.(DoEchoResult).Echo)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// During a preview, a resource's outputs can be known while the resource has not been created yet
+// (its ID is unknown). An invoke whose arguments depend on such a resource must not run.
+// (pulumi/pulumi#18298)
+func TestInvokeOutputArgsDependencyPendingCreate(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invoked = true
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			// No ID: the resource is pending creation.
+			return "", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "dep")
+		args := DoEchoOutputArgs{
+			// The argument's value is known, but it depends on dep, whose ID is unknown.
+			Echo: dep.URN().ApplyT(func(URN) *string {
+				return new("known value")
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.False(t, invoked, "expected the invoke to be skipped")
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor), func(info *RunInfo) {
+		info.DryRun = true
+	})
+	require.NoError(t, err)
+}
+
+// If any argument is unknown, the invoke is skipped and its result is unknown.
+func TestInvokeOutputArgsUnknown(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invoked = true
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newUnknownRes()
+		args := DoEchoOutputArgs{
+			Echo: UnsafeUnknownOutput([]Resource{dep}).ApplyT(func(any) *string {
+				return nil
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.False(t, invoked, "expected the invoke to be skipped")
+		require.Len(t, deps, 1)
+		require.True(t, deps[0] == dep)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// Secret arguments are sent to the provider as their raw values and make the result secret.
+func TestInvokeOutputArgsSecret(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			require.Equal(t, resource.NewProperty("shh"), args.Args["echo"])
+			return resource.PropertyMap{
+				"echo": args.Args["echo"],
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		args := DoEchoOutputArgs{
+			Echo: ToSecret(String("shh")).(StringOutput).ApplyT(func(s string) *string {
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		v, known, secret, _, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.True(t, secret)
+		require.Equal(t, "shh", *v.(DoEchoResult).Echo)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// PackageRefF resolves the package reference on the invoke's goroutine; its error rejects the
+// result output.
+func TestInvokeOutputPackageRefF(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		o := ctx.InvokeOutput("pkg:index:doEcho", DoEchoArgs{}, DoEchoResultOutput{}, InvokeOutputOptions{
+			PackageRefF: func(*Context) (string, error) {
+				return "some-package-ref", nil
+			},
+		})
+
+		v, known, _, _, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.Equal(t, "hello", *v.(DoEchoResult).Echo)
+
+		o = ctx.InvokeOutput("pkg:index:doEcho", DoEchoArgs{}, DoEchoResultOutput{}, InvokeOutputOptions{
+			PackageRefF: func(*Context) (string, error) {
+				return "", errors.New("package ref failure")
+			},
+		})
+
+		_, _, _, _, err = internal.AwaitOutput(ctx.Context(), o)
+		require.ErrorContains(t, err, "package ref failure")
 
 		return nil
 	}, WithMocks("project", "stack", monitor))

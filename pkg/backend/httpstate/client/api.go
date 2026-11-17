@@ -22,9 +22,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -32,8 +34,10 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -51,8 +55,86 @@ const (
 	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
 )
 
+// Pulumi service Accept header version history.
+//
+// The CLI advertises its API capabilities to the service by setting the
+// `Accept: application/vnd.pulumi+N` header on every request. Each increment
+// reflects a CLI capability the service can rely on, gating response shape or
+// behavior accordingly. Keep this table in sync with the matching version block
+// in pulumi-service `cmd/service/api/rest/request.go` — the integers are a
+// shared contract across both repos.
+//
+// To add a new capability: bump `currentAPIVersion` and append a row to the
+// table below.
+//
+// CLI Ver. API Ver. Description
+// -------- -------- -----------
+//
+//	pre-1.0     0    Initial API version.
+//	  v15.3     1    New /user/stacks response type.
+//	 v16.07     2    CLI sends "rich update events" during an update.
+//	v0.16.2     3    /user/stacks returns project name; /stacks routes accept project name.
+//	 v1.1.1     4    Policy as Code support.
+//	 v1.5.0     5    renew_lease takes the update token instead of the user access token.
+//	v1.13.1     6    PAC config support.
+//	 v3.3.2     7    CLI sets required headers when uploading policy packs via pre-signed URL.
+//	 v3.9.0     8    CLI handles paginated /user/stacks responses.
+//	 v3.233     9    SecretValue tolerance: CLI decodes the explicit
+//	                 {"isSecret": bool, "value": "..."} object form in addition
+//	                 to the legacy heterogeneous form (bare string when not
+//	                 secret, {"secret": "..."} when secret). Tolerant decoder
+//	                 added in https://github.com/pulumi/pulumi/pull/22699.
+const currentAPIVersion = 9
+
+// acceptAPIVersionHeader is the rendered `Accept` header value sent on every
+// request to the Pulumi service. See `currentAPIVersion`.
+var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
+
+// userAgentCommand and userAgentAIAgent are written once in the cobra root's
+// PersistentPreRunE before any HTTP-issuing goroutine is spawned, then read
+// from any goroutine making an API request. The single-writer-before-readers
+// pattern means no synchronization is needed.
+var (
+	userAgentCommand string
+	userAgentAIAgent string
+)
+
+// SetUserAgentCommand sets the running CLI command appended to UserAgent as `cmd=...`.
+func SetUserAgentCommand(command string) {
+	userAgentCommand = sanitizeUserAgentToken(command)
+}
+
+// SetUserAgentAIAgent sets the detected AI agent appended to UserAgent as `agent=...`.
+func SetUserAgentAIAgent(agent string) {
+	userAgentAIAgent = sanitizeUserAgentToken(agent)
+}
+
+func sanitizeUserAgentToken(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer(
+		" ", "-",
+		"\t", "-",
+		"(", "",
+		")", "",
+		";", "",
+	)
+	return replacer.Replace(s)
+}
+
 func UserAgent() string {
-	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	var extras strings.Builder
+	if userAgentCommand != "" {
+		extras.WriteString("; cmd=")
+		extras.WriteString(userAgentCommand)
+	}
+	if userAgentAIAgent != "" {
+		extras.WriteString("; agent=")
+		extras.WriteString(userAgentAIAgent)
+	}
+	return fmt.Sprintf("pulumi-cli/1 (%s; %s%s)", version.Version, runtime.GOOS, extras.String())
 }
 
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
@@ -91,6 +173,16 @@ type accessToken interface {
 	Get(ctx context.Context) (string, error)
 }
 
+// refreshable is the opt-in interface for access tokens that can renew themselves when the server
+// rejects the current value with 401. defaultRESTClient.Call type-asserts on this after a 401 and,
+// if the assertion succeeds, calls Refresh once and retries the request before surfacing
+// LoginRequiredError. prevAccessToken is the access token the caller sent on the failed request;
+// if it no longer matches the wrapper's current token, another caller has already refreshed and
+// Refresh returns nil without contacting the server.
+type refreshable interface {
+	Refresh(ctx context.Context, prevAccessToken string) error
+}
+
 type httpCallOptions struct {
 	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
 	//
@@ -105,6 +197,13 @@ type httpCallOptions struct {
 
 	// ErrorResponse is an optional response body for errors.
 	ErrorResponse any
+
+	// SkipDecodeErrors, when true, makes pulumiAPICall skip the 401/429/4xx/5xx
+	// typed-error classification.
+	// The caller is responsible for inspecting status, reading the body, and
+	// closing it. The body read/decode/close is still handled by passing
+	// **http.Response to Call's respObj — this only controls error decoding.
+	SkipDecodeErrors bool
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -117,6 +216,60 @@ func (apiAccessToken) Kind() accessTokenKind {
 
 func (t apiAccessToken) Get(_ context.Context) (string, error) {
 	return string(t), nil
+}
+
+// refreshableAPIAccessToken is an apiAccessToken that can renew itself via the OAuth refresh-token
+// grant (RFC 6749 §6) when the current access token expires. defaultRESTClient.Call type-asserts
+// on the refreshable interface after a 401 and calls Refresh once before falling through to
+// LoginRequiredError.
+//
+// The refresh and writeback callbacks are decoupled so the type stays free of dependencies on the
+// Pulumi service client and credential storage: callers wire the wrapper into client.NewClient by
+// closing over Client.RefreshAccessToken and workspace.StoreAccount respectively.
+type refreshableAPIAccessToken struct {
+	mu sync.Mutex
+	// accessToken is the current short-lived bearer; sent on every request.
+	accessToken string
+	// refreshToken is the long-lived credential exchanged at /api/oauth/token for a fresh
+	// access token. Held off the request path and only ever passed to the refresh callback.
+	refreshToken string
+	// refresh exchanges refreshToken for a new access token. Empty newRefreshToken /
+	// zero accessTokenExpiresAt means the server did not supply that field; the
+	// wrapper keeps the existing value.
+	refresh func(ctx context.Context, refreshToken string) (
+		accessToken string, accessTokenExpiresAt time.Time, newRefreshToken string, err error)
+	// writeback persists the refreshed credentials. Called with the wrapper's lock held
+	// so the in-memory and on-disk views can't diverge under concurrent refreshes.
+	writeback func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error
+}
+
+func (*refreshableAPIAccessToken) Kind() accessTokenKind {
+	return accessTokenKindAPIToken
+}
+
+func (t *refreshableAPIAccessToken) Get(_ context.Context) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.accessToken, nil
+}
+
+func (t *refreshableAPIAccessToken) Refresh(ctx context.Context, prevAccessToken string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	// If another caller already refreshed while we were queued for the lock, the in-memory
+	// access token has advanced past the one we sent — bail without burning another grant.
+	if t.accessToken != prevAccessToken {
+		return nil
+	}
+	newAT, expiresAt, newRT, err := t.refresh(ctx, t.refreshToken)
+	if err != nil {
+		return err
+	}
+	t.accessToken = newAT
+	if newRT != "" {
+		t.refreshToken = newRT
+	}
+	return t.writeback(t.accessToken, expiresAt, t.refreshToken)
 }
 
 // UpdateTokenSource allows the API client to request tokens for an in-progress update as near as possible to the
@@ -147,18 +300,6 @@ func (updateToken) Kind() accessTokenKind {
 
 func (t updateToken) Get(ctx context.Context) (string, error) {
 	return t.source.GetToken(ctx)
-}
-
-func float64Ptr(f float64) *float64 {
-	return &f
-}
-
-func durationPtr(d time.Duration) *time.Duration {
-	return &d
-}
-
-func intPtr(i int) *int {
-	return &i
 }
 
 // retryPolicy defines the policy for retrying requests by httpClient.Do.
@@ -209,15 +350,59 @@ type httpClient interface {
 	Do(req *http.Request, policy retryPolicy) (*http.Response, error)
 }
 
+// tracingTransport wraps an http.RoundTripper to create a span for each individual HTTP attempt,
+// making retries visible in traces. Requests to apiHost carry the context of the attempt span.
+type tracingTransport struct {
+	base    http.RoundTripper
+	apiHost string
+	attempt int
+}
+
+func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.attempt++
+	ctx := req.Context()
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "HTTP attempt",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.Int("http.attempt", t.attempt),
+			attribute.String("http.method", req.Method),
+			attribute.String("http.url", req.URL.String()),
+		))
+	defer span.End()
+
+	// A RoundTripper must not modify the caller's request, so clone it before the headers change.
+	req = req.Clone(ctx)
+	if req.URL.Host == t.apiHost {
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	}
+	resp, err := t.base.RoundTrip(req)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	} else {
+		span.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
+		if resp.StatusCode >= 400 {
+			span.SetStatus(codes.Error, resp.Status)
+		} else {
+			span.SetStatus(codes.Ok, "")
+		}
+	}
+	return resp, err
+}
+
 // defaultHTTPClient is an implementation of httpClient that provides a basic implementation of Do
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
 	client *http.Client
+	// apiHost is the host of the Pulumi Cloud API. Only requests to this host carry the trace context.
+	apiHost string
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
+	ctx := credentialhelper.WithOperation(req.Context())
 	requestSpan, ctx := opentracing.StartSpanFromContext(
-		req.Context(),
+		ctx,
 		"HTTP request",
 		opentracing.Tag{Key: "method", Value: req.Method},
 		opentracing.Tag{Key: "url", Value: req.URL},
@@ -240,18 +425,26 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	// Add a User-Agent header to distinguish the pulumi CLI from other clients.
 	req.Header.Set("User-Agent", UserAgent())
 
+	// Wrap the transport to get per-attempt spans.
+	transport := c.client.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	tracingClient := *c.client
+	tracingClient.Transport = &tracingTransport{base: transport, apiHost: c.apiHost}
+
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
 	opts := httputil.RetryOpts{
-		Delay:    durationPtr(time.Second),
-		Backoff:  float64Ptr(2.0),
-		MaxDelay: durationPtr(30 * time.Second),
+		Delay:    new(time.Second),
+		Backoff:  new(2.0),
+		MaxDelay: new(30 * time.Second),
 
-		MaxRetryCount:         intPtr(4),
+		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
-	return httputil.DoWithRetryOpts(req, c.client, opts)
+	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
@@ -302,12 +495,11 @@ func pulumiAPICall(ctx context.Context,
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set headers from the incoming options.
-	for k, v := range opts.Header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, opts.Header)
 
-	// Specify the specific API version we accept.
-	req.Header.Add("Accept", "application/vnd.pulumi+8")
+	// Advertise the API capabilities this CLI supports. See the version-history
+	// table above `currentAPIVersion`.
+	req.Header.Add("Accept", acceptAPIVersionHeader)
 
 	// Apply credentials if provided.
 	creds, err := tok.Get(ctx)
@@ -337,7 +529,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
-	if logging.V(apiRequestDetailLogLevel) {
+	if logging.V(apiRequestDetailLogLevel).Enabled() {
 		logging.V(apiRequestDetailLogLevel).Infof(
 			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
@@ -353,6 +545,10 @@ func pulumiAPICall(ctx context.Context,
 	logging.V(apiRequestLogLevel).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
 
 	requestSpan.SetTag("responseCode", resp.Status)
+
+	if opts.SkipDecodeErrors {
+		return url, resp, nil
+	}
 
 	if warningHeader, ok := resp.Header["X-Pulumi-Warning"]; ok {
 		for _, warning := range warningHeader {
@@ -389,8 +585,7 @@ func pulumiAPICall(ctx context.Context,
 
 		if resp.StatusCode == 401 {
 			loginErr := backenderr.LoginRequiredError{}
-			var errResp *apitype.ErrorResponse
-			if errors.As(err, &errResp) {
+			if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 				for _, e := range errResp.Errors {
 					if (e.ErrorType == "saml_reauth_required" || e.ErrorType == "saml_login_required") && e.Attribute != nil {
 						if u := CloudConsoleURL(cloudAPI, "signin", "sso", *e.Attribute, "reauth"); u != "" {
@@ -498,9 +693,22 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		}
 	}
 
-	// Make API call
+	// Make API call. If the access token can refresh itself and the server rejects it with
+	// LoginRequiredError, refresh once and retry — this lets agent CLIs survive routine access-token
+	// expiry without bouncing back through a human-driven login. Snapshot the access token before
+	// the send so we can tell Refresh which one we used; concurrent 401s thereby dedupe to one
+	// refresh instead of N.
+	sentAccessToken, _ := tok.Get(ctx)
 	url, resp, err := pulumiAPICall(
 		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+	if err != nil && errors.Is(err, backenderr.LoginRequiredError{}) {
+		if r, ok := tok.(refreshable); ok {
+			if refreshErr := r.Refresh(ctx, sentAccessToken); refreshErr == nil {
+				url, resp, err = pulumiAPICall(
+					ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+			}
+		}
+	}
 	if err != nil {
 		otelSpan.RecordError(err)
 		otelSpan.SetStatus(codes.Error, err.Error())
@@ -528,7 +736,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	if err != nil {
 		return fmt.Errorf("reading response from API: %w", err)
 	}
-	if logging.V(apiRequestDetailLogLevel) {
+	if logging.V(apiRequestDetailLogLevel).Enabled() {
 		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
 	}
 
@@ -591,4 +799,26 @@ func bodyIntoReader(resp *http.Response) (io.ReadCloser, error) {
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}
+}
+
+// gzipReadCloser wraps a gzip.Reader so closing the wrapper closes both the
+// gzip stream and the underlying response body. Used by Call when the caller
+// passes a **http.Response — the body needs to outlive Call's stack frame, so
+// bodyIntoReader's defer-close pattern doesn't apply.
+type gzipReadCloser struct {
+	gzip *gzip.Reader
+	body io.ReadCloser
+}
+
+func (g *gzipReadCloser) Read(p []byte) (int, error) {
+	return g.gzip.Read(p)
+}
+
+func (g *gzipReadCloser) Close() error {
+	gzipErr := g.gzip.Close()
+	bodyErr := g.body.Close()
+	if gzipErr != nil {
+		return gzipErr
+	}
+	return bodyErr
 }

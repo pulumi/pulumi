@@ -2,7 +2,9 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::res0]
+<{%reset%}><{%fg 2%}>    input: <{%reset%}><{%fg 2%}>"value"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%fg 2%}>    input: <{%reset%}><{%fg 2%}>"value"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 3 to create<{%reset%}>

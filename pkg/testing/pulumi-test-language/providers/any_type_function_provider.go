@@ -22,9 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type AnyTypeFunctionProvider struct {
@@ -41,10 +40,6 @@ func (p *AnyTypeFunctionProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *AnyTypeFunctionProvider) Pkg() tokens.Package {
-	return "any-type-function"
 }
 
 func (p *AnyTypeFunctionProvider) GetSchema(
@@ -93,26 +88,26 @@ func (p *AnyTypeFunctionProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "15.0.0" {
+	if version.AsString() != "15.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 15.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 15.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -176,7 +171,7 @@ func (p *AnyTypeFunctionProvider) Invoke(
 	ctx context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	if req.Tok == "any-type-function:index:dynListToDyn" {
-		value, ok := req.Args["inputs"]
+		value, ok := req.Args.GetOk("inputs")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("inputs", "missing inputs"),
@@ -190,11 +185,11 @@ func (p *AnyTypeFunctionProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(resource.PropertyMap{
-					"resultProperty": resource.NewProperty("resultValue"),
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(map[string]property.Value{
+					"resultProperty": property.New("resultValue"),
 				}),
-			},
+			}),
 		}, nil
 	}
 

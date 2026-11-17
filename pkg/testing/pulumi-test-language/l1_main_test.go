@@ -23,6 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -65,6 +68,9 @@ func (h *L1MainLanguageHost) GenerateProject(
 	}
 	if !req.Strict {
 		return nil, errors.New("expected strict to be true")
+	}
+	if req.MapperTarget == "" {
+		return nil, errors.New("expected a mapper target")
 	}
 	if filepath.Base(req.SourceDirectory) != "subdir" {
 		return nil, fmt.Errorf("unexpected source directory %s", req.SourceDirectory)
@@ -193,7 +199,7 @@ func TestL1Main(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L1MainLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

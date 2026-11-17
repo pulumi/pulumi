@@ -19,6 +19,7 @@
         "skipLibCheck": true
     },
     "files": [
+        "fail.ts",
         "index.ts",
         "provider.ts",
         "resource.ts",

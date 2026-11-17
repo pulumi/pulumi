@@ -1721,6 +1721,7 @@ type AnalyzerResourceOptions_CustomTimeouts struct {
 	Create        float64                `protobuf:"fixed64,1,opt,name=create,proto3" json:"create,omitempty"` // The create resource timeout in seconds.
 	Update        float64                `protobuf:"fixed64,2,opt,name=update,proto3" json:"update,omitempty"` // The update resource timeout in seconds.
 	Delete        float64                `protobuf:"fixed64,3,opt,name=delete,proto3" json:"delete,omitempty"` // The delete resource timeout in seconds.
+	Read          float64                `protobuf:"fixed64,4,opt,name=read,proto3" json:"read,omitempty"`     // The read resource timeout in seconds.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1776,6 +1777,13 @@ func (x *AnalyzerResourceOptions_CustomTimeouts) GetDelete() float64 {
 	return 0
 }
 
+func (x *AnalyzerResourceOptions_CustomTimeouts) GetRead() float64 {
+	if x != nil {
+		return x.Read
+	}
+	return 0
+}
+
 var File_pulumi_analyzer_proto protoreflect.FileDescriptor
 
 const file_pulumi_analyzer_proto_rawDesc = "" +
@@ -1826,7 +1834,7 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\x14propertyDependencies\x18\t \x03(\v25.pulumirpc.AnalyzerResource.PropertyDependenciesEntryR\x14propertyDependencies\x1ap\n" +
 	"\x19PropertyDependenciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12=\n" +
-	"\x05value\x18\x02 \x01(\v2'.pulumirpc.AnalyzerPropertyDependenciesR\x05value:\x028\x01\"\xec\x03\n" +
+	"\x05value\x18\x02 \x01(\v2'.pulumirpc.AnalyzerPropertyDependenciesR\x05value:\x028\x01\"\x80\x04\n" +
 	"\x17AnalyzerResourceOptions\x12\x18\n" +
 	"\aprotect\x18\x01 \x01(\bR\aprotect\x12$\n" +
 	"\rignoreChanges\x18\x02 \x03(\tR\rignoreChanges\x120\n" +
@@ -1835,11 +1843,12 @@ const file_pulumi_analyzer_proto_rawDesc = "" +
 	"\x17additionalSecretOutputs\x18\x05 \x03(\tR\x17additionalSecretOutputs\x12\x18\n" +
 	"\aaliases\x18\x06 \x03(\tR\aaliases\x12Y\n" +
 	"\x0ecustomTimeouts\x18\a \x01(\v21.pulumirpc.AnalyzerResourceOptions.CustomTimeoutsR\x0ecustomTimeouts\x12\x16\n" +
-	"\x06parent\x18\b \x01(\tR\x06parent\x1aX\n" +
+	"\x06parent\x18\b \x01(\tR\x06parent\x1al\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +
 	"\x06create\x18\x01 \x01(\x01R\x06create\x12\x16\n" +
 	"\x06update\x18\x02 \x01(\x01R\x06update\x12\x16\n" +
-	"\x06delete\x18\x03 \x01(\x01R\x06delete\"\x8d\x01\n" +
+	"\x06delete\x18\x03 \x01(\x01R\x06delete\x12\x12\n" +
+	"\x04read\x18\x04 \x01(\x01R\x04read\"\x8d\x01\n" +
 	"\x18AnalyzerProviderResource\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x127\n" +
 	"\n" +

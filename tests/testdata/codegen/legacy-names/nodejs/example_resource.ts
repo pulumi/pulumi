@@ -20,6 +20,16 @@ export class Example_resource extends pulumi.CustomResource {
         return new Example_resource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Example_resource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("legacy_names:index:example_resource", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'legacy_names:index:example_resource';
 
@@ -67,6 +77,6 @@ export class Example_resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Example_resource resource.
  */
 export interface Example_resourceArgs {
-    map_enum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.Enum_XYZ>}>[]>;
-    request_HTTP?: pulumi.Input<inputs.HTTP_module.RequestArgs>;
+    map_enum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.Enum_XYZ>}>[] | undefined>;
+    request_HTTP?: pulumi.Input<inputs.HTTP_module.RequestArgs | undefined>;
 }

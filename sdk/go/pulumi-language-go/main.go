@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -120,9 +119,13 @@ func compileProgram(
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
-	args := []string{"build", "-o", outfile}
+	// We add the `-buildvcs=false` flag here because it sometimes fails on Windows.
+	// See also https://github.com/pulumi/pulumi/pull/22788
+	args := []string{"build", "-buildvcs=false", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
+	} else {
+		args = append(args, "-trimpath", "-ldflags", "-w -s")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
@@ -695,26 +698,28 @@ func (m *modInfo) getPackage(moduleRoot string) (*pulumirpc.PackageDependency, e
 		return nil, err
 	}
 
-	var server string
-	var parameterization *pulumirpc.PackageParameterization
-	server = pulumiPlugin.Server
-	if pulumiPlugin.Parameterization != nil {
-		parameterization = &pulumirpc.PackageParameterization{
-			Name:    pulumiPlugin.Parameterization.Name,
-			Version: pulumiPlugin.Parameterization.Version,
-			Value:   pulumiPlugin.Parameterization.Value,
+	server := pulumiPlugin.Server
+	toProtoParameterization := func(p *plugin.PulumiParameterizationJSON) *pulumirpc.PackageParameterization {
+		if p == nil {
+			return nil
+		}
+		return &pulumirpc.PackageParameterization{
+			Name:    p.Name,
+			Version: p.Version,
+			Value:   p.Value,
 		}
 	}
 
-	plugin := &pulumirpc.PackageDependency{
+	pkg := &pulumirpc.PackageDependency{
 		Name:             name,
 		Version:          version,
 		Kind:             "resource",
 		Server:           server,
-		Parameterization: parameterization,
+		Parameterization: toProtoParameterization(pulumiPlugin.Parameterization),
+		Extension:        toProtoParameterization(pulumiPlugin.ExtensionParameterization),
 	}
 
-	return plugin, nil
+	return pkg, nil
 }
 
 // Reads and parses the go.mod file for the program at the given path.
@@ -776,8 +781,17 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
 	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
 
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
+		if opts.binary != "" {
+			// A prebuilt program can run without Go. Package discovery is best effort in this case.
+			return &pulumirpc.GetRequiredPackagesResponse{}, nil
+		}
 		return nil, fmt.Errorf("couldn't find go binary: %w", err)
 	}
 
@@ -1317,12 +1331,6 @@ func (host *goLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
-func (host *goLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
-) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
-}
-
 func (host *goLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
@@ -1339,7 +1347,7 @@ func (host *goLanguageHost) RunPlugin(
 	defer contract.IgnoreClose(closer)
 
 	program, err := compileProgram(
-		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
+		server.Context(), engineClient, req.Info.ProgramDirectory, "", req.GetAttachDebugger(), os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
@@ -1382,7 +1390,6 @@ func (host *goLanguageHost) RunPlugin(
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				err = server.Send(&pulumirpc.RunPluginResponse{
-					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
 			} else {
@@ -1409,7 +1416,9 @@ func (host *goLanguageHost) GenerateProject(
 	}
 	defer loader.Close()
 
-	extraOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	extraOptions := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -1466,7 +1475,8 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(schema.NewCachedLoader(loader)))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader),
+		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}
@@ -1663,19 +1673,12 @@ func (host *goLanguageHost) Link(
 		if err := pkg.ImportLanguages(map[string]schema.Language{"go": codegen.Importer}); err != nil {
 			return nil, err
 		}
-		var modulePath string
-		if info, ok := pkg.Language["go"]; ok {
-			if info, ok := info.(codegen.GoPackageInfo); ok {
-				modulePath = info.ModulePath
-				if modulePath == "" {
-					if info.ImportBasePath != "" {
-						modulePath = path.Dir(info.ImportBasePath)
-					}
-				}
-			}
-		}
-		if modulePath == "" {
-			modulePath = codegen.ExtractModulePath(pkg.Reference())
+		// Resolve both paths the way the SDK generator does, so that the replace directive
+		// addresses the generated module and the printed import path addresses the package
+		// directory inside it.
+		modulePath, importPath, err := codegen.ModuleAndImportPath(pkg)
+		if err != nil {
+			return nil, err
 		}
 
 		modules[modulePath] = dep.Path
@@ -1688,7 +1691,7 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		imports.WriteString(fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference())))
+		fmt.Fprintf(&imports, "    \"%s\"\n", importPath)
 	}
 	instructions += imports.String()
 	instructions += "  )\n"

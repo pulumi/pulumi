@@ -1,0 +1,5 @@
+values:
+  object:
+    baz: qux
+  otherObject:
+    foo: bar

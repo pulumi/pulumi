@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Optional, TypeVar, Any, cast
+from typing import Optional, Any, cast
 import argparse
 import asyncio
 import sys
@@ -50,6 +50,7 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.output import _OutputData
 from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
@@ -70,6 +71,20 @@ class ComponentInitError(Exception):
         self.inner = inner
 
 
+def _raise_with_traceback(fn):
+    async def wrapper(self, request, context):
+        try:
+            return await fn(self, request, context)
+        except NotImplementedError:
+            raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
+
+    return wrapper
+
+
 class ProviderServicer(ResourceProviderServicer):
     """Implements a subset of `ResourceProvider` methods to support
     `Construct` and other methods invoked by the engine when the user
@@ -84,7 +99,6 @@ class ProviderServicer(ResourceProviderServicer):
     _args: list[str]
     _provider: provider.Provider
     _engine_address: str
-    _lock: asyncio.Lock
 
     def __init__(
         self,
@@ -98,7 +112,6 @@ class ProviderServicer(ResourceProviderServicer):
         self._version = version
         self._provider = provider
         self._engine_address = engine_address
-        self._lock = asyncio.Lock()
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
         return proto.PluginInfo(version=self._version)
@@ -141,9 +154,6 @@ class ProviderServicer(ResourceProviderServicer):
     async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self._lock.acquire()
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
@@ -168,8 +178,6 @@ class ProviderServicer(ResourceProviderServicer):
                     stack = traceback.extract_tb(e.__traceback__)[:]
                 pretty_stack = "".join(traceback.format_list(stack))
                 raise Exception(f"{str(e)}:\n{pretty_stack}")
-        finally:
-            self._lock.release()
 
     async def _construct(
         self, request: proto.ConstructRequest, context
@@ -239,12 +247,16 @@ class ProviderServicer(ResourceProviderServicer):
         # and/or track dependencies.
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
-        return pulumi.Output(
-            resources={DependencyResource(urn) for urn in deps},
-            future=_as_future(rpc.unwrap_rpc_secret(the_input)),
-            is_known=_as_future(True),
-            is_secret=_as_future(is_secret),
+        data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+        data_future.set_result(
+            _OutputData(
+                resources={DependencyResource(urn) for urn in deps},
+                value=rpc.unwrap_rpc_secret(the_input),
+                is_known=True,
+                is_secret=is_secret,
+            )
         )
+        return pulumi.Output._from_data(data_future)
 
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
@@ -285,9 +297,6 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
     async def Call(self, request: proto.CallRequest, context):
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self._lock.acquire()
         try:
             return await self._call(request, context)
         except InputPropertiesError as e:
@@ -302,8 +311,10 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
-        finally:
-            self._lock.release()
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def _call(self, request: proto.CallRequest, context):
         assert isinstance(request, proto.CallRequest), (
@@ -392,6 +403,7 @@ class ProviderServicer(ResourceProviderServicer):
         getattr(resp, "return").CopyFrom(return_value)
         return resp
 
+    @_raise_with_traceback
     async def Parameterize(
         self, request: proto.ParameterizeRequest, context
     ) -> proto.ParameterizeResponse:
@@ -417,6 +429,7 @@ class ProviderServicer(ResourceProviderServicer):
             version=resp.version,
         )
 
+    @_raise_with_traceback
     async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
@@ -439,6 +452,7 @@ class ProviderServicer(ResourceProviderServicer):
             ]
         return proto.InvokeResponse(**ret)
 
+    @_raise_with_traceback
     async def GetSchema(
         self, request: proto.GetSchemaRequest, context
     ) -> proto.GetSchemaResponse:
@@ -451,15 +465,16 @@ class ProviderServicer(ResourceProviderServicer):
         )
         return proto.GetSchemaResponse(schema=resp.schema or "")
 
+    @_raise_with_traceback
     async def CheckConfig(self, request: pulumi.runtime.proto.CheckRequest, context):
         resp = await self._provider.check_config(
-            provider.CheckRequest(
+            provider.CheckConfigRequest(
                 request.urn,
                 PropertyValue.unmarshal_map(request.olds),
                 PropertyValue.unmarshal_map(request.news),
-                request.randomSeed,
             )
         )
+        # CheckConfig can only carry the property and reason of a failure.
         return proto.CheckResponse(
             inputs=PropertyValue.marshal_map(resp.inputs)
             if resp.inputs is not None
@@ -472,6 +487,30 @@ class ProviderServicer(ResourceProviderServicer):
             else None,
         )
 
+    @_raise_with_traceback
+    async def CheckConfig2(
+        self, request: pulumi.runtime.proto.CheckConfigRequest, context
+    ):
+        resp = await self._provider.check_config(
+            provider.CheckConfigRequest(
+                request.urn,
+                PropertyValue.unmarshal_map(request.old_inputs),
+                PropertyValue.unmarshal_map(request.new_inputs),
+            )
+        )
+        return proto.CheckConfigResponse(
+            inputs=PropertyValue.marshal_map(resp.inputs)
+            if resp.inputs is not None
+            else None,
+            failures=[
+                proto.CheckConfigFailure(property=f.property, reason=f.reason)
+                for f in resp.failures
+            ]
+            if resp.failures is not None
+            else None,
+        )
+
+    @_raise_with_traceback
     async def DiffConfig(self, request, context):
         resp = await self._provider.diff_config(
             provider.DiffRequest(
@@ -495,6 +534,7 @@ class ProviderServicer(ResourceProviderServicer):
             hasDetailedDiff=True,
         )
 
+    @_raise_with_traceback
     async def Configure(
         self, request: proto.ConfigureRequest, context
     ) -> proto.ConfigureResponse:
@@ -513,6 +553,7 @@ class ProviderServicer(ResourceProviderServicer):
             supportsPreview=resp.supports_preview,
         )
 
+    @_raise_with_traceback
     async def Check(self, request: proto.CheckRequest, context):
         resp = await self._provider.check(
             provider.CheckRequest(
@@ -537,6 +578,7 @@ class ProviderServicer(ResourceProviderServicer):
             failures=failures,
         )
 
+    @_raise_with_traceback
     async def Diff(self, request: proto.DiffRequest, context):
         resp = await self._provider.diff(
             provider.DiffRequest(
@@ -577,6 +619,7 @@ class ProviderServicer(ResourceProviderServicer):
             hasDetailedDiff=True,
         )
 
+    @_raise_with_traceback
     async def Create(self, request, context):
         resp = await self._provider.create(
             provider.CreateRequest(
@@ -591,6 +634,7 @@ class ProviderServicer(ResourceProviderServicer):
             properties=PropertyValue.marshal_map(resp.properties),
         )
 
+    @_raise_with_traceback
     async def Update(self, request, context):
         resp = await self._provider.update(
             provider.UpdateRequest(
@@ -607,6 +651,7 @@ class ProviderServicer(ResourceProviderServicer):
             properties=PropertyValue.marshal_map(resp.properties),
         )
 
+    @_raise_with_traceback
     async def Delete(self, request, context):
         await self._provider.delete(
             provider.DeleteRequest(
@@ -618,6 +663,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
         return empty_pb2.Empty()
 
+    @_raise_with_traceback
     async def Read(self, request, context):
         resp = await self._provider.read(
             provider.ReadRequest(
@@ -632,6 +678,11 @@ class ProviderServicer(ResourceProviderServicer):
             properties=PropertyValue.marshal_map(resp.properties),
             inputs=PropertyValue.marshal_map(resp.inputs),
         )
+
+    async def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the provider")
+        raise NotImplementedError("List is not implemented by the provider")
 
 
 def main(args: list[str], version: str, provider: provider.Provider) -> None:
@@ -668,15 +719,6 @@ def main(args: list[str], version: str, provider: provider.Provider) -> None:
         asyncio.run(serve())
     except KeyboardInterrupt:
         pass
-
-
-T = TypeVar("T")
-
-
-def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: asyncio.Future[T] = asyncio.Future()
-    fut.set_result(value)
-    return fut
 
 
 def _empty_as_none(text: str) -> Optional[str]:
@@ -726,9 +768,8 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     urn_parts = pulumi.urn._parse_urn(urn)
     resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(
-            ProviderResource,
-            resource_package.construct_provider(urn_parts.urn_name, urn_parts.typ, urn),
+        return resource_package.construct_provider(
+            urn_parts.urn_name, urn_parts.typ, urn
         )
 
     return DependencyProviderResource(ref)

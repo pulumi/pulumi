@@ -3,6 +3,7 @@ package main
 import (
 	"example.com/pulumi-keywords/sdk/go/v20/keywords"
 	"example.com/pulumi-keywords/sdk/go/v20/keywords/lambda"
+	"example.com/pulumi-keywords/sdk/go/v20/keywords/module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -32,7 +33,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = keywords.NewLambda(ctx, "lambdaResource", &keywords.LambdaArgs{
+		_, err = module.NewLambda(ctx, "lambdaResource", &module.LambdaArgs{
 			Builtins: pulumi.String("builtins"),
 			Lambda:   pulumi.String("lambda"),
 			Property: pulumi.String("property"),

@@ -20,14 +20,14 @@ __all__ = [
 ]
 
 class RequestArgsDict(TypedDict):
-    url: NotRequired[pulumi.Input[_builtins.str]]
-    content_body: NotRequired[pulumi.Input[_builtins.str]]
+    url: NotRequired[pulumi.Input[Optional[_builtins.str]]]
+    content_body: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class RequestArgs:
     def __init__(__self__, *,
-                 url: Optional[pulumi.Input[_builtins.str]] = None,
-                 content_body: Optional[pulumi.Input[_builtins.str]] = None):
+                 url: pulumi.Input[Optional[_builtins.str]] = None,
+                 content_body: pulumi.Input[Optional[_builtins.str]] = None):
         if url is not None:
             pulumi.set(__self__, "url", url)
         if content_body is not None:
@@ -35,20 +35,20 @@ class RequestArgs:
 
     @_builtins.property
     @pulumi.getter(name="URL")
-    def url(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def url(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "url")
 
     @url.setter
-    def url(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def url(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "url", value)
 
     @_builtins.property
     @pulumi.getter
-    def content_body(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def content_body(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "content_body")
 
     @content_body.setter
-    def content_body(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def content_body(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "content_body", value)
 
 

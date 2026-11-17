@@ -18,11 +18,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 )
 
 func main() {
 	ctx := context.Background()
-	server, err := Start(ctx)
+	server, err := runner.Start(ctx, tests.LanguageTestdata, tests.LanguageTests)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)

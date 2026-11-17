@@ -45,9 +45,8 @@ import (
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pclruntime "github.com/pulumi/pulumi/pkg/v3/pcl/runtime"
 	aferoutil "github.com/pulumi/pulumi/pkg/v3/util/afero"
-	"github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
-	pclruntime "github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	pulumiencoding "github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -390,20 +389,34 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 		return nil, diags
 	}
 
+	// A token in the base provider's namespace is already covered by the extension's
+	// parameterized descriptor, so don't add a bare duplicate for that base name.
+	baseNames := map[string]struct{}{}
+	for _, descriptor := range descriptorMap {
+		if descriptor.Parameterization != nil {
+			baseNames[descriptor.Name] = struct{}{}
+		}
+	}
+	pkgCovered := func(pkg string) bool {
+		if _, ok := descriptorMap[pkg]; ok {
+			return true
+		}
+		_, ok := baseNames[pkg]
+		return ok
+	}
+
 	for _, file := range parser.Files {
 		for _, item := range model.SourceOrderBody(file.Body) {
 			block, ok := item.(*hashihclsyntax.Block)
 			if !ok || block.Type != "resource" || len(block.Labels) < 2 {
 				continue
 			}
-			pkg, err := runtime.PackageNameFromToken(block.Labels[1])
+			pkg, err := pclruntime.PackageNameFromToken(block.Labels[1])
 			if err != nil {
 				return nil, err
 			}
-			if pkg != "" {
-				if _, exists := descriptorMap[pkg]; !exists {
-					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
-				}
+			if pkg != "" && !pkgCovered(pkg) {
+				descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
 			}
 		}
 
@@ -416,7 +429,7 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok {
 				return nil
 			}
-			pkg, err := runtime.PackageNameFromToken(token)
+			pkg, err := pclruntime.PackageNameFromToken(token)
 			if err != nil {
 				return hcl.Diagnostics{{
 					Severity: hcl.DiagError,
@@ -424,10 +437,8 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 					Detail:   err.Error(),
 				}}
 			}
-			if pkg != "" && pkg != "pulumi" {
-				if _, exists := descriptorMap[pkg]; !exists {
-					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
-				}
+			if pkg != "" && pkg != "pulumi" && !pkgCovered(pkg) {
+				descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
 			}
 			return nil
 		})
@@ -530,12 +541,6 @@ func (host *pclLanguageHost) RunPlugin(
 	return errors.New("not implemented")
 }
 
-func (host *pclLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
-) error {
-	return errors.New("not implemented")
-}
-
 func (host *pclLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
@@ -628,14 +633,13 @@ func (host *pclLanguageHost) GenerateProgram(
 	}
 
 	options := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		pcl.PreferOutputVersionedInvokes,
 	}
 	if !req.Strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, options...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), options...)
 	if err != nil {
 		return nil, err
 	}
@@ -702,14 +706,10 @@ func (host *pclLanguageHost) GeneratePackage(
 	var baseProviderVersion string
 	baseProviderDownloadURL := pkg.PluginDownloadURL
 
-	if pkg.Parameterization == nil {
-		baseProviderName = pkg.Name
-		if pkg.Version != nil {
-			baseProviderVersion = pkg.Version.String()
-		}
-	} else {
-		baseProviderName = pkg.Parameterization.BaseProvider.Name
-		baseProviderVersion = pkg.Parameterization.BaseProvider.Version.String()
+	switch {
+	case pkg.Parameterization != nil:
+		baseProviderName = pkg.Parameterization.BasePlugin.Name
+		baseProviderVersion = pkg.Parameterization.BasePlugin.Version.String()
 		if pkg.Version == nil {
 			return nil, errors.New("parameterized package must have a version")
 		}
@@ -717,6 +717,22 @@ func (host *pclLanguageHost) GeneratePackage(
 			Name:    pkg.Name,
 			Version: *pkg.Version,
 			Value:   pkg.Parameterization.Parameter,
+		}
+	case pkg.ExtensionParameterization != nil:
+		baseProviderName = pkg.ExtensionParameterization.BaseProvider.Name
+		baseProviderVersion = pkg.ExtensionParameterization.BaseProvider.Version.String()
+		if pkg.Version == nil {
+			return nil, errors.New("parameterized package must have a version")
+		}
+		parameterization = &schema.ParameterizationDescriptor{
+			Name:    pkg.Name,
+			Version: *pkg.Version,
+			Value:   pkg.ExtensionParameterization.Parameter,
+		}
+	default:
+		baseProviderName = pkg.Name
+		if pkg.Version != nil {
+			baseProviderVersion = pkg.Version.String()
 		}
 	}
 

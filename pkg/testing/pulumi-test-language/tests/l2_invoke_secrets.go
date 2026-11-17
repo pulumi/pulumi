@@ -15,9 +15,11 @@
 package tests
 
 import (
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +37,7 @@ func init() {
 					changes := res.Changes
 
 					RequireStackResource(l, err, changes)
-					var stack *resource.State
+					var stack *pkgresource.State
 					for _, r := range snap.Resources {
 						if r.Type == resource.RootStackType {
 							stack = r
@@ -45,13 +47,13 @@ func init() {
 
 					require.NotNil(l, stack, "expected a stack resource")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 					AssertPropertyMapMember(l, outputs, "nonSecret",
-						resource.NewProperty("hello world"))
+						property.New("hello world"))
 					AssertPropertyMapMember(l, outputs, "firstSecret",
-						resource.MakeSecret(resource.NewProperty("hello world")))
+						property.New("hello world").WithSecret(true))
 					AssertPropertyMapMember(l, outputs, "secondSecret",
-						resource.MakeSecret(resource.NewProperty("goodbye world")))
+						property.New("goodbye world").WithSecret(true))
 				},
 			},
 		},

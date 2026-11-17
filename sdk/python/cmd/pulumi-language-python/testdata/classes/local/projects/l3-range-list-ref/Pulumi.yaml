@@ -1,0 +1,7 @@
+name: l3-range-list-ref
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

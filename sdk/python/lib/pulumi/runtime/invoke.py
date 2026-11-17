@@ -24,22 +24,26 @@ from collections.abc import Awaitable
 
 import grpc
 
-from ._instrumentation import wrap_with_context
+from ._context import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from google.protobuf import struct_pb2
 
 from semver import VersionInfo
 
 from .. import _types, log
 from ..invoke import InvokeOptions, InvokeOutputOptions
+from ..output import _OutputData
 from ..runtime.proto import resource_pb2
 from ..resource import CustomResource
 from . import rpc
 from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
 from .settings import (
     _get_rpc_manager,
+    get_base_provider_for_ref,
     get_monitor,
     grpc_error_to_exception,
     handle_grpc_error,
+    monitor_supports_feature,
 )
 from .sync_await import _sync_await
 
@@ -157,15 +161,14 @@ def invoke_output(
     resolves when the invoke finishes.
     """
 
-    # Setup the futures for the output.
-    resolve_value: asyncio.Future = asyncio.Future()
-    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
-    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
+    _ensure_not_in_state_migration("invoke")
+
+    # Setup the future for the output data.
+    resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     from .. import Output
 
-    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    out = Output._from_data(resolve_data)
 
     async def do_invoke_output() -> None:
         try:
@@ -173,19 +176,16 @@ def invoke_output(
                 tok, props, opts, typ, package_ref=package_ref, check_dependencies=True
             )
 
-            resolve_value.set_result(
-                invoke_result.value if invoke_result.is_known else None
+            resolve_data.set_result(
+                _OutputData(
+                    resources=set(invoke_result.dependencies),
+                    value=invoke_result.value if invoke_result.is_known else None,
+                    is_known=invoke_result.is_known,
+                    is_secret=invoke_result.is_secret and invoke_result.is_known,
+                )
             )
-            resolve_is_known.set_result(invoke_result.is_known)
-            resolve_is_secret.set_result(
-                invoke_result.is_secret and invoke_result.is_known
-            )
-            resolve_deps.set_result(set(invoke_result.dependencies))
         except Exception as exn:  # noqa: BLE001 catch blind exception
-            resolve_value.set_exception(exn)
-            resolve_is_known.set_exception(exn)
-            resolve_is_secret.set_exception(exn)
-            resolve_deps.set_exception(exn)
+            resolve_data.set_exception(exn)
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("invoke", do_invoke_output)())
     return out
@@ -231,6 +231,7 @@ def _invoke(
     package_ref: Optional[Awaitable[Optional[str]]],
     check_dependencies: Optional[bool] = False,
 ) -> Awaitable[InvokeResult]:
+    _ensure_not_in_state_migration("invoke")
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -239,18 +240,6 @@ def _invoke(
         raise TypeError("Expected typ to be decorated with @output_type")
 
     async def do_invoke() -> tuple[InvokeResult, Optional[Exception]]:
-        # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
-        if opts is not None and opts.parent is not None and opts.provider is None:
-            opts.provider = opts.parent.get_provider(tok)
-
-        # Construct a provider reference from the given provider, if one was provided to us.
-        provider_ref = None
-        if opts is not None and opts.provider is not None:
-            provider_urn = await opts.provider.urn.future()
-            provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
-            provider_ref = f"{provider_urn}::{provider_id}"
-            log.debug(f"Invoke using provider {provider_ref}")
-
         # If we have a package reference, we need to wait for it to resolve.
         package_ref_str = None
         if package_ref is not None:
@@ -261,6 +250,22 @@ def _invoke(
                 opts.plugin_download_url = None
                 opts.version = None
                 log.debug(f"Invoke using package reference {package_ref_str}")
+
+        # If a parent was provided, but no provider was provided, use the parent's provider if one was specified.
+        if opts is not None and opts.parent is not None and opts.provider is None:
+            base = get_base_provider_for_ref(package_ref_str)
+            if base is not None:
+                opts.provider = opts.parent._providers.get(base)
+            else:
+                opts.provider = opts.parent.get_provider(tok)
+
+        # Construct a provider reference from the given provider, if one was provided to us.
+        provider_ref = None
+        if opts is not None and opts.provider is not None:
+            provider_urn = await opts.provider.urn.future()
+            provider_id = (await opts.provider.id.future()) or rpc.UNKNOWN
+            provider_ref = f"{provider_urn}::{provider_id}"
+            log.debug(f"Invoke using provider {provider_ref}")
 
         monitor = get_monitor()
         # keep track of the dependencies of the inputs
@@ -278,6 +283,8 @@ def _invoke(
 
         # The direct dependencies of the invoke.
         depends_on_dependencies: set[Resource] = set()
+        # The dependency URNs to declare on the request, when the monitor supports gating invokes.
+        invoke_depends_on: Optional[list[str]] = None
         # Only check the resource dependencies for output form invokes. For
         # plain invokes, we do not want to check the dependencies. Technically,
         # these should only receive plain arguments, but this is not strictly
@@ -287,25 +294,30 @@ def _invoke(
             depends_on_dependencies = await _resolve_depends_on(
                 opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
             )
-            # If we depend on any CustomResources, we need to ensure that their
-            # ID is known before proceeding. If it is not known, we will return
-            # an unknown result.
             resources_to_wait_for: set[Resource] = set(depends_on_dependencies)
             # Add the dependencies from the inputs to the set of resources to wait for.
             for deps in property_dependencies.values():
                 resources_to_wait_for = resources_to_wait_for.union(deps)
             # The expanded set of dependencies, including children of components.
             expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
-            # Ensure that all resource IDs are known before proceeding.
-            for res in expanded_deps.values():
-                # DependencyResources inherit from CustomResource, but they don't
-                # set the id. Skip them.
-                if isinstance(res, CustomResource) and res.__dict__.get("id", None):
-                    if not await res.id.is_known():
-                        return (
-                            InvokeResult(None, is_secret=False, is_known=False),
-                            None,
-                        )
+            if monitor_supports_feature(
+                resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON
+            ):
+                invoke_depends_on = list(expanded_deps.keys())
+            else:
+                # Older engines cannot gate invokes: if we depend on any
+                # CustomResources, we need to ensure that their ID is known
+                # before proceeding. If it is not known, we will return an
+                # unknown result.
+                for res in expanded_deps.values():
+                    # DependencyResources inherit from CustomResource, but they don't
+                    # set the id. Skip them.
+                    if isinstance(res, CustomResource) and res.__dict__.get("id", None):
+                        if not await res.id.is_known():
+                            return (
+                                InvokeResult(None, is_secret=False, is_known=False),
+                                None,
+                            )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
@@ -322,6 +334,8 @@ def _invoke(
             pluginDownloadURL=plugin_download_url,
             packageRef=package_ref_str or "",
         )
+        if invoke_depends_on is not None:
+            req.dependsOn.extend(invoke_depends_on)
 
         def do_invoke():
             try:
@@ -329,7 +343,7 @@ def _invoke(
             except grpc.RpcError as exn:
                 return None, grpc_error_to_exception(exn)
 
-        resp, error = await asyncio.get_event_loop().run_in_executor(
+        resp, error = await asyncio.get_running_loop().run_in_executor(
             None, wrap_with_context(do_invoke)
         )
         log.debug(f"Invoking function completed: tok={tok}, error={error}")
@@ -348,6 +362,11 @@ def _invoke(
                     f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"
                 ),
             )
+
+        # The engine declines to service an invoke whose dependencies are
+        # pending creation: the result is wholly unknown.
+        if resp.unknown:
+            return (InvokeResult(None, is_secret=False, is_known=False), None)
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, "return")
@@ -415,26 +434,27 @@ def call(
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s).
     """
+    _ensure_not_in_state_migration("call")
     log.debug(f"Calling function: tok={tok}")
 
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    # Setup the futures for the output.
-    resolve_value: asyncio.Future = asyncio.Future()
-    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
-    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
+    # Setup the future for the output data.
+    resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     from .. import Output
 
-    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    out = Output._from_data(resolve_data)
 
     async def do_call() -> None:
         try:
             # Construct a provider reference from the given provider, if one is available on the resource.
             provider_ref, version, plugin_download_url = None, "", ""
             if res is not None:
+                # The provider of a resource from an extension package is
+                # selected during registration, so wait for it to finish.
+                await res.urn.future()
                 if res._provider is not None:
                     provider_urn = await res._provider.urn.future()
                     provider_id = (await res._provider.id.future()) or rpc.UNKNOWN
@@ -500,7 +520,7 @@ def call(
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
 
-            resp = await asyncio.get_event_loop().run_in_executor(
+            resp = await asyncio.get_running_loop().run_in_executor(
                 None, wrap_with_context(do_rpc_call)
             )
             if resp is None:
@@ -550,19 +570,20 @@ def call(
                         else deserialized
                     )
 
-            resolve_value.set_result(value)
-            resolve_is_known.set_result(is_known)
-            resolve_is_secret.set_result(is_secret)
-            resolve_deps.set_result(deps)
+            resolve_data.set_result(
+                _OutputData(
+                    resources=deps,
+                    value=value,
+                    is_known=is_known,
+                    is_secret=is_secret,
+                )
+            )
 
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
             )
-            resolve_value.set_exception(exn)
-            resolve_is_known.set_exception(exn)
-            resolve_is_secret.set_exception(exn)
-            resolve_deps.set_result(set())
+            resolve_data.set_exception(exn)
             raise
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_call)())

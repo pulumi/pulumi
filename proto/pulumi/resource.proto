@@ -27,10 +27,22 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
+    // GetDeploymentInfo returns the execution context associated with this monitor instance.
+    //
+    // This is an additive API intended to reduce duplicated state passed through
+    // environment variables and per-request protobuf fields. New clients should
+    // prefer this over piecemeal feature probing via SupportsFeature.
+    //
+    // Backward compatibility:
+    // - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    // - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    rpc GetDeploymentInfo(google.protobuf.Empty) returns (DeploymentInfo) {}
+
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
-    rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
+    rpc Invoke(ResourceInvokeRequest) returns (ResourceInvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
+    rpc ExistsResource(ExistsResourceRequest) returns (ExistsResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
@@ -59,6 +71,77 @@ service ResourceMonitor {
     // after the user program has completed. Runtime SDKs should call this after
     // executing the user's program. This can only be called once.
     rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+// ResourceMonitorFeature is a strongly typed monitor capability identifier.
+//
+// The string IDs used by SupportsFeature are preserved for compatibility; new
+// clients should prefer these enum values from DeploymentInfo.
+enum ResourceMonitorFeature {
+    RESOURCE_MONITOR_FEATURE_SECRETS = 0;
+    RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES = 1;
+    RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES = 2;
+    RESOURCE_MONITOR_FEATURE_ALIAS_SPECS = 3;
+    RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER = 4;
+    RESOURCE_MONITOR_FEATURE_DELETED_WITH = 5;
+    RESOURCE_MONITOR_FEATURE_REPLACE_WITH = 6;
+    RESOURCE_MONITOR_FEATURE_TRANSFORMS = 7;
+    RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS = 8;
+    RESOURCE_MONITOR_FEATURE_PARAMETERIZATION = 9;
+    RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS = 10;
+    RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11;
+    RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12;
+    // The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
+    // string bytes signature and a base64 encoding of the string's bytes.
+    RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13;
+    // The monitor accepts `dependsOn` on `ResourceInvokeRequest` and gates the invoke on the created-ness of the
+    // dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
+    RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14;
+    // The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`.
+    RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15;
+    // The monitor accepts state migration callbacks on resource registrations.
+    RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16;
+    // The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+    // dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `ResourceInvokeResponse.return`.
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17;
+    // The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+    // dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `CallResponse.return`.
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18;
+    // The monitor accepts OutputValues nested in `RegisterResourceRequest.object` and will harvest their
+    // dependencies into the resource's `propertyDependencies`. Clients that set `uses_output_values` on
+    // `RegisterResourceRequest` can omit `propertyDependencies` and let the engine derive it from the
+    // OutputValue tree.
+    RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES = 19;
+}
+
+// DeploymentInfo returns monitor execution state currently sent to programs
+// and/or providers through other channels.
+message DeploymentInfo {
+    // The project name.
+    string project = 1;
+
+    // The stack name.
+    string stack = 2;
+
+    // The organization name.
+    string organization = 3;
+
+    // The stack configuration values.
+    map<string, string> config = 4;
+
+    // Configuration keys whose values are secret.
+    repeated string configSecretKeys = 5;
+
+    // True if the current execution is preview/dry-run.
+    bool dryRun = 6;
+
+    // Requested operation parallelism (<=1 for serial execution).
+    int32 parallel = 7;
+
+    // The set of monitor-supported protocol features.
+    repeated ResourceMonitorFeature supportedFeatures = 8;
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -104,12 +187,38 @@ message ReadResourceRequest {
     string parentStackTraceHandle = 18; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 16; // a reference from RegisterPackageRequest.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 19;
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
 message ReadResourceResponse {
     string urn = 1;                        // the URN for this resource.
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
+    Result result = 3;                     // the reason, whether the read was successful or failed.
+    bool unknown = 4;                      // true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown.
+    string id = 5;                         // the id resolved by the provider's Read. If empty, SDKs should treat the id as unknown during preview, otherwise fall back to the id supplied on the request for back-compat with older engines.
+}
+
+// ExistsResourceRequest contains enough information to check whether a resource with a given ID exists.
+message ExistsResourceRequest {
+    string type = 1;                        // the type of the resource object.
+    string id = 2;                          // the ID of the resource to check.
+    string parent = 3;                      // an optional parent URN that this child resource belongs to.
+    google.protobuf.Struct properties = 4;  // optional state sufficient to uniquely identify the resource.
+    string provider = 5;                    // an optional reference to the provider to use for this check.
+    string version = 6;                     // the version of the provider to use when servicing this request.
+    string pluginDownloadURL = 7;           // the server url of the provider to use when servicing this request.
+    map<string, bytes> pluginChecksums = 8; // a map of checksums of the provider to use when servicing this request.
+    string packageRef = 9;                  // a reference from RegisterPackageRequest.
+}
+
+// ExistsResourceResponse contains the result of checking whether a resource exists.
+message ExistsResourceResponse {
+    bool exists = 1;  // whether the resource exists; only meaningful when unknown is false.
+    bool unknown = 2; // true if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values.
 }
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
@@ -123,6 +232,7 @@ message RegisterResourceRequest {
         string create = 1; // The create resource timeout represented as a string e.g. 5m.
         string update = 2; // The update resource timeout represented as a string e.g. 5m.
         string delete = 3; // The delete resource timeout represented as a string e.g. 5m.
+        string read = 4; // The read resource timeout represented as a string e.g. 5m.
     }
 
     string type = 1;                                            // the type of the object allocated.
@@ -188,12 +298,33 @@ message RegisterResourceRequest {
     optional ResourceHooksBinding hooks = 34;
     repeated string hideDiffs = 37;
     map<string, string> envVarMappings = 41;   // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
+    string snippetId = 40;                     // if set, the UUID of the snippet that issued this registration.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 42;
+
+    // A list of state migrations to apply to the prior state of this resource and its descendants before diffing.
+    repeated Callback state_migrations = 43;
+
+    // When true the `object` field uses OutputValues to carry per-leaf dependency information. The engine
+    // harvests dependencies from the OutputValue tree. `propertyDependencies` must be empty in this case —
+    // the engine rejects requests that set this flag together with a non-empty propertyDependencies map.
+    // Leaves of `object` that are plain values (not OutputValues) are treated as having no dependencies;
+    // they do not inherit the top-level `dependencies` list. Clients should only set this when the monitor
+    // advertises `RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES`.
+    bool uses_output_values = 44;
 }
 
 enum Result {
 	SUCCESS = 0;
 	FAIL = 1;
-	SKIP = 2;
+	// 2 was formerly SKIP. All language SDKs treated SKIP and FAIL identically at the wire level,
+	// so the engine now emits FAIL for both directly-failed and dependency-skipped resources. The
+	// tag is reserved so no future value silently changes behaviour for older SDKs still generated
+	// against the old enum.
+	reserved 2;
+	reserved "SKIP";
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -211,6 +342,7 @@ message RegisterResourceResponse {
     repeated string stables = 5;                                // an optional list of guaranteed-stable properties.
     map<string, PropertyDependencies> propertyDependencies = 6; // a map from property keys to the dependencies of the property.
     Result result = 7;                                          // the reason, whether the resource registration was successful, failed, or skipped.
+    bool unknown = 8;                                           // true if the result of the registration is unknown, e.g. because the create was elided by a targeted update or a destroy run; result is still SUCCESS and SDKs should resolve outputs as unknown.
 }
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.
@@ -233,6 +365,33 @@ message ResourceInvokeRequest {
     string parentStackTraceHandle = 11; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 9; // a reference from RegisterPackageRequest.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 12;
+
+    // The URNs of the resources this invoke depends on.
+    //
+    // The engine will advertise `INVOKE_DEPENDS_ON` when it reads this field.
+    repeated string dependsOn = 13;
+
+    // An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
+    // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
+    // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
+    string parent = 15;
+
+    // When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+    // advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 16;
+}
+
+message ResourceInvokeResponse {
+    google.protobuf.Struct return = 1;  // the returned values, if invoke was successful.
+    repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
+
+    // True if the result must be treated as wholly unknown, which the monitor reports when it declines to service an
+    // invoke whose dependencies are pending creation.
+    bool unknown = 3;
 }
 
 message ResourceCallRequest {
@@ -260,6 +419,14 @@ message ResourceCallRequest {
     string parentStackTraceHandle = 19; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 17; // a reference from RegisterPackageRequest.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 20;
+
+    // When true the SDK accepts OutputValues in `CallResponse.return`. Only meaningful when the monitor
+    // advertises `CALL_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 21;
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.
@@ -284,6 +451,32 @@ message TransformResourceOptions {
     repeated string hide_diff = 18;
     repeated string replace_with = 19;
     google.protobuf.Value replacement_trigger = 20;
+}
+
+// ResourceOptions is a subset of all resource options that are relevant to
+// hook callbacks.
+message ResourceOptions {
+    repeated string depends_on = 1;
+    optional bool protect = 2;
+    repeated string ignore_changes = 3;
+    repeated string replace_on_changes = 4;
+    string version = 5;
+    repeated Alias aliases = 6;
+    string provider = 7;
+    RegisterResourceRequest.CustomTimeouts custom_timeouts = 8;
+    string plugin_download_url = 9;
+    optional bool retain_on_delete = 10;
+    string deleted_with = 11;
+    optional bool delete_before_replace = 12;
+    repeated string additional_secret_outputs = 13;
+    map<string, string> providers = 14;
+    map<string, bytes> plugin_checksums = 15;
+    RegisterResourceRequest.ResourceHooksBinding hooks = 16;
+    string import = 17;
+    repeated string hide_diff = 18;
+    repeated string replace_with = 19;
+    google.protobuf.Value replacement_trigger = 20;
+    string parent = 21;
 }
 
 message TransformRequest {
@@ -321,6 +514,28 @@ message TransformInvokeOptions {
     map<string, bytes> plugin_checksums = 4;
 }
 
+// StateMigrationRequest is the request object for state migration callbacks registered via
+// RegisterResourceRequest.state_migrations.
+message StateMigrationRequest {
+    string urn = 1;      // the URN of the registering resource.
+    // A JSON-encoded array of resources in the checkpoint format (apitype.ResourceV3): the prior state of the
+    // registering resource followed by the prior state of all resources transitively parented to it. Secret property
+    // values are supplied to the callback in plaintext inside their secret envelopes and must be treated as sensitive.
+    bytes old_state = 2;
+}
+
+// StateMigrationResponse is the response object for state migration callbacks.
+message StateMigrationResponse {
+    // A JSON-encoded array of resources in the checkpoint format (apitype.ResourceV3) that replaces old_state.
+    // If unset, the prior state is left unchanged. Every resource URN present in old_state must either be present
+    // in new_state or have an entry in successors.
+    bytes new_state = 1;
+    // Maps the URN of each resource removed from old_state to the URN of the resource in new_state that succeeds it.
+    // Multiple old URNs may have the same successor, allowing N-to-M migrations while giving the engine enough
+    // information to rewrite references to the old resources. An old resource may not be removed without a successor.
+    map<string, string> successors = 2;
+}
+
 // ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
 message ResourceHookRequest {
     string urn = 1; // the urn of the resource for which the hook is called.
@@ -331,6 +546,8 @@ message ResourceHookRequest {
     google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
     google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
     google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
+    optional ResourceOptions old_options = 9; // optional old resource options for the resource. Old engines may not set this.
+    optional ResourceOptions new_options = 10; // optional new resource options for the resource. Old engines may not set this.
 }
 
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
@@ -349,6 +566,8 @@ message ErrorHookRequest {
     google.protobuf.Struct old_outputs = 7; // the optional old outputs of the resource.
     string failed_operation = 8; // the operation that failed (create, read, update, or delete).
     repeated string errors = 9; // the errors that have been seen so far (newest-first).
+    ResourceOptions old_options = 10; // optional old resource options for the resource. Old engines may not set this.
+    ResourceOptions new_options = 11; // optional new resource options for the resource. Old engines may not set this.
 }
 
 // ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse.
@@ -363,6 +582,7 @@ message RegisterPackageRequest {
     string download_url = 3; // the optional plugin download url.
     map<string, bytes> checksums = 4; // the optional plugin checksums.
     Parameterization parameterization = 5; // the optional parameterization for this package.
+    Parameterization extension = 6; // the optional extension parameterization for this package.
 }
 
 message RegisterPackageResponse {
@@ -384,6 +604,8 @@ message RegisterResourceHookRequest {
     string name = 1;
     Callback callback = 2; // the callback that the engine can call to run the hook.
     bool on_dry_run = 3; // whether to run the hook on dry runs.
+    // If true, errors from this hook are logged as warnings instead of failing the program.
+    bool ignore_errors = 4;
 }
 
 message RegisterErrorHookRequest {

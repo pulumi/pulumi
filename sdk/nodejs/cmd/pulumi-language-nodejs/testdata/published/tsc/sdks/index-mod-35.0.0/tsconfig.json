@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+        // Output
+        "outDir": "bin",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        // Environment
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "moduleDetection": "force",
+        "types": ["node"],
+        // Type Checking
+        "strict": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "skipLibCheck": true
+    },
+    "files": [
+        "index.ts",
+        "indexmine/concatWorld.ts",
+        "indexmine/index.ts",
+        "indexmine/nested/concatWorld.ts",
+        "indexmine/nested/index.ts",
+        "indexmine/nested/resource.ts",
+        "indexmine/resource.ts",
+        "provider.ts",
+        "utilities.ts"
+    ]
+}

@@ -40,5 +40,6 @@ var (
 		"create": model.NewOptionalType(model.StringType),
 		"update": model.NewOptionalType(model.StringType),
 		"delete": model.NewOptionalType(model.StringType),
+		"read":   model.NewOptionalType(model.StringType),
 	})
 )

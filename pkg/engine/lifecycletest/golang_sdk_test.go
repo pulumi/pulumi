@@ -24,14 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -56,7 +57,7 @@ type testResourceInputs struct {
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResourceArgs)(nil))
+	return reflect.TypeFor[*testResourceArgs]()
 }
 
 func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
@@ -76,8 +77,8 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -115,7 +116,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 			return nil
 		})
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -145,8 +146,8 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -184,7 +185,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 			})
 		})
 
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
@@ -228,7 +229,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
 							DeleteBeforeReplace: true,
@@ -240,7 +241,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -286,7 +287,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		})
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
@@ -348,8 +349,8 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					assert.Equal(t, resource.ID("someId"), req.ID)
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -382,7 +383,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 			})
 		})
 
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
@@ -434,15 +435,15 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
 				},
 			}
 			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-				assert.True(t, v.Config.DeepEquals(req.Args))
+				assert.True(t, v.Config.Equals(req.Args))
 				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
@@ -459,15 +460,15 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
 				},
 			}
 			v.InvokeF = func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-				assert.True(t, v.Config.DeepEquals(req.Args))
+				assert.True(t, v.Config.Equals(req.Args))
 				return plugin.InvokeResponse{}, nil
 			}
 			return v, nil
@@ -589,7 +590,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			return nil
 		})
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -643,7 +644,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 	expectedOps := []display.StepOp{deploy.OpCreate}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
@@ -694,7 +695,7 @@ type remoteComponentInputs struct {
 }
 
 func (*remoteComponentInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*remoteComponentArgs)(nil)).Elem()
+	return reflect.TypeFor[remoteComponentArgs]()
 }
 
 type remoteComponent struct {
@@ -726,13 +727,13 @@ func TestRemoteComponentGolang(t *testing.T) {
 					req plugin.ConstructRequest,
 					monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResult, error) {
-					_, ok := req.Inputs["bar"]
+					_, ok := req.Inputs.GetOk("bar")
 					assert.False(t, ok)
 
 					resp, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
 					require.NoError(t, err)
 
-					outs := resource.PropertyMap{}
+					outs := property.Map{}
 
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
@@ -774,7 +775,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 		})
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

@@ -41,5 +41,9 @@ func isReservedComponentResourcePropertyKey(name string) bool {
 }
 
 func isReservedCustomResourcePropertyKey(name string) bool {
-	return slices.Contains(reservedNonComponentPropertyKeys, name)
+	return slices.Contains(reservedNonComponentPropertyKeys, name) || isReservedKeyword(name)
+}
+
+func isReservedStateInputPropertyKey(name string) bool {
+	return slices.Contains(reservedNonComponentPropertyKeys, name) || isReservedKeyword(name)
 }

@@ -255,6 +255,10 @@ export class GetRequiredPackagesResponse extends jspb.Message {
     getPackagesList(): Array<pulumi_plugin_pb.PackageDependency>;
     setPackagesList(value: Array<pulumi_plugin_pb.PackageDependency>): GetRequiredPackagesResponse;
     addPackages(value?: pulumi_plugin_pb.PackageDependency, index?: number): pulumi_plugin_pb.PackageDependency;
+    clearSpecsList(): void;
+    getSpecsList(): Array<pulumi_plugin_pb.PackageSpec>;
+    setSpecsList(value: Array<pulumi_plugin_pb.PackageSpec>): GetRequiredPackagesResponse;
+    addSpecs(value?: pulumi_plugin_pb.PackageSpec, index?: number): pulumi_plugin_pb.PackageSpec;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetRequiredPackagesResponse.AsObject;
@@ -269,6 +273,7 @@ export class GetRequiredPackagesResponse extends jspb.Message {
 export namespace GetRequiredPackagesResponse {
     export type AsObject = {
         packagesList: Array<pulumi_plugin_pb.PackageDependency.AsObject>,
+        specsList: Array<pulumi_plugin_pb.PackageSpec.AsObject>,
     }
 }
 
@@ -316,6 +321,8 @@ export class RunRequest extends jspb.Message {
     setLoaderTarget(value: string): RunRequest;
     getAttachDebugger(): boolean;
     setAttachDebugger(value: boolean): RunRequest;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): RunRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunRequest.AsObject;
@@ -346,6 +353,7 @@ export namespace RunRequest {
         info?: ProgramInfo.AsObject,
         loaderTarget: string,
         attachDebugger: boolean,
+        mapperTarget: string,
     }
 }
 
@@ -696,64 +704,6 @@ export namespace RunPluginResponse {
 
 }
 
-export class RunPlugin2Request extends jspb.Message { 
-
-    hasStart(): boolean;
-    clearStart(): void;
-    getStart(): RunPluginRequest | undefined;
-    setStart(value?: RunPluginRequest): RunPlugin2Request;
-
-    hasCancel(): boolean;
-    clearCancel(): void;
-    getCancel(): RunPluginCancelRequest | undefined;
-    setCancel(value?: RunPluginCancelRequest): RunPlugin2Request;
-
-    getRequestCase(): RunPlugin2Request.RequestCase;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RunPlugin2Request.AsObject;
-    static toObject(includeInstance: boolean, msg: RunPlugin2Request): RunPlugin2Request.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RunPlugin2Request, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RunPlugin2Request;
-    static deserializeBinaryFromReader(message: RunPlugin2Request, reader: jspb.BinaryReader): RunPlugin2Request;
-}
-
-export namespace RunPlugin2Request {
-    export type AsObject = {
-        start?: RunPluginRequest.AsObject,
-        cancel?: RunPluginCancelRequest.AsObject,
-    }
-
-    export enum RequestCase {
-        REQUEST_NOT_SET = 0,
-        START = 1,
-        CANCEL = 2,
-    }
-
-}
-
-export class RunPluginCancelRequest extends jspb.Message { 
-    getForce(): boolean;
-    setForce(value: boolean): RunPluginCancelRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RunPluginCancelRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RunPluginCancelRequest): RunPluginCancelRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RunPluginCancelRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RunPluginCancelRequest;
-    static deserializeBinaryFromReader(message: RunPluginCancelRequest, reader: jspb.BinaryReader): RunPluginCancelRequest;
-}
-
-export namespace RunPluginCancelRequest {
-    export type AsObject = {
-        force: boolean,
-    }
-}
-
 export class GenerateProgramRequest extends jspb.Message { 
 
     getSourceMap(): jspb.Map<string, string>;
@@ -762,6 +712,8 @@ export class GenerateProgramRequest extends jspb.Message {
     setLoaderTarget(value: string): GenerateProgramRequest;
     getStrict(): boolean;
     setStrict(value: boolean): GenerateProgramRequest;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): GenerateProgramRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateProgramRequest.AsObject;
@@ -779,6 +731,7 @@ export namespace GenerateProgramRequest {
         sourceMap: Array<[string, string]>,
         loaderTarget: string,
         strict: boolean,
+        mapperTarget: string,
     }
 }
 
@@ -823,6 +776,8 @@ export class GenerateProjectRequest extends jspb.Message {
 
     getLocalDependenciesMap(): jspb.Map<string, string>;
     clearLocalDependenciesMap(): void;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): GenerateProjectRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateProjectRequest.AsObject;
@@ -843,6 +798,7 @@ export namespace GenerateProjectRequest {
         loaderTarget: string,
 
         localDependenciesMap: Array<[string, string]>,
+        mapperTarget: string,
     }
 }
 

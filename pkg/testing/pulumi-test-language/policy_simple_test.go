@@ -23,6 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -368,7 +371,7 @@ func (h *PolicySimpleLanguageHost) RunPlugin(
 
 	err = server.Send(&pulumirpc.RunPluginResponse{
 		Output: &pulumirpc.RunPluginResponse_Stdout{
-			Stdout: []byte(fmt.Sprintf("%v\n", handle.Port)),
+			Stdout: fmt.Appendf(nil, "%v\n", handle.Port),
 		},
 	})
 	if err != nil {
@@ -385,7 +388,7 @@ func TestPolicySimple(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &PolicySimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

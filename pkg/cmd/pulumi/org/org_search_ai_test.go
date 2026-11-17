@@ -71,7 +71,7 @@ func TestSearchAI_cmd(t *testing.T) {
 			) (backend.Backend, error) {
 				return b, nil
 			},
-			outputFormat: outputFormatTable,
+			outputFormat: defaultSearchOutputFormat(),
 		},
 	}
 

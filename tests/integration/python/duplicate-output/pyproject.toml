@@ -1,0 +1,4 @@
+[project]
+name = "pulumi-python-duplicate-output"
+version = "0.0.0"
+dependencies = []

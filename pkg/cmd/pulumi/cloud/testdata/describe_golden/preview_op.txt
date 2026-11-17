@@ -1,0 +1,9 @@
+GET /api/preview/things/{id}
+Tag: Preview
+Status: PREVIEW — not yet stable, may change without notice
+Operation: GetPreviewThing
+
+Fetch a preview thing.
+
+Parameters:
+  [path] id* (string) — Thing ID.

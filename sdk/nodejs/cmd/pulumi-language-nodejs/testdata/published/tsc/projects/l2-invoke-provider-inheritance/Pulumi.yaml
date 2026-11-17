@@ -1,0 +1,5 @@
+name: l2-invoke-provider-inheritance
+runtime:
+  name: nodejs
+  options:
+    typescript: false

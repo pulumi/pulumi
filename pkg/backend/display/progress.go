@@ -190,9 +190,6 @@ func newOpStopwatch() opStopwatch {
 	}
 }
 
-// policyPayloads is a collection of policy violation events for a single resource.
-var policyPayloads []engine.PolicyViolationEventPayload
-
 // getEventUrnAndMetadata returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
@@ -637,8 +634,14 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 	for _, node := range nodes {
 		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
 
-		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
-			continue
+		if node.row.HideRowIfUnnecessary() {
+			if len(node.childNodes) == 0 {
+				continue
+			}
+			if rr, ok := node.row.(*resourceRowData); ok && rr.syntheticStackRow {
+				result = append(result, node.childNodes...)
+				continue
+			}
 		}
 
 		display.displayOrderCounter++
@@ -774,11 +777,12 @@ func (display *ProgressDisplay) printResourceDiffs() {
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
-// resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
+// resource. If no diagnostics were emitted, prints nothing.
 func (display *ProgressDisplay) printDiagnostics() {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
+	wroteWarningOrError := false
 
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
@@ -832,6 +836,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				}
 
 				wrote = true
+				wroteWarningOrError = wroteWarningOrError || v.Severity == diag.Warning || v.Severity == diag.Error
 			}
 
 			if wrote {
@@ -840,15 +845,17 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Neo to explain the failure.
+	// Print a link to Neo to explain warnings or errors.
 	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
 	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showNeoLink {
+	if wroteWarningOrError && !display.opts.SuppressPermalink && showNeoLink {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
 			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
+		display.println("    " + "Or run `" + neoDebugCommand(display.isPreview) +
+			"` for an interactive agent in your terminal.")
 		display.println("")
 	}
 }
@@ -931,6 +938,9 @@ func (display *ProgressDisplay) printPolicies() bool {
 		// Print the policy pack status and name/version as a header:
 		passFailWarn := "✅"
 		for _, violation := range info.ViolationEvents {
+			if len(violation.Exceptions) > 0 {
+				continue
+			}
 			if violation.EnforcementLevel == apitype.Mandatory {
 				passFailWarn = "❌"
 				hadMandatoryViolations = true
@@ -994,9 +1004,12 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 		}
 
-		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
+		// Next up, display all violations. Sort policy events by: exempted last, enforcement level, severity, policy name,
 		// and finally the URN of the resource.
 		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+			if d := cmp.Compare(min(len(a.Exceptions), 1), min(len(b.Exceptions), 1)); d != 0 {
+				return d
+			}
 			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
 				return d
 			}
@@ -1008,12 +1021,34 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
+		exemptedNames := make([]string, 0)
+		exemptedCounts := make(map[string]int)
 		for _, policyEvent := range info.ViolationEvents {
-			// Print the individual policy event.
+			if len(policyEvent.Exceptions) > 0 && !display.opts.ShowPolicyExceptions {
+				if exemptedCounts[policyEvent.PolicyName] == 0 {
+					exemptedNames = append(exemptedNames, policyEvent.PolicyName)
+				}
+				exemptedCounts[policyEvent.PolicyName]++
+				continue
+			}
+			// Print the individual policy event, with a dot for an exempted one.
+			bullet := "- "
+			if len(policyEvent.Exceptions) > 0 {
+				bullet = "· "
+			}
 			policyLine := renderDiffPolicyViolationEvent(
-				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
+				policyEvent, subItemIndent+bullet, subItemIndent+"  ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
+		}
+
+		// Unless the user has requested detailed exceptions, summarize the exempted violations of each policy.
+		sort.Strings(exemptedNames)
+		for _, policyName := range exemptedNames {
+			count := exemptedCounts[policyName]
+			display.println(fmt.Sprintf("%s· %s[exempted]  %s  (%d %s)%s",
+				subItemIndent, colors.BrightBlack, policyName,
+				count, english.PluralWord(count, "violation", ""), colors.Reset))
 		}
 	}
 
@@ -1027,15 +1062,13 @@ func (display *ProgressDisplay) printOutputs() {
 	if display.opts.SuppressOutputs {
 		return
 	}
-	// Cannot display outputs for the stack if we don't know its URN.
-	if display.stackUrn == "" {
+	step, ok := display.outputsStep()
+	if !ok {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-
 	props := getResourceOutputsPropertiesString(
-		stackStep,
+		step,
 		1, /* indent */
 		display.isPreview,
 		display.opts.Debug,
@@ -1049,23 +1082,50 @@ func (display *ProgressDisplay) printOutputs() {
 	}
 }
 
+// outputsStep picks the step whose outputs the Outputs section prints: normally the root stack's;
+// with SuppressStackRow (no stack participates), the single operated resource's.
+func (display *ProgressDisplay) outputsStep() (engine.StepEventMetadata, bool) {
+	if display.stackUrn != "" {
+		return display.eventUrnToResourceRow[display.stackUrn].Step(), true
+	}
+	if !display.opts.SuppressStackRow {
+		return engine.StepEventMetadata{}, false
+	}
+	var step engine.StepEventMetadata
+	found := false
+	for urn, row := range display.eventUrnToResourceRow {
+		if urn == "" {
+			continue
+		}
+		if found {
+			return engine.StepEventMetadata{}, false
+		}
+		step, found = row.Step(), true
+	}
+	return step, found
+}
+
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
 func (display *ProgressDisplay) printSummary() {
 	// If we never saw the SummaryEvent payload, we have nothing to do.
 	if display.summaryEventPayload == nil {
 		return
 	}
-	// track resources errored
+	// track resources errored and awaiting
 	resourcesErrored := 0
+	resourcesAwaited := 0
 
 	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
 	for _, r := range rr {
-		if r.DiagInfo().ErrorCount > 0 {
+		switch {
+		case r.Awaited():
+			resourcesAwaited++
+		case r.DiagInfo().ErrorCount > 0:
 			resourcesErrored++
 		}
 	}
-	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, resourcesAwaited, false, display.opts)
 	display.println(msg)
 }
 
@@ -1118,7 +1178,7 @@ func (display *ProgressDisplay) processTick() {
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
-	// Take the write lock here because this can write the the eventUrnToResourceRow map
+	// Take the write lock here because this can write the eventUrnToResourceRow map
 	display.eventMutex.Lock()
 	defer display.eventMutex.Unlock()
 
@@ -1154,7 +1214,6 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
@@ -1190,7 +1249,6 @@ func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetada
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 parentStep,
 		hideRowIfUnnecessary: true,
 	}
@@ -1253,6 +1311,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			return
 		}
 	case engine.StartDebuggingEvent:
+		return
+	case engine.UpdateStartedEvent:
 		return
 	case engine.StdoutColorEvent:
 		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
@@ -1365,6 +1425,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
+		if event.Awaited() {
+			row.SetAwaited()
+		}
 	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
@@ -1447,9 +1510,9 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
-		hideRowIfUnnecessary: false,
+		hideRowIfUnnecessary: display.opts.SuppressStackRow,
+		syntheticStackRow:    true,
 	}
 
 	display.eventUrnToResourceRow[display.stackUrn] = stackRow
@@ -1493,20 +1556,79 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 }
 
 // getStepStatus handles getting the value to put in the status column.
-func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done bool, failed bool) string {
+func (display *ProgressDisplay) getStepStatus(
+	step engine.StepEventMetadata, done, failed, awaited, interrupted bool,
+) string {
 	var status string
-	if done {
-		status = display.getStepDoneDescription(step, failed)
-	} else {
+	switch {
+	case interrupted:
+		status = display.getStepInterruptedDescription(step)
+	case done:
+		status = display.getStepDoneDescription(step, failed, awaited)
+	default:
 		status = display.getStepInProgressDescription(step)
 	}
 	status = addRetainStatusFlag(status, step)
 	return status
 }
 
-func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
+// getStepInterruptedDescription returns the status for a custom resource whose
+// operation was still in flight when the update was cancelled or terminated. We
+// avoid the success verb (e.g. "created") because the operation never completed;
+// the resource is left as a pending operation in the snapshot.
+func (display *ProgressDisplay) getStepInterruptedDescription(step engine.StepEventMetadata) string {
+	opText := getStepInProgressOpText(display.getStepOp(step))
+	return colors.SpecWarning + opText + " (interrupted)" + colors.Reset
+}
+
+// getStepInProgressOpText returns the present-tense text for the given step
+// operation, e.g. "creating".
+func getStepInProgressOpText(op display.StepOp) string {
+	switch op {
+	case deploy.OpSame:
+		return ""
+	case deploy.OpCreate:
+		return "creating"
+	case deploy.OpUpdate:
+		return "updating"
+	case deploy.OpDelete:
+		return "deleting"
+	case deploy.OpReplace:
+		return "replacing"
+	case deploy.OpCreateReplacement:
+		return "creating replacement"
+	case deploy.OpDeleteReplaced:
+		return "deleting original"
+	case deploy.OpRead:
+		return "reading"
+	case deploy.OpReadReplacement:
+		return "reading for replacement"
+	case deploy.OpRefresh:
+		return "refreshing"
+	case deploy.OpReadDiscard:
+		return "discarding"
+	case deploy.OpDiscardReplaced:
+		return "discarding original"
+	case deploy.OpImport:
+		return "importing"
+	case deploy.OpImportReplacement:
+		return "importing replacement"
+	case deploy.OpRemovePendingReplace:
+		return ""
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
+}
+
+func (display *ProgressDisplay) getStepDoneDescription(
+	step engine.StepEventMetadata, failed, awaited bool,
+) string {
 	makeError := func(v string) string {
 		return colors.SpecError + "**" + v + "**" + colors.Reset
+	}
+	makeAwaited := func(v string) string {
+		return colors.SpecWarning + "**" + v + "**" + colors.Reset
 	}
 
 	op := display.getStepOp(step)
@@ -1519,7 +1641,16 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 
 	getDescription := func() string {
 		var opText string
-		if failed {
+		if awaited {
+			switch op {
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				opText = "create awaiting"
+			case deploy.OpUpdate:
+				opText = "update awaiting"
+			default:
+				opText = "awaiting"
+			}
+		} else if failed {
 			switch op {
 			case deploy.OpSame:
 				opText = "failed"
@@ -1611,6 +1742,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return fmt.Sprintf("%s (%ds)", opText, int(opDuration))
 	}
 
+	if awaited {
+		return makeAwaited(getDescription())
+	}
 	if failed {
 		return makeError(getDescription())
 	}
@@ -1752,42 +1886,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
-		var opText string
-		switch op {
-		case deploy.OpSame:
-			opText = ""
-		case deploy.OpCreate:
-			opText = "creating"
-		case deploy.OpUpdate:
-			opText = "updating"
-		case deploy.OpDelete:
-			opText = "deleting"
-		case deploy.OpReplace:
-			opText = "replacing"
-		case deploy.OpCreateReplacement:
-			opText = "creating replacement"
-		case deploy.OpDeleteReplaced:
-			opText = "deleting original"
-		case deploy.OpRead:
-			opText = "reading"
-		case deploy.OpReadReplacement:
-			opText = "reading for replacement"
-		case deploy.OpRefresh:
-			opText = "refreshing"
-		case deploy.OpReadDiscard:
-			opText = "discarding"
-		case deploy.OpDiscardReplaced:
-			opText = "discarding original"
-		case deploy.OpImport:
-			opText = "importing"
-		case deploy.OpImportReplacement:
-			opText = "importing replacement"
-		case deploy.OpRemovePendingReplace:
-			opText = ""
-		default:
-			contract.Failf("Unrecognized resource step op: %v", op)
-			return ""
-		}
+		opText := getStepInProgressOpText(op)
 
 		if op == deploy.OpSame || display.opts.DeterministicOutput || display.opts.SuppressTimings {
 			return opText

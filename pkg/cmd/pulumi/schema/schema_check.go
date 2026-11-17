@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,13 +26,18 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -42,6 +48,9 @@ type checkArgs struct {
 
 func newSchemaCheckCommand() *cobra.Command {
 	schemaCheckArgs := checkArgs{}
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -57,15 +66,42 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
 
-			spec, err := schemaFromSourceOrStdin(cmd, source, args[1:])
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			sink := cmdutil.Diag()
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext,
+				convert.NewMapperServerFromContext, packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return err
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil,
+				cloudCredentialEnv)
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(pctx)
+
+			spec, err := schemaFromSourceOrStdin(cmd, pctx, reg, source, parameterArgs, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
 
-			_, diags, err := schema.BindSpec(*spec, nil, schema.ValidationOptions{
+			_, diags, err := schema.BindSpec(*spec, schema.NewPluginLoader(pctx), schema.ValidationOptions{
 				AllowDanglingReferences: schemaCheckArgs.allowDanglingReferences,
 			})
-			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
+			diagWriter := hcl.NewDiagnosticTextWriter(cmd.ErrOrStderr(), nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
 			if err == nil && diags.HasErrors() {
@@ -90,6 +126,10 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 
 	cmd.PersistentFlags().BoolVar(&schemaCheckArgs.allowDanglingReferences, "allow-dangling-references", false,
 		"Whether references to nonexistent types should be considered errors")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the schema source is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
 }
@@ -97,27 +137,17 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 // schemaFromSourceOrStdin loads a PackageSpec from the given source. If source is "-",
 // the schema is read as JSON from stdin. Otherwise it delegates to SchemaFromSchemaSource
 // which supports files, plugin names, and plugin paths.
-func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []string) (*schema.PackageSpec, error) {
+func schemaFromSourceOrStdin(
+	cmd *cobra.Command, pctx *plugin.Context, reg registry.Registry, source string, extraArgs []string,
+	asExtension bool, pluginDownloadURL string,
+) (*schema.PackageSpec, error) {
 	if source == "-" {
 		return schemaFromStdin(cmd)
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	sink := cmdutil.Diag()
-	pctx, err := plugin.NewContext(cmd.Context(), sink, sink, nil, nil, wd, nil, false,
-		nil, schema.NewLoaderServerFromHost)
-	if err != nil {
-		return nil, err
-	}
-	defer contract.IgnoreClose(pctx)
-
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
-	spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-		cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-		env.Global(), 0 /* unbounded concurrency */)
+	spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
+		reg, env.Global(), 0 /* unbounded concurrency */, asExtension, pluginDownloadURL)
 	if err != nil {
 		return nil, err
 	}

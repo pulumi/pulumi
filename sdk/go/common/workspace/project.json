@@ -78,13 +78,6 @@
                 "string",
                 "null"
             ],
-            "properties":{
-                "secret":{
-                    "description":"If true this configuration value should be encrypted.",
-                    "type":"boolean",
-                    "default":false
-                }
-            },
             "additionalProperties":{
                 "oneOf":[
                     {
@@ -262,8 +255,7 @@
         }
     },
     "required":[
-        "name",
-        "runtime"
+        "name"
     ],
     "additionalProperties":true,
     "$defs":{
@@ -300,6 +292,13 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "extensions":{
+                    "type":"array",
+                    "items":{
+                        "type":"string"
+                    },
+                    "description":"For an extension package, the parameters that extend the base provider"
                 }
             }
         },

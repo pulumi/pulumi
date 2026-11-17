@@ -170,7 +170,7 @@ func TestExtractCopilotResponse(t *testing.T) {
 			t.Parallel()
 			got, err := extractCopilotResponse(tt.response)
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 			require.NoError(t, err)

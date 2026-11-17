@@ -23,11 +23,12 @@ import (
 
 	"github.com/blang/semver"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -58,7 +59,7 @@ var (
 	_ ProviderWithCustomServer = (*ConfigGrpcProvider)(nil)
 )
 
-func (*ConfigGrpcProvider) Pkg() tokens.Package {
+func (*ConfigGrpcProvider) pkg() tokens.Package {
 	return "config-grpc"
 }
 
@@ -131,7 +132,7 @@ func (p *ConfigGrpcProvider) populateSchema(
 			},
 			Secret: markPropertiesAsSecret,
 		}
-		typeToken := fmt.Sprintf("%s:index:T%s", p.Pkg(), c)
+		typeToken := fmt.Sprintf("%s:index:T%s", p.pkg(), c)
 		typeRef := "#/types/" + typeToken
 		spec[withPrefix("obj", c)] = pschema.PropertySpec{
 			TypeSpec: pschema.TypeSpec{
@@ -160,10 +161,10 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 	}
 
 	schema := pschema.PackageSpec{
-		Name:    string(p.Pkg()),
+		Name:    string(p.pkg()),
 		Version: p.version(),
 		Config:  configSpec,
-		Provider: pschema.ResourceSpec{
+		Provider: &pschema.ResourceSpec{
 			InputProperties: configSpec.Variables,
 			ObjectTypeSpec: pschema.ObjectTypeSpec{
 				Properties: configSpec.Variables,
@@ -171,7 +172,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		},
 		Types: types,
 		Resources: map[string]pschema.ResourceSpec{
-			fmt.Sprintf("%s:index:ConfigFetcher", p.Pkg()): {
+			fmt.Sprintf("%s:index:ConfigFetcher", p.pkg()): {
 				ObjectTypeSpec: pschema.ObjectTypeSpec{
 					Properties: map[string]pschema.PropertySpec{
 						"config": {
@@ -191,7 +192,7 @@ func (p *ConfigGrpcProvider) schema() pschema.PackageSpec {
 		allProps = append(allProps, k)
 	}
 
-	schema.Functions[fmt.Sprintf("%s:index:toSecret", p.Pkg())] = pschema.FunctionSpec{
+	schema.Functions[fmt.Sprintf("%s:index:toSecret", p.pkg())] = pschema.FunctionSpec{
 		Inputs: &pschema.ObjectTypeSpec{
 			Properties: toSecretSchema,
 		},
@@ -241,7 +242,8 @@ func (p *ConfigGrpcProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, 
 func (p *ConfigGrpcProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	return plugin.CheckResponse{Properties: req.News}, nil
+	news := resource.ToResourcePropertyMap(req.NewInputs)
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConfigGrpcProvider) CheckConfig(
@@ -260,7 +262,7 @@ func (p *ConfigGrpcProvider) Create(
 	ctx context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.Type) == fmt.Sprintf("%s:index:ConfigFetcher", p.Pkg()) {
+	if string(req.Type) == fmt.Sprintf("%s:index:ConfigFetcher", p.pkg()) {
 		requestsJSON, err := json.Marshal([]RPCRequest{
 			p.lastCheckConfigRequest,
 			p.lastConfigureRequest,
@@ -275,9 +277,9 @@ func (p *ConfigGrpcProvider) Create(
 		// Send out Config-related requests.
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
-				"config": resource.NewProperty(string(requestsJSON)),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"config": property.New(string(requestsJSON)),
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	}
@@ -294,12 +296,12 @@ func (p *ConfigGrpcProvider) Invoke(
 	ctx context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	switch {
-	case string(req.Tok) == fmt.Sprintf("%s:index:toSecret", p.Pkg()):
-		secreted := req.Args.Copy()
+	case string(req.Tok) == fmt.Sprintf("%s:index:toSecret", p.pkg()):
+		secreted := req.Args.AsMap()
 		for k, v := range secreted {
-			secreted[k] = resource.MakeSecret(v)
+			secreted[k] = v.WithSecret(true)
 		}
-		return plugin.InvokeResponse{Properties: secreted}, nil
+		return plugin.InvokeResponse{Properties: property.NewMap(secreted)}, nil
 	default:
 		return plugin.InvokeResponse{}, errors.New("Unknown function")
 	}

@@ -18,12 +18,13 @@ import (
 	"context"
 	"io"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/protobuf/types/known/emptypb"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type ResultState int
@@ -38,6 +39,11 @@ const (
 type ProviderSource interface {
 	// GetProvider fetches the provider plugin for the given reference.
 	GetProvider(ref providers.Reference) (plugin.Provider, bool)
+	// ParameterizeExtension parameterizes the provider for the given reference with ext. The provider receives
+	// one Parameterize call per (provider, extension) pair, however many callers ask for it.
+	ParameterizeExtension(
+		ctx context.Context, ref providers.Reference, extRef apitype.ExtensionRef, ext apitype.Extension,
+	) error
 }
 
 // A Source can generate a new set of resources that the planner will process accordingly.
@@ -53,30 +59,11 @@ type Source interface {
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
-	// Cancel the iterator. This will cancel the SourceResourceMonitor monitor attached to the iterator.
+	// Cancel the iterator. This will cancel the resource monitor attached to the iterator.
 	Cancel(context.Context) error
 
 	// Next returns the next event from the source.
 	Next() (SourceEvent, error)
-}
-
-// SourceResourceMonitor directs resource operations from the `Source` to various resource
-// providers.
-type SourceResourceMonitor interface {
-	// NOTE: This interface does not implement pulumirpc.ResourceMonitorClient because the eval and
-	// query implementations of `Source` do not implement precisely the same signatures.
-
-	Address() string
-	Cancel(ctx context.Context) error
-	AbortChan() <-chan bool
-	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
-	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-	ReadResource(ctx context.Context,
-		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
-	RegisterResource(ctx context.Context,
-		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
-	RegisterResourceOutputs(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 }
 
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source
@@ -89,15 +76,26 @@ type SourceEvent interface {
 type RegisterResourceEvent interface {
 	SourceEvent
 	// Goal returns the goal state for the resource object that was allocated by the program.
-	Goal() *resource.Goal
+	Goal() *pkgresource.Goal
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done(result *RegisterResult)
+	// Extension returns the extension parameterization, if any. A non-nil value
+	// means this resource came from an extension-parameterized package and the
+	// engine must apply that extension to the provider before producing steps.
+	Extension() *apitype.Extension
+	// ExtensionRef returns the per-deployment UUID identifying which extension
+	// registration this resource came from.
+	ExtensionRef() apitype.ExtensionRef
+	// StateMigrations returns the state migration functions to apply to the prior state of this resource and its
+	// descendants before diffing.
+	StateMigrations() []StateMigrationFunction
 }
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State  *resource.State // the resource state.
-	Result ResultState     // the result of the registration.
+	State   *pkgresource.State // the resource state.
+	Result  ResultState        // the result of the registration.
+	Unknown bool               // true if the result is unknown, e.g. because the create was elided.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -106,7 +104,7 @@ type RegisterResourceOutputsEvent interface {
 	// URN is the resource URN that this completion applies to.
 	URN() resource.URN
 	// Outputs returns a property map of output properties to add to a resource before completing.
-	Outputs() resource.PropertyMap
+	Outputs() property.Map
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done()
 }
@@ -126,7 +124,7 @@ type ReadResourceEvent interface {
 	// Parent is the parent resource of the resource being read.
 	Parent() resource.URN
 	// Properties is the property bag that will be passed to Read as search parameters.
-	Properties() resource.PropertyMap
+	Properties() property.Map
 	// Dependencies returns the list of URNs upon which this read depends.
 	Dependencies() []resource.URN
 	// Done indicates that we are done with this event.
@@ -136,10 +134,11 @@ type ReadResourceEvent interface {
 	// The source position of the resource read
 	SourcePosition() string
 	// The stack grace at the time of the read
-	StackTrace() []resource.StackFrame
+	StackTrace() []pkgresource.StackFrame
 }
 
 type ReadResult struct {
-	State  *resource.State
-	Result ResultState
+	State   *pkgresource.State
+	Result  ResultState
+	Unknown bool // true if the read was elided; SDKs should resolve outputs as unknown.
 }

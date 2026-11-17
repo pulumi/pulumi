@@ -232,7 +232,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 				case e.val.IsArray():
 					for j, v := range e.val.AsArray().AsSlice() {
 						expansion = append(expansion, entry{
-							path: e.path.appendIndex(uint64(j)), //nolint:gosec // j will always be >= 0
+							path: e.path.appendIndex(uint64(j)),
 							val:  v,
 						})
 					}
@@ -367,4 +367,32 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 			return
 		}
 	}
+}
+
+// AppendSegment returns a new [Glob] with seg appended to its segments. The receiver
+// is not modified.
+//
+// For the common cases of appending a map key, array index, or splat, prefer
+// [Glob.AppendKey], [Glob.AppendIndex], or [Glob.AppendSplat] to avoid an explicit
+// segment construction.
+func (g Glob) AppendSegment(seg GlobSegment) Glob {
+	return Glob{g.appendGlobSegment(seg)}
+}
+
+// AppendKey returns a new [Glob] with a [KeySegment] for key appended. The receiver is
+// not modified.
+func (g Glob) AppendKey(key string) Glob {
+	return g.AppendSegment(KeySegment{key})
+}
+
+// AppendIndex returns a new [Glob] with an [IndexSegment] for i appended. The receiver
+// is not modified.
+func (g Glob) AppendIndex(i int) Glob {
+	return g.AppendSegment(IndexSegment{uint64(i)})
+}
+
+// AppendSplat returns a new [Glob] with a [Splat] segment appended. The receiver is
+// not modified.
+func (g Glob) AppendSplat() Glob {
+	return g.AppendSegment(Splat)
 }

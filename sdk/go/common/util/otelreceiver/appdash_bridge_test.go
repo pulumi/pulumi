@@ -74,8 +74,8 @@ func TestConvertAppDashToOTLP(t *testing.T) {
 	parentID := binary.BigEndian.Uint64(span.ParentSpanId)
 	assert.Equal(t, uint64(11111), parentID)
 
-	assert.Equal(t, uint64(now.UnixNano()), span.StartTimeUnixNano) //nolint:gosec // test timestamps
-	assert.Equal(t, uint64(end.UnixNano()), span.EndTimeUnixNano)   //nolint:gosec // test timestamps
+	assert.Equal(t, uint64(now.UnixNano()), span.StartTimeUnixNano)
+	assert.Equal(t, uint64(end.UnixNano()), span.EndTimeUnixNano)
 
 	require.Len(t, span.Attributes, 2)
 	attrMap := map[string]string{}

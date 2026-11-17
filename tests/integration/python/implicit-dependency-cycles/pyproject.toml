@@ -1,0 +1,4 @@
+[project]
+name = "complex_implicit_parent_child_dependencies"
+version = "0.0.0"
+dependencies = []

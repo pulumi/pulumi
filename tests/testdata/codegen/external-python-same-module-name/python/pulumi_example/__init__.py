@@ -10,20 +10,20 @@ from .provider import *
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import pulumi_example.cloudtrail as __cloudtrail
-    cloudtrail = __cloudtrail
+    import pulumi_example.mod1 as __mod1
+    mod1 = __mod1
 else:
-    cloudtrail = _utilities.lazy_import('pulumi_example.cloudtrail')
+    mod1 = _utilities.lazy_import('pulumi_example.mod1')
 
 _utilities.register(
     resource_modules="""
 [
  {
   "pkg": "example",
-  "mod": "cloudtrail",
-  "fqn": "pulumi_example.cloudtrail",
+  "mod": "mod1",
+  "fqn": "pulumi_example.mod1",
   "classes": {
-   "example:cloudtrail:Trail": "Trail"
+   "example:mod1:Wrapper": "Wrapper"
   }
  }
 ]

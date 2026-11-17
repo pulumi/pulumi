@@ -20,7 +20,7 @@ __all__ = ['ProviderArgs', 'Provider']
 class ProviderArgs:
     def __init__(__self__, *,
                  name: pulumi.Input[_builtins.str],
-                 plugin_download_url: Optional[pulumi.Input[_builtins.str]] = None):
+                 plugin_download_url: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a Provider resource.
         """
@@ -39,11 +39,11 @@ class ProviderArgs:
 
     @_builtins.property
     @pulumi.getter(name="pluginDownloadURL")
-    def plugin_download_url(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def plugin_download_url(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "plugin_download_url")
 
     @plugin_download_url.setter
-    def plugin_download_url(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def plugin_download_url(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "plugin_download_url", value)
 
 
@@ -53,8 +53,8 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 name: Optional[pulumi.Input[_builtins.str]] = None,
-                 plugin_download_url: Optional[pulumi.Input[_builtins.str]] = None,
+                 name: pulumi.Input[Optional[_builtins.str]] = None,
+                 plugin_download_url: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Config resource with the given unique name, props, and options.
@@ -86,8 +86,8 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 name: Optional[pulumi.Input[_builtins.str]] = None,
-                 plugin_download_url: Optional[pulumi.Input[_builtins.str]] = None,
+                 name: pulumi.Input[Optional[_builtins.str]] = None,
+                 plugin_download_url: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -29,7 +29,8 @@ type BuildSystem struct {
 }
 
 type Project struct {
-	Name string `toml:"name" json:"name"`
+	Name         string   `toml:"name" json:"name"`
+	Dependencies []string `toml:"dependencies,omitempty" json:"dependencies,omitempty"`
 }
 
 type Pyproject struct {

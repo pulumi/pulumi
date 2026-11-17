@@ -16,23 +16,32 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+
+	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -40,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -82,6 +92,9 @@ type Options struct {
 	DestroyProgram bool
 	// if specified, only operate on the specified resources.
 	Targets UrnTargets
+	// if specified, only operate on resources registered by the listed snippet UUIDs. This is
+	// applied in addition to (i.e. logically OR'd with) Targets.
+	TargetSnippets []string
 	// if specified, mark the specified resources for replacement.
 	ReplaceTargets UrnTargets
 	// true if target dependents should be computed automatically.
@@ -104,10 +117,21 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
+	// true if the deployment should ignore the protect option on resources, allowing protected
+	// resources to be deleted or replaced. The protect option in the state is left unchanged.
+	IgnoreProtect bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
 	// true if the engine should display secrets in diagnostic messages.
 	ShowSecrets bool
+	// Analyzers is the list of policy analyzers to run during this deployment.
+	Analyzers []plugin.Analyzer
+	// PolicyExceptions are the policy exceptions to apply to each analyzer's violations.
+	PolicyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
+	// StateMigrationSerializer converts resource states to and from the checkpoint representation used by state
+	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
+	// already imports this package and therefore cannot be imported here.
+	StateMigrationSerializer StateMigrationResourceSerializer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -162,9 +186,7 @@ func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
 func (t UrnTargets) Clone() UrnTargets {
 	newLiterals := append(make([]resource.URN, 0, len(t.literals)), t.literals...)
 	newGlobs := make(map[string]*regexp.Regexp, len(t.globs))
-	for k, v := range t.globs {
-		newGlobs[k] = v
-	}
+	maps.Copy(newGlobs, t.globs)
 	return UrnTargets{
 		literals: newLiterals,
 		globs:    newGlobs,
@@ -205,10 +227,8 @@ func (t UrnTargets) Contains(urn resource.URN) bool {
 	if !t.IsConstrained() {
 		return true
 	}
-	for _, literal := range t.literals {
-		if literal == urn {
-			return true
-		}
+	if slices.Contains(t.literals, urn) {
+		return true
 	}
 	for glob := range t.globs {
 		if t.getMatcher(glob).MatchString(string(urn)) {
@@ -242,10 +262,15 @@ type StepExecutorEvents interface {
 	OnResourceOutputs(step Step) error
 }
 
+// StateMigrationEvents is implemented by event handlers that can persist state migrations.
+type StateMigrationEvents interface {
+	OnStateMigration(transaction *StateMigrationTransaction) error
+}
+
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
-	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
-	OnPolicyRemediation(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
+	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic, []apitype.PolicyEventException)
+	OnPolicyRemediation(resource.URN, plugin.Remediation, property.Map, property.Map)
 	OnPolicyAnalyzeSummary(plugin.PolicySummary)
 	OnPolicyRemediateSummary(plugin.PolicySummary)
 	OnPolicyAnalyzeStackSummary(plugin.PolicySummary)
@@ -255,6 +280,7 @@ type PolicyEvents interface {
 type Events interface {
 	StepExecutorEvents
 	PolicyEvents
+	StateMigrationEvents
 }
 
 type resourcePlans struct {
@@ -291,6 +317,14 @@ func (m *resourcePlans) plan() *Plan {
 	return &m.plans
 }
 
+// inFlightExtension tracks an extension applied (or being applied) to a provider.
+// The done promise resolves once the provider's Parameterize call for this
+// extension finishes (successfully or not).
+type inFlightExtension struct {
+	ref  apitype.ExtensionRef
+	done *promise.CompletionSource[struct{}]
+}
+
 // A Deployment manages the iterative computation and execution of a deployment based on a stream of goal states.
 // A running deployment emits events that indicate its progress. These events must be used to record the new state
 // of the deployment target.
@@ -313,11 +347,11 @@ type Deployment struct {
 	// true if prev has resources that require a refresh before update.
 	hasRefreshBeforeUpdateResources bool
 	// a map of all old non-deleted resources.
-	olds map[resource.URN]*resource.State
+	olds map[resource.URN]*pkgresource.State
 	// a map of all old resources
-	allOlds map[resource.URN][]*resource.State
+	allOlds map[resource.URN][]*pkgresource.State
 	// a map of all old resource views, keyed by the owning resource's URN.
-	oldViews map[resource.URN][]*resource.State
+	oldViews map[resource.URN][]*pkgresource.State
 	// a map of all planned resource changes, if any.
 	plan *Plan
 	// resources to import, if this is an import deployment.
@@ -328,24 +362,129 @@ type Deployment struct {
 	schemaLoader schema.Loader
 	// the source of new resources.
 	source Source
-	// the policy packs to run during this deployment's generation.
-	localPolicyPackPaths []string
+	// the policy analyzers to run during this deployment.
+	analyzers []plugin.Analyzer
+	// the policy exceptions to apply to each analyzer's violations.
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
 	providers *providers.Registry
 	// the set of resource goals generated by the deployment.
-	goals *gsync.Map[resource.URN, *resource.Goal]
+	goals *gsync.Map[resource.URN, *pkgresource.Goal]
 	// the set of new resources generated by the deployment.
-	news *gsync.Map[resource.URN, *resource.State]
+	news *gsync.Map[resource.URN, *pkgresource.State]
 	// the set of new resource plans.
 	newPlans *resourcePlans
 	// the set of resources read as part of the deployment
-	reads *gsync.Map[resource.URN, *resource.State]
+	reads *gsync.Map[resource.URN, *pkgresource.State]
 	// the resource status server.
 	resourceStatus *resourceStatusServer
 	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
+
+	// stateMigrationRewrites contains reference rewrites from migrations committed during this deployment. They are
+	// used to normalize references retained by the program across a migration.
+	stateMigrationRewritesM sync.RWMutex
+	stateMigrationRewrites  []*stateMigrationRewrite
+
+	// postStepErrors collects errors reported by phases that run after a step's primary cloud operation has succeeded
+	// (e.g. an after-hook callback). The step itself is still treated as successful and its state is committed to the
+	// snapshot, but the deployment as a whole will be cancelled.
+	postStepErrors []error
+	// postStepErrorsLock guards postStepErrors.
+	postStepErrorsLock sync.Mutex
+
+	// the in-flight extension parameterizations, by reference
+	extensions  map[sdkproviders.Reference][]inFlightExtension
+	extensionsM sync.Mutex
+}
+
+// RecordPostStepError records an error that occurred after a step's cloud operation completed successfully. The step's
+// snapshot commit is allowed to proceed normally so state matches cloud reality, but the overall deployment is reported
+// as failed.
+func (d *Deployment) RecordPostStepError(err error) {
+	d.postStepErrorsLock.Lock()
+	defer d.postStepErrorsLock.Unlock()
+	d.postStepErrors = append(d.postStepErrors, err)
+}
+
+// PostStepError returns the joined post-step errors collected during the deployment, or nil if none were recorded.
+func (d *Deployment) PostStepError() error {
+	d.postStepErrorsLock.Lock()
+	defer d.postStepErrorsLock.Unlock()
+	if len(d.postStepErrors) == 0 {
+		return nil
+	}
+	return errors.Join(d.postStepErrors...)
+}
+
+// LookupOrRegisterExtension is the atomic dedup point for extension parameterization.
+// If the (provider, ref) pair is already in flight or done, returns the existing Promise
+// (caller should wait on it) and a nil CompletionSource.
+// If the pair is not yet registered, atomically records a new in-flight entry and returns
+// the CompletionSource. The caller MUST eventually call Fulfill or Reject on it — the
+// caller is now responsible for performing the parameterize work and signaling completion.
+// Exactly one of the returned values is non-nil.
+func (d *Deployment) LookupOrRegisterExtension(
+	provider sdkproviders.Reference, ref apitype.ExtensionRef,
+) (existing *promise.Promise[struct{}], created *promise.CompletionSource[struct{}]) {
+	d.extensionsM.Lock()
+	defer d.extensionsM.Unlock()
+	for _, e := range d.extensions[provider] {
+		if e.ref == ref {
+			return e.done.Promise(), nil
+		}
+	}
+	completionSource := &promise.CompletionSource[struct{}]{}
+	d.extensions[provider] = append(d.extensions[provider], inFlightExtension{
+		ref:  ref,
+		done: completionSource,
+	})
+	return nil, completionSource
+}
+
+// ParameterizeExtension parameterizes the provider behind providerRef with ext. It calls the provider's Parameterize
+// once per (providerRef, ref) pair for the whole deployment, whichever of a resource, a remote component, an invoke or
+// a call needs the extension first. Concurrent callers for the same pair wait for that one call to finish.
+func (d *Deployment) ParameterizeExtension(
+	ctx context.Context, providerRef sdkproviders.Reference, ref apitype.ExtensionRef, ext apitype.Extension,
+) (err error) {
+	existing, created := d.LookupOrRegisterExtension(providerRef, ref)
+	if created == nil {
+		_, err := existing.Result(ctx)
+		return err
+	}
+	defer func() {
+		if err != nil {
+			created.MustReject(err)
+		} else {
+			created.MustFulfill(struct{}{})
+		}
+	}()
+	provider, ok := d.providers.GetProvider(providerRef)
+	if !ok {
+		return fmt.Errorf("provider %s not registered", providerRef)
+	}
+	version, err := semver.Parse(ext.Version)
+	if err != nil {
+		return fmt.Errorf("parse extension version %q: %w", ext.Version, err)
+	}
+	// Other callers share the result, so the cancellation of this caller must not fail the call for them.
+	resp, err := provider.Parameterize(context.WithoutCancel(ctx), plugin.ParameterizeRequest{
+		Parameters: &plugin.ParameterizeValue{
+			Name:    ext.Name,
+			Version: version,
+			Value:   ext.Value,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("parameterize provider for extension %q: %w", ext.Name, err)
+	}
+	if resp.Name != ext.Name {
+		return fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, ext.Name)
+	}
+	return nil
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -371,7 +510,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 	// provider for its package.
 	//
 	// The configuration for each default provider is pulled from the stack's configuration information.
-	var defaultProviders []*resource.State
+	var defaultProviders []*pkgresource.State
 	defaultProviderRefs := make(map[tokens.Package]sdkproviders.Reference)
 	for _, res := range prev.Resources {
 		if sdkproviders.IsProviderType(res.URN.Type()) || !res.Custom || res.Provider != "" {
@@ -381,10 +520,11 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 		pkg := res.URN.Type().Package()
 		ref, ok := defaultProviderRefs[pkg]
 		if !ok {
-			inputs, err := target.GetPackageConfig(pkg)
+			minputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
 				return false, fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
+			inputs := resource.ToResourcePropertyMap(minputs)
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
 				providers.SetProviderVersion(inputs, pkgInfo.Version)
 				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
@@ -401,7 +541,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 			contract.Assertf(err == nil,
 				"could not create provider reference with URN %v and ID %v", urn, id)
 
-			provider := &resource.State{
+			provider := &pkgresource.State{
 				Type:    urn.Type(),
 				URN:     urn,
 				Custom:  true,
@@ -470,17 +610,17 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, erro
 // old resources keyed by URN, and a map of old resource views keyed by URN of the resource they are a view of. It
 // returns an error if there are duplicate resources in the previous snapshot.
 func buildResourceMaps(prev *Snapshot) (
-	[]*resource.State,
+	[]*pkgresource.State,
 	bool,
-	map[resource.URN]*resource.State,
-	map[resource.URN][]*resource.State,
-	map[resource.URN][]*resource.State,
+	map[resource.URN]*pkgresource.State,
+	map[resource.URN][]*pkgresource.State,
+	map[resource.URN][]*pkgresource.State,
 	error,
 ) {
 	var hasRefreshBeforeUpdateResources bool
-	olds := make(map[resource.URN]*resource.State)
-	oldViews := make(map[resource.URN][]*resource.State)
-	allOlds := make(map[resource.URN][]*resource.State)
+	olds := make(map[resource.URN]*pkgresource.State)
+	oldViews := make(map[resource.URN][]*pkgresource.State)
+	allOlds := make(map[resource.URN][]*pkgresource.State)
 	if prev == nil {
 		return nil, hasRefreshBeforeUpdateResources, olds, allOlds, oldViews, nil
 	}
@@ -495,6 +635,11 @@ func buildResourceMaps(prev *Snapshot) (
 		hasRefreshBeforeUpdateResources = hasRefreshBeforeUpdateResources || oldres.RefreshBeforeUpdate
 
 		urn := oldres.URN
+		if oldres.Custom && oldres.ID == "" {
+			return nil, false, nil, nil, nil, fmt.Errorf(
+				"resource '%s' is marked as custom but has no ID; "+
+					"remove it with `pulumi state delete --disable-integrity-checking '%s'` before retrying", urn, urn)
+		}
 		if olds[urn] != nil {
 			if oldres.Delete {
 				continue
@@ -531,7 +676,6 @@ func NewDeployment(
 	prev *Snapshot,
 	plan *Plan,
 	source Source,
-	localPolicyPackPaths []string,
 	backendClient BackendClient,
 	resourceHooks *ResourceHooks,
 ) (*Deployment, error) {
@@ -557,12 +701,12 @@ func NewDeployment(
 	depGraph := graph.NewDependencyGraph(oldResources)
 
 	// Create a goal map for the deployment.
-	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
+	newGoals := &gsync.Map[resource.URN, *pkgresource.Goal]{}
 
 	// Create a resource map for the deployment.
-	newResources := &gsync.Map[resource.URN, *resource.State]{}
+	newResources := &gsync.Map[resource.URN, *pkgresource.State]{}
 
-	reads := &gsync.Map[resource.URN, *resource.State]{}
+	reads := &gsync.Map[resource.URN, *pkgresource.State]{}
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
@@ -570,7 +714,7 @@ func NewDeployment(
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
+	reg := providers.NewRegistry(ctx, opts.DryRun, builtins)
 
 	deployment := &Deployment{
 		ctx:                             ctx,
@@ -585,7 +729,8 @@ func NewDeployment(
 		allOlds:                         allOlds,
 		oldViews:                        oldViews,
 		source:                          source,
-		localPolicyPackPaths:            localPolicyPackPaths,
+		analyzers:                       opts.Analyzers,
+		policyExceptions:                opts.PolicyExceptions,
 		depGraph:                        depGraph,
 		providers:                       reg,
 		goals:                           newGoals,
@@ -593,6 +738,7 @@ func NewDeployment(
 		newPlans:                        newResourcePlan(target.Config),
 		reads:                           reads,
 		resourceHooks:                   resourceHooks,
+		extensions:                      map[sdkproviders.Reference][]inFlightExtension{},
 	}
 
 	// Create a new resource status server for this deployment.
@@ -604,21 +750,31 @@ func NewDeployment(
 	return deployment, nil
 }
 
-func (d *Deployment) Ctx() *plugin.Context                   { return d.ctx }
-func (d *Deployment) Target() *Target                        { return d.target }
-func (d *Deployment) Diag() diag.Sink                        { return d.ctx.Diag }
-func (d *Deployment) Prev() *Snapshot                        { return d.prev }
-func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
-func (d *Deployment) Source() Source                         { return d.source }
+func (d *Deployment) Ctx() *plugin.Context                      { return d.ctx }
+func (d *Deployment) Target() *Target                           { return d.target }
+func (d *Deployment) Diag() diag.Sink                           { return d.ctx.Diag }
+func (d *Deployment) Prev() *Snapshot                           { return d.prev }
+func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
+func (d *Deployment) Source() Source                            { return d.source }
 
-func (d *Deployment) SameProvider(res *resource.State) error {
+// IgnoresProtect returns true if the step's deployment has been configured to ignore the protect
+// resource option (i.e. --ignore-protect was set), allowing protected resources to be deleted.
+func IgnoresProtect(step Step) bool {
+	d := step.Deployment()
+	return d != nil && d.opts != nil && d.opts.IgnoreProtect
+}
+
+// SameProvider configures a provider from state without changes.
+// If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
+// If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
+func (d *Deployment) SameProvider(res *pkgresource.State, fromCheck bool) error {
 	var ctx context.Context
 	if d.ctx == nil {
 		ctx = context.Background()
 	} else {
 		ctx = d.ctx.Base()
 	}
-	return d.providers.Same(ctx, res)
+	return d.providers.Same(ctx, res, fromCheck)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
@@ -635,7 +791,7 @@ func (d *Deployment) EnsureProvider(provider string) error {
 	_, has := d.GetProvider(providerRef)
 	if !has {
 		// We need to create the provider in the registry, find its old state and just "Same" it.
-		var providerResource *resource.State
+		var providerResource *pkgresource.State
 		for _, r := range d.prev.Resources {
 			if r.URN == providerRef.URN() && r.ID == providerRef.ID() {
 				providerResource = r
@@ -646,7 +802,9 @@ func (d *Deployment) EnsureProvider(provider string) error {
 			return fmt.Errorf("could not find provider %v", providerRef)
 		}
 
-		err := d.SameProvider(providerResource)
+		// fromCheck=false because we're loading from state for dependency diffing,
+		// not from a Check/Diff flow. We must not touch the UnconfiguredID entry.
+		err := d.SameProvider(providerResource, false)
 		if err != nil {
 			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
 		}
@@ -655,18 +813,38 @@ func (d *Deployment) EnsureProvider(provider string) error {
 	return nil
 }
 
+// ensureProviderExtension parameterizes a resource's provider with the extension the resource references, if any.
+func (d *Deployment) ensureProviderExtension(res *pkgresource.State) error {
+	if res.ExtensionRef == "" || d.prev == nil {
+		return nil
+	}
+	providerRef, err := sdkproviders.ParseReference(res.Provider)
+	if err != nil {
+		return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
+	}
+	if _, ok := d.providers.GetProvider(providerRef); !ok {
+		return nil
+	}
+	ref := res.ExtensionRef
+	blob, ok := d.prev.Extensions[ref]
+	if !ok {
+		return fmt.Errorf("extension blob for %s (resource %s) not found in snapshot", res.ExtensionRef, res.URN)
+	}
+	return d.ParameterizeExtension(context.TODO(), providerRef, ref, blob)
+}
+
 func (d *Deployment) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {
 	return d.providers.GetProvider(ref)
 }
 
 // GetOldViews returns the old views for the given URN.
 func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
-	return slice.Map(d.oldViews[urn], func(res *resource.State) plugin.View {
+	return slice.Map(d.oldViews[urn], func(res *pkgresource.State) plugin.View {
 		view := plugin.View{
 			Type:    res.URN.Type(),
 			Name:    res.URN.Name(),
-			Inputs:  res.Inputs,
-			Outputs: res.Outputs,
+			Inputs:  resource.FromResourcePropertyMap(res.Inputs),
+			Outputs: resource.FromResourcePropertyMap(res.Outputs),
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()
@@ -713,7 +891,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
 func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
-	deploymentExec := &deploymentExecutor{deployment: d}
+	deploymentExec := newDeploymentExecutor(d)
 	return deploymentExec.Execute(ctx)
 }
 
@@ -729,11 +907,21 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-// RunHooks runs all the before/after hooks on the given state. If `hookType` is an after hook, a hook that returns an
-// error will only generate a warning. Otherwise, it will cause an error return.
+// toPropertyMapPtr converts a resource.PropertyMap to a *property.Map, preserving the
+// nil-vs-empty distinction (nil input yields a nil pointer).
+func toPropertyMapPtr(m resource.PropertyMap) *property.Map {
+	if m == nil {
+		return nil
+	}
+	return new(resource.FromResourcePropertyMap(m))
+}
+
+// RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
+// unless the hook has IgnoreErrors set, in which case the error is logged as a warning.
 func (d *Deployment) RunHooks(
 	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error {
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
@@ -747,19 +935,26 @@ func (d *Deployment) RunHooks(
 		err = hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
-			newInputs, oldInputs, newOutputs, oldOutputs,
+			oldOptions,
+			newOptions,
+			toPropertyMapPtr(newInputs),
+			toPropertyMapPtr(oldInputs),
+			toPropertyMapPtr(newOutputs),
+			toPropertyMapPtr(oldOutputs),
 		)
 		if err != nil {
+			if hook.IgnoreErrors {
+				d.Diag().Warningf(&diag.Diag{
+					URN:     urn,
+					Message: fmt.Sprintf("%s hook %q failed: %s", hookType, hookName, err),
+				})
+				continue
+			}
 			switch {
 			case resource.IsBeforeHook(hookType):
 				return fmt.Errorf("before hook %q failed: %w", hookName, err)
 			case resource.IsAfterHook(hookType):
-				// Errors on after hooks report a diagnostic, but do not fail the step.
-				d.Diag().Warningf(&diag.Diag{
-					URN:     urn,
-					Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
-				})
-				continue
+				return fmt.Errorf("after hook %q failed: %w", hookName, err)
 			default:
 				return fmt.Errorf("unknown hook type %q: %w", hookType, err)
 			}
@@ -771,7 +966,8 @@ func (d *Deployment) RunHooks(
 // RunErrorHooks runs all error hooks on the given state. A hook that returns an error will cause an error return.
 func (d *Deployment) RunErrorHooks(
 	hooks []string, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string, errors []string,
 ) (bool, error) {
 	shouldRetry := false
@@ -785,7 +981,11 @@ func (d *Deployment) RunErrorHooks(
 		retry, err := hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
-			newInputs, oldInputs, oldOutputs,
+			oldOptions,
+			newOptions,
+			toPropertyMapPtr(newInputs),
+			toPropertyMapPtr(oldInputs),
+			toPropertyMapPtr(oldOutputs),
 			failedOperation,
 			errors,
 		)

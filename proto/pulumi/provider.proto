@@ -87,6 +87,14 @@ service ResourceProvider {
     // rendering diffs.
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
 
+    // `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+    // uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+    //
+    // Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+    // provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+    // to implement `CheckConfig` for as long as they support callers that only know about the latter.
+    rpc CheckConfig2(CheckConfigRequest) returns (CheckConfigResponse) {}
+
     // `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
     // difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
     // is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
@@ -169,6 +177,10 @@ service ResourceProvider {
     // must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     // include other properties.
     rpc Read(ReadRequest) returns (ReadResponse) {}
+
+    // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    // emit a continuation token indicating another page is available.
+    rpc List(ListRequest) returns (stream ListResponse) {}
 
     // `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
@@ -270,6 +282,44 @@ message ProviderHandshakeRequest {
 
     // If true the engine will send `preview` to `Invoke` methods to let them know if the current operation is a preview or up.
     bool invoke_with_preview = 7;
+
+    // The target of a [](codegen.Mapper) service the provider can use to retrieve mappings from other ecosystems to
+    // Pulumi. May be empty on older engines.
+    optional string mapper_target = 8;
+
+    // The target of a [](codegen.Loader) service the provider can use to load the schemas of other Pulumi packages.
+    // May be empty on older engines.
+    optional string loader_target = 9;
+
+    // The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
+    // concrete package dependencies. May be empty on older engines.
+    optional string resolver_target = 10;
+
+    // True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
+    // return such values to the engine.
+    bool accepts_byte_string = 11;
+
+    // If true the engine populates `old_outputs` on `CheckRequest` for update-path Check calls. Older engines never
+    // set this field, so providers should treat an absent value as false and fall back to legacy behavior that does
+    // not rely on previously persisted outputs during Check.
+    bool sends_old_outputs_to_check = 12;
+
+    // If true the engine can send OutputValues nested in `InvokeRequest.args` and will accept OutputValues in
+    // `InvokeResponse.return`. Providers that opt in should set `accepts_outputs_in_invoke` on
+    // `ProviderHandshakeResponse`. Older engines never set this field.
+    bool accepts_outputs_in_invoke = 13;
+
+    // If true the engine can send OutputValues nested in `ResourceCallRequest.args` and will accept OutputValues in
+    // `CallResponse.return`. Providers that opt in should set `accepts_outputs_in_call` on
+    // `ProviderHandshakeResponse`. Older engines never set this field.
+    bool accepts_outputs_in_call = 14;
+
+    // If true the engine can send OutputValues nested in `CheckRequest.olds`, `CheckRequest.news`, and
+    // `CheckRequest.old_outputs`, and will accept OutputValues in `CheckResponse.inputs`. Providers that opt
+    // in should set `accepts_outputs_in_check` on `ProviderHandshakeResponse`. Older engines never set this
+    // field.
+    bool accepts_outputs_in_check = 15;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -296,6 +346,26 @@ message ProviderHandshakeResponse {
     // confusion.
     reserved 5;
     reserved "pulumi_version_range";
+
+    // True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+    // objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    // caller may pass such values to the provider.
+    bool accepts_byte_string = 6;
+
+    // True if and only if the provider accepts OutputValues nested in `InvokeRequest.args` and may return
+    // OutputValues in `InvokeResponse.return`. Only meaningful when the engine advertised
+    // `accepts_outputs_in_invoke` on the handshake request.
+    bool accepts_outputs_in_invoke = 7;
+
+    // True if and only if the provider accepts OutputValues nested in `ResourceCallRequest.args` and may return
+    // OutputValues in `CallResponse.return`. Only meaningful when the engine advertised
+    // `accepts_outputs_in_call` on the handshake request.
+    bool accepts_outputs_in_call = 8;
+
+    // True if and only if the provider accepts OutputValues nested in `CheckRequest.olds`, `CheckRequest.news`,
+    // and `CheckRequest.old_outputs`, and may return OutputValues in `CheckResponse.inputs`. Only meaningful
+    // when the engine advertised `accepts_outputs_in_check` on the handshake request.
+    bool accepts_outputs_in_check = 9;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -388,7 +458,7 @@ message ConfigureRequest {
     //   "b": "{\"c\":\"hello\",\"d\":true}"
     // }
     // ```
-    map<string, string> variables = 1;
+    map<string, string> variables = 1 [deprecated = true];
 
     // A map of input properties for the provider.
     //
@@ -520,6 +590,10 @@ message CallRequest {
     reserved 4, 5, 13, 16, 15;
     reserved "provider", "version", "pluginDownloadURL", "pluginChecksums", "sourcePosition";
 
+    // NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    // remain for backward compatibility. Newer providers may read these via
+    // [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
     string tok = 1;                                        // the function token to invoke.
     google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
     map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
@@ -615,6 +689,11 @@ message CheckRequest {
         Mode mode = 2;
     }
     AutonamingOptions autonaming = 8;
+
+    // The previously persisted output properties of the resource, if any. Only populated by engines that advertise
+    // `sends_old_outputs_to_check` on the provider handshake, and only for Check calls that follow an existing
+    // resource state (i.e. not create or replace). Providers must not assume this is populated.
+    google.protobuf.Struct old_outputs = 9;
 }
 
 // `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
@@ -640,6 +719,55 @@ message CheckResponse {
 // [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
 message CheckFailure {
     // The input property that failed validation.
+    string property = 1;
+
+    // The reason that the named property failed validation.
+    string reason = 2;
+}
+
+// `CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls.
+message CheckConfigRequest {
+    // The URN of the provider resource whose configuration is being checked, which may or may not be a [default
+    // provider](default-providers).
+    string urn = 1;
+
+    // The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
+    // passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 2;
+
+    // The type of the provider resource being checked. This must match the type specified by the `urn` field, and is
+    // passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 3;
+
+    // The old input configuration for the provider, if any.
+    google.protobuf.Struct old_inputs = 4;
+
+    // The new input configuration for the provider.
+    google.protobuf.Struct new_inputs = 5;
+
+    // The previously persisted output properties of the provider resource, if any. Providers must not assume this is
+    // populated.
+    google.protobuf.Struct old_outputs = 6;
+
+    // A random but deterministically computed hash, intended to be used for generating globally unique names.
+    bytes random_seed = 7;
+}
+
+// `CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. It
+// contains either checked `inputs`, which may subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig)
+// and [](pulumirpc.ResourceProvider.Configure), or a set of `failures` detailing invalid inputs.
+message CheckConfigResponse {
+    // A valid, checked set of inputs. May contain defaults.
+    google.protobuf.Struct inputs = 1;
+
+    // Any validation failures that occurred.
+    repeated CheckConfigFailure failures = 2;
+}
+
+// A `CheckConfigFailure` describes a single validation error that arose as part of a
+// [](pulumirpc.ResourceProvider.CheckConfig2) call.
+message CheckConfigFailure {
+    // The provider configuration property that failed validation.
     string property = 1;
 
     // The reason that the named property failed validation.
@@ -863,6 +991,9 @@ message ReadRequest {
     // The old views for the resource being read. These will only be populated when the
     // [](pulumirpc.ResourceProvider.Read) call is being made as part of a refresh operation.
     repeated View old_views = 9;
+
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 10;
 }
 
 // `ReadResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Read) call. A `ReadResponse` contains
@@ -880,6 +1011,64 @@ message ReadResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 4;
+}
+
+// `ListRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.List) call.
+message ListRequest {
+    // The resource token (type) to list.
+    string token = 1;
+
+    // An optional provider-defined filter over resource state. This is a property map and could contain
+    // unknown/computed values.
+    google.protobuf.Struct query = 2;
+
+    // The maximum number of resources to return. If less than 1 then no limit is applied.
+    int64 limit = 3;
+
+    // The requested page size for this streaming call. The provider is free to return less, but should not return more.
+    int64 page_size = 4;
+
+    // An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+    // should be the values used to fetch the first page.
+    string continuation_token = 5;
+}
+
+// `ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List). It must follow one of
+// the following orders. Either it returns a single [](pulumirpc.ListResponse.Computed) or it should return one or more
+// [](pulumirpc.ListResponse.Result) items followed optionally by a [](pulumirpc.ListResponse.Continuation).
+message ListResponse {
+    // `Computed` is returned if [](pulumirpc.ResourceProvider.List) can't compute the result due to unknown values in the query.
+    message Computed {
+
+    }
+
+    // `Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
+    message Result {
+        // The ID of the resource. This should be an importable ID that can be passed to a
+        // [](pulumirpc.ResourceProvider.Read) call to read the resource.
+        string id = 1;
+
+        // The resource name, if the provider can supply one. If empty no name was given.
+        string name = 2;
+    }
+
+    // `Continuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch.
+    message Continuation {
+        // An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are
+        // no more results.
+        string continuation_token = 1;
+    }
+
+    oneof response {
+        // A computed marker.
+        Computed computed = 1;
+
+        // A resource entry.
+        Result result = 2;
+
+        // A continuation marker.
+        Continuation continuation = 3;
+    }
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -1006,7 +1195,15 @@ message ConstructRequest {
         // How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Delete) operation
         // to complete.
         string delete = 3;
+
+        // How long a caller is prepared to wait for a nested resource's [](pulumirpc.ResourceProvider.Read) operation
+        // to complete.
+        string read = 4;
     }
+
+    // NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    // remain for backward compatibility. Newer providers may read these via
+    // [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
 
     // The project to which this resource and its nested resources will belong.
     string project = 1;
@@ -1127,7 +1324,7 @@ message ConstructRequest {
 
     // a list of additional aliases that should be considered the same.
     repeated Alias aliases = 29;
-    
+
     // If set, the engine will diff this value with the last recorded value, and trigger a replace if they are not
     // equal.
     google.protobuf.Value replacement_trigger = 30;
@@ -1165,6 +1362,11 @@ message ErrorResourceInitFailed {
     bool refresh_before_update = 5;
 }
 
+// ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the provider had
+// to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource state was written (Create) or the
+// prior state is preserved unchanged (Update). The engine reports the resource as failed to the SDK and continues the
+// deployment, but the CLI exits with a dedicated non-zero code.
+message ErrorResourceAwaitFailed {}
 
 
 // `GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call.

@@ -1,0 +1,5 @@
+name: l2-extension-borrowed-type
+runtime:
+  name: nodejs
+  options:
+    typescript: false

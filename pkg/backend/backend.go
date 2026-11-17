@@ -22,20 +22,22 @@ import (
 	"io"
 	"time"
 
-	"github.com/pulumi/esc"
+	"go.opentelemetry.io/otel"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -160,8 +162,9 @@ type Backend interface {
 	// SupportsDeployments tells whether it is possible to manage deployments in this backend.
 	SupportsDeployments() bool
 
-	// GetDefaultOrg returns the organization if the backend has an opinion on what user organization to default to,
-	// if not configured locally by the user.
+	// GetDefaultOrg returns a user's default organization, if configured. It will prefer the organization that the user
+	// has configured locally, falling back  the backend opinion on default organization if not manually set by the
+	// user. Returns an empty string if there is no default org configured.
 	GetDefaultOrg(ctx context.Context) (string, error)
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
@@ -210,32 +213,26 @@ type Backend interface {
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
 	) (sdkDisplay.ResourceChanges, error)
-	// Import imports resources into a stack.
+	// Import imports resources into a stack. In addition to the resource changes it also returns
+	// the final in-memory snapshot produced by the engine so callers can drive post-import work
+	// (e.g. codegen for `pulumi import`) without re-reading persisted state. The snapshot is
+	// populated even on dry-run / preview-only imports.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error)
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	// Watch watches the project's working directory for changes and automatically updates the active stack.
-	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) error
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
-	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, secretsProvider secrets.Provider, stack Stack, cfg StackConfiguration,
-		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stack Stack) (LatestConfiguration, error)
 
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
-	// Encrypt secrets using the DS encryption key
-	EncryptStackDeploymentSettingsSecret(ctx context.Context, stack Stack, secret string) (*apitype.SecretValue, error)
-	// UpdateStackDeploymentSettings updates the stacks's deployment settings.
-	UpdateStackDeploymentSettings(ctx context.Context, stack Stack, deployment apitype.DeploymentSettings) error
 	// Fetch deployment settings
 	GetStackDeploymentSettings(ctx context.Context, stack Stack) (*apitype.DeploymentSettings, error)
 	// Deletes the stach deployment settings
@@ -312,7 +309,56 @@ type EnvironmentsBackend interface {
 		org string,
 		yaml []byte,
 		duration time.Duration,
+		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+}
+
+// ManagedEnvironmentEvaluation is the result of evaluating a stack's managed environment definition.
+type ManagedEnvironmentEvaluation struct {
+	Environment *esc.Environment
+	// BaseRevision is the published revision the local definition was compared with.
+	BaseRevision int
+	// PublishedDefinition is the definition of BaseRevision as the service returned it, which the CLI diffs the local
+	// definition against. Always set.
+	PublishedDefinition []byte
+	// ChangeRequestID is set when the definition differs from BaseRevision.
+	ChangeRequestID string
+	// DraftRevision is the change request revision that was evaluated. The update applies exactly this revision and
+	// fails if the change request was edited since. Set only with ChangeRequestID.
+	DraftRevision int
+}
+
+// ManagedEnvironmentsBackend is implemented by backends whose stacks can manage an ESC environment.
+type ManagedEnvironmentsBackend interface {
+	// EvaluateManagedEnvironment opens the managed environment project/name with the stack's definition, creating a
+	// draft when the definition differs from the published one.
+	EvaluateManagedEnvironment(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		definition []byte,
+	) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+
+	// EncryptEnvironmentSecrets encrypts each plaintext with environment org/project/name's key and returns the
+	// ciphertexts in input order, usable only as fn::secret ciphertexts in that environment's definition.
+	EncryptEnvironmentSecrets(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		plaintexts [][]byte,
+	) ([]string, error)
+}
+
+// AsManagedEnvironmentsBackend returns b as a ManagedEnvironmentsBackend, or an error wrapping
+// ErrManagedEnvironmentNotSupported if b cannot manage ESC environments.
+func AsManagedEnvironmentsBackend(b Backend) (ManagedEnvironmentsBackend, error) {
+	managed, ok := b.(ManagedEnvironmentsBackend)
+	if !ok {
+		return nil, fmt.Errorf("%w by backend %v", ErrManagedEnvironmentNotSupported, b.Name())
+	}
+	return managed, nil
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
@@ -337,6 +383,7 @@ type UpdateOperation struct {
 	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
+	CoherenceWindow    string
 }
 
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
@@ -347,6 +394,14 @@ type StackConfiguration struct {
 	Environment esc.Value
 	Config      config.Map
 	Decrypter   config.Decrypter
+
+	// ManagedEnvironment is the revision or draft of the stack's managed ESC environment that Environment came from;
+	// nil for unmanaged stacks.
+	ManagedEnvironment *apitype.UpdateProgramEnvironment
+	// ManagedEnvironmentNotice is text with colorization tags that every engine operation on the stack, previews
+	// included, sends as a stdout event before the engine runs. It is empty unless ManagedEnvironment.ChangeRequestID
+	// is set.
+	ManagedEnvironmentNotice string
 }
 
 // LatestConfiguration holds the configuration retrieved from the most recent deployment.
@@ -400,6 +455,10 @@ func (c *backendClient) GetStackOutputs(
 	name string,
 	onDecryptError func(err error) error,
 ) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "backendClient.GetStackOutputs")
+	defer span.End()
+
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return property.Map{}, err
@@ -459,6 +518,8 @@ var (
 	// which do not support the teams feature.
 	ErrTeamsNotSupported  = errors.New("teams are not supported")
 	ErrConfigNotSupported = errors.New("remote config is not supported")
+	// ErrManagedEnvironmentNotSupported is returned for backends that cannot manage an ESC environment for a stack.
+	ErrManagedEnvironmentNotSupported = errors.New("ESC-managed environments are not supported")
 )
 
 // CreateStackOptions provides options for stack creation.
@@ -476,6 +537,10 @@ type CreateStackOptions struct {
 	// Config is the optional cloud stack config to use instead of reading from a local file on disk.
 	// This is only used by the Service backend.
 	Config *apitype.StackConfig
+
+	// ManagedEnvironment asks the backend to create an ESC environment that the stack manages.
+	// This is only used by the Service backend.
+	ManagedEnvironment bool
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

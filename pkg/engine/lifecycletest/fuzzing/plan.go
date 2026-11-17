@@ -95,19 +95,19 @@ func (ps *PlanSpec) Executors(t lt.TB, hostF deploytest.PluginHostFactory) (lt.T
 // debugging output and error messages.
 func (ps *PlanSpec) Pretty(indent string) string {
 	var rendered strings.Builder
-	rendered.WriteString(fmt.Sprintf("%sPlan %p", indent, ps))
-	rendered.WriteString(fmt.Sprintf("\n%s  Operation: %s", indent, ps.Operation))
+	fmt.Fprintf(&rendered, "%sPlan %p", indent, ps)
+	fmt.Fprintf(&rendered, "\n%s  Operation: %s", indent, ps.Operation)
 	if len(ps.TargetURNs) > 0 {
-		rendered.WriteString(fmt.Sprintf("\n%s  Targets:", indent))
+		fmt.Fprintf(&rendered, "\n%s  Targets:", indent)
 		for _, urn := range ps.TargetURNs {
-			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(urn)))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, Colored(urn))
 		}
 	} else {
-		rendered.WriteString(fmt.Sprintf("\n%s  No targets", indent))
+		fmt.Fprintf(&rendered, "\n%s  No targets", indent)
 	}
-	rendered.WriteString(fmt.Sprintf("\n%s  Refresh: %t", indent, ps.Refresh))
+	fmt.Fprintf(&rendered, "\n%s  Refresh: %t", indent, ps.Refresh)
 	if ps.RefreshProgram {
-		rendered.WriteString(fmt.Sprintf("\n%s  Refresh Program: %t", indent, ps.RefreshProgram))
+		fmt.Fprintf(&rendered, "\n%s  Refresh Program: %t", indent, ps.RefreshProgram)
 	}
 
 	return rendered.String()
@@ -182,7 +182,7 @@ func GeneratedPlanSpec(ss *SnapshotSpec, pso PlanSpecOptions) *rapid.Generator[*
 			seen := map[resource.URN]bool{}
 
 			targetCount := pso.TargetCount.Draw(t, "PlanSpec.TargetCount")
-			for i := 0; i < targetCount; i++ {
+			for i := range targetCount {
 				candidate := rapid.SampledFrom(ss.Resources).Draw(t, fmt.Sprintf("PlanSpec.TargetResource[%d]", i))
 				if seen[candidate.URN()] {
 					continue

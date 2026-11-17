@@ -18,9 +18,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,6 +28,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 type traceSpan struct {
@@ -42,18 +42,10 @@ type traceSpan struct {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestOtelTraces(t *testing.T) {
-	// Build the testprovider as a standalone binary so the engine launches it directly in ExecPlugin rather than
-	// through RunPlugin. We currently can't gracefully shut down a RunPlugin process and wait for it to finish, so
-	// providers launched that way don't get a chance to flush their OTEL traces before being killed.
-	binDir := t.TempDir()
-	binaryName := "pulumi-resource-testprovider"
-	if runtime.GOOS == "windows" {
-		binaryName += ".exe"
-	}
-	buildCmd := exec.Command("go", "build", "-o", filepath.Join(binDir, binaryName), ".") //nolint:gosec
-	buildCmd.Dir = filepath.Join("..", "..", "testprovider")
-	out, err := buildCmd.CombinedOutput()
-	require.NoError(t, err, "failed to build testprovider: %s", out)
+	// Use the prebuilt standalone testprovider binary so the engine launches it directly in ExecPlugin rather
+	// than through RunPlugin. We currently can't gracefully shut down a RunPlugin process and wait for it to
+	// finish, so providers launched that way don't get a chance to flush their OTEL traces before being killed.
+	binDir := testutil.TestProviderDir(t)
 
 	traceDir := t.TempDir()
 	tracePath, err := filepath.Abs(filepath.Join(traceDir, "traces-{command}.json"))
@@ -76,6 +68,24 @@ func TestOtelTraces(t *testing.T) {
 			spanByID := make(map[pcommon.SpanID]traceSpan)
 			for _, s := range spans {
 				spanByID[s.SpanID] = s
+			}
+
+			// A well-formed trace is a single tree rooted at the CLI's "pulumi" span; multiple
+			// roots mean a span was emitted without inheriting the parent trace context.
+			var unparented []traceSpan
+			for _, s := range spans {
+				if s.ParentID.IsEmpty() {
+					unparented = append(unparented, s)
+				}
+			}
+			if len(unparented) != 1 {
+				var msg strings.Builder
+				fmt.Fprintf(&msg, "expected exactly 1 root span, got %d:", len(unparented))
+				for _, s := range unparented {
+					fmt.Fprintf(&msg, "\n  - name=%q service=%q span=%s trace=%s",
+						s.Name, s.ServiceName, s.SpanID, s.TraceID)
+				}
+				assert.Fail(t, msg.String())
 			}
 
 			// Walk through the expected span hierarchy top-down:

@@ -26,8 +26,9 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestHideDiffs_Plain(t *testing.T) {
@@ -41,13 +42,13 @@ func TestHideDiffs_Detailed(t *testing.T) {
 }
 
 func testHideDiffs(t *testing.T, detailedDiff bool) {
-	propValue := resource.NewProperty("a")
+	propValue := property.New("a")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if req.OldInputs.DeepEquals(req.NewInputs) {
+					if req.OldInputs.Equals(req.NewInputs) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffNone,
 						}, nil
@@ -55,11 +56,12 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 
 					p := plugin.DiffResult{Changes: plugin.DiffSome}
 					if detailedDiff {
-						p.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(req.OldInputs.Diff(req.NewInputs), true)
+						p.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(
+							resource.ToResourceObjectDiff(req.OldInputs.Diff(req.NewInputs)), true)
 					}
 
 					check := func(key resource.PropertyKey) {
-						if !req.OldInputs[key].DeepEquals(req.NewInputs[key]) {
+						if !req.OldInputs.Get(string(key)).Equals(req.NewInputs.Get(string(key))) {
 							p.ChangedKeys = append(p.ChangedKeys, key)
 						}
 					}
@@ -90,15 +92,15 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// This resource checks that we behave correctly when all updating fields are hidden.
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
+			Inputs: property.NewMap(map[string]property.Value{
 				"scalar": propValue,
-				"array": resource.NewProperty([]resource.PropertyValue{
+				"array": property.New([]property.Value{
 					propValue,
 				}),
-				"map": resource.NewProperty(resource.PropertyMap{
+				"map": property.New(property.NewMap(map[string]property.Value{
 					"k": propValue,
-				}),
-			},
+				})),
+			}),
 			HideDiffs: []resource.PropertyPath{
 				{"array"},
 				{"map"},
@@ -110,15 +112,15 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 		// This resource checks that diff behaves correctly when both hidden and
 		// non-hidden fields are diffed.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
+			Inputs: property.NewMap(map[string]property.Value{
 				"scalar": propValue,
-				"array": resource.NewProperty([]resource.PropertyValue{
+				"array": property.New([]property.Value{
 					propValue,
 				}),
-				"map": resource.NewProperty(resource.PropertyMap{
+				"map": property.New(property.NewMap(map[string]property.Value{
 					"k": propValue,
-				}),
-			},
+				})),
+			}),
 			HideDiffs: []resource.PropertyPath{
 				{"array"},
 				{"map"},
@@ -128,9 +130,9 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 
 		// This resource checks that hidden but non-changed fields don't show as a hidden diff.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"scalar": resource.NewProperty("fixed"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"scalar": property.New("fixed"),
+			}),
 			HideDiffs: []resource.PropertyPath{
 				{"scalar"},
 			},
@@ -139,7 +141,7 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -161,6 +163,6 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 		{"map"},
 		{"scalar"},
 	})
-	propValue = resource.NewProperty("b")
+	propValue = property.New("b")
 	p.Run(t, created) // Update
 }

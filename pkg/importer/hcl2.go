@@ -18,8 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
-	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -28,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -54,7 +58,7 @@ type ImportState struct {
 
 	// A snapshot of the resources in the Pulumi program that new resources are being imported to. This is used to resolve
 	// references to packages providers.
-	Snapshot []*resource.State
+	Snapshot []*pkgresource.State
 }
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
@@ -77,13 +81,69 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 	}
 }
 
+// isLocalComponent reports whether a resource state is a component resource declared by a Pulumi program rather than
+// by a package. Remote components are served by a provider and do have a schema, so they are not included.
+func isLocalComponent(state *pkgresource.State) bool {
+	return !state.Custom && state.Provider == ""
+}
+
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
+//
+// GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
 func GenerateHCL2Definition(
 	loader schema.Loader,
-	state *resource.State,
+	state *pkgresource.State,
 	importState ImportState,
 ) (*model.Block, *schema.PackageDescriptor, error) {
-	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
+	var items []model.BodyItem
+	name := state.URN.Name()
+	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
+	// the resource block.
+	if mappedName, ok := importState.Names[state.URN]; ok {
+		if mappedName != name {
+			items = append(items, &model.Attribute{
+				Name: "__logicalName",
+				Value: &model.TemplateExpression{
+					Parts: []model.Expression{
+						&model.LiteralValueExpression{
+							Value: cty.StringVal(state.URN.Name()),
+						},
+					},
+				},
+			})
+		}
+		name = mappedName
+	}
+
+	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
+
+	// Local component resources are declared by a Pulumi program rather than by a package schema, so there is no
+	// provider to look up and no schema to shape their inputs. Emit a source-less component block naming the
+	// component by its type token, which code generation turns into a base ComponentResource construction.
+	if isLocalComponent(state) {
+		typ := cty.StringVal(string(state.URN.Type()))
+		items = append(items, &model.Attribute{
+			Name:  "token",
+			Value: &model.TemplateExpression{Parts: []model.Expression{&model.LiteralValueExpression{Value: typ}}},
+		})
+
+		options, err := makeResourceOptions(state, importState.Names, map[string]bool{})
+		if err != nil {
+			return nil, nil, err
+		}
+		if options != nil {
+			items = append(items, options)
+		}
+
+		return &model.Block{
+			Tokens: syntax.NewBlockTokens("component", name),
+			Type:   "component",
+			Labels: []string{name},
+			Body:   &model.Body{Items: items},
+		}, nil, nil
+	}
+
+	// Otherwise we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
 	// provider reference and looking up that provider resource in the current program snapshot. From there, we can build
 	// a package descriptor and load the package and its schema.
 	providerRef, err := sdkproviders.ParseReference(state.Provider)
@@ -91,7 +151,7 @@ func GenerateHCL2Definition(
 		return nil, nil, fmt.Errorf("parse resource provider reference: %w", err)
 	}
 
-	var provider *resource.State
+	var provider *pkgresource.State
 	for _, s := range importState.Snapshot {
 		if s.URN == providerRef.URN() && s.ID == providerRef.ID() {
 			provider = s
@@ -150,8 +210,7 @@ func GenerateHCL2Definition(
 		//
 		// https://github.com/pulumi/pulumi/issues/18271 tracks the issue of whether we can do a bit better here (e.g.
 		// allowing semver-compatible version differences but not any others).
-		var versionMismatchErr *schema.PackageReferenceVersionMismatchError
-		if !errors.As(err, &versionMismatchErr) {
+		if _, ok := errors.AsType[*schema.PackageReferenceVersionMismatchError](err); !ok {
 			return nil, nil, fmt.Errorf("loading package '%v': %w", pkgDesc, err)
 		}
 	}
@@ -173,28 +232,6 @@ func GenerateHCL2Definition(
 		return nil, nil, fmt.Errorf("unknown resource type '%v'", r)
 	}
 
-	var items []model.BodyItem
-	name := state.URN.Name()
-	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
-	// the resource block.
-	if mappedName, ok := importState.Names[state.URN]; ok {
-		if mappedName != name {
-			items = append(items, &model.Attribute{
-				Name: "__logicalName",
-				Value: &model.TemplateExpression{
-					Parts: []model.Expression{
-						&model.LiteralValueExpression{
-							Value: cty.StringVal(state.URN.Name()),
-						},
-					},
-				},
-			})
-		}
-		name = mappedName
-	}
-
-	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
-
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
 	// when the resource is already implicitly referenced via its properties
 	addedReferences := make(map[string]bool)
@@ -203,9 +240,9 @@ func GenerateHCL2Definition(
 	}
 
 	importStateContext := filterReferences(name, importState)
+	stateInputs := resource.FromResourcePropertyMap(state.Inputs)
 	for _, p := range r.InputProperties {
-		input := state.Inputs[resource.PropertyKey(p.Name)]
-		inputV := resource.FromResourcePropertyValue(input)
+		inputV := stateInputs.Get(p.Name)
 		x, err := generatePropertyValue(p, inputV, importStateContext, onReferenceFound)
 		if err != nil {
 			return nil, nil, err
@@ -265,7 +302,7 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 //
 // The corresponding binding pcl function to read these is bindResourceOptions
 // which reads out these options.
-func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
+func makeResourceOptions(state *pkgresource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
 	var resourceOptions *model.Block
 	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
 		name, ok := names[state.Parent]
@@ -579,6 +616,8 @@ func zeroValue(t schema.Type) model.Expression {
 // generatePropertyValue generates the value for the given property. If the value is absent and the property is
 // required, a zero value for the property's type is generated. If the value is absent and the property is not
 // required, no value is generated (i.e. this function returns nil).
+//
+// If the property represents a map and a value doesn't conform to the map shape, it is omitted.
 func generatePropertyValue(
 	property *schema.Property,
 	value property.Value,
@@ -597,13 +636,42 @@ func generatePropertyValue(
 
 // valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
 func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool {
-	if union, ok := schemaType.(*schema.UnionType); ok {
-		schemaType = reduceUnionType(union, value)
+removeNonStructuralTypes:
+	for {
+		switch t := schemaType.(type) {
+		case *schema.InputType:
+			schemaType = t.ElementType
+		case *schema.OptionalType:
+			if value.IsNull() {
+				return true
+			}
+			schemaType = t.ElementType
+		case *schema.EnumType:
+			schemaType = t.ElementType
+		case *schema.UnionType:
+			schemaType = reduceUnionType(t, value)
+		default:
+			break removeNonStructuralTypes
+		}
+	}
+
+	// AnyType, JSONType, and AnyResourceType all share the "pulumi:pulumi:Any"
+	// token but are distinct singletons. Each one accepts any value at the
+	// structural level, so short-circuit them together.
+	if schemaType == schema.AnyType || schemaType == schema.JSONType || schemaType == schema.AnyResourceType {
+		return true
 	}
 
 	switch {
 	case value.IsMap():
 		switch arg := schemaType.(type) {
+		case *schema.MapType:
+			for _, vv := range value.AsMap().All {
+				if !valueStructurallyTypedAs(vv, arg.ElementType) {
+					return false
+				}
+			}
+			return true
 		case *schema.ObjectType:
 			schemaProperties := make(map[string]schema.Type)
 			for _, schemaProperty := range arg.Properties {
@@ -714,6 +782,42 @@ func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool
 				}
 			}
 		}
+
+	case value.IsArchive():
+		if schemaType == schema.ArchiveType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsAsset():
+		if schemaType == schema.AssetType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsResourceReference():
+		if _, ok := schemaType.(*schema.ResourceType); ok {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
 	}
 
 	return false
@@ -818,7 +922,7 @@ func generateValue(
 
 	switch {
 	case value.IsArchive():
-		return nil, errors.New("NYI: archives")
+		return generateArchive(value.AsArchive())
 	case value.IsArray():
 		elementType := schema.AnyType
 		if typ, ok := typ.(*schema.ArrayType); ok {
@@ -839,7 +943,7 @@ func generateValue(
 			Expressions: exprs,
 		}, nil
 	case value.IsAsset():
-		return nil, errors.New("NYI: assets")
+		return generateAsset(value.AsAsset())
 	case value.IsBool():
 		return &model.LiteralValueExpression{
 			Value: cty.BoolVal(value.AsBool()),
@@ -880,22 +984,19 @@ func generateValue(
 			}
 
 			for k, v := range obj.AllStable {
-				// Ignore internal properties.
-				if strings.HasPrefix(k, "__") {
+				if !valueStructurallyTypedAs(v, elementType) {
+					slog.Info("dropped non-conforming value from object type",
+						slog.Any("expected-type", elementType), slog.Any("found-value", v))
 					continue
 				}
-
 				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
 					return nil, err
 				}
 
-				// Always quote the key in case it includes invalid identifier characters (like '/' or ':')
-				propKey := fmt.Sprintf("%q", k)
-
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Value: cty.StringVal(propKey),
+						Value: cty.StringVal(`"` + model.EscapeString(k) + `"`),
 					},
 					Value: x,
 				})
@@ -954,4 +1055,82 @@ func generateValue(
 		contract.Failf("unexpected property value %v", value)
 		return nil, nil
 	}
+}
+
+// stringLiteralCall builds an HCL call to fn with a single string argument.
+func stringLiteralCall(fn, s string) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: fn,
+		Args: []model.Expression{
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: cty.StringVal(s),
+					},
+				},
+			},
+		},
+	}
+}
+
+// generateAsset emits a PCL function call that constructs the given asset.
+func generateAsset(a *asset.Asset) (model.Expression, error) {
+	switch {
+	case a.IsText():
+		text, _ := a.GetText()
+		return stringLiteralCall("stringAsset", text), nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileAsset", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteAsset", uri), nil
+	}
+	return nil, errors.New("asset has no text, path, or uri")
+}
+
+// generateArchive emits a PCL function call that constructs the given archive.
+func generateArchive(a *archive.Archive) (model.Expression, error) {
+	switch {
+	case a.IsAssets():
+		assets, _ := a.GetAssets()
+		items := slice.Prealloc[model.ObjectConsItem](len(assets))
+		for k, v := range assets {
+			var elem model.Expression
+			var err error
+			switch v := v.(type) {
+			case *asset.Asset:
+				elem, err = generateAsset(v)
+			case *archive.Archive:
+				elem, err = generateArchive(v)
+			default:
+				return nil, fmt.Errorf("unexpected archive entry type %T", v)
+			}
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, model.ObjectConsItem{
+				Key: &model.LiteralValueExpression{
+					Value: cty.StringVal(fmt.Sprintf("%q", k)),
+				},
+				Value: elem,
+			})
+		}
+		return &model.FunctionCallExpression{
+			Name: "assetArchive",
+			Args: []model.Expression{
+				&model.ObjectConsExpression{
+					Tokens: syntax.NewObjectConsTokens(len(items)),
+					Items:  items,
+				},
+			},
+		}, nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileArchive", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteArchive", uri), nil
+	}
+	return nil, errors.New("archive has no assets, path, or uri")
 }

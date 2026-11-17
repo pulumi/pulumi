@@ -243,6 +243,10 @@ func (p *Program) collectComponentsRecursive(components map[string]*Component) {
 	for _, node := range p.Nodes {
 		switch node := node.(type) {
 		case *Component:
+			// A component declared without a source has no program to emit or to search.
+			if node.Program == nil {
+				continue
+			}
 			if _, seen := components[node.DirPath()]; !seen {
 				components[node.DirPath()] = node
 				node.Program.collectComponentsRecursive(components)

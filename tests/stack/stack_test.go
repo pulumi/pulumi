@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,9 +28,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -219,8 +224,9 @@ func TestStackCommands(t *testing.T) {
 		}
 
 		for _, deploymentVersion := range versions {
-			//nolint:paralleltest // mutates environment variables
 			t.Run(fmt.Sprintf("Version%d", deploymentVersion), func(t *testing.T) {
+				t.Parallel()
+
 				e := ptesting.NewEnvironment(t)
 				defer e.DeleteIfNotFailed()
 
@@ -265,8 +271,7 @@ func TestStackCommands(t *testing.T) {
 		e.ImportDirectory("../integration/stack_dependencies")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.InstallDependencies()
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
 		// becomes invalid.
@@ -280,14 +285,15 @@ func TestStackCommands(t *testing.T) {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(
 			t.Context(),
-			&deployment, secrets.DefaultProvider)
+			&deployment,
+			secrets.NewProvider(httpstate.NewClientSource(credentialhelper.NewSession(io.Discard), nil).ClientForURL))
 		require.NoError(t, err)
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
 		// invalid resources in the snapshot.
 		res := snap.Resources[len(snap.Resources)-1]
-		snap.PendingOperations = append(snap.PendingOperations, resource.Operation{
+		snap.PendingOperations = append(snap.PendingOperations, pkgresource.Operation{
 			Resource: res,
-			Type:     resource.OperationTypeDeleting,
+			Type:     pkgresource.OperationTypeDeleting,
 		})
 		v3deployment, err := stack.SerializeDeployment(t.Context(), snap, false /* showSecrets */)
 		require.NoError(t, err)
@@ -298,12 +304,113 @@ func TestStackCommands(t *testing.T) {
 		require.NoError(t, err)
 		err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 		require.NoError(t, err)
-		os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		ptesting.Unsetenv(t, "PULUMI_CONFIG_PASSPHRASE")
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
 		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
 		// The engine should be happy now that there are no invalid resources.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	})
+}
+
+//nolint:paralleltest // mutates environment and may call service backend
+func TestStackImportExportExtensionsAcrossBackends(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+
+	const ref apitype.ExtensionRef = "sha256:test-extension"
+
+	runCase := func(backendURL string) {
+		e.Backend = backendURL
+
+		stackName := addRandomSuffix("extensions-import-export")
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		stackFile := path.Join(e.RootPath, "stack.json")
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+
+		stackJSON, err := os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+
+		var typed apitype.DeploymentV3
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		typed.Extensions = map[apitype.ExtensionRef]apitype.Extension{
+			ref: {
+				Name:    "extbase",
+				Version: "1.0.0",
+				Value:   []byte(`{"hello":"world"}`),
+			},
+		}
+		urn := resource.URN("urn:pulumi:" + stackName + "::pulumi-test::extbase:index:Greeting::greeter")
+		typed.Resources = append(typed.Resources, apitype.ResourceV3{
+			URN:          urn,
+			Type:         "extbase:index:Greeting",
+			ExtensionRef: ref,
+		})
+
+		snap, err := stack.DeserializeDeploymentV3(
+			t.Context(), typed,
+			secrets.NewProvider(httpstate.NewClientSource(credentialhelper.NewSession(io.Discard), nil).ClientForURL))
+		require.NoError(t, err)
+		untyped, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil)
+		require.NoError(t, err)
+
+		deployment = *untyped
+		assert.Equal(t, apitype.DeploymentSchemaVersionLatest, deployment.Version)
+		assert.Contains(t, deployment.Features, "extensionParameterization")
+
+		bytes, err := json.Marshal(&deployment)
+		require.NoError(t, err)
+		err = os.WriteFile(stackFile, bytes, 0o600)
+		require.NoError(t, err)
+
+		e.RunCommand("pulumi", "stack", "import", "--file", stackFile)
+
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+		stackJSON, err = os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		require.Len(t, typed.Extensions, 1)
+		ext, ok := typed.Extensions[ref]
+		require.True(t, ok, "extension blob survived the round-trip")
+		assert.Equal(t, "extbase", ext.Name)
+		assert.Equal(t, "1.0.0", ext.Version)
+		assert.Equal(t, []byte(`{"hello":"world"}`), ext.Value)
+
+		var found bool
+		for _, r := range typed.Resources {
+			if r.URN == urn {
+				assert.Equal(t, ref, r.ExtensionRef)
+				found = true
+			}
+		}
+		require.True(t, found, "resource carrying the extension ref survived the round-trip")
+		assert.Contains(t, deployment.Features, "extensionParameterization")
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	}
+
+	t.Run("service", func(t *testing.T) {
+		t.Skip("Skipping service backend until extensionParameterization import is supported")
+		runCase("")
+	})
+
+	t.Run("diy", func(t *testing.T) {
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+		runCase(e.LocalURL())
 	})
 }
 
@@ -335,8 +442,7 @@ func TestStackBackups(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.InstallDependencies()
 
 		// Now run pulumi up.
 		before := time.Now().UnixNano()
@@ -380,8 +486,9 @@ func TestStackBackups(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestDestroySetsEncryptionsalt(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -391,7 +498,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 
 	// Set up the environment.
 	{
-		e.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+		e.SetEnvVars("PULUMI_CONFIG_PASSPHRASE=")
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("../integration/stack_outputs/nodejs")
@@ -400,8 +507,7 @@ func TestDestroySetsEncryptionsalt(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.InstallDependencies()
 
 		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
 
@@ -609,14 +715,13 @@ func TestLocalStateLocking(t *testing.T) {
 	e.ImportDirectory("../integration/single_resource")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "foo")
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 
 	count := 10
 	stderrs := make(chan string, count)
 
 	// Run 10 concurrent updates
-	for i := 0; i < count; i++ {
+	for range count {
 		go func() {
 			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 			if err == nil {
@@ -632,7 +737,7 @@ func TestLocalStateLocking(t *testing.T) {
 	numsuccess := 0
 	numerrors := 0
 
-	for i := 0; i < count; i++ {
+	for range count {
 		stderr := <-stderrs
 		if stderr == "" {
 			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
@@ -648,7 +753,7 @@ func TestLocalStateLocking(t *testing.T) {
 	}
 
 	// Run 10 concurrent previews
-	for i := 0; i < count; i++ {
+	for range count {
 		go func() {
 			_, stderr, err := e.GetCommandResults("pulumi", "preview", "--non-interactive")
 			if err == nil {
@@ -660,7 +765,7 @@ func TestLocalStateLocking(t *testing.T) {
 	}
 
 	// Ensure that all of the concurrent previews succeed.
-	for i := 0; i < count; i++ {
+	for range count {
 		stderr := <-stderrs
 		assert.Equal(t, "", stderr)
 	}
@@ -714,7 +819,9 @@ func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, projectName
 	return func() { doAssert(true) }, func() { doAssert(false) }
 }
 
-func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
+func TestLocalStateGzip(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	stackName := addRandomSuffix("gzip-state")
@@ -722,14 +829,13 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.ImportDirectory("../integration/stack_dependencies")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, "stack_dependencies", stackName)
 	gzipEnvVar := env.DIYBackendGzip.Var().Name()
-	switchGzipOff := func() { e.Setenv(gzipEnvVar, "0") }
-	switchGzipOn := func() { e.Setenv(gzipEnvVar, "1") }
+	switchGzipOff := func() { e.SetEnvVars(gzipEnvVar + "=0") }
+	switchGzipOn := func() { e.SetEnvVars(gzipEnvVar + "=1") }
 	pulumiUp := func() { e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview") }
 
 	// Test "pulumi up" with gzip compression on and off.
@@ -798,9 +904,10 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, bef
 }
 
 func getStackProjectBackupDir(e *ptesting.Environment, projectName, stackName string) (string, error) {
-	return filepath.Join(e.RootPath,
+	return filepath.Join(
+		e.RootPath,
 		workspace.BookkeepingDir,
-		workspace.BackupDir,
+		pkgWorkspace.BackupDir,
 		projectName,
 		stackName,
 	), nil
@@ -852,8 +959,7 @@ func TestStackTags(t *testing.T) {
 	tags = lsTags()
 	assert.NotContains(t, tags, "tagA", "tagA should be removed")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	tags = lsTags()
@@ -939,24 +1045,110 @@ func TestEmptyStackRm(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment and may call service backend
+func TestStackImportExportSnippetsAcrossBackends(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	integration.CreateBasicPulumiRepo(e)
+
+	runCase := func(backendURL string) {
+		e.Backend = backendURL
+
+		stackName := addRandomSuffix("snippets-import-export")
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		stackFile := path.Join(e.RootPath, "stack.json")
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+
+		stackJSON, err := os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		var deployment apitype.UntypedDeployment
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+
+		var typed apitype.DeploymentV3
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		typed.Snippets = []apitype.SnippetV1{
+			{
+				UUID: "b2b3b67c-1c46-487a-924b-b181d19d2e48",
+				Name: "fromSnippet",
+				Type: "pulumi:pulumi:Stack",
+				Code: "name = \"fromSnippet\"",
+				Descriptor: apitype.PackageDescriptorV1{
+					Name: "pulumi",
+				},
+			},
+		}
+
+		snap, err := stack.DeserializeDeploymentV3(
+			t.Context(), typed,
+			secrets.NewProvider(httpstate.NewClientSource(credentialhelper.NewSession(io.Discard), nil).ClientForURL))
+		require.NoError(t, err)
+		untyped, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil)
+		require.NoError(t, err)
+
+		deployment = *untyped
+		assert.Equal(t, apitype.DeploymentSchemaVersionLatest, deployment.Version)
+		assert.Contains(t, deployment.Features, "snippets-prototype")
+
+		bytes, err := json.Marshal(&deployment)
+		require.NoError(t, err)
+		err = os.WriteFile(stackFile, bytes, 0o600)
+		require.NoError(t, err)
+
+		e.RunCommand("pulumi", "stack", "import", "--file", stackFile)
+
+		e.RunCommand("pulumi", "stack", "export", "--file", stackFile)
+		stackJSON, err = os.ReadFile(stackFile)
+		require.NoError(t, err)
+
+		err = json.Unmarshal(stackJSON, &deployment)
+		require.NoError(t, err)
+		err = json.Unmarshal(deployment.Deployment, &typed)
+		require.NoError(t, err)
+
+		require.Len(t, typed.Snippets, 1)
+		assert.Equal(t, "fromSnippet", typed.Snippets[0].Name)
+		assert.Equal(t, "pulumi:pulumi:Stack", typed.Snippets[0].Type)
+		assert.Equal(t, "name = \"fromSnippet\"", typed.Snippets[0].Code)
+		assert.Nil(t, typed.Snippets[0].References)
+		assert.Contains(t, deployment.Features, "snippets-prototype")
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+	}
+
+	t.Run("service", func(t *testing.T) {
+		t.Skip("Skipping service backend until snippets-prototype import is supported")
+		runCase("")
+	})
+
+	t.Run("diy", func(t *testing.T) {
+		e.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+		runCase(e.LocalURL())
+	})
+}
+
 // TestStackExportDoesNotEscapeHTML tests that the exported stack JSON does not escape HTML characters
 // for the diy backend.
-//
-//nolint:paralleltest // mutates environment variables
 func TestStackExportDoesNotEscapeHTML(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory("testdata/html_escape")
-	e.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+	e.SetEnvVars("PULUMI_CONFIG_PASSPHRASE=")
 	e.SetBackend(e.LocalURL())
 
 	stack, err := resource.NewUniqueHex("test-stack-", 8, -1)
 	require.NoError(t, err)
 
 	e.RunCommand("pulumi", "stack", "init", stack)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.InstallDependencies()
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	// No escaped HTML characters in the exported JSON.

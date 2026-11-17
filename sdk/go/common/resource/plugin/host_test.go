@@ -17,45 +17,14 @@ package plugin
 import (
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestClosePanic(t *testing.T) {
-	t.Parallel()
-
-	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil)
-	require.NoError(t, err)
-	host, ok := ctx.Host.(*defaultHost)
-	require.True(t, ok)
-
-	// Spin up a load of loadPlugin calls and then Close the context. This should not panic.
-	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			// We expect some of these to error that the host is shutting down, that's fine this test is just
-			// checking nothing panics.
-			_, _ = host.loadPlugin(host.loadRequests, func() (any, error) {
-				return nil, nil
-			})
-		}()
-	}
-	err = host.Close()
-	require.NoError(t, err)
-
-	wg.Wait()
-}
 
 func TestIsLocalPluginPath(t *testing.T) {
 	t.Parallel()
@@ -159,7 +128,7 @@ func TestIsLocalPluginPath(t *testing.T) {
 	}
 }
 
-func TestNewDefaultHost_PackagesResolution(t *testing.T) {
+func TestProjectPluginsFromProject_PackagesResolution(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -177,7 +146,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		baseContext: t.Context(),
+		Root:        tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -192,13 +162,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 		"git-plugin":      {Source: "git://github.com/pulumi/pulumi-aws"}, // This should be skipped
 	}
 
-	// Create the host with our packages
-	host, err := NewDefaultHost(ctx, nil, false, nil, packages, nil, nil, "", nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, nil, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	// Get the project plugins
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (local-plugin and relative-plugin)
 	require.Len(t, projectPlugins, 2)
@@ -221,8 +186,8 @@ func TestNewDefaultHost_PackagesResolution(t *testing.T) {
 	assert.NotContains(t, pluginMap, "git-plugin")
 }
 
-// TestNewDefaultHost_BothPluginsAndPackages tests the combined resolution of plugins and packages
-func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
+// TestProjectPluginsFromProject_BothPluginsAndPackages tests the combined resolution of plugins and packages
+func TestProjectPluginsFromProject_BothPluginsAndPackages(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for our test
@@ -239,7 +204,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 
 	// Create a context for testing
 	ctx := &Context{
-		Root: tempDir,
+		baseContext: t.Context(),
+		Root:        tempDir,
 		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
@@ -258,11 +224,8 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 		"azure":        {Source: "azure"}, // This should be skipped as it's not a local path
 	}
 
-	host, err := NewDefaultHost(ctx, nil, false, plugins, packages, nil, nil, "", nil)
+	projectPlugins, err := projectPluginsFromProject(ctx, plugins, packages)
 	require.NoError(t, err)
-	defer host.Close()
-
-	projectPlugins := host.GetProjectPlugins()
 
 	// We should have 2 plugins (1 from plugins, 1 from packages)
 	require.Len(t, projectPlugins, 2)
@@ -276,31 +239,4 @@ func TestNewDefaultHost_BothPluginsAndPackages(t *testing.T) {
 	assert.True(t, pluginNames["aws"])
 	assert.True(t, pluginNames["local-plugin"])
 	assert.False(t, pluginNames["azure"])
-}
-
-func TestNewDefaultHost_LoaderAddress(t *testing.T) {
-	t.Parallel()
-
-	ctx := &Context{
-		Root: t.TempDir(),
-		Diag: diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	}
-
-	var captureHost Host
-	mockLoader := func(h Host) codegenrpc.LoaderServer {
-		captureHost = h
-		return codegenrpc.UnimplementedLoaderServer{}
-	}
-
-	host, err := NewDefaultHost(ctx, nil, false, nil, nil, nil, nil, "", mockLoader)
-	require.NoError(t, err)
-	defer host.Close()
-
-	assert.Equal(t, host, captureHost, "loader function should be called during host creation")
-
-	loaderAddr := host.LoaderAddr()
-	assert.NotEmpty(t, loaderAddr)
-	assert.Equal(t, host.ServerAddr(), loaderAddr)
 }

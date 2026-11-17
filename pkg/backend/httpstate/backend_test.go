@@ -17,6 +17,8 @@ package httpstate
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,34 +26,70 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// testJWT is a test JWT token used in tests.
-//
-//nolint:lll // JWT token is long
-const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+func TestCommandNameContext(t *testing.T) {
+	t.Parallel()
+
+	_, ok := commandNameFromContext(t.Context())
+	assert.False(t, ok)
+
+	ctx := ContextWithCommandName(t.Context(), "pulumi new")
+	name, ok := commandNameFromContext(ctx)
+	assert.True(t, ok)
+	assert.Equal(t, "pulumi new", name)
+}
+
+func TestWelcomeUserNewProjectHint(t *testing.T) {
+	t.Parallel()
+
+	for _, newProjectHint := range []bool{true, false} {
+		t.Run(fmt.Sprintf("newProjectHint=%v", newProjectHint), func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			welcomeUser(&buf, display.Options{Color: colors.Never}, "https://app.pulumi.com", newProjectHint)
+			assert.Contains(t, buf.String(), "Welcome to Pulumi!")
+			assert.Equal(t, newProjectHint, strings.Contains(buf.String(), "New to Pulumi?"))
+		})
+	}
+}
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
@@ -65,7 +103,9 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -92,27 +132,6 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-//nolint:paralleltest // mutates env vars and global state
-func TestMissingPulumiAccessToken(t *testing.T) {
-	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-
-	{ // Disable interactive mode
-		disableInteractive := cmdutil.DisableInteractive
-		cmdutil.DisableInteractive = true
-		t.Cleanup(func() {
-			cmdutil.DisableInteractive = disableInteractive
-		})
-	}
-
-	ctx := t.Context()
-
-	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
-	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
-	if assert.ErrorAs(t, err, &expectedErr) {
-		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
-	}
-}
-
 //nolint:paralleltest // mutates global configuration
 func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	// Arrange
@@ -125,7 +144,9 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -150,6 +171,17 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, expected, actual)
+}
+
+func TestURLIsConsoleRoot(t *testing.T) {
+	t.Parallel()
+
+	// A new user's orgs aren't named after their login, so a URL ending in the login would 404.
+	user := &promise.CompletionSource[userInfo]{}
+	user.MustFulfill(userInfo{username: "jane", organizations: []string{"jane-org"}})
+	b := &cloudBackend{url: "https://api.pulumi.com", userInfo: user.Promise()}
+
+	assert.Equal(t, "https://app.pulumi.com", b.URL())
 }
 
 func TestValueOrDefaultURL(t *testing.T) {
@@ -263,13 +295,214 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 			t.Parallel()
 			org, err := inferOrg(t.Context(), tt.getDefaultOrg, tt.getUserOrg)
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}
 			assert.Equal(t, tt.wantOrg, org)
 		})
 	}
+}
+
+func TestDoesProjectExistForbiddenDefaultOrg(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(server.Close)
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{
+		client:     client.NewClient(server.URL, "test-token", false, diagtest.LogSink(t)),
+		d:          diagtest.LogSink(t),
+		defaultOrg: defaultOrg.Promise(),
+	}
+
+	_, err := b.DoesProjectExist(t.Context(), "", "proj")
+	require.ErrorContains(t, err, `the organization "some-org" set as the default organization`)
+	require.ErrorContains(t, err, "`pulumi org set-default`")
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
+
+	_, err = b.DoesProjectExist(t.Context(), "explicit-org", "proj")
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
+	require.NotContains(t, err.Error(), "set-default")
+}
+
+func TestCreateStackInaccessibleDefaultOrg(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusNotFound)
+		_, err := rw.Write([]byte(`{"code": 404, "message": "Not Found: Organization 'some-org' not found"}`))
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{
+		client:     client.NewClient(server.URL, "test-token", false, diagtest.LogSink(t)),
+		d:          diagtest.LogSink(t),
+		defaultOrg: defaultOrg.Promise(),
+	}
+
+	_, err := b.CreateStack(t.Context(), cloudBackendReference{
+		owner:   "some-org",
+		project: "proj",
+		name:    tokens.MustParseStackName("dev"),
+	}, t.TempDir(), nil, nil)
+	require.ErrorContains(t, err, `the organization "some-org" set as the default organization`)
+	require.ErrorContains(t, err, "`pulumi org set-default`")
+
+	_, err = b.CreateStack(t.Context(), cloudBackendReference{
+		owner:   "other-org",
+		project: "proj",
+		name:    tokens.MustParseStackName("dev"),
+	}, t.TempDir(), nil, nil)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	require.NotContains(t, err.Error(), "set-default")
+}
+
+func TestNewDefaultOrgResolution(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name                 string
+		envOrg               string
+		configuredOrg        string
+		serviceOrg           string
+		expectedOrg          string
+		expectedDefaultCalls int
+	}{
+		{
+			name:                 "prefers env var default org",
+			envOrg:               "env-org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "env-org",
+			expectedDefaultCalls: 0,
+		},
+		{
+			name:                 "prefers configured default org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "configured-org",
+			expectedDefaultCalls: 0,
+		},
+		{
+			name:                 "falls back to service default org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "service-org",
+			expectedDefaultCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_HOME", t.TempDir())
+			t.Setenv("PULUMI_DEFAULT_ORGANIZATION", tt.envOrg)
+
+			defaultOrgCalls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				switch req.URL.Path {
+				case "/api/capabilities":
+					err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+					require.NoError(t, err)
+				case "/api/user":
+					err := json.NewEncoder(rw).Encode(map[string]any{
+						"githubLogin":   "test-user",
+						"organizations": []map[string]string{},
+					})
+					require.NoError(t, err)
+				case "/api/user/organizations/default":
+					defaultOrgCalls++
+					err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+						GitHubLogin: tt.serviceOrg,
+					})
+					require.NoError(t, err)
+				default:
+					panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			err := workspace.StoreAccount(server.URL, workspace.Account{
+				AccessToken: testJWT,
+			}, true)
+			require.NoError(t, err)
+
+			if tt.configuredOrg != "" {
+				err = workspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
+				require.NoError(t, err)
+			}
+
+			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false,
+				NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+			)
+			require.NoError(t, err)
+
+			// New spawns goroutines that may log to the test's diag sink;
+			// wait for them before the test finishes.
+			cb := b.(*cloudBackend)
+			_, _ = cb.capabilities.Result(ctx)
+			_, _ = cb.userInfo.Result(ctx)
+
+			org, err := b.GetDefaultOrg(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedOrg, org)
+			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
+		})
+	}
+}
+
+func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
+	ctx := t.Context()
+
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	err := workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: testJWT,
+	}, true)
+	require.NoError(t, err)
+
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
+	require.NoError(t, err)
+
+	// New spawns goroutines that may log to the test's diag sink;
+	// wait for them before the test finishes.
+	cb := b.(*cloudBackend)
+	_, _ = cb.capabilities.Result(ctx)
+	_, _ = cb.userInfo.Result(ctx)
+
+	ref, err := b.ParseStackReference("explicit-org/proj/stack")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-org", ref.(cloudBackendReference).owner)
+
+	ref, err = b.ParseStackReference("stack")
+	require.NoError(t, err)
+	assert.Equal(t, "env-org", ref.(cloudBackendReference).owner)
 }
 
 //nolint:paralleltest // mutates global state
@@ -283,7 +516,9 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -438,7 +673,9 @@ func TestListStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -446,7 +683,7 @@ func TestListStackNames(t *testing.T) {
 	stackNames := make([]string, numStacks)
 	stacks := make([]backend.Stack, numStacks)
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := ptesting.RandomStackName()
 		stackNames[i] = stackName
 		ref, err := b.ParseStackReference(stackName)
@@ -479,7 +716,7 @@ func TestListStackNames(t *testing.T) {
 
 	// Fetch limited pages to test pagination functionality
 	foundAllTestStacks := false
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token)
 		require.NoError(t, err)
 
@@ -553,7 +790,9 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -583,7 +822,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	var token1 backend.ContinuationToken
 	foundTestStackInSummaries := false
 
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		summaries, nextToken, err := b.ListStacks(ctx, filter, token1)
 		require.NoError(t, err)
 
@@ -616,7 +855,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		Organization: filter.Organization,
 	}
 
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, namesFilter, token2)
 		require.NoError(t, err)
 
@@ -739,7 +978,8 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	}))
 	defer server.Client()
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -773,7 +1013,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, nil, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
@@ -798,6 +1038,76 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	handleLastRequest()
 	assert.Equal(t, 4, lastUntypedDeployment.Version)
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
+}
+
+// TestCreateStackDisplaysBackendMessages verifies that backend-vended messages on the
+// CreateStackResponse (e.g. an expired trial warning) flow through the client into the
+// cloudBackend without breaking stack creation, and that displayBackendMessages renders
+// them via the diag sink.
+func TestCreateStackDisplaysBackendMessages(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	const trialWarning = "Your organization's trial has expired. " +
+		"Please contact sales@pulumi.com to upgrade."
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			})
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			rw.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(rw).Encode(apitype.CreateStackResponse{
+				Messages: []apitype.Message{{
+					Severity: apitype.MessageSeverityWarning,
+					Message:  trialWarning,
+				}},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	// CreateStack should succeed and the warning message should not interfere with
+	// stack creation; it is rendered via cmdutil.Diag() as a side effect.
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	// Exercise displayBackendMessages directly with each severity, including an
+	// unknown one, so the helper's switch arms are all covered. The expired-trial
+	// warning is the primary case driving this test.
+	displayBackendMessages([]apitype.Message{
+		{Severity: apitype.MessageSeverityWarning, Message: trialWarning},
+		{Severity: apitype.MessageSeverityError, Message: "test error"},
+		{Severity: apitype.MessageSeverityInfo, Message: "test info"},
+		{Severity: "mystery", Message: "unknown severity"},
+	})
+
+	// Empty input is a no-op and must not panic.
+	displayBackendMessages(nil)
 }
 
 func TestImportDeploymentSchemaVersion(t *testing.T) {
@@ -877,7 +1187,8 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	}))
 	defer server.Client()
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -914,7 +1225,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, nil, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
@@ -957,322 +1268,6 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 	assert.True(t, result)
 }
 
-func TestIsExpectedTokenFormat(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		token      string
-		isExpected bool
-	}{
-		{
-			name:       "JWT token",
-			token:      testJWT,
-			isExpected: true,
-		},
-		{
-			name:       "empty token",
-			token:      "",
-			isExpected: false,
-		},
-		{
-			name:       "unexpected token",
-			token:      "unexpected-token",
-			isExpected: false,
-		},
-		{
-			name:       "random string",
-			token:      "randomstring123",
-			isExpected: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := isExpectedTokenFormat(tt.token)
-			if tt.isExpected {
-				assert.True(t, result)
-			} else {
-				assert.False(t, result)
-			}
-		})
-	}
-}
-
-//nolint:paralleltest // Cannot use t.Parallel() because subtests use t.Setenv
-func TestGetTokenValue(t *testing.T) {
-	tests := []struct {
-		name        string
-		token       string
-		setupEnv    func(*testing.T)
-		setupFile   func(*testing.T) string
-		wantValue   string
-		wantErr     bool
-		errContains string
-	}{
-		{
-			name:      "direct JWT token",
-			token:     testJWT,
-			wantValue: testJWT,
-			wantErr:   false,
-		},
-		{
-			name:  "token from file",
-			token: "file://",
-			setupFile: func(t *testing.T) string {
-				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
-				require.NoError(t, err)
-				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				_, err = fmt.Fprintf(tmpFile, "  %s  \n", testJWT)
-				require.NoError(t, err)
-				tmpFile.Close()
-				return tmpFile.Name()
-			},
-			wantValue: testJWT,
-			wantErr:   false,
-		},
-		{
-			name:        "token from nonexistent file",
-			token:       "file:///nonexistent/path/to/token.txt",
-			wantErr:     true,
-			errContains: "reading token from file",
-		},
-		{
-			name:  "empty file",
-			token: "file://",
-			setupFile: func(t *testing.T) string {
-				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
-				require.NoError(t, err)
-				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				tmpFile.Close()
-				return tmpFile.Name()
-			},
-			wantErr:     true,
-			errContains: "is empty",
-		},
-		{
-			name:  "file with unexpected token format",
-			token: "file://",
-			setupFile: func(t *testing.T) string {
-				tmpFile, err := os.CreateTemp(t.TempDir(), "token-*.txt")
-				require.NoError(t, err)
-				t.Cleanup(func() { os.Remove(tmpFile.Name()) })
-				_, err = tmpFile.WriteString("unexpected-token-format\n")
-				require.NoError(t, err)
-				tmpFile.Close()
-				return tmpFile.Name()
-			},
-			wantErr:     true,
-			errContains: "token format in file",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Cannot use t.Parallel() here because some tests use t.Setenv or create temp files
-
-			token := tt.token
-			if tt.setupEnv != nil {
-				tt.setupEnv(t)
-			}
-			if tt.setupFile != nil {
-				filePath := tt.setupFile(t)
-				token = "file://" + filePath
-			}
-
-			value, err := getTokenValue(token)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
-				}
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.wantValue, value)
-			}
-		})
-	}
-}
-
-func TestExchangeOidcToken(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		oidcToken    string
-		organization string
-		scope        string
-		expiration   time.Duration
-		setupServer  func() *httptest.Server
-		wantErr      bool
-		errContains  string
-		checkResult  func(*testing.T, string, time.Time)
-	}{
-		{
-			name:         "empty oidc token",
-			oidcToken:    "",
-			organization: "test-org",
-			scope:        "org:test-org",
-			expiration:   1 * time.Hour,
-			wantErr:      true,
-			errContains:  "Unauthorized: No credentials provided or are invalid",
-		},
-		{
-			name:         "invalid oidc token format",
-			oidcToken:    "invalid-token-format",
-			organization: "test-org",
-			scope:        "org:test-org",
-			expiration:   1 * time.Hour,
-			wantErr:      true,
-			errContains:  "Failed to read OIDC token",
-		},
-		{
-			name:         "successful token exchange",
-			oidcToken:    testJWT,
-			organization: "test-org",
-			scope:        "org:test-org",
-			expiration:   1 * time.Hour,
-			setupServer: func() *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/oauth/token" {
-						resp := apitype.TokenExchangeGrantResponse{
-							AccessToken: "pul-jwt-access-token",
-							ExpiresIn:   3600,
-							TokenType:   "Bearer",
-							Scope:       "org:test-org",
-						}
-						w.WriteHeader(http.StatusOK)
-						_ = json.NewEncoder(w).Encode(resp)
-					}
-				}))
-			},
-			wantErr: false,
-			checkResult: func(t *testing.T, accessToken string, expiresAt time.Time) {
-				assert.Equal(t, "pul-jwt-access-token", accessToken)
-				assert.False(t, expiresAt.IsZero())
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			cloudURL := ""
-			if tt.setupServer != nil {
-				server := tt.setupServer()
-				defer server.Close()
-				cloudURL = server.URL
-			}
-
-			accessToken, expiresAt, err := exchangeOidcToken(
-				t.Context(), diagtest.LogSink(t), cloudURL, false, tt.oidcToken, tt.organization, tt.scope, tt.expiration,
-			)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.errContains != "" {
-					assert.Contains(t, err.Error(), tt.errContains)
-				}
-			} else {
-				require.NoError(t, err)
-				if tt.checkResult != nil {
-					tt.checkResult(t, accessToken, expiresAt)
-				}
-			}
-		})
-	}
-}
-
-func TestGetAccountDetails(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		accessToken  string
-		setupServer  func() *httptest.Server
-		wantErr      bool
-		wantUsername string
-		wantOrgs     []string
-		checkErr     func(*testing.T, error)
-	}{
-		{
-			name:        "successful account details fetch",
-			accessToken: "pul-valid-token",
-			setupServer: func() *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/user" {
-						// Create a response matching the serviceUser structure
-						resp := map[string]any{
-							"githubLogin": "testuser",
-							"organizations": []map[string]any{
-								{"githubLogin": "org1"},
-								{"githubLogin": "org2"},
-							},
-						}
-						w.WriteHeader(http.StatusOK)
-						_ = json.NewEncoder(w).Encode(resp)
-					}
-				}))
-			},
-			wantErr:      false,
-			wantUsername: "testuser",
-			wantOrgs:     []string{"org1", "org2"},
-		},
-		{
-			name:        "unauthorized access",
-			accessToken: "pul-invalid-token",
-			setupServer: func() *httptest.Server {
-				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.URL.Path == "/api/user" {
-						w.WriteHeader(http.StatusUnauthorized)
-						_ = json.NewEncoder(w).Encode(apitype.ErrorResponse{
-							Code:    401,
-							Message: "Unauthorized",
-						})
-					}
-				}))
-			},
-			wantErr: true,
-			checkErr: func(t *testing.T, err error) {
-				assert.True(t, errors.Is(err, ErrUnauthorized))
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			cloudURL := ""
-			if tt.setupServer != nil {
-				server := tt.setupServer()
-				defer server.Close()
-				cloudURL = server.URL
-			}
-
-			username, orgs, tokenInfo, err := getAccountDetails(
-				t.Context(), cloudURL, false, tt.accessToken,
-			)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				if tt.checkErr != nil {
-					tt.checkErr(t, err)
-				}
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.wantUsername, username)
-				assert.Equal(t, tt.wantOrgs, orgs)
-				// tokenInfo might be nil for old services
-				_ = tokenInfo
-			}
-		})
-	}
-}
-
 func TestCreateNeoTaskOnError(t *testing.T) {
 	t.Parallel()
 
@@ -1302,7 +1297,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			d:      diagtest.LogSink(t),
 		}
 		resp, err := b.createNeoTaskOnError(t.Context(), "some error", nil, display.Options{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, resp)
 	})
 
@@ -1379,7 +1374,1003 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		}
 
 		resp, err := b.createNeoTaskOnError(t.Context(), "something broke", stackRef, display.Options{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, resp)
+	})
+}
+
+func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
+	t.Parallel()
+
+	stackName, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+	mgr := failingSecretsManager{err: errors.New("encrypt boom")}
+	snap := &deploy.Snapshot{
+		Resources: []*pkgresource.State{{
+			Type: tokens.Type("test:index:Resource"),
+			URN: resource.NewURN(
+				stackName.Q(), tokens.PackageName("project"), "",
+				tokens.Type("test:index:Resource"), "resource"),
+			Outputs: resource.PropertyMap{
+				"secret": resource.MakeSecret(resource.NewProperty("value")),
+			},
+		}},
+	}
+	fx := newRunEngineActionFixture(t, snap, nil, mgr)
+
+	updateStartedEvent := engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID:  "update-id",
+		Version:   3,
+		Permalink: "https://app.pulumi.com/org/proj/stack/updates/3",
+	})
+	callerEvents := make(chan engine.Event, 10)
+
+	var runErr error
+	require.NotPanics(t, func() {
+		_, _, _, runErr = fx.backend.runEngineAction(
+			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
+		)
+	})
+	require.Error(t, runErr) //nolint:forbidigo // pre-existing
+	require.ErrorContains(t, runErr, "encrypt boom")
+
+	// The event reaches the caller synchronously as the first thing runEngineAction does, so
+	// it must be there, and only it, even though this journal-init failure returns early
+	// without ever closing engineEvents.
+	require.Len(t, callerEvents, 1)
+	got := <-callerEvents
+	assert.Equal(t, engine.UpdateStartedEvent, got.Type)
+	assert.Equal(t, updateStartedEvent.Payload(), got.Payload())
+}
+
+func TestRunEngineActionDeliversUpdateStartedEventWhenNewUpdateFails(t *testing.T) {
+	t.Parallel()
+
+	mgr := failingSecretsManager{err: errors.New("unused")}
+	fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, mgr)
+	// Point the stack reference at a project the fixture's server doesn't recognize, so
+	// getTarget's export call 404s and newUpdate fails before any snapshot/journal code runs.
+	fx.stackRef.project = tokens.Name("other-project")
+
+	updateStartedEvent := engine.NewEvent(engine.UpdateStartedEventPayload{UpdateID: "update-id"})
+	callerEvents := make(chan engine.Event, 10)
+
+	var runErr error
+	require.NotPanics(t, func() {
+		_, _, _, runErr = fx.backend.runEngineAction(
+			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
+		)
+	})
+	require.Error(t, runErr) //nolint:forbidigo // pre-existing
+
+	// newUpdate fails before the display goroutine ever starts; the caller is the only
+	// path left that still hears about the operation having started.
+	require.Len(t, callerEvents, 1)
+	got := <-callerEvents
+	assert.Equal(t, engine.UpdateStartedEvent, got.Type)
+	assert.Equal(t, updateStartedEvent.Payload(), got.Payload())
+}
+
+type failingSecretsManager struct{ err error }
+
+func (m failingSecretsManager) Type() string                { return "failing" }
+func (m failingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingSecretsManager) Encrypter() config.Encrypter { return m }
+func (m failingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+
+func (m failingSecretsManager) EncryptValue(context.Context, string) (string, error) {
+	return "", m.err
+}
+
+func (m failingSecretsManager) BatchEncrypt(context.Context, []string) ([]string, error) {
+	return nil, m.err
+}
+
+func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		journalVersion int64
+		snap           *deploy.Snapshot
+		provider       secrets.Provider
+		wantWrap       string
+	}{
+		{
+			name:           "journalVersion=1",
+			journalVersion: 1,
+			snap:           &deploy.Snapshot{},
+			provider:       nil,
+			// Wrap from cloudJournaler.AddJournalEntry.
+			wantWrap: "serializing journal entry",
+		},
+		{
+			name:           "journalVersion=0",
+			journalVersion: 0,
+			snap:           &deploy.Snapshot{SecretsManager: b64.NewBase64SecretsManager()},
+			provider: (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+				return b64.NewBase64SecretsManager(), nil
+			}),
+			wantWrap: "failed to serialize journal entry",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mgr := failingBatchingSecretsManager{err: errors.New("batch boom")}
+			fx := newRunEngineActionFixture(t, tc.snap, tc.provider, mgr)
+
+			var runErr error
+			require.NotPanics(t, func() {
+				_, _, _, runErr = fx.backend.runEngineAction(
+					t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
+					"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{}), nil, false, tc.journalVersion,
+				)
+			})
+			require.Error(t, runErr) //nolint:forbidigo // pre-existing
+			require.ErrorContains(t, runErr, "batch boom")
+			require.ErrorContains(t, runErr, tc.wantWrap)
+		})
+	}
+}
+
+func TestCloudPersistenceSupportsStateMigrations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                            string
+		journalVersion                  int64
+		journalingDisabled              bool
+		expectedUsesJournal             bool
+		expectedSupportsStateMigrations bool
+	}{
+		{
+			name: "legacy snapshot", journalVersion: 0, journalingDisabled: false,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "journal v1", journalVersion: 1, journalingDisabled: false,
+			expectedUsesJournal: true, expectedSupportsStateMigrations: false,
+		},
+		{
+			name: "journal v2", journalVersion: 2, journalingDisabled: false,
+			expectedUsesJournal: true, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "unknown journal version", journalVersion: 3, journalingDisabled: false,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "journal v1 disabled", journalVersion: 1, journalingDisabled: true,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+		{
+			name: "journal v2 disabled", journalVersion: 2, journalingDisabled: true,
+			expectedUsesJournal: false, expectedSupportsStateMigrations: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expectedUsesJournal,
+				cloudPersistenceUsesJournal(tt.journalVersion, tt.journalingDisabled))
+			assert.Equal(t, tt.expectedSupportsStateMigrations,
+				cloudPersistenceSupportsStateMigrations(tt.journalVersion, tt.journalingDisabled))
+		})
+	}
+}
+
+func TestRunEngineActionCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.NewURN("stack", "project", "", resource.RootStackType, "project-stack")
+	provider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	cases := []struct {
+		name            string
+		window          string
+		wantReadingID   string
+		wantSentOutputs bool
+	}{
+		{
+			name:            "in a window",
+			window:          "d333a711-4aa0-402f-be6d-72af9665fc37",
+			wantReadingID:   "update-id",
+			wantSentOutputs: true,
+		},
+		{
+			name: "outside a window",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := &deploy.Snapshot{
+				SecretsManager: b64.NewBase64SecretsManager(),
+				Resources: []*pkgresource.State{{
+					Type:    resource.RootStackType,
+					URN:     stackURN,
+					Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+				}},
+			}
+			fx := newRunEngineActionFixture(t, snap, provider, b64.NewBase64SecretsManager())
+			fx.op.CoherenceWindow = tc.window
+			fx.op.Scopes = backend.CancellationScopes
+			fx.update.UpdateKind = apitype.DestroyUpdate
+
+			events := make(chan engine.Event)
+			readingIDs := make(chan string, 1)
+			go func() {
+				defer close(readingIDs)
+				var seen string
+				for e := range events {
+					if id := fx.backend.readingUpdateID.Load(); id != nil && e.Type == engine.ResourceOutputsEvent {
+						seen = *id
+					}
+				}
+				readingIDs <- seen
+			}()
+
+			_, _, _, err := fx.backend.runEngineAction(
+				t.Context(), apitype.DestroyUpdate, fx.stackRef, fx.op, fx.update,
+				"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{UpdateID: "update-id"}),
+				events, true /* dryRun */, 0,
+			)
+			close(events)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantReadingID, <-readingIDs)
+			assert.Nil(t, fx.backend.readingUpdateID.Load())
+
+			completions := fx.completions()
+			require.Len(t, completions, 1)
+			assert.Equal(t, apitype.UpdateStatusSucceeded, completions[0].Status)
+			if tc.wantSentOutputs {
+				assert.Empty(t, completions[0].Outputs)
+				require.NotNil(t, completions[0].SecretsProviders)
+				assert.Equal(t, b64.Type, completions[0].SecretsProviders.Type)
+			} else {
+				assert.Nil(t, completions[0].Outputs)
+				assert.Nil(t, completions[0].SecretsProviders)
+			}
+		})
+	}
+}
+
+func TestCreateAndStartUpdateInACoherenceWindowSkipsThePreview(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		action      apitype.UpdateKind
+		dryRun      bool
+		previewOnly bool
+		refused     bool
+	}{
+		{"the preview of an update", apitype.UpdateUpdate, true, false, true},
+		{"the preview of a refresh", apitype.RefreshUpdate, true, false, true},
+		{"the update itself", apitype.UpdateUpdate, false, false, false},
+		{"a preview on its own", apitype.PreviewUpdate, true, false, false},
+		{"a preview-only refresh", apitype.RefreshUpdate, true, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
+				return apitype.Capabilities{CoherenceWindowsVersion: 1, StackOutputs: true}, nil
+			})
+			fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
+			fx.op.Opts.PreviewOnly = tc.previewOnly
+			fx.op.M = &backend.UpdateMetadata{}
+
+			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+			_, _, err := fx.backend.createAndStartUpdate(t.Context(), tc.action, stk, &fx.op, tc.dryRun)
+			if tc.refused {
+				require.ErrorContains(t, err, "pass --skip-preview")
+			} else if err != nil {
+				assert.NotContains(t, err.Error(), "pass --skip-preview")
+			}
+		})
+	}
+}
+
+func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		caps apitype.Capabilities
+		want string
+	}{
+		{apitype.Capabilities{}, "does not support coherence windows"},
+		{apitype.Capabilities{StackOutputs: true}, "does not support coherence windows"},
+		{apitype.Capabilities{CoherenceWindowsVersion: 1}, "does not support coherence windows"},
+		{apitype.Capabilities{CoherenceWindowsVersion: 2, StackOutputs: true}, "too old for the coherence windows"},
+	} {
+		fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+		fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) { return tc.caps, nil })
+		fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
+		fx.op.M = &backend.UpdateMetadata{}
+
+		stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+		_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
+		assert.ErrorContains(t, err, tc.want)
+	}
+}
+
+func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	managed := &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"}
+	for _, tc := range []struct {
+		name        string
+		beginUpdate bool
+		path        string
+	}{
+		{"legacy create", false, "/api/stacks/owner/project/stack/preview"},
+		{"begin-update", true, "/api/stacks/owner/project/stack/begin-update"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+
+			var mu sync.Mutex
+			var body []byte
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == tc.path {
+					raw, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					mu.Lock()
+					body = raw
+					mu.Unlock()
+				}
+				http.Error(w, "stop", http.StatusInternalServerError)
+			}))
+			t.Cleanup(server.Close)
+
+			sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+			fx.backend.client = client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client())
+			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
+				return apitype.Capabilities{BeginUpdate: tc.beginUpdate}, nil
+			})
+			fx.op.M = &backend.UpdateMetadata{}
+			fx.op.StackConfiguration.ManagedEnvironment = managed
+
+			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+			_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.NotEmpty(t, body)
+			var sent struct {
+				Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				Program     struct {
+					Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				} `json:"program"`
+			}
+			require.NoError(t, json.Unmarshal(body, &sent))
+			if tc.beginUpdate {
+				assert.Equal(t, managed, sent.Program.Environment)
+			} else {
+				assert.Equal(t, managed, sent.Environment)
+			}
+		})
+	}
+}
+
+type runEngineActionFixture struct {
+	backend     *cloudBackend
+	stackRef    cloudBackendReference
+	op          backend.UpdateOperation
+	update      client.UpdateIdentifier
+	completions func() []apitype.CompleteUpdateRequest
+}
+
+func newRunEngineActionFixture(
+	t *testing.T,
+	snap *deploy.Snapshot,
+	secretsProvider secrets.Provider,
+	opSecretsManager secrets.Manager,
+) runEngineActionFixture {
+	t.Helper()
+
+	stackName, err := tokens.ParseStackName("stack")
+	require.NoError(t, err)
+
+	deployment, err := stack.SerializeUntypedDeployment(t.Context(), snap, &stack.SerializeOptions{ShowSecrets: true})
+	require.NoError(t, err)
+
+	var completionsMu sync.Mutex
+	var completions []apitype.CompleteUpdateRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/update-id/complete") {
+			var req apitype.CompleteUpdateRequest
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+			completionsMu.Lock()
+			defer completionsMu.Unlock()
+			completions = append(completions, req)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/stacks/owner/project/stack/export":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse(*deployment)))
+		case "/api/stacks/owner/project/stack":
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.Stack{
+				OrgName: "owner", ProjectName: "project", StackName: stackName.Q(),
+			}))
+		default:
+			http.Error(w, "unexpected path "+r.URL.Path, http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	apiClient := client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client())
+	b := &cloudBackend{
+		d:      sink,
+		url:    server.URL,
+		client: apiClient,
+		capabilities: promise.Run(func() (apitype.Capabilities, error) {
+			return apitype.Capabilities{}, nil
+		}),
+	}
+	stackRef := cloudBackendReference{
+		name:    stackName,
+		project: tokens.Name("project"),
+		owner:   "owner",
+		b:       b,
+	}
+
+	op := backend.UpdateOperation{
+		Proj: &workspace.Project{
+			Name:    tokens.PackageName("project"),
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		},
+		Opts: backend.UpdateOptions{Display: display.Options{
+			Color:            colors.Never,
+			Stdout:           io.Discard,
+			Stderr:           io.Discard,
+			SuppressProgress: true,
+		}},
+		SecretsManager:  opSecretsManager,
+		SecretsProvider: secretsProvider,
+		StackConfiguration: backend.StackConfiguration{
+			Config:    config.Map{},
+			Decrypter: opSecretsManager.Decrypter(),
+		},
+	}
+	update := client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{Owner: "owner", Project: "project", Stack: stackName},
+		UpdateID:        "update-id",
+	}
+
+	return runEngineActionFixture{
+		backend:  b,
+		stackRef: stackRef,
+		op:       op,
+		update:   update,
+		completions: func() []apitype.CompleteUpdateRequest {
+			completionsMu.Lock()
+			defer completionsMu.Unlock()
+			return slices.Clone(completions)
+		},
+	}
+}
+
+type failingBatchingSecretsManager struct{ err error }
+
+func (m failingBatchingSecretsManager) Type() string                { return "failing-batch" }
+func (m failingBatchingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingBatchingSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
+func (m failingBatchingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+
+func (m failingBatchingSecretsManager) BeginBatchEncryption() (stack.BatchEncrypter, stack.CompleteCrypterBatch) {
+	return nopBatchEncrypter{}, func(context.Context) error { return m.err }
+}
+
+func (m failingBatchingSecretsManager) BeginBatchDecryption() (stack.BatchDecrypter, stack.CompleteCrypterBatch) {
+	return nopBatchDecrypter{}, func(context.Context) error { return nil }
+}
+
+type nopBatchEncrypter struct{}
+
+func (nopBatchEncrypter) EncryptValue(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (nopBatchEncrypter) BatchEncrypt(context.Context, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (nopBatchEncrypter) Enqueue(context.Context, stack.SecretID, string, *apitype.SecretV1) error {
+	return nil
+}
+
+type nopBatchDecrypter struct{}
+
+func (nopBatchDecrypter) DecryptValue(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, error) {
+	return nil, nil
+}
+
+func (nopBatchDecrypter) Enqueue(context.Context, string) error { return nil }
+
+func TestShowDeploymentEventsResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		summaryResult apitype.OperationResult
+		wantErr       string
+		wantCancelled bool
+	}{
+		{name: "succeeded", summaryResult: apitype.OperationResultSucceeded},
+		{name: "no result", summaryResult: ""},
+		{name: "failed", summaryResult: apitype.OperationResultFailed, wantErr: "deployment failed"},
+		{name: "canceled", summaryResult: apitype.OperationResultCanceled, wantCancelled: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{ID: "deployment-id", Status: "running"})
+				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
+					err = json.NewEncoder(rw).Encode([]apitype.GetDeploymentUpdatesUpdateInfo{
+						{UpdateID: "update-id", Version: 1},
+					})
+				case "/api/stacks/org/proj/stack/update/update-id/events":
+					err = json.NewEncoder(rw).Encode(apitype.GetUpdateEventsResponse{
+						Events: []apitype.EngineEvent{
+							{Sequence: 1, SummaryEvent: &apitype.SummaryEvent{Result: tt.summaryResult}},
+						},
+					})
+				default:
+					require.Failf(t, "unexpected request", "path %v", req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackID := client.StackIdentifier{
+				Owner:   "org",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("stack"),
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.showDeploymentEvents(t.Context(), stackID, apitype.UpdateUpdate, "deployment-id", opts)
+			switch {
+			case tt.wantCancelled:
+				require.ErrorAs(t, err, &backenderr.CancelledError{})
+			case tt.wantErr != "":
+				require.ErrorContains(t, err, tt.wantErr)
+			default:
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestShowDeploymentEventsWaitsForUpdate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		finalStatus string
+		updateAfter int
+		wantErr     string
+	}{
+		{name: "update appears late", finalStatus: "running", updateAfter: 12},
+		{name: "deployment failed", finalStatus: "failed", updateAfter: -1, wantErr: "deployment failed"},
+		{
+			name: "deployment succeeded", finalStatus: "succeeded", updateAfter: -1,
+			wantErr: "could not find update associated with deployment deployment-id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var polls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id":
+					status := "running"
+					if polls.Load() >= 2 {
+						status = tt.finalStatus
+					}
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{ID: "deployment-id", Status: status})
+				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
+					n := polls.Add(1)
+					updates := []apitype.GetDeploymentUpdatesUpdateInfo{}
+					if tt.updateAfter >= 0 && int(n) > tt.updateAfter {
+						updates = append(updates, apitype.GetDeploymentUpdatesUpdateInfo{UpdateID: "update-id", Version: 1})
+					}
+					err = json.NewEncoder(rw).Encode(updates)
+				case "/api/stacks/org/proj/stack/update/update-id/events":
+					err = json.NewEncoder(rw).Encode(apitype.GetUpdateEventsResponse{
+						Events: []apitype.EngineEvent{
+							{Sequence: 1, SummaryEvent: &apitype.SummaryEvent{Result: apitype.OperationResultSucceeded}},
+						},
+					})
+				default:
+					require.Failf(t, "unexpected request", "path %v", req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackID := client.StackIdentifier{
+				Owner:   "org",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("stack"),
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.showDeploymentEvents(t.Context(), stackID, apitype.UpdateUpdate, "deployment-id", opts)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Greater(t, polls.Load(), int32(10))
+			} else {
+				require.EqualError(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRunDeploymentResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		status  string
+		wantErr string
+	}{
+		{name: "succeeded", status: "succeeded"},
+		{name: "skipped", status: "skipped"},
+		{name: "running", status: "running"},
+		{name: "failed", status: "failed", wantErr: "deployment failed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch {
+				case req.Method == http.MethodPost && req.URL.Path == "/api/stacks/org/proj/stack/deployments":
+					err = json.NewEncoder(rw).Encode(apitype.CreateDeploymentResponse{ID: "deployment-id"})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id/logs":
+					err = json.NewEncoder(rw).Encode(apitype.DeploymentLogs{
+						Lines: []apitype.DeploymentLogLine{
+							{Header: "Get source"},
+							{Line: "fetching source\n"},
+						},
+					})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
+						ID:     "deployment-id",
+						Status: tt.status,
+					})
+				default:
+					require.Failf(t, "unexpected request", "%v %v", req.Method, req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackRef := cloudBackendReference{
+				owner:   "org",
+				project: "proj",
+				name:    tokens.MustParseStackName("stack"),
+				b:       b,
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.RunDeployment(t.Context(), stackRef, apitype.CreateDeploymentRequest{
+				Op: apitype.Update,
+			}, opts, "", false)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+const (
+	testPermalinkCloudURL = "https://api.pulumi.com"
+	testClaimURL          = "https://app.pulumi.com/claim/claim-token"
+	testViewLiveLink      = "https://app.pulumi.com/org/proj/stack/updates/1"
+)
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestPermalinkForDisplayWithoutAgentCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	// A leftover claim in the shared agent store must not affect commands
+	// that ran on user credentials.
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   testClaimURL,
+		CloudURL:   testPermalinkCloudURL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	ctx := ContextWithAgentCredentialUse(t.Context())
+	permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+	assert.Equal(t, testViewLiveLink, permalink)
+	assert.Empty(t, label)
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestPermalinkForDisplayWithAgentCredentials(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	future := time.Now().Add(24 * time.Hour)
+
+	tests := []struct {
+		name  string
+		claim *workspace.AgentClaim
+		want  string
+	}{
+		{
+			name: "active claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: future,
+			},
+			want: testClaimURL,
+		},
+		{
+			name: "no expiry recorded",
+			claim: &workspace.AgentClaim{
+				ClaimURL: testClaimURL,
+				CloudURL: testPermalinkCloudURL,
+			},
+			want: testClaimURL,
+		},
+		{
+			name:  "no claim stored",
+			claim: nil,
+			want:  "",
+		},
+		{
+			name: "different backend",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   "https://api.other.example.com",
+				ValidUntil: future,
+			},
+			want: "",
+		},
+		{
+			name: "expired claim",
+			claim: &workspace.AgentClaim{
+				ClaimURL:   testClaimURL,
+				CloudURL:   testPermalinkCloudURL,
+				ValidUntil: past,
+			},
+			want: "",
+		},
+		{
+			name: "claim marked unavailable",
+			claim: &workspace.AgentClaim{
+				ClaimURL:           testClaimURL,
+				CloudURL:           testPermalinkCloudURL,
+				ValidUntil:         future,
+				ClaimUnavailableAt: &past,
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			if tt.claim != nil {
+				require.NoError(t, workspace.StoreAgentClaim(*tt.claim))
+			}
+
+			ctx := ContextWithAgentCredentialUse(t.Context())
+			MarkAgentCredentialsUsed(ctx, testPermalinkCloudURL)
+
+			permalink, label := permalinkForDisplay(ctx, testPermalinkCloudURL, testViewLiveLink)
+			assert.Equal(t, tt.want, permalink)
+			if tt.want != "" {
+				assert.Equal(t, agentClaimPermalinkLabel, label)
+			} else {
+				assert.Empty(t, label)
+			}
+		})
+	}
+}
+
+func TestGetSnapshotStackOutputs(t *testing.T) {
+	t.Parallel()
+
+	secretsProvider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+	serializedOutputs := map[string]any{
+		"plain": "value",
+		"secret": map[string]any{
+			sig.Key:      sig.Secret,
+			"ciphertext": base64.StdEncoding.EncodeToString([]byte(`"hunter2"`)),
+		},
+	}
+	wantOutputs := property.NewMap(map[string]property.Value{
+		"plain":  property.New("value"),
+		"secret": property.New("hunter2").WithSecret(true),
+	})
+
+	newBackend := func(
+		t *testing.T, caps apitype.Capabilities, handler http.HandlerFunc,
+	) (*cloudBackend, backend.StackReference) {
+		server := httptest.NewServer(handler)
+		t.Cleanup(server.Close)
+		sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+		b := &cloudBackend{
+			d:      sink,
+			url:    server.URL,
+			client: client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client()),
+			capabilities: promise.Run(func() (apitype.Capabilities, error) {
+				return caps, nil
+			}),
+		}
+		return b, cloudBackendReference{
+			name:    tokens.MustParseStackName("stack"),
+			project: "project",
+			owner:   "owner",
+			b:       b,
+		}
+	}
+
+	t.Run("capability present", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/api/stacks/owner/project/stack/outputs", r.URL.Path)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+	})
+
+	t.Run("unknown outputs keep their names and secrecy only", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+				Unknown:          true,
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"plain":  property.New(property.Computed),
+			"secret": property.New(property.Computed).WithSecret(true),
+		}), outputs)
+	})
+
+	t.Run("capability absent falls back to export", func(t *testing.T) {
+		t.Parallel()
+		deployment, err := json.Marshal(apitype.DeploymentV3{
+			SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			Resources: []apitype.ResourceV3{{
+				URN:     "urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack",
+				Type:    resource.RootStackType,
+				Outputs: serializedOutputs,
+			}},
+		})
+		require.NoError(t, err)
+		b, ref := newBackend(t, apitype.Capabilities{}, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/api/stacks/owner/project/stack/export", r.URL.Path)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse{
+				Version:    3,
+				Deployment: deployment,
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+	})
+
+	t.Run("waits while a coherence window subgroup may still update the stack", func(t *testing.T) {
+		t.Parallel()
+		var reads atomic.Int32
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			resp := apitype.StackOutputsResponse{State: apitype.StackOutputsPending}
+			if reads.Add(1) > 2 {
+				resp = apitype.StackOutputsResponse{
+					Outputs:          serializedOutputs,
+					SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+					State:            apitype.StackOutputsCompleted,
+				}
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+		assert.Equal(t, int32(3), reads.Load())
+	})
+
+	t.Run("a read gives up after the wait limit", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+		b.stackOutputsWaitLimit = 50 * time.Millisecond
+
+		_, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.ErrorContains(t, err, "gave up waiting for owner/project/stack to join the coherence window")
+	})
+
+	t.Run("a cancelled read stops waiting", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+		}()
+		_, err := b.getSnapshotStackOutputs(ctx, secretsProvider, ref)
+		assert.ErrorIs(t, err, context.Canceled)
+	})
+
+	t.Run("reads during an update name the reading update", func(t *testing.T) {
+		t.Parallel()
+		var gotQuery string
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.RawQuery
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			}))
+		})
+		updateID := "d333a711-4aa0-402f-be6d-72af9665fc37"
+		b.readingUpdateID.Store(&updateID)
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+		assert.Equal(t, "readingUpdateID="+updateID, gotQuery)
 	})
 }

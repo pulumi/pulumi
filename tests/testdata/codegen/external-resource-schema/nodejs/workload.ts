@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiKubernetes from "@pulumi/kubernetes";
+import * as pulumiOther from "@pulumi/other";
 
 export class Workload extends pulumi.CustomResource {
     /**
@@ -17,6 +17,16 @@ export class Workload extends pulumi.CustomResource {
      */
     public static get(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): Workload {
         return new Workload(name, undefined as any, { ...opts, id: id });
+    }
+
+    /**
+     * Check whether an existing Workload resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example::Workload", id, {}, { ...opts }, undefined);
     }
 
     /** @internal */
@@ -33,7 +43,7 @@ export class Workload extends pulumi.CustomResource {
         return obj['__pulumiType'] === Workload.__pulumiType;
     }
 
-    declare public /*out*/ readonly pod: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
+    declare public /*out*/ readonly pod: pulumi.Output<pulumiOther.types.output.module.Config | undefined>;
 
     /**
      * Create a Workload resource with the given unique name, arguments, and options.

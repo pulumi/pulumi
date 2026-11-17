@@ -17,14 +17,12 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -64,7 +62,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	doTest(json.Marshal, json.Unmarshal)
 }
 
-func TestProjectValidationForNameAndRuntime(t *testing.T) {
+func TestProjectValidationForName(t *testing.T) {
 	t.Parallel()
 	var err error
 
@@ -72,12 +70,22 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	proj := Project{}
 	err = proj.Validate()
 	assert.EqualError(t, err, "project is missing a 'name' attribute")
-	// Test lack of runtime
+	// Test success
 	proj.Name = "a project"
 	err = proj.Validate()
-	assert.EqualError(t, err, "project is missing a 'runtime' attribute")
+	require.NoError(t, err)
+}
 
-	// Test success
+func TestProjectValidationForRuntime(t *testing.T) {
+	t.Parallel()
+	var err error
+
+	// Test lack of runtime
+	proj := Project{Name: "a project"}
+	err = proj.Validate()
+	require.NoError(t, err)
+
+	// Test with runtime
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
 	require.NoError(t, err)
@@ -222,16 +230,6 @@ func TestProjectLoadJSON(t *testing.T) {
 		assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
 	})
 
-	t.Run("missing runtime", func(t *testing.T) {
-		t.Parallel()
-
-		// Act.
-		_, err := writeAndLoad(t, "{\"name\": \"project\"}")
-
-		// Assert.
-		assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
-	})
-
 	t.Run("multiple errors 1", func(t *testing.T) {
 		t.Parallel()
 
@@ -309,17 +307,6 @@ func TestProjectLoadJSONInformativeErrors(t *testing.T) {
 		// Assert.
 		assert.ErrorContains(t, err, "project is missing a 'name' attribute")
 		assert.ErrorContains(t, err, "found 'Name' instead")
-	})
-
-	t.Run("a missing runtime attribute", func(t *testing.T) {
-		t.Parallel()
-
-		// Act.
-		_, err := writeAndLoad(t, `{"name": "project", "rutnime": "test"}`)
-
-		// Assert.
-		assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
-		assert.ErrorContains(t, err, "found 'rutnime' instead")
 	})
 
 	t.Run("a minor spelling mistake in a schema field", func(t *testing.T) {
@@ -567,256 +554,23 @@ config:
 	assert.Nil(t, secretString.Items)
 }
 
-func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
-	parsedKey, err := config.ParseKey(key)
-	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
-	configValue, foundValue := stackConfig[parsedKey]
-	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
-	value, valueError := configValue.Value(config.NopDecrypter)
-	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
-	return value
-}
-
-func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) any {
-	parsedKey, err := config.ParseKey(key)
-	require.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
-	configValue, foundValue := stackConfig[parsedKey]
-	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
-	valueJSON, valueError := configValue.Value(config.NopDecrypter)
-	require.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
-	var value any
-	err = json.Unmarshal([]byte(valueJSON), &value)
-	require.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
-	return value
-}
-
-func TestStackConfigIsInheritedFromProjectConfig(t *testing.T) {
+func TestProjectLoadsConfigKeyNamedSecret(t *testing.T) {
 	t.Parallel()
-	projectYaml := `
+	projectContent := `
 name: test
 runtime: dotnet
 config:
-  instanceSize: t3.micro
-  instanceCount: 20
-  protect: true`
+  secret:
+    type: string
+    secret: true
+  `
 
-	projectStackYaml := `
-config:
-  test:instanceSize: t4.large`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-
-	require.Len(t, stack.Config, 3, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
-	// instanceCount and protect are inherited from the project
-	assert.Equal(t, "20", getConfigValue(t, stack.Config, "test:instanceCount"))
-	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:protect"))
-}
-
-func TestNamespacedConfigValuesAreInheritedCorrectly(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  aws:region: us-west-1
-  pulumi:disable-default-providers: ["*"]
-  instanceSize: t3.micro`
-
-	projectStackYaml := `
-config:
-  test:instanceSize: t4.large`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-	require.Len(t, stack.Config, 3, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
-	// aws:region is namespaced and is inherited from the project
-	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
-	assert.Equal(t, "[\"*\"]", getConfigValue(t, stack.Config, "pulumi:disable-default-providers"))
-	assert.Equal(t, []any{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
-}
-
-func TestLoadingStackConfigWithoutNamespacingTheProject(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  aws:region: us-west-1
-  instanceSize: t3.micro`
-
-	projectStackYaml := `
-config:
-  instanceSize: t4.large`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-
-	require.Len(t, stack.Config, 2, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
-	// aws:region is namespaced and is inherited from the project
-	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
-}
-
-func TestUntypedProjectConfigValuesAreNotValidated(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  instanceSize: t3.micro
-  aws:region: us-west-1`
-
-	projectStackYaml := `
-config:
-  instanceSize: 9999
-  aws:region: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-	require.Len(t, stack.Config, 2, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "9999", getConfigValue(t, stack.Config, "test:instanceSize"))
-	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:region"))
-}
-
-func TestUntypedProjectConfigValuesWithOnlyDefaultOrOnlyValue(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  instanceSize:
-    default: t3.micro
-  region:
-    value: us-west-1`
-
-	projectStackYaml := `
-config:
-  aws:answer: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-	require.Len(t, stack.Config, 3, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "t3.micro", getConfigValue(t, stack.Config, "test:instanceSize"))
-	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "test:region"))
-	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:answer"))
-}
-
-func TestUntypedStackConfigValuesDoNeedProjectDeclaration(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  createVpc: true`
-
-	projectStackYaml := `
-config:
-  instanceSize: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-	require.Len(t, stack.Config, 2, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "42", getConfigValue(t, stack.Config, "test:instanceSize"))
-	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:createVpc"))
+	project, err := loadProjectFromText(t, projectContent)
+	require.NoError(t, err, "A config key named 'secret' should load like any other key")
+	secretKey, ok := project.Config["secret"]
+	require.True(t, ok, "should be able to read secret")
+	assert.Equal(t, "string", secretKey.TypeName())
+	assert.True(t, secretKey.Secret)
 }
 
 func TestNamespacedProjectConfigShouldNotBeExplicitlyTyped(t *testing.T) {
@@ -883,83 +637,6 @@ config:
 		"Did you mean to use the 'value' attribute instead of 'default'?")
 }
 
-func TestUntypedProjectConfigObjectValuesPassedDownToStack(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  instanceSize:
-    value:
-      hello: world
-  aws:config:
-    value:
-      region: us-west-1`
-
-	projectStackYaml := `
-config:
-  aws:whatever: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-	require.Len(t, stack.Config, 3, "Stack config now has three values")
-	// value of instanceSize is overwritten from the stack
-	assert.Equal(t, "{\"hello\":\"world\"}", getConfigValue(t, stack.Config, "test:instanceSize"))
-	assert.Equal(t, "{\"region\":\"us-west-1\"}", getConfigValue(t, stack.Config, "aws:config"))
-	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:whatever"))
-}
-
-func TestStackConfigErrorsWhenStackValueIsNotCorrectlyTyped(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  values:
-    type: array
-    items:
-      type: string
-    default: [value]`
-
-	projectStackYaml := `
-config:
-  test:values: someValue
-`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	assert.ErrorContains(t, configError, "Stack 'dev' with configuration key 'values' must be of type 'array<string>'")
-}
-
 func TestLoadingConfigIsRewrittenToStackConfigDir(t *testing.T) {
 	t.Parallel()
 	projectYaml := `
@@ -1003,328 +680,6 @@ config:
 	require.Len(t, project.Config, 1, "there is one config value")
 }
 
-func TestStackConfigIntegerTypeIsCorrectlyValidated(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  importantNumber:
-    type: integer
-`
-
-	projectStackYamlValid := `
-config:
-  test:importantNumber: 20
-`
-
-	projectStackYamlInvalid := `
-config:
-  test:importantNumber: hello
-`
-
-	ctx := t.Context()
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		ctx,
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "there should no config type error")
-
-	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError = ValidateStackConfigAndApplyProjectConfig(
-		ctx,
-		"dev",
-		project,
-		esc.Value{},
-		invalidStackConfig.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	assert.ErrorContains(t, configError,
-		"Stack 'dev' with configuration key 'importantNumber' must be of type 'integer'")
-}
-
-func TestStackConfigErrorsWhenMissingStackValueForConfigTypeWithNoDefault(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  values:
-    type: array
-    items:
-      type: string`
-
-	projectStackYaml := ``
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	assert.ErrorContains(t, configError, "Stack 'dev' is missing configuration value 'values'")
-}
-
-func TestStackConfigErrorsWhenMissingTwoStackValueForConfigTypeWithNoDefault(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  another:
-    type: string
-  values:
-    type: array
-    items:
-      type: string`
-
-	projectStackYaml := ``
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	assert.ErrorContains(t, configError, "Stack 'dev' is missing configuration values 'another' and 'values'")
-}
-
-func TestStackConfigErrorsWhenMissingMultipleStackValueForConfigTypeWithNoDefault(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  hello:
-    type: integer
-  values:
-    type: array
-    items:
-      type: string
-  world:
-    type: string`
-
-	projectStackYaml := ``
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	assert.ErrorContains(t, configError, "Stack 'dev' is missing configuration values 'hello', 'values' and 'world'")
-}
-
-func TestStackConfigDoesNotErrorWhenProjectHasNotDefinedConfig(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet`
-
-	projectStackYaml := `
-config:
-  hello: 21
-  world: 42
-  another: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	assert.Nil(t, configError, "there should not be a config type error")
-}
-
-func TestStackConfigSecretIsCorrectlyValidated(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  importantNumber:
-    type: integer
-    secret: true
-`
-
-	crypter := config.Base64Crypter
-	encryptedValue, err := crypter.EncryptValue(t.Context(), "20")
-	require.NoError(t, err)
-
-	projectStackYamlValid := fmt.Sprintf(`
-config:
-  test:importantNumber:
-    secure: %s
-`, encryptedValue)
-
-	projectStackYamlInvalid := `
-config:
-  test:importantNumber: 20
-`
-
-	ctx := t.Context()
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlValid)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		ctx,
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		crypter,
-		crypter)
-	require.NoError(t, configError, "there should no config type error")
-
-	invalidStackConfig, stackError := loadProjectStackFromText(t, sink, project, projectStackYamlInvalid)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError = ValidateStackConfigAndApplyProjectConfig(
-		ctx,
-		"dev",
-		project,
-		esc.Value{},
-		invalidStackConfig.Config,
-		crypter,
-		crypter)
-	assert.ErrorContains(t, configError,
-		"Stack 'dev' with configuration key 'importantNumber' must be encrypted as it's secret")
-}
-
-//nolint:lll
-func TestEnvironmentMerge(t *testing.T) {
-	t.Parallel()
-
-	projectYAML := `
-name: test
-runtime: nodejs`
-
-	stackYAML := `
-config:
-  test:boolean: true
-  test:number: 42
-  test:string: foo
-  test:array:
-    - first
-    - second
-  test:object:
-    foo: bar
-    object:
-      baz: 42`
-
-	env := esc.NewValue(map[string]esc.Value{
-		"test:boolean": esc.NewValue(false),
-		"test:number":  esc.NewValue(json.Number("42")),
-		"test:string":  esc.NewValue("esc"),
-		"test:array":   esc.NewValue([]esc.Value{esc.NewValue("second"), esc.NewValue("first")}),
-		"test:secret":  esc.NewSecret("hunter2"),
-		"test:object": esc.NewValue(map[string]esc.Value{
-			"boolean": esc.NewValue(true),
-			"number":  esc.NewValue(json.Number("42")),
-			"string":  esc.NewValue("esc"),
-			"array":   esc.NewValue([]esc.Value{esc.NewValue("first"), esc.NewValue("second")}),
-			"object":  esc.NewValue(map[string]esc.Value{"foo": esc.NewValue("bar")}),
-			"foo":     esc.NewValue("qux"),
-		}),
-	})
-
-	project, projectError := loadProjectFromText(t, projectYAML)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, stackYAML)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		env,
-		stack.Config,
-		config.Base64Crypter,
-		config.Base64Crypter)
-	require.NoError(t, configError, "there should not be a config type error")
-
-	secureKeys := stack.Config.SecureKeys()
-	assert.Equal(t, []config.Key{config.MustMakeKey("test", "secret")}, secureKeys)
-
-	m, err := stack.Config.Decrypt(config.Base64Crypter)
-	require.NoError(t, err)
-
-	expected := map[config.Key]string{
-		config.MustMakeKey("test", "array"):   "[\"first\",\"second\"]",
-		config.MustMakeKey("test", "boolean"): "true",
-		config.MustMakeKey("test", "number"):  "42",
-		config.MustMakeKey("test", "object"):  "{\"array\":[\"first\",\"second\"],\"boolean\":true,\"foo\":\"bar\",\"number\":42,\"object\":{\"baz\":42,\"foo\":\"bar\"},\"string\":\"esc\"}",
-		config.MustMakeKey("test", "string"):  "foo",
-		config.MustMakeKey("test", "secret"):  "hunter2",
-	}
-	assert.Equal(t, expected, m)
-}
-
 func TestProjectLoadYAML(t *testing.T) {
 	t.Parallel()
 
@@ -1347,10 +702,6 @@ func TestProjectLoadYAML(t *testing.T) {
 	// Test bad name
 	_, err = loadProjectFromText(t, "name:")
 	assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
-
-	// Test missing runtime
-	_, err = loadProjectFromText(t, "name: project")
-	assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
 
 	// Test other schema errors
 	_, err = loadProjectFromText(t, "name: project\nruntime: 4")
@@ -1451,7 +802,8 @@ func TestProjectEditRoundtrip(t *testing.T) {
 					proj.Runtime.Name(),
 					map[string]any{
 						"setting": "test",
-					})
+					},
+				)
 			},
 			expected: "name: test\nruntime:\n  name: python\n  options:\n    setting: test\n",
 		},
@@ -1655,6 +1007,120 @@ runtime: yaml`
 		marshaled, err = encoding.YAML.Marshal(stack)
 		require.NoError(t, err)
 		assert.Equal(t, expected, string(marshaled))
+	})
+}
+
+func TestEnvironmentVersionPinning(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `name: test
+runtime: yaml`
+
+	t.Run("YAML list preserves @version syntax", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("project/env@3")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - project/env@3\n", string(marshaled))
+
+		stack.Environment = stack.Environment.Append("project/other@stable")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - project/env@3\n  - project/other@stable\n", string(marshaled))
+	})
+
+	t.Run("JSON list preserves @version syntax", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, "{}")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("project/env@3")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "{\n    \"environment\": [\n        \"project/env@3\"\n    ]\n}\n", string(marshaled))
+	})
+
+	t.Run("YAML literal preserves @version syntax", func(t *testing.T) {
+		t.Parallel()
+
+		projectStackYaml := `environment:
+  values:
+    pulumiConfig:
+      aws:region: us-west-2`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("project/env@3")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+
+		expected := `environment:
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+  imports:
+    - project/env@3
+`
+		assert.Equal(t, expected, string(marshaled))
+	})
+
+	t.Run("Definition produces correct bytes for versioned imports", func(t *testing.T) {
+		t.Parallel()
+
+		env := NewEnvironment([]string{"project/env@3", "project/other@stable"})
+		def := env.Definition()
+		require.NotNil(t, def)
+
+		var parsed map[string]any
+		err := json.Unmarshal(def, &parsed)
+		require.NoError(t, err)
+
+		imports, ok := parsed["imports"].([]any)
+		require.True(t, ok)
+		assert.Equal(t, []any{"project/env@3", "project/other@stable"}, imports)
+	})
+
+	t.Run("Imports returns versioned names unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		env := NewEnvironment([]string{"project/env@3", "project/other@stable", "project/plain"})
+		imports := env.Imports()
+		assert.Equal(t, []string{"project/env@3", "project/other@stable", "project/plain"}, imports)
+	})
+
+	t.Run("YAML unmarshal round-trip preserves @version", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+
+		stackYaml := "environment:\n  - project/env@3\n  - project/other@stable\n"
+		stack, err := loadProjectStackFromText(t, sink, project, stackYaml)
+		require.NoError(t, err)
+
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, stackYaml, string(marshaled))
 	})
 }
 
@@ -1919,37 +1385,6 @@ runtime: yaml`
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/18581, check that we handle uint64's in yaml
-func TestStackConfigUInt64(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet`
-
-	projectStackYaml := `
-config:
-  test:instanceSize: 18446744073709551615`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	require.NoError(t, projectError, "Shold be able to load the project")
-	var stdout, stderr bytes.Buffer
-	sink := diagtest.MockSink(&stdout, &stderr)
-	stack, stackError := loadProjectStackFromText(t, sink, project, projectStackYaml)
-	assert.Empty(t, stdout)
-	assert.Empty(t, stderr)
-	require.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig(
-		t.Context(),
-		"dev",
-		project,
-		esc.Value{},
-		stack.Config,
-		config.NewPanicCrypter(),
-		config.NewPanicCrypter())
-	require.NoError(t, configError, "Config override should be valid")
-
-	require.Len(t, stack.Config, 1, "Stack config now has three values")
-	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
-}
 
 func TestPackageValueSerialization(t *testing.T) {
 	t.Parallel()
@@ -2030,7 +1465,7 @@ func TestPackageValueSerialization(t *testing.T) {
 		jsonData := `{"name":"test-project","runtime":"nodejs","packages":{"invalid":123}}`
 		var proj Project
 		err := json.Unmarshal([]byte(jsonData), &proj)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "package must be either a string or a package specification object")
 	})
 }
@@ -2063,6 +1498,51 @@ runtime: nodejs
 packages:
   tls-self-signed-cert: github.com/pulumi/component-test-providers@0.0.0-xd47cf0
 `, string(b))
+	})
+}
+
+func TestPackageValueSerializationExtension(t *testing.T) {
+	t.Parallel()
+
+	proj := func() *Project {
+		return &Project{
+			Name:    "test-project",
+			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Packages: map[string]PackageSpec{
+				"extension-string-base": {
+					Source:     "kubernetes",
+					Extensions: []string{"-c", "crds.yaml"},
+				},
+				"extension-inline-base": {
+					Source:     "kubernetes",
+					Version:    "4.29.0",
+					Parameters: []string{"some-param"},
+					Extensions: []string{"-c", "crds.yaml"},
+				},
+			},
+		}
+	}
+
+	test := func(
+		t *testing.T,
+		marshal func(any) ([]byte, error),
+		unmarshal func([]byte, any) error,
+	) {
+		bytes, err := marshal(proj())
+		require.NoError(t, err)
+
+		newProj := new(Project)
+		require.NoError(t, unmarshal(bytes, newProj))
+		assert.EqualExportedValues(t, proj(), newProj)
+	}
+
+	t.Run("JSON", func(t *testing.T) {
+		t.Parallel()
+		test(t, json.Marshal, json.Unmarshal)
+	})
+	t.Run("YAML", func(t *testing.T) {
+		t.Parallel()
+		test(t, yaml.Marshal, yaml.Unmarshal)
 	})
 }
 
@@ -2405,4 +1885,80 @@ func TestAddPackage(t *testing.T) {
 		// Verify the internal representation was converted to PackageSpec
 		requireTextualRepresentationIsSpec(t, proj.Packages["string-package"])
 	})
+}
+
+func TestPackageSpecLogValueRedactsCredentials(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Source:            "git://user:sourcesecret@github.com/org/repo",
+		Version:           "1.2.3",
+		PluginDownloadURL: "https://user:downloadsecret@example.com/plugin",
+	}
+
+	var buf bytes.Buffer
+	slog.New(slog.NewTextHandler(&buf, nil)).Info("resolving", "spec", spec)
+	out := buf.String()
+
+	require.NotContains(t, out, "sourcesecret")
+	require.NotContains(t, out, "downloadsecret")
+	require.Contains(t, out, "1.2.3", "non-secret fields should still be logged")
+}
+
+func TestEnvironmentDefinitionNode(t *testing.T) {
+	t.Parallel()
+
+	project, err := loadProjectFromText(t, "name: test\nruntime: yaml")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		contents        string
+		marshaler       encoding.Marshaler
+		wantErr         error
+		wantEnvironment string
+	}{
+		{name: "nil", contents: "{}", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "list", contents: "environment: [a, b]", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "empty list", contents: "environment: []", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "empty mapping", contents: "environment: {}", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "scalar", contents: "environment: a", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{
+			name:      "JSON",
+			contents:  `{"environment": {"values": {"pulumiConfig": {"a": "b"}}}}`,
+			marshaler: encoding.JSON,
+			wantErr:   ErrJSONManagedDefinition,
+		},
+		{
+			name:            "mapping",
+			contents:        "environment:\n  imports: [a]\n  values:\n    pulumiConfig:\n      a: b\n",
+			marshaler:       encoding.YAML,
+			wantEnvironment: "imports:\n    - a\nvalues:\n    pulumiConfig:\n        a: b\n",
+		},
+		{
+			name:            "stack init placeholder",
+			contents:        "environment:\n  values:\n    pulumiConfig: {}\n",
+			marshaler:       encoding.YAML,
+			wantEnvironment: "values:\n    pulumiConfig: {}\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ps, err := LoadProjectStackBytes(diagtest.LogSink(t),
+				project, []byte(tt.contents), "Pulumi.dev.yaml", tt.marshaler)
+			require.NoError(t, err)
+
+			node, err := ps.Environment.DefinitionNode()
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, node)
+				return
+			}
+			require.NoError(t, err)
+			assert.Same(t, ps.Environment.node, node)
+			assert.Equal(t, tt.wantEnvironment, string(ps.EnvironmentBytes()))
+		})
+	}
 }

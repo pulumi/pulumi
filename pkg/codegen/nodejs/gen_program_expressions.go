@@ -67,7 +67,7 @@ func (g *generator) RewriteVariableRenames(expr model.Expression, typ model.Type
 			return expr, nil
 		}
 
-		traversal.RootName = makeValidIdentifier(traversal.RootName)
+		traversal.RootName = g.nodeName(traversal.RootName)
 
 		return expr, nil
 	}
@@ -180,7 +180,7 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 }
 
 func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {
-	g.Fgenf(w, "%.4v ? %.4v : %.4v", expr.Condition, expr.TrueResult, expr.FalseResult)
+	g.Fgenf(w, "%.4o ? %.4v : %.4v", expr.Condition, expr.TrueResult, expr.FalseResult)
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
@@ -266,12 +266,19 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg, module, _, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	// the index module is not put into a submodule
 	if module == "index" {
 		module = ""
 	}
-	return pkg, strings.ReplaceAll(module, "/", "."), member, diagnostics
+	// Each segment becomes a property access on the package, so segments that aren't legal
+	// identifiers (e.g. containing hyphens) use the sanitized name the SDK exports them under.
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidModuleSegment(segment)
+	}
+	module = strings.Join(segments, ".")
+	return pkg, module, tokenToFunctionName(token), diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
@@ -285,9 +292,9 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 		contract.Failf("expected range() to have exactly 1 or 2 args; got %v", len(call.Args))
 	}
 
-	genPrefix := func() { g.Fprint(w, "((from, to) => (new Array(to - from))") }
+	genPrefix := func() { g.Fprint(w, "((from, to) => Array.from({length: to - from}, (_, i) => ") }
 	mapValue := "from + i"
-	genSuffix := func() { g.Fgenf(w, ")(%.v, %.v)", from, to) }
+	genSuffix := func() { g.Fgenf(w, "))(%.v, %.v)", from, to) }
 
 	if litFrom, ok := from.(*model.LiteralValueExpression); ok {
 		fromV, err := convert.Convert(litFrom.Value, cty.Number)
@@ -304,12 +311,12 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 			} else {
 				mapValue = fmt.Sprintf("%d + i", from)
 			}
-			genPrefix = func() { g.Fprintf(w, "(new Array(%d))", to-from) }
-			genSuffix = func() {}
+			genPrefix = func() { g.Fprintf(w, "Array.from({length: %d}, (_, i) => ", to-from) }
+			genSuffix = func() { g.Fprint(w, ")") }
 		} else if from == 0 {
-			genPrefix = func() { g.Fgenf(w, "(new Array(%.v))", to) }
+			genPrefix = func() { g.Fgenf(w, "Array.from({length: %.v}, (_, i) => ", to) }
 			mapValue = "i"
-			genSuffix = func() {}
+			genSuffix = func() { g.Fprint(w, ")") }
 		}
 	}
 
@@ -318,7 +325,7 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 	}
 
 	genPrefix()
-	g.Fprintf(w, ".map((_, i) => %v)", mapValue)
+	g.Fprint(w, mapValue)
 	genSuffix()
 }
 
@@ -409,14 +416,55 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		output, isOutput := to.(*model.OutputType)
-		if isOutput {
-			to = output.ElementType
+		to = model.ResolveOutputs(to)
+		if cns, ok := to.(*model.ConstType); ok {
+			to = cns.Type
+		}
+		fromType := from.Type()
+		isFromOutput, isFromPromise := model.ContainsEventuals(fromType)
+		fromType = model.ResolveOutputs(fromType)
+		if cns, ok := fromType.(*model.ConstType); ok {
+			fromType = cns.Type
+		}
+		// If fromType is optional (union(T, None)), unwrap to T. LowerConversion already selects a specific element
+		// type from the target union (stripping optionality from to), so we symmetrically unwrap fromType to avoid
+		// false type mismatches (e.g., treating Optional<bool> as needing string-to-bool conversion).
+		if union, ok := fromType.(*model.UnionType); ok && len(union.ElementTypes) == 2 {
+			if union.ElementTypes[0] == model.NoneType {
+				fromType = union.ElementTypes[1]
+			} else if union.ElementTypes[1] == model.NoneType {
+				fromType = union.ElementTypes[0]
+			}
+		}
+
+		genMaybeOutputConversion := func(conversionExpr func(string)) {
+			if isFromPromise {
+				g.Fgenf(w, "output(%.v).apply(x =>", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			if isFromOutput {
+				g.Fgenf(w, "%.v.apply(x =>", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			var t bytes.Buffer
+			g.Fgenf(&t, "%.v", from)
+			conversionExpr(t.String())
 		}
 		switch to := to.(type) {
 		case *model.EnumType:
 			if enum, err := enumName(to); err == nil {
-				if isOutput {
+				// If the source is already the same enum, emit it as-is. The reverse-mapping
+				// `Enum[x]` form below would return `undefined` for string enums (which have
+				// no TypeScript reverse map) and is unnecessary when the value is already typed.
+				if fromEnum, ok := fromType.(*model.EnumType); ok && fromEnum.Token == to.Token {
+					g.Fgenf(w, "%.v", from)
+					return
+				}
+				if isFromOutput {
 					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
 				} else {
 					diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
@@ -434,10 +482,42 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.Fgenf(w, "%v", from)
 			}
 		default:
-			g.Fgenf(w, "%v", from)
+			switch {
+			case model.BoolType.AssignableFrom(to) && !model.BoolType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, `%s === "true"`, v)
+				})
+			// ids and strings are treated interchangeably in JavaScript, so if we are casting to id but
+			// already have string _or_ id that's fine. Same for casting to string.
+			case model.StringType.AssignableFrom(to) &&
+				!model.StringType.AssignableFrom(fromType) &&
+				!model.IDType.AssignableFrom(fromType),
+				model.IDType.AssignableFrom(to) &&
+					!model.StringType.AssignableFrom(fromType) &&
+					!model.IDType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "String(%s)", v)
+				})
+			// ints and numbers are treated interchangeably in JavaScript, so if we are casting to int but
+			// already have int _or_ number that's fine. Same for casting to number.
+			case model.NumberType.AssignableFrom(to) &&
+				!model.NumberType.AssignableFrom(fromType) &&
+				!model.IntType.AssignableFrom(fromType),
+				model.IntType.AssignableFrom(to) &&
+					!model.NumberType.AssignableFrom(fromType) &&
+					!model.IntType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "Number(%s)", v)
+				})
+			default:
+				g.Fgenf(w, "%v", from)
+			}
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "pulumi.recover(%.20v, err => ((error) => %.v)(err instanceof Error ? err.message : String(err)))",
+			expr.Args[0], expr.Args[1])
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
 	case intrinsicInterpolate:
@@ -484,6 +564,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			panic(err)
 		}
 
+		// Plain method returns are Promise<T> in the Node SDK; we need to `await` them so downstream
+		// traversals/field access operate on the resolved value. This requires an async main,
+		// which is enforced during node-program analysis (see callRequiresAsyncMain).
+		_, hasOutput := expr.Signature.ReturnType.(*model.OutputType)
+		plainCall := !hasOutput
+		if plainCall {
+			g.Fprint(w, "(await ")
+		}
+
 		validMethod := makeValidIdentifier(method)
 		g.Fgenf(w, "%v.%s(", self, validMethod)
 
@@ -498,6 +587,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		g.Fprint(w, ")")
+		if plainCall {
+			g.Fprint(w, ")")
+		}
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
@@ -505,10 +597,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			module = "." + module
 		}
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
-		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, fn)
 		if isOut {
 			name = name + "Output"
 		}
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentThis := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		// The options bag is positional, so it can only be emitted once the arguments before it are.
+		emitOptions := len(expr.Args) >= 2 && (hasOptions || parentThis)
+
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
 			if expr.Signature.MultiArgumentInputs {
@@ -521,15 +618,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 				}
 
-				pcl.GenerateMultiArguments(g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr))
+				pcl.GenerateMultiArguments(
+					g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr), emitOptions)
 			} else {
 				g.Fgenf(w, "%.v", expr.Args[1])
 			}
 		}
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(w, ", {")
-				g.Indented(func() {
+		if emitOptions {
+			g.Fgen(w, ", {")
+			g.Indented(func() {
+				if parentThis {
+					g.Fgenf(w, "\n%sparent: this,", g.Indent)
+				}
+				if hasOptions {
 					for _, item := range invokeOptions.Items {
 						key := pcl.LiteralValueString(item.Key)
 						g.Fgenf(w, "\n%s", g.Indent)
@@ -542,15 +643,51 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, "%s: %v,", key, item.Value)
 						}
 					}
-				})
-				g.Fgenf(w, "\n%s}", g.Indent)
-			}
+				}
+			})
+			g.Fgenf(w, "\n%s}", g.Indent)
 		}
 		g.Fprint(w, ")")
 	case "join":
 		g.Fgenf(w, "%.20v.join(%v)", expr.Args[1], expr.Args[0])
+	case "max":
+		g.Fgen(w, "Math.max(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "...")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
+	case "min":
+		g.Fgen(w, "Math.min(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			if expr.ExpandFinal && i == len(expr.Args)-1 {
+				g.Fgen(w, "...")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
 	case "length":
-		g.Fgenf(w, "%.20v.length", expr.Args[0])
+		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		_, isMap := argType.(*model.MapType)
+		_, isObject := argType.(*model.ObjectType)
+		switch {
+		case model.StringType.AssignableFrom(argType):
+			// Use Intl.Segmenter to count Unicode grapheme clusters, matching PCL's length() semantics.
+			g.Fgenf(w, "[...new Intl.Segmenter().segment(%.20v)].length", expr.Args[0])
+		case isMap || isObject || argType == model.DynamicType:
+			// Object.keys also counts array elements, so it covers dynamic values whose runtime type is unknown.
+			g.Fgenf(w, "Object.keys(%.20v).length", expr.Args[0])
+		default:
+			g.Fgenf(w, "%.20v.length", expr.Args[0])
+		}
 	case "lookup":
 		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
 		switch argType.(type) {
@@ -559,9 +696,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		default:
 			g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
 		}
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, " || %v", expr.Args[2])
-		}
+		g.Fgenf(w, " || %v", expr.Args[2])
 	case "range":
 		g.genRange(w, expr, false)
 	case "readFile":
@@ -570,6 +705,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "unsecret":
 		g.Fgenf(w, "pulumi.unsecret(%v)", expr.Args[0])
+	case "resourceExists":
+		if len(expr.Args) > 2 {
+			g.Fgenf(w, "pulumi.runtime.existsResource(%v, %v, %v, {})", expr.Args[0], expr.Args[1], expr.Args[2])
+		} else {
+			g.Fgenf(w, "pulumi.runtime.existsResource(%v, %v, {}, {})", expr.Args[0], expr.Args[1])
+		}
 	case "split":
 		g.Fgenf(w, "%.20v.split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
@@ -792,7 +933,9 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	if isLegalIdentifier(strKey) {
 		return strKey, true
 	}
-	return fmt.Sprintf("%q", strKey), true
+	var buf bytes.Buffer
+	g.genStringLiteral(&buf, strKey)
+	return buf.String(), true
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
@@ -828,7 +971,14 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		}
 
 		var indexPrefix string
-		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
+		if pcl.IsOptionalResource(parts[i]) {
+			// A conditionally-created (boolean `range`) resource is `undefined`
+			// when the condition is false. Dereferencing its property to feed a
+			// required input asserts the resource exists, so emit a non-null
+			// assertion rather than optional chaining (which would widen the value
+			// to `| undefined` and fail to type-check against the required input).
+			g.Fgen(w, "!")
+		} else if model.IsOptionalType(model.GetTraversableType(parts[i])) {
 			g.Fgen(w, "?")
 			// `expr?[expr]` is not valid typescript, since it looks like a ternary
 			// operator.
@@ -866,7 +1016,7 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
-	rootName := makeValidIdentifier(expr.RootName)
+	rootName := g.nodeName(expr.RootName)
 	if g.isComponent {
 		if expr.RootName == "this" {
 			// special case for parent: this
@@ -888,6 +1038,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
+	}
+
+	// Inside a numeric `range` loop, `range` is a plain number, so `range.value`
+	// and `range.key` both render as `range`.
+	if g.rangeValueIsScalar && expr.RootName == "range" {
+		if rel := expr.Traversal.SimpleSplit().Rel; len(rel) == 1 {
+			if attr, ok := rel[0].(hcl.TraverseAttr); ok && (attr.Name == "value" || attr.Name == "key") {
+				g.Fgen(w, "range")
+				return
+			}
+		}
 	}
 
 	g.Fgen(w, rootName)

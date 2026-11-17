@@ -18,9 +18,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"sort"
+	"strings"
 	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -29,12 +31,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,6 +55,11 @@ type stackArgs struct {
 func NewStackCmd() *cobra.Command {
 	var stackName string
 	args := stackArgs{}
+
+	output := outputflag.OutputFlag[stackRenderFunc]{
+		RenderForTerminal: runStackText,
+		RenderJSON:        runStackJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "stack",
@@ -77,13 +85,18 @@ func NewStackCmd() *cobra.Command {
 				stackName,
 				OfferNew,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
 			}
 
 			args.fullyQualifyStackNames = cmdutil.FullyQualifyStackNames
-			return runStack(ctx, s, os.Stdout, args)
+			if args.showStackName {
+				writeStackName(cmd.OutOrStdout(), s, args.fullyQualifyStackNames)
+				return nil
+			}
+			return output.Get()(ctx, s, cmd.OutOrStdout(), args)
 		},
 	}
 
@@ -100,35 +113,45 @@ func NewStackCmd() *cobra.Command {
 		&args.showSecrets, "show-secrets", false, "Display stack outputs which are marked as secret in plaintext")
 	cmd.Flags().BoolVar(
 		&args.showStackName, "show-name", false, "Display only the stack name")
+	outputflag.VarP(cmd.Flags(), &output)
 
-	cmd.AddCommand(newStackExportCmd())
+	cmd.AddCommand(newStackExportCmd(
+		pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)))
 	cmd.AddCommand(newStackGraphCmd())
-	cmd.AddCommand(newStackImportCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, secrets.DefaultProvider))
-	cmd.AddCommand(newStackInitCmd())
-	cmd.AddCommand(newStackLsCmd())
+	cmd.AddCommand(newStackImportCmd(
+		pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)))
+	cmd.AddCommand(newStackNewCmd())
+	cmd.AddCommand(newStackListCmd())
 	cmd.AddCommand(newStackOutputCmd())
-	cmd.AddCommand(newStackRmCmd())
+	cmd.AddCommand(newStackRemoveCmd())
 	cmd.AddCommand(newStackSelectCmd())
 	cmd.AddCommand(newStackTagCmd())
 	cmd.AddCommand(newStackRenameCmd())
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())
 	cmd.AddCommand(newStackUnselectCmd())
+	cmd.AddCommand(newStackGetCmd())
+	cmd.AddCommand(newStackDriftCmd())
+	cmd.AddCommand(newStackPolicyCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newStackScheduleCmd())
+	cmd.AddCommand(newStackWebhookCmd())
+	cmd.AddCommand(newStackMigrateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 
 	return cmd
 }
 
-func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
-	if args.showStackName {
-		if args.fullyQualifyStackNames {
-			fmt.Fprintln(out, s.Ref().String())
-		} else {
-			fmt.Fprintln(out, s.Ref().Name())
-		}
-		return nil
+func writeStackName(out io.Writer, s backend.Stack, fullyQualify bool) {
+	if fullyQualify {
+		fmt.Fprintln(out, s.Ref().String())
+	} else {
+		fmt.Fprintln(out, s.Ref().Name())
 	}
+}
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+type stackRenderFunc func(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error
+
+func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return err
 	}
@@ -145,12 +168,18 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 			fmt.Fprintf(out, "    Owner: %s\n", cs.OrgName())
 
 			if currentOp := cs.CurrentOperation(); currentOp != nil {
-				fmt.Fprintf(out, "    Update in progress:\n")
+				fmt.Fprintf(out, "    %s in progress:\n", capitalizeFirst(string(currentOp.Kind)))
 				args.startTime = humanize.Time(time.Unix(currentOp.Started, 0))
 				fmt.Fprintf(out, "	Started: %v\n", args.startTime)
 				fmt.Fprintf(out, "	Requested By: %s\n", currentOp.Author)
 			}
 		}
+
+		cloudInfo, _, err := fetchCloudStackInfo(ctx, s)
+		if err != nil {
+			return fmt.Errorf("fetching stack: %w", err)
+		}
+		renderCloudStackText(out, cloudInfo)
 	}
 
 	if snap != nil {
@@ -162,6 +191,13 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		}
 		if snap.Manifest.Version != "" {
 			fmt.Fprintf(out, "    Pulumi version used: %s\n", snap.Manifest.Version)
+		}
+		var typ string
+		if snap.SecretsManager != nil {
+			typ = snap.SecretsManager.Type()
+		}
+		if typ != "" {
+			fmt.Fprintf(out, "    Secrets provider: %s\n", typ)
 		}
 		for _, p := range snap.Manifest.Plugins {
 			var pluginVersion string
@@ -191,7 +227,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 			}
 		}
 
-		ui.PrintTable(cmdutil.Table{
+		ui.FprintTable(out, cmdutil.Table{
 			Headers: []string{"TYPE", "NAME"},
 			Rows:    rows,
 			Prefix:  "    ",
@@ -200,7 +236,7 @@ func runStack(ctx context.Context, s backend.Stack, out io.Writer, args stackArg
 		outputs, err := getStackOutputs(snap, args.showSecrets)
 		if err == nil {
 			fmt.Fprintf(out, "\n")
-			_ = fprintStackOutputs(os.Stdout, outputs)
+			_ = fprintStackOutputs(out, outputs)
 		}
 
 		if args.showSecrets {
@@ -268,7 +304,7 @@ func stringifyOutput(v any) string {
 }
 
 type treeNode struct {
-	res      *resource.State
+	res      *pkgresource.State
 	children []*treeNode
 }
 
@@ -347,7 +383,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 	return rows, true
 }
 
-func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
+func renderResourceRow(res *pkgresource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
 	columns := []string{prefix + string(res.Type), res.URN.Name()}
 	additionalInfo := ""
 
@@ -361,4 +397,61 @@ func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, 
 	}
 
 	return cmdutil.TableRow{Columns: columns, AdditionalInfo: additionalInfo}
+}
+
+// capitalizeFirst returns s with its first rune uppercased. Empty input
+// yields "Operation" as a sensible fallback for the rare case where an
+// API response omits the operation kind.
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return "Operation"
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// renderCloudStackText writes the Pulumi Cloud-only metadata (Version,
+// Active update, Tags) under the current-stack heading. It mirrors the
+// JSON envelope's cloud fields so `pulumi stack` and
+// `pulumi stack --output json` show the same information.
+func renderCloudStackText(out io.Writer, info *apitype.Stack) {
+	if info == nil {
+		return
+	}
+	if info.Version != 0 {
+		fmt.Fprintf(out, "    Version: %d\n", info.Version)
+	}
+	if info.ActiveUpdate != "" {
+		fmt.Fprintf(out, "    Active update: %s\n", info.ActiveUpdate)
+	}
+	if len(info.Tags) > 0 {
+		keys := make([]string, 0, len(info.Tags))
+		for k := range info.Tags {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		maxKey := 0
+		for _, k := range keys {
+			if len(k) > maxKey {
+				maxKey = len(k)
+			}
+		}
+		fmt.Fprintln(out, "    Tags:")
+		for _, k := range keys {
+			fmt.Fprintf(out, "        %-*s  %s\n", maxKey, k, info.Tags[k])
+		}
+	}
+}
+
+// runStackJSON renders the stack as a JSON envelope. On Pulumi Cloud
+// backends it also fetches the GetStack API for cloud-only metadata
+// (version, tags, activeUpdate, currentOperation, console URL).
+func runStackJSON(ctx context.Context, s backend.Stack, out io.Writer, args stackArgs) error {
+	in, err := loadStackJSONInputs(ctx, s, args.showSecrets)
+	if err != nil {
+		return fmt.Errorf("fetching stack: %w", err)
+	}
+	if args.showSecrets {
+		Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
+	}
+	return renderStackJSON(out, buildStackJSON(in))
 }

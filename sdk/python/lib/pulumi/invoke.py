@@ -24,7 +24,7 @@ from collections.abc import Awaitable, Sequence
 
 if TYPE_CHECKING:
     from .output import Inputs, Input
-    from .resource import Resource, ProviderResource
+    from .resource import Resource, ProviderResource, ResourceOptions
 
 
 class InvokeOptions:
@@ -74,6 +74,22 @@ class InvokeOptions:
         self.provider = provider
         self.version = version
         self.plugin_download_url = plugin_download_url
+
+    @classmethod
+    def from_resource_options(cls, opts: "ResourceOptions") -> "InvokeOptions":
+        """
+        Creates an InvokeOptions from the given ResourceOptions, copying the
+        `parent`, `provider`, `version` and `plugin_download_url` options.
+        All other resource options, including `depends_on`, have no equivalent
+        for plain invokes and are dropped; use
+        `InvokeOutputOptions.from_resource_options` to preserve `depends_on`.
+        """
+        return InvokeOptions(
+            parent=opts.parent,
+            provider=opts.provider,
+            version=opts.version,
+            plugin_download_url=opts.plugin_download_url,
+        )
 
     def merge(
         opts1: Optional["InvokeOptions"],
@@ -155,6 +171,22 @@ class InvokeOutputOptions(InvokeOptions):
             plugin_download_url=plugin_download_url,
         )
         self.depends_on = depends_on
+
+    @classmethod
+    def from_resource_options(cls, opts: "ResourceOptions") -> "InvokeOutputOptions":
+        """
+        Creates an InvokeOutputOptions from the given ResourceOptions, copying
+        the `parent`, `provider`, `version`, `plugin_download_url` and
+        `depends_on` options. All other resource options have no invoke
+        equivalent and are dropped.
+        """
+        return InvokeOutputOptions(
+            parent=opts.parent,
+            provider=opts.provider,
+            version=opts.version,
+            plugin_download_url=opts.plugin_download_url,
+            depends_on=opts.depends_on,
+        )
 
     def merge(
         opts1: Optional[Union["InvokeOptions", "InvokeOutputOptions"]],

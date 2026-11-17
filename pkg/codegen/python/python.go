@@ -19,11 +19,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 // useLegacyName are names that should return a legacy result from PyName, for compatibility.
-var useLegacyName = codegen.NewStringSet(
+var useLegacyName = mapset.NewSet(
 	// The following property name of a nested type is a case where the newer algorithm produces an incorrect name
 	// (`open_xjson_ser_de`). It should be the legacy name of `open_x_json_ser_de`.
 	// TODO[pulumi/pulumi#5199]: We should see if we can fix this in the algorithm of PyName so it doesn't need to
@@ -43,7 +43,7 @@ var useLegacyName = codegen.NewStringSet(
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
 func PyName(name string) string {
-	return pyName(name, useLegacyName.Has(name))
+	return pyName(name, useLegacyName.Contains(name))
 }
 
 func pyName(name string, legacy bool) string {
@@ -205,7 +205,7 @@ func pyName(name string, legacy bool) string {
 //
 //   - Python 2: https://docs.python.org/2.5/ref/keywords.html
 //   - Python 3: https://docs.python.org/3/reference/lexical_analysis.html#keywords
-var Keywords = codegen.NewStringSet(
+var Keywords = mapset.NewSet(
 	"False",
 	"None",
 	"True",
@@ -247,7 +247,7 @@ var Keywords = codegen.NewStringSet(
 // EnsureKeywordSafe adds a trailing underscore if the generated name clashes with a Python 2 or 3 keyword, per
 // PEP 8: https://www.python.org/dev/peps/pep-0008/?#function-and-method-arguments
 func EnsureKeywordSafe(name string) string {
-	if Keywords.Has(name) {
+	if Keywords.Contains(name) {
 		return name + "_"
 	}
 	return name

@@ -19,13 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a single field "Data" which is a type with some primitive
@@ -44,10 +44,6 @@ func (p *RefRefProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *RefRefProvider) Pkg() tokens.Package {
-	return "ref-ref"
 }
 
 func (p *RefRefProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -94,7 +90,19 @@ func (p *RefRefProvider) GetSchema(
 			Ref:  "#/types/ref-ref:index:InnerData",
 		},
 	}
-	dataRequired := append(typeRequired, "innerData")
+	dataProperties["optionalInner"] = schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type: "ref",
+			Ref:  "#/types/ref-ref:index:InnerData",
+		},
+	}
+	dataProperties["innerDataList"] = schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type:  "array",
+			Items: &schema.TypeSpec{Type: "ref", Ref: "#/types/ref-ref:index:InnerData"},
+		},
+	}
+	dataRequired := slices.Concat(typeRequired, []string{"innerData"})
 
 	resourceProperties := map[string]schema.PropertySpec{
 		"data": {
@@ -146,26 +154,26 @@ func (p *RefRefProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "12.0.0" {
+	if version.AsString() != "12.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 12.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 12.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -175,6 +183,7 @@ func (p *RefRefProvider) CheckConfig(
 func (p *RefRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "ref-ref:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -199,18 +208,18 @@ func (p *RefRefProvider) Check(
 		return nil
 	}
 
-	check := assertField(req.News, "data", "object", resource.PropertyValue.IsObject)
+	check := assertField(news, "data", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	data := req.News["data"].ObjectValue()
+	data := news["data"].ObjectValue()
 
 	checkData := func(data resource.PropertyMap) *plugin.CheckResponse {
 		// Expect all required properties
@@ -277,18 +286,46 @@ func (p *RefRefProvider) Check(
 		}, nil
 	}
 
-	if len(data) != 7 {
+	// innerDataList is an optional list of InnerData, so the property count is 7 without it and 8 with it.
+	expectedDataLen := 7
+	if list, ok := data["innerDataList"]; ok {
+		if !list.IsArray() {
+			return plugin.CheckResponse{
+				Failures: makeCheckFailure("innerDataList", "value is not an array"),
+			}, nil
+		}
+		for _, elem := range list.ArrayValue() {
+			if !elem.IsObject() {
+				return plugin.CheckResponse{
+					Failures: makeCheckFailure("innerDataList", "array element is not an object"),
+				}, nil
+			}
+			check = checkData(elem.ObjectValue())
+			if check != nil {
+				return *check, nil
+			}
+			if len(elem.ObjectValue()) != 6 {
+				return plugin.CheckResponse{
+					Failures: makeCheckFailure("innerDataList", fmt.Sprintf("too many properties: %v", elem)),
+				}, nil
+			}
+		}
+		expectedDataLen = 8
+	}
+
+	if len(data) != expectedDataLen {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", data)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *RefRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "ref-ref:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -302,7 +339,7 @@ func (p *RefRefProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

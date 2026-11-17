@@ -17,6 +17,7 @@ package packageinstallation_test
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"math/rand/v2"
 	"path/filepath"
@@ -31,9 +32,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -104,30 +105,35 @@ type invariantWorkspace struct {
 type invariantWorkDir struct{ linked []string }
 
 type invariantPlugin struct {
-	d               workspace.PluginDescriptor
-	downloaded      bool
-	installed       bool
-	pathVisible     bool
-	hasBinary       bool
-	projectDetected bool
-	project         *workspace.PluginProject
+	d                workspace.PluginDescriptor
+	downloaded       bool
+	state            pluginstorage.InstallState
+	pathVisible      bool
+	hasBinary        bool
+	projectDetected  bool
+	project          *workspace.PluginProject
+	requiredPackages []workspace.PackageDescriptor
+	requiredSpecs    []workspace.PackageSpec
 
 	linked []string
 }
 
-func (w invariantWorkspace) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
+func (w invariantWorkspace) HasPlugin(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) pluginstorage.InstallState {
 	w.rw.RLock()
 	defer w.rw.RUnlock()
+	state := pluginstorage.PluginNotInstalled
 	for _, candidate := range w.plugins {
-		if candidate.installed &&
-			candidate.d.Name == spec.Name &&
+		if candidate.d.Name == spec.Name &&
+			candidate.state.Available() &&
 			candidate.d.Kind == spec.Kind &&
 			(candidate.d.Version == nil && spec.Version == nil ||
 				(candidate.d.Version != nil && spec.Version != nil && candidate.d.Version.EQ(*spec.Version))) {
-			return true
+			return candidate.state
 		}
 	}
-	return false
+	return state
 }
 
 func (w invariantWorkspace) HasPluginGTE(
@@ -137,7 +143,7 @@ func (w invariantWorkspace) HasPluginGTE(
 
 	var gte *workspace.PluginDescriptor
 	for _, candidate := range w.plugins {
-		if candidate.installed &&
+		if candidate.state == pluginstorage.PluginInstalled &&
 			candidate.d.Name == spec.Name &&
 			candidate.d.Kind == spec.Kind && candidate.d.Version != nil {
 			if gte == nil {
@@ -154,7 +160,7 @@ func (w invariantWorkspace) HasPluginGTE(
 	if gte == nil {
 		// We have found a version with no version
 		spec.Version = nil
-		if w.HasPlugin(ctx, spec) {
+		if w.HasPlugin(ctx, spec).Available() {
 			return true, nil, nil
 		}
 		return false, nil, nil
@@ -207,8 +213,9 @@ func (w invariantWorkspace) InstallPluginAt(
 		assert.Failf(w.t, "", "InstallPluginAt(%q) called on non-revealed plugin dir", dirPath)
 		return assert.AnError
 	}
-	assert.False(w.t, p.installed, "InstallPluginAt(%q) called in already installed dir", dirPath)
-	p.installed = true
+	assert.Equal(w.t, pluginstorage.PluginNotInstalled, p.state,
+		"InstallPluginAt(%q) called in already installed dir", dirPath)
+	p.state = pluginstorage.PluginInstalled
 	return nil
 }
 
@@ -281,19 +288,23 @@ func (w invariantWorkspace) DownloadPlugin(
 	}
 	pl.downloaded = true
 	pl.pathVisible = true
-	return p, func(success bool) {}, nil
+	return p, func(success bool) error { return nil }, nil
 }
 
-func (w invariantWorkspace) New() (pkgWorkspace.W, error) {
+func (w invariantWorkspace) New(string) (pkgWorkspace.W, error) {
 	return nil, assert.AnError
 }
 
-func (w invariantWorkspace) ReadProject() (*workspace.Project, string, error) {
+func (w invariantWorkspace) ReadProject(string) (*workspace.Project, string, error) {
 	return nil, "", assert.AnError
 }
 
 func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
 	return workspace.Credentials{}, nil
+}
+
+func (w invariantWorkspace) GetPlugins(context.Context) ([]workspace.PluginInfo, error) {
+	return nil, nil
 }
 
 func (w invariantWorkspace) GenerateLocalSDK(
@@ -306,8 +317,11 @@ func (w invariantWorkspace) GenerateLocalSDK(
 	}
 
 	ip := provider.(invariantProvider)
+	// SDKs are emitted per-package, not per-plugin. The path embeds the
+	// package name so two parameterized packages backed by the same plugin
+	// produce distinct LinkablePackageDescriptor.Path values.
 	return workspace.LinkablePackageDescriptor{
-		Path: ip.path,
+		Path: filepath.ToSlash(filepath.Join(ip.path, fmt.Sprintf("sdk-%#v", ip.params))),
 	}, nil
 }
 
@@ -347,14 +361,38 @@ func (w invariantWorkspace) LinkIntoProject(
 	return nil
 }
 
+func (w invariantWorkspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	w.rw.RLock()
+	defer w.rw.RUnlock()
+	dirPath = filepath.ToSlash(dirPath)
+	pl, ok := w.plugins[dirPath]
+	if !ok || !pl.pathVisible {
+		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
+		return nil, nil, assert.AnError
+	}
+	// A language runtime reads a plugin's dependencies from what its install produced, so the plugin must be
+	// installed before it is asked for them. Attached providers cannot be read by the language runtime, and so
+	// GetRequiredPackages must not be called on them.
+	if pl.state != pluginstorage.PluginInstalled {
+		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on a plugin that is not installed", dirPath)
+		return nil, nil, assert.AnError
+	}
+	if pl.requiredPackages == nil && pl.requiredSpecs == nil {
+		return nil, nil, nil
+	}
+	return pl.requiredPackages, pl.requiredSpecs, nil
+}
+
 func (w invariantWorkspace) RunPackage(
 	ctx context.Context,
-	rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
 	pluginPath = filepath.ToSlash(pluginPath)
 	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
-		return invariantProvider{path: pluginPath}, nil
+		return invariantProvider{path: pluginPath, params: params}, nil
 	}
 
 	w.rw.RLock()
@@ -369,16 +407,17 @@ func (w invariantWorkspace) RunPackage(
 			pluginPath, slices.Collect(maps.Keys(w.plugins)))
 		return nil, assert.AnError
 	}
-	if !pl.installed && pl.project != nil {
-		assert.Failf(w.t, "", "Missing setup for %q (installed=%t) (project=%t)",
-			pluginPath, pl.installed, pl.project != nil)
+	if pl.state != pluginstorage.PluginInstalled && pl.project != nil {
+		assert.Failf(w.t, "", "Missing setup for %q (installed=%#v) (project=%t)",
+			pluginPath, pl.state, pl.project != nil)
 		return nil, assert.AnError
 	}
-	return invariantProvider{path: pluginPath}, nil
+	return invariantProvider{path: pluginPath, params: params}, nil
 }
 
 type invariantProvider struct {
 	plugin.Provider
 
-	path string
+	path   string
+	params plugin.ParameterizeParameters
 }

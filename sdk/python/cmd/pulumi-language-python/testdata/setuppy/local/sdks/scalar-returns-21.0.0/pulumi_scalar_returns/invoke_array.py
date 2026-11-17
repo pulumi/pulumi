@@ -30,7 +30,7 @@ def invoke_array(value: Optional[_builtins.str] = None,
     __ret__ = pulumi.runtime.invoke_single('scalar-returns:index:invokeArray', __args__, opts=opts).value
 
     return __ret__
-def invoke_array_output(value: Optional[pulumi.Input[_builtins.str]] = None,
+def invoke_array_output(value: pulumi.Input[Optional[_builtins.str]] = None,
                         opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[list]:
     """
     Use this data source to access information about an existing resource.

@@ -15,8 +15,8 @@
 package tests
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
@@ -88,7 +88,7 @@ func init() {
 						c.Args.Fields["mapSecretString1"].AsInterface(), "mapSecretString1")
 
 					// Secretness is not exposed in GetVariables. Instead the data is JSON-encoded.
-					v := c.GetVariables()
+					v := c.GetVariables() //nolint:staticcheck // Intentionally checking deprecated features
 					assert.Equal(l, "SECRET", v["config-grpc:config:secretString1"], "secretString1")
 					assert.JSONEq(l, "16", v["config-grpc:config:secretInt1"], "secretInt1")
 					assert.JSONEq(l, "123456.7890", v["config-grpc:config:secretNum1"], "secretNum1")

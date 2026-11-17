@@ -19,13 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that takes most of its inputs via plain properties.
@@ -45,10 +45,6 @@ func (p *PlainProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *PlainProvider) Pkg() tokens.Package {
-	return "plain"
 }
 
 func (p *PlainProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -105,7 +101,7 @@ func (p *PlainProvider) GetSchema(
 			Plain: true,
 		},
 	}
-	dataRequired := append(typeRequired, "innerData")
+	dataRequired := slices.Concat(typeRequired, []string{"innerData"})
 
 	resourceProperties := map[string]schema.PropertySpec{
 		"data": {
@@ -176,26 +172,26 @@ func (p *PlainProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "13.0.0" {
+	if version.AsString() != "13.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 13.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 13.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -205,6 +201,7 @@ func (p *PlainProvider) CheckConfig(
 func (p *PlainProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "plain:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -229,15 +226,15 @@ func (p *PlainProvider) Check(
 		return nil
 	}
 
-	check := assertField(req.News, "data", "object", resource.PropertyValue.IsObject)
+	check := assertField(news, "data", "object", resource.PropertyValue.IsObject)
 	if check != nil {
 		return *check, nil
 	}
 
 	// Should have one to three properties: data is required, nonPlainData and dataList are optional
-	if len(req.News) > 3 {
+	if len(news) > 3 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
@@ -312,7 +309,7 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check data
-	data := req.News["data"].ObjectValue()
+	data := news["data"].ObjectValue()
 	check = checkData(data)
 	if check != nil {
 		return *check, nil
@@ -323,8 +320,8 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check nonPlainData
-	if _, ok := req.News["nonPlainData"]; ok {
-		nonPlainData := req.News["nonPlainData"].ObjectValue()
+	if _, ok := news["nonPlainData"]; ok {
+		nonPlainData := news["nonPlainData"].ObjectValue()
 		check = checkData(nonPlainData)
 		if check != nil {
 			return *check, nil
@@ -336,7 +333,7 @@ func (p *PlainProvider) Check(
 	}
 
 	// Check dataList
-	if v, ok := req.News["dataList"]; ok {
+	if v, ok := news["dataList"]; ok {
 		if !v.IsArray() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("dataList", "dataList is not an array"),
@@ -355,12 +352,13 @@ func (p *PlainProvider) Check(
 		}
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *PlainProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "plain:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -374,7 +372,7 @@ func (p *PlainProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

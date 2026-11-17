@@ -24,15 +24,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestViewsBasic tests the basic functionality of views in a resource lifecycle, doing an update to create
@@ -56,12 +57,12 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.Properties["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -74,7 +75,7 @@ func TestViewsBasic(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -87,12 +88,12 @@ func TestViewsBasic(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -114,12 +115,12 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.NewInputs["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -136,12 +137,12 @@ func TestViewsBasic(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("baz"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("baz"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("baz"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("baz"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -172,8 +173,8 @@ func TestViewsBasic(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -186,7 +187,7 @@ func TestViewsBasic(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -249,8 +250,8 @@ func TestViewsBasic(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run a third update with a change, should update.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -300,12 +301,12 @@ func TestViewsUpdateError(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.Properties["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -318,7 +319,7 @@ func TestViewsUpdateError(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -331,12 +332,12 @@ func TestViewsUpdateError(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -375,8 +376,8 @@ func TestViewsUpdateError(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	expectError := false
@@ -385,13 +386,13 @@ func TestViewsUpdateError(t *testing.T) {
 			Inputs: ins,
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -436,8 +437,8 @@ func TestViewsUpdateError(t *testing.T) {
 
 	// Run a second update, we should get an error for the view.
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "something went wrong")
@@ -462,12 +463,12 @@ func TestViewsUpdateDelete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.Properties["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -480,7 +481,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -493,12 +494,12 @@ func TestViewsUpdateDelete(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -530,8 +531,8 @@ func TestViewsUpdateDelete(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -544,7 +545,7 @@ func TestViewsUpdateDelete(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -588,8 +589,8 @@ func TestViewsUpdateDelete(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run an update that will delete the view.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -621,12 +622,12 @@ func TestViewsRefreshSame(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -644,12 +645,12 @@ func TestViewsRefreshSame(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -680,8 +681,8 @@ func TestViewsRefreshSame(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -695,7 +696,7 @@ func TestViewsRefreshSame(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -754,12 +755,12 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -778,12 +779,12 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -814,8 +815,8 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -830,7 +831,7 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -889,12 +890,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -912,12 +913,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -938,12 +939,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: req.OldViews[0].Type,
 								Name: req.OldViews[0].Name,
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("baz"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("baz"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("baz"),
+								}),
 							},
 						},
 					})
@@ -952,8 +953,8 @@ func TestViewsRefreshUpdate(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -967,7 +968,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1027,12 +1028,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -1051,12 +1052,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1077,12 +1078,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: req.OldViews[0].Type,
 								Name: req.OldViews[0].Name,
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("baz"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("baz"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("baz"),
+								}),
 							},
 						},
 					})
@@ -1091,8 +1092,8 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -1107,7 +1108,7 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1166,12 +1167,12 @@ func TestViewsRefreshDelete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -1189,12 +1190,12 @@ func TestViewsRefreshDelete(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1219,8 +1220,8 @@ func TestViewsRefreshDelete(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1234,7 +1235,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1285,12 +1286,12 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -1309,12 +1310,12 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1339,8 +1340,8 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -1355,7 +1356,7 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1405,12 +1406,12 @@ func TestViewsImport(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -1434,7 +1435,7 @@ func TestViewsImport(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -1500,12 +1501,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.Properties["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -1518,7 +1519,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -1531,12 +1532,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1568,12 +1569,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.NewInputs["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
+								}),
 							},
 						},
 						{
@@ -1582,12 +1583,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.NewInputs["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -1602,8 +1603,8 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -1616,7 +1617,7 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1660,8 +1661,8 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -1702,12 +1703,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.Properties["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -1720,7 +1721,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -1733,12 +1734,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1760,12 +1761,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.NewInputs["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
+								}),
 							},
 						},
 						{
@@ -1780,12 +1781,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.NewInputs["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
+								}),
 							},
 						},
 						{
@@ -1810,8 +1811,8 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -1824,7 +1825,7 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1868,8 +1869,8 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -1912,12 +1913,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -1935,12 +1936,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1965,8 +1966,8 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1988,12 +1989,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("baz"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("baz"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("baz"),
+								}),
 							},
 						},
 					})
@@ -2013,7 +2014,7 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2077,12 +2078,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -2101,12 +2102,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -2131,8 +2132,8 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -2155,12 +2156,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("baz"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("baz"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("baz"),
+								}),
 							},
 						},
 					})
@@ -2181,7 +2182,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2248,12 +2249,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("bar"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("bar"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("bar"),
+								}),
 							},
 						},
 					})
@@ -2271,12 +2272,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -2301,8 +2302,8 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2324,12 +2325,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
-									"result": resource.NewProperty("baz"),
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": property.New("baz"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": property.New("baz"),
+								}),
 							},
 						},
 					})
@@ -2349,7 +2350,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -2415,12 +2416,12 @@ func TestViewsDestroyPreview(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
-									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
-									"result": req.Properties["foo"],
-								},
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
+								}),
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
+								}),
 							},
 						},
 					})
@@ -2438,15 +2439,15 @@ func TestViewsDestroyPreview(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

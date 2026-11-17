@@ -17,6 +17,7 @@ package stack
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -39,13 +41,22 @@ import (
 
 const errorDecryptingValue = "ERROR_UNABLE_TO_DECRYPT"
 
+type stackHistoryRenderFunc func(w io.Writer, updates []backend.UpdateInfo, decrypter config.Decrypter) error
+
 func newStackHistoryCmd() *cobra.Command {
 	var stack string
-	var jsonOut bool
 	var showSecrets bool
 	var pageSize int
 	var page int
 	var showFullDates bool
+
+	output := outputflag.OutputFlag[stackHistoryRenderFunc]{
+		RenderForTerminal: func(w io.Writer, updates []backend.UpdateInfo, _ config.Decrypter) error {
+			return displayUpdatesConsole(w, updates, page,
+				display.Options{Color: cmdutil.GetGlobalColorization()}, showFullDates)
+		},
+		RenderJSON: displayUpdatesJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:        "history",
@@ -70,6 +81,7 @@ This command displays data about previous updates for a stack.`,
 				stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -81,11 +93,11 @@ This command displays data about previous updates for a stack.`,
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				project, _, err := ws.ReadProject()
+				project, _, err := ws.ReadProject("")
 				if err != nil {
 					return fmt.Errorf("loading project: %w", err)
 				}
-				ps, err := LoadProjectStack(ctx, cmdutil.Diag(), project, s)
+				ps, err := LoadProjectStack(ctx, cmdutil.Diag(), project, s, "")
 				if err != nil {
 					return fmt.Errorf("getting stack config: %w", err)
 				}
@@ -94,7 +106,7 @@ This command displays data about previous updates for a stack.`,
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				if state != SecretsManagerUnchanged {
-					if err = SaveProjectStack(ctx, s, ps); err != nil {
+					if err = SaveProjectStack(ctx, s, ps, ""); err != nil {
 						return fmt.Errorf("saving stack config: %w", err)
 					}
 				}
@@ -105,30 +117,28 @@ This command displays data about previous updates for a stack.`,
 				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
-			if jsonOut {
-				return displayUpdatesJSON(updates, decrypter)
-			}
-
-			return displayUpdatesConsole(updates, page, opts, showFullDates)
+			return output.Get()(cmd.OutOrStdout(), updates, decrypter)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.PersistentFlags().StringVarP(
+	cmd.Flags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().BoolVar(
+	outputflag.VarWithJSONAlias(cmd, cmd.Flags(), &output)
+	cmd.Flags().BoolVar(
 		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
-	cmd.PersistentFlags().IntVar(
+	cmd.Flags().IntVar(
 		&pageSize, "page-size", 10, "Used with 'page' to control number of results returned")
-	cmd.PersistentFlags().IntVar(
+	cmd.Flags().IntVar(
 		&page, "page", 1, "Used with 'page-size' to paginate results")
+
+	cmd.AddCommand(newStackHistoryEventsCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+
 	return cmd
 }
 
@@ -157,10 +167,6 @@ type configValueJSON struct {
 }
 
 func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) ([]updateInfoJSON, error) {
-	makeStringRef := func(s string) *string {
-		return &s
-	}
-
 	updatesJSON := make([]updateInfoJSON, len(updates))
 	for idx, update := range updates {
 		info := updateInfoJSON{
@@ -181,9 +187,9 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 				if err != nil {
 					// We don't actually want to error here
 					// we are just going to mark as "UNKNOWN" and then let the command continue
-					configValue.Value = makeStringRef(errorDecryptingValue)
+					configValue.Value = new(errorDecryptingValue)
 				} else {
-					configValue.Value = makeStringRef(value)
+					configValue.Value = new(value)
 
 					if value != "" && v.Object() {
 						var obj any
@@ -198,7 +204,7 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 		}
 		info.Result = string(update.Result)
 		if update.Result != backend.InProgressResult {
-			info.EndTime = makeStringRef(cmd.FormatTime(time.Unix(update.EndTime, 0).UTC()))
+			info.EndTime = new(cmd.FormatTime(time.Unix(update.EndTime, 0).UTC()))
 			resourceChanges := make(map[string]int)
 			for k, v := range update.ResourceChanges {
 				resourceChanges[string(k)] = v
@@ -211,38 +217,40 @@ func buildUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) 
 	return updatesJSON, nil
 }
 
-func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter) error {
+func displayUpdatesJSON(w io.Writer, updates []backend.UpdateInfo, decrypter config.Decrypter) error {
 	updatesJSON, err := buildUpdatesJSON(updates, decrypter)
 	if err != nil {
 		return err
 	}
-	return ui.PrintJSON(updatesJSON)
+	return ui.FprintJSON(w, updatesJSON)
 }
 
-func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options, noHumanize bool) error {
+func displayUpdatesConsole(
+	w io.Writer, updates []backend.UpdateInfo, page int, opts display.Options, noHumanize bool,
+) error {
 	if len(updates) == 0 {
 		if page > 1 {
-			fmt.Printf("No stack updates found on page '%d'\n", page)
+			fmt.Fprintf(w, "No stack updates found on page '%d'\n", page)
 			return nil
 		}
-		fmt.Println("Stack has never been updated")
+		fmt.Fprintln(w, "Stack has never been updated")
 		return nil
 	}
 
 	printResourceChanges := func(background, text, sign, reset string, amount int) {
 		msg := opts.Color.Colorize(fmt.Sprintf("%s%s%s%v%s", background, text, sign, amount, reset))
-		fmt.Print(msg)
+		fmt.Fprint(w, msg)
 	}
 
 	for _, update := range updates {
-		fmt.Printf("Version: %d\n", update.Version)
-		fmt.Printf("UpdateKind: %v\n", update.Kind)
+		fmt.Fprintf(w, "Version: %d\n", update.Version)
+		fmt.Fprintf(w, "UpdateKind: %v\n", update.Kind)
 		if update.Result == "succeeded" {
-			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
+			fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
 		} else {
-			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Red, update.Result, colors.Reset)))
+			fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Red, update.Result, colors.Reset)))
 		}
-		fmt.Printf("Message: %v\n", update.Message)
+		fmt.Fprintf(w, "Message: %v\n", update.Message)
 
 		printResourceChanges(colors.GreenBackground, colors.Black, "+", colors.Reset, update.ResourceChanges["create"])
 		printResourceChanges(colors.RedBackground, colors.Black, "-", colors.Reset, update.ResourceChanges["delete"])
@@ -258,7 +266,7 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.
 		}
 		timeEnd := time.Unix(update.EndTime, 0)
 		duration := timeEnd.Sub(timeStart)
-		fmt.Printf("%sUpdated %s took %s\n", " ", timeCreated, duration)
+		fmt.Fprintf(w, "%sUpdated %s took %s\n", " ", timeCreated, duration)
 
 		isEmpty := func(s string) bool {
 			return len(strings.TrimSpace(s)) == 0
@@ -271,13 +279,13 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.
 		indent := 4
 		for _, k := range keys {
 			if k == backend.GitHead && !isEmpty(update.Environment[k]) {
-				fmt.Print(opts.Color.Colorize(
+				fmt.Fprint(w, opts.Color.Colorize(
 					fmt.Sprintf("%*s%s%s: %s%s\n", indent, "", colors.Yellow, k, update.Environment[k], colors.Reset)))
 			} else if !isEmpty(update.Environment[k]) {
-				fmt.Printf("%*s%s: %s\n", indent, "", k, update.Environment[k])
+				fmt.Fprintf(w, "%*s%s: %s\n", indent, "", k, update.Environment[k])
 			}
 		}
-		fmt.Println("")
+		fmt.Fprintln(w, "")
 	}
 
 	return nil

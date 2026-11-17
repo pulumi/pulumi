@@ -1,0 +1,4 @@
+component: cli/state
+kind: feat
+body: Add `--parent` to `pulumi state move` to parent moved resources under a resource in the destination stack
+time: 2026-11-13T00:00:00.000000-00:00

@@ -25,10 +25,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -48,10 +48,6 @@ func (p *ModuleFormatProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *ModuleFormatProvider) Pkg() tokens.Package {
-	return "module-format"
 }
 
 func (p *ModuleFormatProvider) version() string {
@@ -310,26 +306,26 @@ func (p *ModuleFormatProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != p.version() {
+	if version.AsString() != p.version() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not "+p.version()),
+			Failures: makeCheckConfigFailure("version", "version is not "+p.version()),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -341,7 +337,7 @@ func (p *ModuleFormatProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "module-format:index_concatWorld:concatWorld", "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld": //nolint:lll
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -364,9 +360,9 @@ func (p *ModuleFormatProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
@@ -389,7 +385,7 @@ func (p *ModuleFormatProvider) Call(
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 	switch req.Tok {
 	case "module-format:index_Resource:Resource/call", "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call": //nolint:lll
-		value, ok := req.Args["input"]
+		value, ok := req.Args.GetOk("input")
 		if !ok {
 			return plugin.CallResponse{
 				Failures: makeCheckFailure("input", "missing input"),
@@ -411,7 +407,7 @@ func (p *ModuleFormatProvider) Call(
 			}, nil
 		}
 
-		selfRef := req.Args["__self__"].ResourceReferenceValue()
+		selfRef := req.Args.Get("__self__").AsResourceReference()
 
 		selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 			Tok: "pulumi:pulumi:getResource",
@@ -429,9 +425,9 @@ func (p *ModuleFormatProvider) Call(
 		text := selfRes.Return.Fields["state"].GetStructValue().Fields["text"]
 
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{
-				"output": resource.NewProperty(float64(len(value.StringValue()) + len(text.GetStringValue()))),
-			},
+			Return: property.NewMap(map[string]property.Value{
+				"output": property.New(float64(len(value.AsString()) + len(text.GetStringValue()))),
+			}),
 		}, nil
 	}
 
@@ -441,6 +437,7 @@ func (p *ModuleFormatProvider) Call(
 func (p *ModuleFormatProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
@@ -449,13 +446,13 @@ func (p *ModuleFormatProvider) Check(
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", news)),
 		}, nil
 	}
 
-	text, ok := req.News["text"]
+	text, ok := news["text"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("text", "missing required property 'text'"),
@@ -468,12 +465,13 @@ func (p *ModuleFormatProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ModuleFormatProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
@@ -489,9 +487,9 @@ func (p *ModuleFormatProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
-			"text": req.Properties["text"],
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"text": resource.FromResourcePropertyValue(properties["text"]),
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

@@ -27,13 +27,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -41,15 +40,16 @@ func newPackageDeleteCmd() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Delete a package version from the registry",
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Delete a package version from the registry",
 		Long: `Delete a package version from the Pulumi Registry.
 
 The package version must be specified in the format:
   [[<source>/]<publisher>/]<name>[@<version>]
 
 Example:
-  pulumi package delete private/myorg/my-package@1.0.0
+  pulumi package remove private/myorg/my-package@1.0.0
 
 Warning: If this is the only version of the package, the entire package
 will be removed. This action cannot be undone.
@@ -67,10 +67,10 @@ You must have publish permissions for the package to delete it.`,
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return backenderr.NonInteractiveRequiresYesError{}
+				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
-			project, _, err := pkgWorkspace.Instance.ReadProject()
+			project, _, err := pkgWorkspace.Instance.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return fmt.Errorf("failed to determine current project: %w", err)
 			}
@@ -109,13 +109,13 @@ You must have publish permissions for the package to delete it.`,
 				if suggested := filterPrivate(registry.GetSuggestedPackages(err)); len(suggested) > 0 {
 					fmt.Fprintf(cmd.ErrOrStderr(), "No matching package was found. Did you mean")
 					if len(suggested) == 1 {
-						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(" %s%s%s?",
+						fmt.Fprintln(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(" %s%s%s?",
 							colors.SpecInfo, formatPkg(suggested[0]), colors.Reset,
 						)))
 					}
 					fmt.Fprintln(cmd.ErrOrStderr(), " one of:")
 					for _, pkg := range suggested {
-						fmt.Println(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf("- %s%s%s",
+						fmt.Fprintln(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf("- %s%s%s",
 							colors.SpecInfo, formatPkg(pkg), colors.Reset,
 						)))
 					}
@@ -126,8 +126,10 @@ You must have publish permissions for the package to delete it.`,
 			prompt := opts.Color.Colorize(fmt.Sprintf("This will permanently delete package version %s%s%s!",
 				colors.SpecAttention, formatPkg(pkg), colors.Reset,
 			))
-			if !yes && !ui.ConfirmPrompt(prompt, packageVersion.String(), opts) {
-				return result.FprintBailf(cmd.ErrOrStderr(), "confirmation declined")
+			if err := ui.ConfirmDeletion(
+				yes, cmdutil.Interactive(), prompt, pkg.Version.String(), cmd.ErrOrStderr(), opts,
+			); err != nil {
+				return err
 			}
 
 			if err := r.DeletePackageVersion(ctx,
@@ -141,7 +143,7 @@ You must have publish permissions for the package to delete it.`,
 
 			fmt.Fprintln(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(
 				"%sPackage version '%s' has been deleted!%s",
-				colors.SpecAttention, packageVersion, colors.Reset,
+				colors.SpecAttention, formatPkg(pkg), colors.Reset,
 			)))
 			return nil
 		},
@@ -149,7 +151,7 @@ You must have publish permissions for the package to delete it.`,
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "package", Usage: "<source>/<publisher>/<name>@<version>"},
+			{Name: "package", Usage: "[[<source>/]<publisher>/]<name>[@<version>]"},
 		},
 		Required: 1,
 	})

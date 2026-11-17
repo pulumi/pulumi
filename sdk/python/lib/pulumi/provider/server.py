@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Optional, TypeVar, Any, cast, Union
+from typing import Optional, Any, cast, Union
 import types
 import argparse
 import asyncio
@@ -50,6 +50,7 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.output import _OutputData
 from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
@@ -84,7 +85,6 @@ class ProviderServicer(ResourceProviderServicer):
     engine_address: str
     provider: Provider
     args: list[str]
-    lock: asyncio.Lock
 
     def create_grpc_invalid_properties_status(
         self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
@@ -120,9 +120,6 @@ class ProviderServicer(ResourceProviderServicer):
     async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
@@ -149,8 +146,6 @@ class ProviderServicer(ResourceProviderServicer):
                     stack = traceback.extract_tb(e.__traceback__)[:]
                 pretty_stack = "".join(traceback.format_list(stack))
                 raise Exception(f"{str(e)}:\n{pretty_stack}")
-        finally:
-            self.lock.release()
 
     async def _construct(
         self, request: proto.ConstructRequest, context
@@ -232,12 +227,16 @@ class ProviderServicer(ResourceProviderServicer):
         # and/or track dependencies.
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
-        return pulumi.Output(
-            resources={DependencyResource(urn) for urn in deps},
-            future=_as_future(rpc.unwrap_rpc_secret(the_input)),
-            is_known=_as_future(True),
-            is_secret=_as_future(is_secret),
+        data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+        data_future.set_result(
+            _OutputData(
+                resources={DependencyResource(urn) for urn in deps},
+                value=rpc.unwrap_rpc_secret(the_input),
+                is_known=True,
+                is_secret=is_secret,
+            )
         )
+        return pulumi.Output._from_data(data_future)
 
     @staticmethod
     def _alias_from_proto(alias: alias_pb2.Alias) -> Union[str | pulumi.Alias]:
@@ -279,13 +278,11 @@ class ProviderServicer(ResourceProviderServicer):
 
         deleted_with = None
         if request.deletedWith != "":
-            deleted_with = _create_provider_resource(request.deletedWith)
+            deleted_with = DependencyResource(request.deletedWith)
 
         replace_with: Optional[list[pulumi.Resource]] = None
         if request.replace_with:
-            replace_with = [
-                _create_provider_resource(urn) for urn in request.replace_with
-            ]
+            replace_with = [DependencyResource(urn) for urn in request.replace_with]
 
         replacement_trigger: Optional[Any] = None
         if request.HasField("replacement_trigger"):
@@ -299,6 +296,7 @@ class ProviderServicer(ResourceProviderServicer):
                 request.customTimeouts.create,
                 request.customTimeouts.update,
                 request.customTimeouts.delete,
+                request.customTimeouts.read,
             )
 
         resource_hooks = _binding_from_proto(request.resource_hooks)
@@ -345,9 +343,6 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
     async def Call(self, request: proto.CallRequest, context):
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
         try:
             return await self._call(request, context)
         except InputPropertiesError as e:
@@ -362,8 +357,12 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
-        finally:
-            self.lock.release()
+        except RunError:
+            raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def _call(self, request: proto.CallRequest, context):
         assert isinstance(request, proto.CallRequest), (
@@ -467,17 +466,27 @@ class ProviderServicer(ResourceProviderServicer):
     async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
-        args = rpc.deserialize_properties(
-            request.args, keep_unknowns=False, keep_internal=False
-        )
-        result = self.provider.invoke(token=request.tok, args=args)
-        response = await self._invoke_response(result)
-        return response
+        try:
+            args = rpc.deserialize_properties(request.args, keep_unknowns=False)
+            result = self.provider.invoke(token=request.tok, args=args)
+            response = await self._invoke_response(result)
+            return response
+        except RunError:
+            raise
+        except Exception as e:  # noqa
+            stack = traceback.extract_tb(e.__traceback__)[:]
+            pretty_stack = "".join(traceback.format_list(stack))
+            raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def Configure(self, request, context) -> proto.ConfigureResponse:
         return proto.ConfigureResponse(
             acceptSecrets=True, acceptResources=True, acceptOutputs=True
         )
+
+    async def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the provider")
+        raise NotImplementedError("List is not implemented by the provider")
 
     async def Cancel(self, request, context):
         self.provider.cancel()
@@ -503,7 +512,6 @@ class ProviderServicer(ResourceProviderServicer):
         self.provider = provider
         self.args = args
         self.engine_address = engine_address
-        self.lock = asyncio.Lock()
 
 
 def main(provider: Provider, args: list[str]) -> None:  # args not in use?
@@ -538,15 +546,6 @@ def main(provider: Provider, args: list[str]) -> None:  # args not in use?
         asyncio.run(serve())
     except KeyboardInterrupt:
         pass
-
-
-T = TypeVar("T")
-
-
-def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: asyncio.Future[T] = asyncio.Future()
-    fut.set_result(value)
-    return fut
 
 
 def _empty_as_none(text: str) -> Optional[str]:
@@ -596,9 +595,8 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     urn_parts = pulumi.urn._parse_urn(urn)
     resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(
-            ProviderResource,
-            resource_package.construct_provider(urn_parts.urn_name, urn_parts.typ, urn),
+        return resource_package.construct_provider(
+            urn_parts.urn_name, urn_parts.typ, urn
         )
 
     return DependencyProviderResource(ref)

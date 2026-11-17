@@ -1,6 +1,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as simple from "@pulumi/simple";
 
+const config = new pulumi.Config();
+const createTimeout = config.require("createTimeout");
 const noTimeouts = new simple.Resource("noTimeouts", {value: true});
 const createOnly = new simple.Resource("createOnly", {value: true}, {
     customTimeouts: {
@@ -17,10 +19,21 @@ const deleteOnly = new simple.Resource("deleteOnly", {value: true}, {
         "delete": "3m",
     },
 });
+const readOnly = new simple.Resource("readOnly", {value: true}, {
+    customTimeouts: {
+        read: "9m",
+    },
+});
 const allTimeouts = new simple.Resource("allTimeouts", {value: true}, {
     customTimeouts: {
         create: "2m",
         update: "4m",
         "delete": "1m",
+        read: "5m",
+    },
+});
+const configTimeout = new simple.Resource("configTimeout", {value: true}, {
+    customTimeouts: {
+        create: createTimeout,
     },
 });
