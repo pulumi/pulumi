@@ -1,0 +1,3 @@
+component: cli
+kind: feat
+body: Add a preview `pulumi delivery register` command that registers the Pulumi Delivery pipeline a program declares
