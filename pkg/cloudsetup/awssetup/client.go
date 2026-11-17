@@ -59,6 +59,25 @@ const (
 	awsMaxRetryBackoff  = 30 * time.Second
 )
 
+// Outcomes of exchanging an IAM Identity Center device code for an access token that mean something
+// other than "got a token". ExchangeAccessToken wraps the matching AWS error with one of these so callers
+// can tell "keep waiting" from "this sign-in is over" with errors.Is, without importing the SDK's types.
+// An error wrapped with none of them (a throttle, an InternalServerException, a network failure) may
+// well be transient.
+var (
+	// ErrSSOAuthorizationPending means the user has not approved the request in AWS yet.
+	ErrSSOAuthorizationPending = errors.New("aws sso authorization pending")
+	// ErrSSOSlowDown means AWS asked us to poll less often.
+	ErrSSOSlowDown = errors.New("aws sso authorization polling too fast")
+	// ErrSSOAuthorizationExpired means the device code expired before the user approved it.
+	ErrSSOAuthorizationExpired = errors.New("aws sso authorization expired")
+	// ErrSSOAuthorizationDenied means the user denied the request in AWS.
+	ErrSSOAuthorizationDenied = errors.New("aws sso authorization denied")
+	// ErrSSOAuthorizationRejected means AWS rejected the request itself (an invalid client, grant, region,
+	// or request), so repeating it can't succeed.
+	ErrSSOAuthorizationRejected = errors.New("aws sso authorization request rejected")
+)
+
 type Client interface {
 	SetupOIDCInfrastructure(
 		ctx context.Context, orgName string, oidcRoleName string, policyArn string, escEnvironmentName string,
@@ -196,7 +215,7 @@ func (c *ssoClient) Initiate(ctx context.Context, startURL string) (*awssetup_ty
 		Scopes:     []string{"sso:account:access"},
 	})
 	if err != nil {
-		return nil, err
+		return nil, c.describeOIDCError(err)
 	}
 
 	authResp, err := c.ssoOidcClient.StartDeviceAuthorization(ctx, &ssooidc.StartDeviceAuthorizationInput{
@@ -205,12 +224,7 @@ func (c *ssoClient) Initiate(ctx context.Context, startURL string) (*awssetup_ty
 		StartUrl:     aws.String(startURL),
 	})
 	if err != nil {
-		invalidRequestErr, ok := errors.AsType[*ssooidc_types.InvalidRequestException](err)
-		if ok && invalidRequestErr.Error_description != nil {
-			// Provide a clearer error message when for example the start URL is invalid
-			return nil, errors.New(*invalidRequestErr.Error_description)
-		}
-		return nil, err
+		return nil, c.describeOIDCError(err)
 	}
 
 	return &awssetup_types.SSOConfig{
@@ -232,9 +246,78 @@ func (c *ssoClient) ExchangeAccessToken(ctx context.Context, ssoCfg *awssetup_ty
 		GrantType:    aws.String("urn:ietf:params:oauth:grant-type:device_code"),
 	})
 	if err != nil {
-		return "", err
+		return "", classifyExchangeAccessTokenError(err)
 	}
 	return *tokenResp.AccessToken, nil
+}
+
+// describeOIDCError turns a failure from the SSO OIDC API into a message the user can act on.
+// The API reports a bad start URL as an InvalidRequestException whose description is already
+// user-facing. Requests go to the regional oidc.<region>.amazonaws.com endpoint, never to the
+// start URL itself, so a DNS or connection failure means the region is wrong or the endpoint is
+// unreachable, not that the start URL is. A timeout is reported as such rather than blamed on
+// the region, since a correct-but-slow endpoint produces the same net.Error shape. Other errors
+// pass through unchanged.
+func (c *ssoClient) describeOIDCError(err error) error {
+	invalidRequestErr, ok := errors.AsType[*ssooidc_types.InvalidRequestException](err)
+	if ok && invalidRequestErr.Error_description != nil {
+		return errors.New(*invalidRequestErr.Error_description)
+	}
+	netErr, isNetErr := errors.AsType[net.Error](err)
+	if errors.Is(err, context.DeadlineExceeded) || (isNetErr && netErr.Timeout()) {
+		return fmt.Errorf(
+			"timed out contacting the AWS IAM Identity Center (SSO OIDC) endpoint for region %q; "+
+				"please try again", c.awsCfg.Region,
+		)
+	}
+	if isNetErr {
+		return fmt.Errorf(
+			"could not reach the AWS IAM Identity Center (SSO OIDC) endpoint for region %q; "+
+				"verify the SSO region and try again", c.awsCfg.Region,
+		)
+	}
+	return err
+}
+
+// classifyExchangeAccessTokenError wraps the CreateToken errors that are part of the device-authorization
+// flow (RFC 8628) with the matching sentinel above, and the OIDC errors that say the request itself is bad
+// with ErrSSOAuthorizationRejected. Any other error is returned unchanged: it may be transient, so the
+// caller decides whether to keep trying.
+func classifyExchangeAccessTokenError(err error) error {
+	var sentinel error
+	switch {
+	case isAs[*ssooidc_types.AuthorizationPendingException](err):
+		sentinel = ErrSSOAuthorizationPending
+	case isAs[*ssooidc_types.SlowDownException](err):
+		sentinel = ErrSSOSlowDown
+	case isAs[*ssooidc_types.ExpiredTokenException](err):
+		sentinel = ErrSSOAuthorizationExpired
+	case isAs[*ssooidc_types.AccessDeniedException](err):
+		sentinel = ErrSSOAuthorizationDenied
+	case isSSOAuthorizationRejected(err):
+		sentinel = ErrSSOAuthorizationRejected
+	default:
+		return err
+	}
+	return fmt.Errorf("%w: %w", sentinel, err)
+}
+
+// isSSOAuthorizationRejected reports whether err is one of the OIDC errors (RFC 6749 §5.2) that mean
+// the token request can never be accepted as made: the client, grant, scope, region or request is wrong.
+func isSSOAuthorizationRejected(err error) bool {
+	return isAs[*ssooidc_types.InvalidClientException](err) ||
+		isAs[*ssooidc_types.InvalidClientMetadataException](err) ||
+		isAs[*ssooidc_types.InvalidGrantException](err) ||
+		isAs[*ssooidc_types.InvalidRequestException](err) ||
+		isAs[*ssooidc_types.InvalidRequestRegionException](err) ||
+		isAs[*ssooidc_types.InvalidScopeException](err) ||
+		isAs[*ssooidc_types.UnauthorizedClientException](err) ||
+		isAs[*ssooidc_types.UnsupportedGrantTypeException](err)
+}
+
+func isAs[T error](err error) bool {
+	_, ok := errors.AsType[T](err)
+	return ok
 }
 
 func (c *ssoClient) ListAccounts(ctx context.Context, accessToken string) ([]cloudsetup.CloudAccount, error) {
