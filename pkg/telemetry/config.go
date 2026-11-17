@@ -164,7 +164,7 @@ func newTelemetry(args InitArgs) *telemetry {
 			pulse = defaultPulse
 		}
 		t.queue = newQueue(filepath.Join(args.HomeDir, "telemetry"), t.invocation, args.CI, pulse,
-			httpSender(args.URL, args.UserAgent))
+			schemaSender(httpSender(args.URL, args.UserAgent)))
 	}
 	if t.logPath == "" && !send {
 		return nil

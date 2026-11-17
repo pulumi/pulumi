@@ -185,3 +185,52 @@ func TestEmitDropsInvalidFacts(t *testing.T) {
 
 	require.Equal(t, map[string]any{"interactive": true}, facts)
 }
+
+func TestSchemaSenderDropsInvalidFacts(t *testing.T) {
+	t.Parallel()
+
+	line := func(facts string) json.RawMessage {
+		return json.RawMessage(`{"installation":"i","invocation":"v","timestamp":"2026-11-17T10:00:00Z","facts":` +
+			facts + `}`)
+	}
+	s := &fakeSender{}
+	send := schemaSender(s.send)
+
+	require.NoError(t, send(t.Context(), []json.RawMessage{
+		line(`{"ci":true,"interactive":true,"using-ai":"no","env-vars":["PULUMI_HOME"]}`),
+		line(`{"ci":true}`),
+		json.RawMessage(`not json`),
+	}))
+
+	sent := s.sent()
+	require.Len(t, sent, 1)
+	require.Len(t, sent[0], 1)
+	var e event
+	require.NoError(t, json.Unmarshal(sent[0][0], &e))
+	require.Equal(t, "v", e.Invocation)
+	require.Equal(t, map[string]any{"interactive": true, "env-vars": []any{"PULUMI_HOME"}}, e.Facts)
+}
+
+func TestQueueSendsWithinSchema(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t, map[string]string{"PULUMI_TELEMETRY": "1"})
+	ctx := Init(t.Context(), f.args)
+	defer Shutdown(ctx)
+
+	require.NoError(t, fromContext(ctx).queue.send(ctx, []json.RawMessage{
+		json.RawMessage(`{"installation":"i","invocation":"v","facts":{"ci":true,"interactive":true}}`),
+	}))
+
+	received := f.service.received()
+	require.Len(t, received, 1)
+	require.Equal(t, map[string]any{"interactive": true}, received[0].Events[0].Facts)
+}
+
+func TestSchemaSenderSkipsEmptyBatches(t *testing.T) {
+	t.Parallel()
+
+	s := &fakeSender{}
+	require.NoError(t, schemaSender(s.send)(t.Context(), []json.RawMessage{json.RawMessage(`{"facts":{"ci":true}}`)}))
+	require.Empty(t, s.sent())
+}

@@ -15,6 +15,7 @@
 package telemetry
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -137,7 +138,7 @@ func (f Fact) validate(value any) error {
 			return fmt.Errorf("expected one of the allowed values, got %v", value)
 		}
 	case KindNameSet:
-		names, ok := value.([]string)
+		names, ok := nameList(value)
 		if !ok {
 			return fmt.Errorf("expected a list of names, got %T", value)
 		}
@@ -153,4 +154,49 @@ func (f Fact) validate(value any) error {
 		return fmt.Errorf("unknown kind %q", f.Kind)
 	}
 	return nil
+}
+
+func nameList(value any) ([]string, bool) {
+	switch v := value.(type) {
+	case []string:
+		return v, true
+	case []any:
+		names := make([]string, 0, len(v))
+		for _, n := range v {
+			name, ok := n.(string)
+			if !ok {
+				return nil, false
+			}
+			names = append(names, name)
+		}
+		return names, true
+	default:
+		return nil, false
+	}
+}
+
+// schemaSender drops the facts this CLI's schema doesn't allow, and events left without any, before sending.
+// Events on disk may have been written by another CLI version, so this keeps everything sent within this
+// version's schema.
+func schemaSender(send sendFunc) sendFunc {
+	return func(ctx context.Context, events []json.RawMessage) error {
+		valid := make([]json.RawMessage, 0, len(events))
+		for _, line := range events {
+			var e event
+			if err := json.Unmarshal(line, &e); err != nil {
+				continue
+			}
+			maps.DeleteFunc(e.Facts, func(name string, value any) bool { return ValidateFact(name, value) != nil })
+			if len(e.Facts) == 0 {
+				continue
+			}
+			if line, err := json.Marshal(e); err == nil {
+				valid = append(valid, line)
+			}
+		}
+		if len(valid) == 0 {
+			return nil
+		}
+		return send(ctx, valid)
+	}
 }
