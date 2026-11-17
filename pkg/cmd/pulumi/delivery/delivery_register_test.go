@@ -46,7 +46,7 @@ func TestNormalizeRemoteURL(t *testing.T) {
 	}
 
 	_, err := normalizeRemoteURL("")
-	assert.Error(t, err)
+	assert.EqualError(t, err, `unsupported remote URL ""`)
 }
 
 func TestRelativeDirectory(t *testing.T) {
@@ -66,20 +66,19 @@ func TestRelativeDirectory(t *testing.T) {
 
 func TestRegisterOutcome(t *testing.T) {
 	t.Parallel()
-	assert.NoError(t, registerOutcome(nil))
-	assert.NoError(t, registerOutcome(result.BailError(&plugin.AwaitError{})))
+	require.NoError(t, registerOutcome(nil))
+	require.NoError(t, registerOutcome(result.BailError(&plugin.AwaitError{})))
 
 	boom := errors.New("boom")
 	assert.Equal(t, boom, registerOutcome(boom))
-	assert.Error(t, registerOutcome(result.BailError(boom)))
+	assert.EqualError(t, registerOutcome(result.BailError(boom)), "BAIL: boom")
 }
 
 func TestDetectSourceNotAGitRepository(t *testing.T) {
 	t.Parallel()
 	_, err := detectSource(t.TempDir())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "delivery:source")
-	assert.Contains(t, err.Error(), "pulumi config set --path")
+	require.ErrorContains(t, err, "delivery:source")
+	assert.ErrorContains(t, err, "pulumi config set --path")
 }
 
 func TestSetSource(t *testing.T) {
