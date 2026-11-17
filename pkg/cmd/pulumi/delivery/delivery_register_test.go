@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestNormalizeRemoteURL(t *testing.T) {
@@ -100,7 +101,48 @@ func TestSetSource(t *testing.T) {
 	assert.JSONEq(t, `{"url":"https://github.com/acme/shop","directory":"pipeline"}`, raw)
 }
 
-func noPrepare(*cobra.Command, string) (func(io.Writer), error) {
+func TestWriteSourceIfMissing(t *testing.T) {
+	t.Parallel()
+	detected := pipelineSource{URL: "https://github.com/acme/shop", Directory: "pipeline"}
+	detect := func() (pipelineSource, error) { return detected, nil }
+
+	t.Run("set", func(t *testing.T) {
+		t.Parallel()
+		ps := &workspace.ProjectStack{Config: sdkconfig.Map{}}
+		require.NoError(t, setSource(ps.Config, pipelineSource{URL: "https://github.com/acme/other"}))
+		saved := false
+		src, err := writeSourceIfMissing(ps, detect, func(*workspace.ProjectStack) error { saved = true; return nil })
+		require.NoError(t, err)
+		assert.Nil(t, src)
+		assert.False(t, saved)
+	})
+
+	t.Run("missing", func(t *testing.T) {
+		t.Parallel()
+		ps := &workspace.ProjectStack{Config: sdkconfig.Map{}}
+		file := filepath.Join(t.TempDir(), "x.yaml")
+		src, err := writeSourceIfMissing(ps, detect, func(ps *workspace.ProjectStack) error { return ps.Save(file) })
+		require.NoError(t, err)
+		require.NotNil(t, src)
+		assert.Equal(t, detected, *src)
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "https://github.com/acme/shop")
+	})
+
+	t.Run("detection fails", func(t *testing.T) {
+		t.Parallel()
+		boom := errors.New("boom")
+		saved := false
+		_, err := writeSourceIfMissing(&workspace.ProjectStack{Config: sdkconfig.Map{}},
+			func() (pipelineSource, error) { return pipelineSource{}, boom },
+			func(*workspace.ProjectStack) error { saved = true; return nil })
+		require.ErrorIs(t, err, boom)
+		assert.False(t, saved)
+	})
+}
+
+func noPrepare(*cobra.Command, string, string) (func(io.Writer), error) {
 	return func(io.Writer) {}, nil
 }
 
@@ -145,21 +187,23 @@ func TestRegisterPassesFlagsToUp(t *testing.T) {
 		skipPreview, err = cmd.Flags().GetBool("skip-preview")
 		return err
 	}
-	var prepareStack string
-	cmd := newRegisterCmd(up, func(_ *cobra.Command, s string) (func(io.Writer), error) {
+	var prepareStack, prepareConfigFile string
+	cmd := newRegisterCmd(up, func(_ *cobra.Command, s, cf string) (func(io.Writer), error) {
 		prepared = true
 		prepareStack = s
+		prepareConfigFile = cf
 		return func(w io.Writer) { _, _ = w.Write([]byte("done")) }, nil
 	})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 	cmd.SetArgs([]string{
-		"--stack", "org/proj/dev", "--config", "a=b", "--config", "c=d", "--yes", "--skip-preview",
+		"--stack", "org/proj/dev", "--config", "a=b", "--config", "c=d", "--yes", "--skip-preview", "--config-file", "x.yaml",
 	})
 	require.NoError(t, cmd.Execute())
 
 	assert.True(t, prepared)
 	assert.Equal(t, "org/proj/dev", prepareStack)
+	assert.Equal(t, "x.yaml", prepareConfigFile)
 	assert.Equal(t, "org/proj/dev", stack)
 	assert.Equal(t, []string{"a=b", "c=d"}, configs)
 	assert.True(t, yes)
@@ -175,7 +219,7 @@ func TestRegisterStopsWhenPrepareFails(t *testing.T) {
 		return errors.New("update ran")
 	}
 	boom := errors.New("boom")
-	cmd := newRegisterCmd(up, func(*cobra.Command, string) (func(io.Writer), error) { return nil, boom })
+	cmd := newRegisterCmd(up, func(*cobra.Command, string, string) (func(io.Writer), error) { return nil, boom })
 	cmd.SetArgs(nil)
 	cmd.SilenceUsage = true
 	cmd.SilenceErrors = true

@@ -62,7 +62,7 @@ var registerHiddenFlags = []string{
 
 // registerPrepare runs before the update. It returns a function that reports the result once the update
 // has finished.
-type registerPrepare func(cmd *cobra.Command, stack string) (func(io.Writer), error)
+type registerPrepare func(cmd *cobra.Command, stack, configFile string) (func(io.Writer), error)
 
 func newDeliveryRegisterCmd() *cobra.Command {
 	return newRegisterCmd(operations.NewUpCmd(), prepareRegistration)
@@ -101,7 +101,11 @@ func newRegisterCmd(up *cobra.Command, prepare registerPrepare) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		report, err := prepare(cmd, stack)
+		configFile, err := cmd.Flags().GetString("config-file")
+		if err != nil {
+			return err
+		}
+		report, err := prepare(cmd, stack, configFile)
 		if err != nil {
 			return err
 		}
@@ -117,7 +121,7 @@ func newRegisterCmd(up *cobra.Command, prepare registerPrepare) *cobra.Command {
 // prepareRegistration checks the project and backend, writes the pipeline source to the stack configuration
 // when it is missing, and sets the registration variable. Plugins started by the update inherit the process
 // environment.
-func prepareRegistration(cmd *cobra.Command, stack string) (func(io.Writer), error) {
+func prepareRegistration(cmd *cobra.Command, stack, configFile string) (func(io.Writer), error) {
 	ctx := cmd.Context()
 	ws := pkgWorkspace.Instance
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
@@ -139,8 +143,11 @@ func prepareRegistration(cmd *cobra.Command, stack string) (func(io.Writer), err
 	}
 
 	s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, cmdBackend.DefaultLoginManager,
-		stack, cmdStack.LoadOnly, opts, "")
+		stack, cmdStack.LoadOnly, opts, configFile)
 	if err != nil {
+		return nil, err
+	}
+	if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
 		return nil, err
 	}
 	cloudStack, ok := s.(httpstate.Stack)
@@ -152,28 +159,21 @@ func prepareRegistration(cmd *cobra.Command, stack string) (func(io.Writer), err
 		return nil, errors.New("`pulumi delivery register` requires the Pulumi Cloud backend; run `pulumi login`")
 	}
 
-	ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, s, "")
+	ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, s, configFile)
 	if err != nil {
 		return nil, err
 	}
-	key := sdkconfig.MustMakeKey("delivery", "source")
-	_, set, err := ps.Config.Get(key, false)
+	src, err := writeSourceIfMissing(ps, func() (pipelineSource, error) { return detectSource(projectDir) },
+		func(ps *workspace.ProjectStack) error { return cmdStack.SaveProjectStack(ctx, s, ps, configFile) })
 	if err != nil {
 		return nil, err
 	}
-	if !set {
-		src, err := detectSource(projectDir)
-		if err != nil {
-			return nil, err
+	if src != nil {
+		where := "the stack configuration file"
+		if configFile != "" {
+			where = configFile
 		}
-		if err := setSource(ps.Config, src); err != nil {
-			return nil, err
-		}
-		if err := cmdStack.SaveProjectStack(ctx, s, ps, ""); err != nil {
-			return nil, fmt.Errorf("writing %s: %w", sourceConfigKey, err)
-		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s (%s) to the stack configuration file; commit it.\n",
-			sourceConfigKey, src)
+		fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s (%s) to %s; commit it.\n", sourceConfigKey, src, where)
 	}
 
 	if err := os.Setenv(registerEnvVar, "true"); err != nil {
@@ -185,6 +185,30 @@ func prepareRegistration(cmd *cobra.Command, stack string) (func(io.Writer), err
 	id := client.StackIdentifier{Owner: cloudStack.OrgName(), Project: string(proj), Stack: stackRef.Name()}
 	consoleURL := client.CloudConsoleURL(cloudBe.CloudURL(), id.Owner, "delivery", id.Project, id.Stack.String())
 	return func(w io.Writer) { printRegistered(w, id, consoleURL) }, nil
+}
+
+// writeSourceIfMissing sets the detected source in ps and saves it when ps has no `delivery:source` value.
+// It returns the source it wrote, or nil when the value was already set.
+func writeSourceIfMissing(
+	ps *workspace.ProjectStack,
+	detect func() (pipelineSource, error),
+	save func(*workspace.ProjectStack) error,
+) (*pipelineSource, error) {
+	_, set, err := ps.Config.Get(sdkconfig.MustMakeKey("delivery", "source"), false)
+	if err != nil || set {
+		return nil, err
+	}
+	src, err := detect()
+	if err != nil {
+		return nil, err
+	}
+	if err := setSource(ps.Config, src); err != nil {
+		return nil, err
+	}
+	if err := save(ps); err != nil {
+		return nil, fmt.Errorf("writing %s: %w", sourceConfigKey, err)
+	}
+	return &src, nil
 }
 
 func (s pipelineSource) String() string {
