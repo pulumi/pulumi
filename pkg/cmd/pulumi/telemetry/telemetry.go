@@ -37,7 +37,9 @@ func NewTelemetryCmd() *cobra.Command {
 			"or error messages.\n" +
 			"\n" +
 			"The settings are saved for this Pulumi installation. The PULUMI_TELEMETRY environment variable " +
-			"(true or false) overrides them. If neither is set, setting DO_NOT_TRACK disables telemetry.",
+			"(true or false) overrides them. If neither is set, setting DO_NOT_TRACK disables telemetry.\n" +
+			"\n" +
+			"For what is collected and how it is used, see https://www.pulumi.com/docs/iac/cli/telemetry/.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return printStatus(cmd.OutOrStdout())
 		},
@@ -74,14 +76,18 @@ func newSetEnabledCmd(use, short string, enabled bool) *cobra.Command {
 func newLogCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "log [enable|disable]",
-		Short: "Write usage telemetry events to a local log file",
-		Long: "Write usage telemetry events to a local log file.\n" +
+		Short: "Show or change whether usage telemetry events are written to a local log file",
+		Long: "Show or change whether usage telemetry events are written to a local log file.\n" +
 			"\n" +
 			"Every event is written to $PULUMI_HOME/telemetry/log/events.jsonl, marked with whether it is " +
-			"sent. Logging works whether or not telemetry is enabled. The PULUMI_TELEMETRY_LOG environment " +
+			"sent. The log itself is never sent anywhere; it is there so you can inspect exactly what the CLI " +
+			"collects. Logging works whether or not telemetry is enabled. The PULUMI_TELEMETRY_LOG environment " +
 			"variable (true or false) overrides this setting.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			enable := len(args) == 0 || args[0] == "enable"
+			if len(args) == 0 {
+				return printStatus(cmd.OutOrStdout())
+			}
+			enable := args[0] == "enable"
 			if !enable && args[0] != "disable" {
 				return fmt.Errorf("expected enable or disable, got %q", args[0])
 			}

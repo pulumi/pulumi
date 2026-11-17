@@ -42,6 +42,8 @@ func TestTelemetryCmd(t *testing.T) {
 
 	require.Equal(t, "Telemetry is enabled.\n", run(t))
 	require.Equal(t, "Telemetry is disabled.\n", run(t, "disable"))
+	require.Equal(t, "Telemetry is disabled.\n", run(t, "log"))
+	require.Equal(t, "Telemetry is disabled.\nTelemetry events are logged to "+logPath+".\n", run(t, "log", "enable"))
 	require.Equal(t, "Telemetry is disabled.\nTelemetry events are logged to "+logPath+".\n", run(t, "log"))
 	require.Equal(t, "Telemetry is enabled.\nTelemetry events are logged to "+logPath+".\n", run(t, "enable"))
 	require.Equal(t, "Telemetry is enabled.\n", run(t, "log", "disable"))
