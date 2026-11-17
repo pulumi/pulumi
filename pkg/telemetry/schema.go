@@ -50,11 +50,6 @@ type Fact struct {
 	re *regexp.Regexp
 }
 
-var (
-	osValues   = []string{"linux", "darwin", "windows"}
-	archValues = []string{"amd64", "arm64"}
-)
-
 //go:embed schema.json
 var schemaJSON []byte
 
@@ -80,7 +75,6 @@ func schemaFor(commands []string) map[string]Fact {
 		"arch":           enumSchema(archValues, "other"),
 		"automation-api": {Kind: KindBool},
 		"backend":        enumSchema(append([]string{"pulumi"}, diySchemes...), "other"),
-		"ci":             {Kind: KindBool},
 		"ci-system":      enumSchema(ciSystemValues, "none", "other"),
 		"command":        enumSchema(commands, "other"),
 		"duration-ms":    {Kind: KindInt},
@@ -89,7 +83,7 @@ func schemaFor(commands []string) map[string]Fact {
 		"flags":          nameSetSchema(`^[a-z][a-z0-9-]*$`),
 		"interactive":    {Kind: KindBool},
 		"os":             enumSchema(osValues, "other"),
-		"using-ai":       enumSchema(agents, "no", "other"),
+		"using-ai":       enumSchema(agents, "none", "other"),
 	}
 }
 

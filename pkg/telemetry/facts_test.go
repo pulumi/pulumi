@@ -110,7 +110,7 @@ func TestUsingAI(t *testing.T) {
 		emitted(t, UsingAI(getenv(map[string]string{"AI_AGENT": "claude-code_2-1-285_agent"})))["using-ai"])
 	require.Equal(t, "codex", emitted(t, UsingAI(getenv(map[string]string{"AI_AGENT": "codex_1-0_agent"})))["using-ai"])
 	require.Equal(t, "other", emitted(t, UsingAI(getenv(map[string]string{"AI_AGENT": "my-agent"})))["using-ai"])
-	require.Equal(t, "no", emitted(t, UsingAI(getenv(nil)))["using-ai"])
+	require.Equal(t, "none", emitted(t, UsingAI(getenv(nil)))["using-ai"])
 }
 
 func TestBackend(t *testing.T) {
@@ -132,14 +132,13 @@ func TestResult(t *testing.T) {
 	t.Parallel()
 
 	facts := emitted(t, ExitCode(255), Duration(1500*time.Millisecond), Interactive(true), AutomationAPI(false),
-		CI(true), OS(), Arch())
+		OS(), Arch())
 
 	require.Equal(t, map[string]any{
 		"exit-code":      float64(255),
 		"duration-ms":    float64(1500),
 		"interactive":    true,
 		"automation-api": false,
-		"ci":             true,
 		"os":             runtime.GOOS,
 		"arch":           runtime.GOARCH,
 	}, facts)
@@ -149,7 +148,7 @@ func TestValidateFact(t *testing.T) {
 	t.Parallel()
 
 	for name, value := range map[string]any{
-		"ci":          true,
+		"interactive": true,
 		"exit-code":   float64(255),
 		"duration-ms": float64(0),
 		"command":     "pulumi:stack:new",
@@ -166,7 +165,7 @@ func TestValidateFact(t *testing.T) {
 		err   string
 	}{
 		{"stack", "dev", `unknown fact "stack"`},
-		{"ci", "yes", "expected a bool"},
+		{"interactive", "yes", "expected a bool"},
 		{"exit-code", 1.5, "expected an integer"},
 		{"command", "pulumi:stack:select my-org/dev", "expected one of the allowed values"},
 		{"using-ai", "my-agent", "expected one of the allowed values"},
@@ -182,7 +181,7 @@ func TestValidateFact(t *testing.T) {
 func TestEmitDropsInvalidFacts(t *testing.T) {
 	t.Parallel()
 
-	facts := emitted(t, boolFact("ci", true), enumFact("command", "my-secret-command"), enumFact("stack", "dev"))
+	facts := emitted(t, boolFact("interactive", true), enumFact("command", "my-secret-command"), enumFact("stack", "dev"))
 
-	require.Equal(t, map[string]any{"ci": true}, facts)
+	require.Equal(t, map[string]any{"interactive": true}, facts)
 }

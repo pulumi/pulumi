@@ -71,7 +71,7 @@ func TestInvocationTelemetry(t *testing.T) {
 	line, facts := emittedTelemetry(t, t.Context(), invocationTelemetry(c))
 
 	require.ElementsMatch(t, []string{
-		"command", "flags", "env-vars", "ci", "ci-system", "interactive", "automation-api", "using-ai", "os", "arch",
+		"command", "flags", "env-vars", "ci-system", "interactive", "automation-api", "using-ai", "os", "arch",
 	}, slices.Collect(maps.Keys(facts)))
 	require.Equal(t, "pulumi:stack:new", facts["command"])
 	require.Equal(t, []any{"non-interactive", "secrets-provider"}, facts["flags"])

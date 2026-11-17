@@ -23,9 +23,6 @@
         "other"
       ]
     },
-    "ci": {
-      "kind": "bool"
-    },
     "ci-system": {
       "kind": "enum",
       "values": [
@@ -389,7 +386,7 @@
         "opencode",
         "pi",
         "replit",
-        "no",
+        "none",
         "other"
       ]
     }

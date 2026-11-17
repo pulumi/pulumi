@@ -59,8 +59,6 @@ func EnvVars(store env.Store) KV {
 	return setFact("env-vars", slices.Compact(names)...)
 }
 
-func CI(ci bool) KV { return boolFact("ci", ci) }
-
 // ciutil detects the CI system; this maps it to the values we send, which the service's telemetry schema has to
 // accept. Keeping the list here means adding a CI system to ciutil doesn't change what is sent until the service
 // knows about it as well.
@@ -117,13 +115,18 @@ func UsingAI(getenv func(string) string) KV {
 	}
 	switch {
 	case agent == "":
-		return enumFact("using-ai", "no")
+		return enumFact("using-ai", "none")
 	case slices.Contains(agents, agent):
 		return enumFact("using-ai", agent)
 	default:
 		return enumFact("using-ai", "other")
 	}
 }
+
+var (
+	osValues   = []string{"linux", "darwin", "windows"}
+	archValues = []string{"amd64", "arm64"}
+)
 
 func OS() KV {
 	if slices.Contains(osValues, runtime.GOOS) {
