@@ -3755,9 +3755,7 @@ func genPyprojectTOML(tool string,
 		schema.Project.Description = &description
 	}
 	if pkg.License != "" {
-		schema.Project.License = &License{
-			Text: pkg.License,
-		}
+		schema.Project.License = pkg.License
 	}
 
 	// • Next, we set the version field.
@@ -3782,7 +3780,7 @@ func genPyprojectTOML(tool string,
 	// Populate build extensions as follows:
 	//
 	// [build-system]
-	// requires = ["setuptools>=61.0"]
+	// requires = ["setuptools>=77.0"]
 	// build-backend = "setuptools.build_meta"
 	// [tool.setuptools.package-data]
 	// pulumi_kubernetes = ["py.typed", "pulumi-plugin.json"]
@@ -3791,7 +3789,7 @@ func genPyprojectTOML(tool string,
 	// including the required files `py.typed` and `pulumi-plugin.json` in the distro.
 
 	schema.BuildSystem = &BuildSystem{
-		Requires:     []string{"setuptools>=61.0"},
+		Requires:     []string{"setuptools>=77.0"},
 		BuildBackend: "setuptools.build_meta",
 	}
 
