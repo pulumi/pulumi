@@ -20,12 +20,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// NewDeliveryCmd returns the hidden `pulumi delivery` command.
+// NewDeliveryCmd returns the `pulumi delivery` command.
 func NewDeliveryCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "delivery",
-		Short:  "[PREVIEW] Manage Pulumi Delivery pipelines on Pulumi Cloud",
-		Hidden: true,
+		Use:   "delivery",
+		Short: "[PREVIEW] Manage Pulumi Delivery pipelines on Pulumi Cloud",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

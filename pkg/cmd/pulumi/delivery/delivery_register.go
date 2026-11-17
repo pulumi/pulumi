@@ -86,7 +86,6 @@ func newRegisterCmd(up *cobra.Command, prepare registerPrepare) *cobra.Command {
 		"from the git checkout, and writes them to the stack configuration file. Commit that file so\n" +
 		"that runs can find the program. The pipeline tracks the default branch of the repository; set\n" +
 		"`delivery:source.branch` to track another branch."
-	cmd.Hidden = true
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
