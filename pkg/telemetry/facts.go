@@ -51,7 +51,8 @@ func EnvVars(store env.Store) KV {
 			names = append(names, name)
 		}
 	}
-	return setFact("env-vars", names...)
+	slices.Sort(names)
+	return setFact("env-vars", slices.Compact(names)...)
 }
 
 func CI(ci bool) KV { return boolFact("ci", ci) }

@@ -75,6 +75,18 @@ func TestInvocationTelemetry(t *testing.T) {
 	require.NotContains(t, string(line), "acme")
 }
 
+//nolint:paralleltest // NewPulumiCmd registers flag env vars process-wide
+func TestTelemetryDeduplicatesEnvVars(t *testing.T) {
+	_, cleanup := NewPulumiCmd()
+	defer cleanup()
+
+	_, facts := emittedTelemetry(t, t.Context(), []telemetry.KV{
+		telemetry.EnvVars(env.MapStore{"PULUMI_OPTION_STACK": "dev"}),
+	})
+
+	require.Equal(t, []any{"PULUMI_OPTION_STACK"}, facts["env-vars"])
+}
+
 func TestExitTelemetry(t *testing.T) {
 	t.Parallel()
 
