@@ -24,8 +24,7 @@ import (
 type CommandRemediation struct {
 	// Description is a short, imperative summary of what the command does, such as "Sign in to AWS".
 	Description string
-	// Command is the program and its arguments. The program is looked up on PATH and run without a shell, attached
-	// to the user's terminal.
+	// Command is the program, looked up on PATH, and its arguments. It is run without a shell.
 	Command []string
 	// Env holds environment variables to set for the command, in addition to the caller's environment.
 	Env map[string]string
@@ -48,7 +47,6 @@ func remediationsFromRPC(rpcRemediations []*pulumirpc.CommandRemediation) []Comm
 	return remediations
 }
 
-// remediationsToRPC converts remediations to send in a CheckConfig2 response.
 func remediationsToRPC(remediations []CommandRemediation) []*pulumirpc.CommandRemediation {
 	rpcRemediations := make([]*pulumirpc.CommandRemediation, 0, len(remediations))
 	for _, r := range remediations {

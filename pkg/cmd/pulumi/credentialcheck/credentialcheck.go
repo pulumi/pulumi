@@ -124,8 +124,7 @@ type Problem struct {
 	remediation *plugin.CommandRemediation
 }
 
-// Remediation returns the command the provider suggests the user run to resolve the problem, or nil
-// if it suggests none. When it suggests several, across one or more failures, this is the first.
+// Remediation returns the first command the provider suggests to resolve the problem, or nil.
 func (p *Problem) Remediation() *plugin.CommandRemediation {
 	return p.remediation
 }

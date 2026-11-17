@@ -58,8 +58,7 @@ type credentialsPreflight struct {
 	// confirm asks the user a yes-or-no question. It is nil when the preflight must not stop to
 	// ask, as under --yes, and then no remediation is offered.
 	confirm func(prompt string) bool
-	// run runs a command the provider suggested and the user agreed to.
-	run func(ctx context.Context, r plugin.CommandRemediation) error
+	run     func(ctx context.Context, r plugin.CommandRemediation) error
 }
 
 // preflightCloudCredentials runs the best-effort cloud credentials check for a freshly
@@ -114,8 +113,8 @@ func preflightCloudCredentials(
 	}
 }
 
-// checkPackage checks the credentials of a single provider and prints any problem it finds. If the
-// provider suggests a command to fix the problem and the user runs it, it checks them again.
+// checkPackage checks the credentials of a single provider and prints any problem it finds,
+// checking again if the user runs the fix the provider suggests.
 func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.PackageDescriptor) {
 	_, problem, _ := pf.check(ctx, desc)
 	if problem == nil {

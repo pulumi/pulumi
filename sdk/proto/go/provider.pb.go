@@ -1836,7 +1836,7 @@ type CheckConfigFailure struct {
 	Property string `protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"`
 	// The reason that the named property failed validation.
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	// Commands the user can run to resolve the failure, such as signing in to refresh expired credentials.
+	// Commands the user can run to resolve the failure.
 	Remediations  []*CommandRemediation `protobuf:"bytes,3,rep,name=remediations,proto3" json:"remediations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
