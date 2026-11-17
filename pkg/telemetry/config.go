@@ -87,12 +87,10 @@ type config struct {
 func newTelemetry(args InitArgs) *telemetry {
 	enabled, enabledSet := lookupBool(args.Env, env.Telemetry)
 	logging := args.Env.GetBool(env.TelemetryLog)
-	if enabledSet && !enabled && !logging {
-		return nil
-	}
-	// DO_NOT_TRACK can still be overridden by `pulumi telemetry enable`, so the config has to be read, but users
-	// who opted out shouldn't be warned when that fails.
-	optedOut := !enabledSet && args.Env.GetBool(env.DoNotTrack) && !logging
+	// The config has to be read even when telemetry is disabled: `pulumi telemetry enable` overrides DO_NOT_TRACK,
+	// and `pulumi telemetry log enable` logs events either way. Users who opted out shouldn't be warned when that
+	// fails, though.
+	optedOut := !logging && (enabledSet && !enabled || !enabledSet && args.Env.GetBool(env.DoNotTrack))
 	warn := func(err error) {
 		if !optedOut {
 			args.Diags.Warningf(diag.Message("", "Telemetry is disabled: %v"), err)

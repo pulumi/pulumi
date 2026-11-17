@@ -365,6 +365,22 @@ func TestLogging(t *testing.T) {
 		require.NoFileExists(t, filepath.Join(f.walDir(), fromContext(ctx).invocation+walExtension))
 	})
 
+	t.Run("config logging with telemetry disabled", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t, map[string]string{"PULUMI_TELEMETRY": "0"})
+		f.writeConfig(t, `{"version": 1, "installation": "0b3b5a4e-6c1f-4c55-9d0a-2a7f6f0d8c11", "log": true}`)
+
+		ctx := Init(t.Context(), f.args)
+		Emit(ctx, boolFact("ci", true))
+		Shutdown(ctx)
+
+		entries := f.readLog(t)
+		require.Len(t, entries, 1)
+		require.False(t, entries[0].Sending)
+		require.Empty(t, f.service.received())
+	})
+
 	t.Run("discarded", func(t *testing.T) {
 		t.Parallel()
 
