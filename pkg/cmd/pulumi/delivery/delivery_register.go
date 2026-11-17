@@ -78,8 +78,9 @@ func newRegisterCmd(up *cobra.Command, prepare registerPrepare) *cobra.Command {
 	cmd.Short = "[PREVIEW] Register the Pulumi Delivery pipeline that a program declares"
 	cmd.Long = "[PREVIEW] Register the Pulumi Delivery pipeline that the program on this stack declares.\n" +
 		"\n" +
-		"This runs `pulumi up` on the stack in registration mode and accepts the flags of `pulumi up`.\n" +
-		"The update stores the pipeline definition in Pulumi Cloud and starts no run.\n" +
+		"This command registers the pipeline by running the Pulumi program and observing the pipeline\n" +
+		"resources that it allocates. It stores them in Pulumi Cloud as the pipeline definition and\n" +
+		"starts no run. It accepts the flags of `pulumi up`.\n" +
 		"\n" +
 		"The pipeline needs to know where its program lives. When the stack configuration has no\n" +
 		"`delivery:source` value, this command detects the repository URL and the project directory\n" +
