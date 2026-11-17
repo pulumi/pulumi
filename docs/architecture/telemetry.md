@@ -19,7 +19,3 @@ In the CLI, new facts are added to `pkg/telemetry/facts.go`.  The `enumFact`, `s
 ### Service
 
 In the service, the "schema" for the CLI telemetry is in [cmd/service/services/clitelemetry/schema.go#L50](https://github.com/pulumi/pulumi-service/blob/master/cmd/service/services/clitelemetry/schema.go#L50). Any fact that doesn't match the schema will automatically be rejected and discarded.  This includes a regex pattern for strings, which should be locked down to the tightest regex necessary.
-
-## Dashboard
-
-Now that we have the facts recorded, we also need to see them somewhere.  This is where metabase comes in. TODO: document this once we have this set up.
