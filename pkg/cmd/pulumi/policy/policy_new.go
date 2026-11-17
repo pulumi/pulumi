@@ -43,6 +43,7 @@ type newPolicyArgs struct {
 	dir               string
 	force             bool
 	generateOnly      bool
+	listTemplates     bool
 	offline           bool
 	runtimeOptions    []string
 	templateNameOrURL string
@@ -63,6 +64,10 @@ func newPolicyNewCmd() *cobra.Command {
 			"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
 			"which can be selected interactively.\n" +
 			"\n" +
+			"Run `pulumi policy new --list-templates` to see all available policy pack templates. Template names\n" +
+			"include the provider and language (such as `aws-typescript`, `aws-python`, `aws-javascript`, `aws-opa`,\n" +
+			"or `azure-python`); bare language names such as `typescript` are not unique.\n" +
+			"\n" +
 			"Once you're done authoring the Policy Pack, you will need to publish the pack to your organization.\n" +
 			"Only organization administrators can publish a Policy Pack.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
@@ -71,6 +76,9 @@ func newPolicyNewCmd() *cobra.Command {
 				args.templateNameOrURL = cliArgs[0]
 			}
 			args.stdout = cmd.OutOrStdout()
+			if args.listTemplates {
+				return listPolicyPackTemplates(ctx, args)
+			}
 			return runNewPolicyPack(ctx, args)
 		},
 	}
@@ -94,6 +102,10 @@ func newPolicyNewCmd() *cobra.Command {
 		&args.generateOnly, "generate-only", "g", false,
 		"Generate the Policy Pack only; do not install dependencies",
 	)
+	cmd.PersistentFlags().BoolVar(
+		&args.listTemplates, "list-templates", false,
+		"List available Policy Pack templates",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests",
@@ -104,6 +116,58 @@ func newPolicyNewCmd() *cobra.Command {
 	)
 
 	return cmd
+}
+
+func listPolicyPackTemplates(ctx context.Context, args newPolicyArgs) error {
+	lines, err := policyPackTemplateLines(ctx, args.offline)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(args.stdout, "Available Templates:")
+	for _, line := range lines {
+		fmt.Fprintf(args.stdout, "  %s\n", line)
+	}
+	return nil
+}
+
+func policyPackTemplateLines(ctx context.Context, offline bool) ([]string, error) {
+	repo, err := cmdTemplates.RetrieveTemplates(ctx, "", offline, cmdTemplates.TemplateKindPolicyPack)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		contract.IgnoreError(repo.Delete())
+	}()
+	templates, err := repo.PolicyTemplates()
+	if err != nil {
+		return nil, err
+	}
+
+	var healthy, broken []string
+	nameWidth := 0
+	for _, template := range templates {
+		if len(template.Name) > nameWidth {
+			nameWidth = len(template.Name)
+		}
+	}
+
+	for _, template := range templates {
+		description := template.Description
+		if template.Errored() {
+			description = newcmd.BrokenTemplateDescription
+		}
+		description = strings.Join(strings.Fields(description), " ")
+		line := fmt.Sprintf("%-*s    %s", nameWidth, template.Name, description)
+		if template.Errored() {
+			broken = append(broken, line)
+		} else {
+			healthy = append(healthy, line)
+		}
+	}
+	sort.Strings(healthy)
+	sort.Strings(broken)
+	return append(healthy, broken...), nil
 }
 
 func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
@@ -143,6 +207,16 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		ctx, args.templateNameOrURL, args.offline, cmdTemplates.TemplateKindPolicyPack,
 	)
 	if err != nil {
+		if _, ok := errors.AsType[cmdTemplates.TemplateNotFoundError](err); ok {
+			discoveryErr := fmt.Errorf("%w\n\nRun 'pulumi policy new --list-templates' to see available templates", err)
+			if lines, listErr := policyPackTemplateLines(ctx, args.offline); listErr == nil {
+				if len(lines) > 0 {
+					discoveryErr = fmt.Errorf("%w\n\nAvailable Templates:\n  %s", discoveryErr,
+						strings.Join(lines, "\n  "))
+				}
+			}
+			return discoveryErr
+		}
 		return err
 	}
 	defer func() {
