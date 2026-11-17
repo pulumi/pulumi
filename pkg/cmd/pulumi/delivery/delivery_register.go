@@ -15,7 +15,6 @@
 package delivery
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -23,9 +22,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -53,107 +54,140 @@ type pipelineSource struct {
 	Directory string
 }
 
+// registerHiddenFlags are flags of `pulumi up` that a registration never uses. They still work.
+var registerHiddenFlags = []string{
+	"expect-no-changes",
+	"secrets-provider",
+	"plan",
+	"strict",
+}
+
+// registerPrepare runs before the update. It returns a function that reports the result once the update
+// has finished.
+type registerPrepare func(cmd *cobra.Command, stack string) (func(io.Writer), error)
+
 func newDeliveryRegisterCmd() *cobra.Command {
-	var stack string
-	var yes, skipPreview bool
+	return newRegisterCmd(operations.NewUpCmd(), prepareRegistration)
+}
 
-	cmd := &cobra.Command{
-		Use:   "register",
-		Short: "[PREVIEW] Register the Pulumi Delivery pipeline that a program declares",
-		Long: "[PREVIEW] Register the Pulumi Delivery pipeline that the program on this stack declares.\n" +
-			"\n" +
-			"This runs `pulumi up` on the stack in registration mode. The update stores the pipeline\n" +
-			"definition in Pulumi Cloud and starts no run.\n" +
-			"\n" +
-			"The pipeline needs to know where its program lives. When the stack configuration has no\n" +
-			"`delivery:source` value, this command detects the repository URL and the project directory\n" +
-			"from the git checkout, and writes them to the stack configuration file. Commit that file so\n" +
-			"that runs can find the program. The pipeline tracks the default branch of the repository; set\n" +
-			"`delivery:source.branch` to track another branch.",
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
-			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("getting current working directory: %w", err)
-			}
-			project, projectDir, err := ws.ReadProject(cwd)
-			if err != nil {
-				if errors.Is(err, workspace.ErrProjectNotFound) {
-					return errors.New("`pulumi delivery register` must be run in a project directory")
-				}
-				return err
-			}
-			if _, err := cmdBackend.CurrentBackend(
-				ctx, ws, cmdBackend.DefaultLoginManager, project, opts); err != nil {
-				return err
-			}
-
-			s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, cmdBackend.DefaultLoginManager,
-				stack, cmdStack.LoadOnly, opts, "")
-			if err != nil {
-				return err
-			}
-			cloudStack, ok := s.(httpstate.Stack)
-			if !ok {
-				return errors.New("`pulumi delivery register` requires the Pulumi Cloud backend; run `pulumi login`")
-			}
-			cloudBe, ok := cloudStack.Backend().(httpstate.Backend)
-			if !ok {
-				return errors.New("`pulumi delivery register` requires the Pulumi Cloud backend; run `pulumi login`")
-			}
-
-			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, s, "")
-			if err != nil {
-				return err
-			}
-			key := sdkconfig.MustMakeKey("delivery", "source")
-			_, set, err := ps.Config.Get(key, false)
-			if err != nil {
-				return err
-			}
-			if !set {
-				src, err := detectSource(projectDir)
-				if err != nil {
-					return err
-				}
-				if err := setSource(ps.Config, src); err != nil {
-					return err
-				}
-				if err := cmdStack.SaveProjectStack(ctx, s, ps, ""); err != nil {
-					return fmt.Errorf("writing %s: %w", sourceConfigKey, err)
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s (%s) to the stack configuration file; commit it.\n",
-					sourceConfigKey, src)
-			}
-
-			upErr := runUpForRegister(ctx, stack, yes, skipPreview)
-			if err := registerOutcome(upErr); err != nil {
-				return err
-			}
-
-			stackRef := cloudStack.Ref()
-			proj, _ := stackRef.Project()
-			id := client.StackIdentifier{Owner: cloudStack.OrgName(), Project: string(proj), Stack: stackRef.Name()}
-			printRegistered(cmd.OutOrStdout(), id,
-				client.CloudConsoleURL(cloudBe.CloudURL(), id.Owner, "delivery", id.Project, id.Stack.String()))
-			return nil
-		},
-	}
-
+// newRegisterCmd wraps up so that the command accepts every flag of `pulumi up` and runs it in
+// registration mode.
+func newRegisterCmd(up *cobra.Command, prepare registerPrepare) *cobra.Command {
+	cmd := up
+	cmd.Use = "register"
+	cmd.Aliases = nil
+	cmd.SuggestFor = nil
+	cmd.Short = "[PREVIEW] Register the Pulumi Delivery pipeline that a program declares"
+	cmd.Long = "[PREVIEW] Register the Pulumi Delivery pipeline that the program on this stack declares.\n" +
+		"\n" +
+		"This runs `pulumi up` on the stack in registration mode and accepts the flags of `pulumi up`.\n" +
+		"The update stores the pipeline definition in Pulumi Cloud and starts no run.\n" +
+		"\n" +
+		"The pipeline needs to know where its program lives. When the stack configuration has no\n" +
+		"`delivery:source` value, this command detects the repository URL and the project directory\n" +
+		"from the git checkout, and writes them to the stack configuration file. Commit that file so\n" +
+		"that runs can find the program. The pipeline tracks the default branch of the repository; set\n" +
+		"`delivery:source.branch` to track another branch."
+	cmd.Hidden = true
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The pipeline stack to register, as org/project/stack. Defaults to the current stack")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
-		"Automatically approve and perform the update after previewing it")
-	cmd.Flags().BoolVar(&skipPreview, "skip-preview", false,
-		"Do not calculate a preview before performing the update")
+	cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
+		if strings.HasPrefix(f.Name, "remote") || f.Name == "suppress-stream-logs" ||
+			slices.Contains(registerHiddenFlags, f.Name) {
+			f.Hidden = true
+		}
+	})
 
+	runUp := up.RunE
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		stack, err := cmd.Flags().GetString("stack")
+		if err != nil {
+			return err
+		}
+		report, err := prepare(cmd, stack)
+		if err != nil {
+			return err
+		}
+		if err := registerOutcome(runUp(cmd, nil)); err != nil {
+			return err
+		}
+		report(cmd.OutOrStdout())
+		return nil
+	}
 	return cmd
+}
+
+// prepareRegistration checks the project and backend, writes the pipeline source to the stack configuration
+// when it is missing, and sets the registration variable. Plugins started by the update inherit the process
+// environment.
+func prepareRegistration(cmd *cobra.Command, stack string) (func(io.Writer), error) {
+	ctx := cmd.Context()
+	ws := pkgWorkspace.Instance
+	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting current working directory: %w", err)
+	}
+	project, projectDir, err := ws.ReadProject(cwd)
+	if err != nil {
+		if errors.Is(err, workspace.ErrProjectNotFound) {
+			return nil, errors.New("`pulumi delivery register` must be run in a project directory")
+		}
+		return nil, err
+	}
+	if _, err := cmdBackend.CurrentBackend(
+		ctx, ws, cmdBackend.DefaultLoginManager, project, opts); err != nil {
+		return nil, err
+	}
+
+	s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, cmdBackend.DefaultLoginManager,
+		stack, cmdStack.LoadOnly, opts, "")
+	if err != nil {
+		return nil, err
+	}
+	cloudStack, ok := s.(httpstate.Stack)
+	if !ok {
+		return nil, errors.New("`pulumi delivery register` requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	cloudBe, ok := cloudStack.Backend().(httpstate.Backend)
+	if !ok {
+		return nil, errors.New("`pulumi delivery register` requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+
+	ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, s, "")
+	if err != nil {
+		return nil, err
+	}
+	key := sdkconfig.MustMakeKey("delivery", "source")
+	_, set, err := ps.Config.Get(key, false)
+	if err != nil {
+		return nil, err
+	}
+	if !set {
+		src, err := detectSource(projectDir)
+		if err != nil {
+			return nil, err
+		}
+		if err := setSource(ps.Config, src); err != nil {
+			return nil, err
+		}
+		if err := cmdStack.SaveProjectStack(ctx, s, ps, ""); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", sourceConfigKey, err)
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s (%s) to the stack configuration file; commit it.\n",
+			sourceConfigKey, src)
+	}
+
+	if err := os.Setenv(registerEnvVar, "true"); err != nil {
+		return nil, err
+	}
+
+	stackRef := cloudStack.Ref()
+	proj, _ := stackRef.Project()
+	id := client.StackIdentifier{Owner: cloudStack.OrgName(), Project: string(proj), Stack: stackRef.Name()}
+	consoleURL := client.CloudConsoleURL(cloudBe.CloudURL(), id.Owner, "delivery", id.Project, id.Stack.String())
+	return func(w io.Writer) { printRegistered(w, id, consoleURL) }, nil
 }
 
 func (s pipelineSource) String() string {
@@ -162,29 +196,6 @@ func (s pipelineSource) String() string {
 		out += ", directory " + s.Directory
 	}
 	return out
-}
-
-// runUpForRegister runs `pulumi up` in process with the registration variable set. Plugins started by the
-// update inherit the process environment.
-func runUpForRegister(ctx context.Context, stack string, yes, skipPreview bool) error {
-	if err := os.Setenv(registerEnvVar, "true"); err != nil {
-		return err
-	}
-	up := operations.NewUpCmd()
-	up.SilenceUsage = true
-	up.SilenceErrors = true
-	args := []string{}
-	if stack != "" {
-		args = append(args, "--stack", stack)
-	}
-	if yes {
-		args = append(args, "--yes")
-	}
-	if skipPreview {
-		args = append(args, "--skip-preview")
-	}
-	up.SetArgs(args)
-	return up.ExecuteContext(ctx)
 }
 
 // registerOutcome maps the result of the update to the result of the command. An update that ends with
