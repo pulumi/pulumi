@@ -49,8 +49,9 @@ var Telemetry = env.Bool("TELEMETRY",
 	"Enable (true) or disable (false) CLI telemetry, overriding `pulumi telemetry` and DO_NOT_TRACK.")
 
 var TelemetryLog = env.Bool("TELEMETRY_LOG",
-	"Write (true) or don't write (false) CLI telemetry events to $PULUMI_HOME/telemetry/log, "+
-		"whether or not they are sent, overriding `pulumi telemetry log`.")
+	"Enable (true) or disable (false) local logging of CLI telemetry events to "+
+		"$PULUMI_HOME/telemetry/log/events.jsonl, overriding `pulumi telemetry log`. "+
+		"This setting does not control whether events are sent.")
 
 var DoNotTrack = env.Bool("DO_NOT_TRACK",
 	"Disable CLI telemetry, unless it is enabled with PULUMI_TELEMETRY or `pulumi telemetry enable`.", env.NoPrefix)
