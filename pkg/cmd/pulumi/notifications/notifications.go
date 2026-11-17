@@ -276,9 +276,9 @@ func readDismissed() map[string][]string {
 	return dismissed
 }
 
-// Print writes the notifications that apply to the given CLI version, and haven't been dismissed,
-// to the sink's stderr.
-func Print(sink diag.Sink, ns []Notification, cliVersion string) {
+// Print writes the notifications that apply to the given CLI and provider versions, and haven't
+// been dismissed, to the sink's stderr.
+func Print(sink diag.Sink, ns []Notification, cliVersion string, providers map[string][]semver.Version) {
 	dismissed := map[string]bool{}
 	for _, ids := range readDismissed() {
 		for _, id := range ids {
@@ -290,8 +290,8 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	cli, err := semver.ParseTolerant(cliVersion)
 	prefixes := shortPrefixes(ns)
 	for _, n := range ns {
-		if !dismissed[n.ID] && applies(n, cli, err == nil) {
-			sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		if !dismissed[n.ID] && applies(n, cli, err == nil, providers) {
+			sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, providers, prefixes[strings.ToLower(n.ID)])))
 		}
 	}
 }
@@ -392,10 +392,13 @@ func commonPrefix(a, b string) int {
 	return n
 }
 
-func applies(n Notification, cli semver.Version, cliKnown bool) bool {
-	// We don't know the versions of the project's providers, so provider conditions never match.
-	if len(n.Where.Providers) > 0 {
-		return false
+// applies reports whether the CLI version, and some version of each named provider, are in range.
+func applies(n Notification, cli semver.Version, cliKnown bool, providers map[string][]semver.Version) bool {
+	for name, r := range n.Where.Providers {
+		inRange, err := semver.ParseRange(r)
+		if err != nil || !slices.ContainsFunc(providers[name], inRange) {
+			return false
+		}
 	}
 	if n.Where.CLI == "" {
 		return true
@@ -404,7 +407,7 @@ func applies(n Notification, cli semver.Version, cliKnown bool) bool {
 	return err == nil && cliKnown && inRange(cli)
 }
 
-func render(n Notification, cliVersion, idPrefix string) string {
+func render(n Notification, cliVersion string, providers map[string][]semver.Version, idPrefix string) string {
 	prefix, ok := map[diag.Severity]string{
 		diag.Warning: colors.SpecWarning + "WARNING:" + colors.Reset,
 		diag.Error:   colors.SpecError + "ERROR:" + colors.Reset,
@@ -413,7 +416,17 @@ func render(n Notification, cliVersion, idPrefix string) string {
 		prefix = "INFO:"
 	}
 
-	resolve := strings.NewReplacer("{cli}", cliVersion)
+	vars := make([]string, 0, 2+2*len(providers))
+	vars = append(vars, "{cli}", cliVersion)
+	for name, versions := range providers {
+		versions = slices.SortedFunc(slices.Values(versions), semver.Version.Compare)
+		vs := make([]string, len(versions))
+		for i, v := range versions {
+			vs[i] = v.String()
+		}
+		vars = append(vars, "{providers."+name+"}", strings.Join(vs, ", "))
+	}
+	resolve := strings.NewReplacer(vars...)
 	overview := strings.ReplaceAll(resolve.Replace(n.Overview), "\n", "\n  ")
 	dismiss := colors.SpecCommand + "pulumi notifications dismiss " + idPrefix + colors.Reset
 	return fmt.Sprintf("\n%s %s\n\n  %s\n\n  To hide this, run %s.\n",

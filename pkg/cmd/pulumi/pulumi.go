@@ -46,6 +46,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
@@ -450,7 +451,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					// The version didn't make it in time, so don't block the user
 				}
 
-				notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version)
+				notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version, display.ProviderVersions())
 			}
 		},
 	}
