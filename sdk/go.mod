@@ -24,7 +24,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	go.opentelemetry.io/otel/bridge/opentracing v1.45.0
+	go.opentelemetry.io/otel/bridge/opentracing v1.47.0
 	golang.org/x/crypto v0.59.0
 	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/net v0.62.0
@@ -128,7 +128,7 @@ require (
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 )
 
 require (
@@ -145,7 +145,7 @@ require (
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/text v0.44.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 )
 
