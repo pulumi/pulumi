@@ -282,6 +282,8 @@ func detectSource(projectDir string) (pipelineSource, error) {
 	return pipelineSource{URL: remoteURL, Directory: dir}, nil
 }
 
+// scpRemote matches the scp-like form of a git remote, `[user@]host:path`, for example
+// `git@github.com:org/repo.git`. It captures the host and the path.
 var scpRemote = regexp.MustCompile(`^(?:[^@/:]+@)?([^:/]+):(.+)$`)
 
 // normalizeRemoteURL turns a git remote URL into an https URL without a `.git` suffix.
