@@ -357,15 +357,9 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 		return nil, err
 	}
 
-	keys := slice.Prealloc[resource.PropertyKey](len(step.GetKeys()))
-	for _, key := range step.GetKeys() {
-		keys = append(keys, resource.PropertyKey(key))
-	}
+	keys := slice.Cast[resource.PropertyKey](step.GetKeys())
 
-	diffs := slice.Prealloc[resource.PropertyKey](len(step.GetDiffs()))
-	for _, diff := range step.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	diffs := slice.Cast[resource.PropertyKey](step.GetDiffs())
 
 	detailedDiff := rs.unmarshalDetailedDiff(step)
 

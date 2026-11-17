@@ -99,7 +99,7 @@ func TestExtractPage_ObjectWithCursorButNoArray(t *testing.T) {
 	// A cursor field with no accompanying array is a server envelope bug —
 	// we'd loop forever if we kept sending the cursor back. Error out.
 	_, _, _, _, err := ExtractPage([]byte(`{"continuationToken":"x","status":"ok"}`), nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestExtractPage_EmptyObject covers the case where the server returns
@@ -130,7 +130,7 @@ func TestExtractPage_NullArrayField(t *testing.T) {
 func TestExtractPage_ObjectMultipleArrays(t *testing.T) {
 	t.Parallel()
 	_, _, _, _, err := ExtractPage([]byte(`{"items":[1],"other":[2]}`), nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestExtractPage_NextTokenMapsToContinuationToken covers the Insights-style
@@ -172,7 +172,7 @@ func TestExtractPage_NextTokenWithNoKnownQueryParam(t *testing.T) {
 	}
 	body := []byte(`{"items":[{"a":1}],"nextToken":"abc"}`)
 	_, _, _, _, err := ExtractPage(body, op)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestExtractPage_NextTokenEmptyIsLastPage: an empty nextToken means no
@@ -249,7 +249,7 @@ func TestExtractPage_EmptyBody(t *testing.T) {
 func TestExtractPage_InvalidJSON(t *testing.T) {
 	t.Parallel()
 	_, _, _, _, err := ExtractPage([]byte(`not json at all`), nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestMarshalAccumulated_BareArray(t *testing.T) {
@@ -326,7 +326,7 @@ func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
 	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	apiErr, ok := errors.AsType[*APIError](err)
 	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
@@ -350,7 +350,7 @@ func TestRunPaginate_FirstPageShapeErrorEmitsEnvelope(t *testing.T) {
 	req := paginateRequest{Method: "GET", Path: "/api/user", BaseQuery: url.Values{}, Accept: "application/json"}
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	apiErr, ok := errors.AsType[*APIError](err)
 	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
@@ -371,7 +371,7 @@ func TestRunPaginate_FirstPageHTTPErrorEmitsEnvelope(t *testing.T) {
 	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	apiErr, ok := errors.AsType[*APIError](err)
 	require.True(t, ok)
 	assert.False(t, apiErr.Silent, "first-page HTTP failure must not be Silent")
@@ -395,7 +395,7 @@ func TestRunPaginate_LaterPageErrorStaysSilent(t *testing.T) {
 	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
 	var buf bytes.Buffer
 	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	apiErr, ok := errors.AsType[*APIError](err)
 	require.True(t, ok)
 	assert.True(t, apiErr.Silent, "partial failure with accumulated pages must stay Silent")

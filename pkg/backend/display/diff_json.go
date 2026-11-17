@@ -24,9 +24,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// ObjectDiffJSON is the JSON projection of a resource.ObjectDiff, emitted when
+// ObjectDiffJSON is the JSON projection of a property.ObjectDiff, emitted when
 // `--diff` and `--output json` are combined. It keeps the nesting the `--diff`
 // view renders as text, but reports only what changed: unchanged properties,
 // which that view prints as context, are omitted.
@@ -41,7 +42,7 @@ type ObjectDiffJSON struct {
 	Hidden []string `json:"hidden,omitempty"`
 }
 
-// ValueDiffJSON is the JSON projection of a resource.ValueDiff. Exactly one of
+// ValueDiffJSON is the JSON projection of a property.ValueDiff. Exactly one of
 // Array, Object, or the Old/New pair is populated, matching the shape of the
 // value that changed.
 type ValueDiffJSON struct {
@@ -55,7 +56,7 @@ type ValueDiffJSON struct {
 	Object *ObjectDiffJSON `json:"object,omitempty"`
 }
 
-// ArrayDiffJSON is the JSON projection of a resource.ArrayDiff. Its maps are
+// ArrayDiffJSON is the JSON projection of a property.ArrayDiff. Its maps are
 // keyed by array index.
 type ArrayDiffJSON struct {
 	// Creates holds the elements present only in the new array.
@@ -83,19 +84,24 @@ func newDiffJSONEncoder(showSecrets bool) diffJSONEncoder {
 	}
 }
 
-func (e diffJSONEncoder) value(v resource.PropertyValue) *any {
-	out, err := stack.SerializePropertyValue(e.ctx, v, e.enc, e.showSecrets)
+func (e diffJSONEncoder) value(v property.Value) *any {
+	out, err := stack.SerializePropertyValue(e.ctx, resource.ToResourcePropertyValue(v), e.enc, e.showSecrets)
 	contract.IgnoreError(err)
 	return &out
 }
 
-func (e diffJSONEncoder) values(m resource.PropertyMap) map[string]any {
-	out, err := stack.SerializeProperties(e.ctx, m, e.enc, e.showSecrets)
-	contract.IgnoreError(err)
+func (e diffJSONEncoder) values(m map[string]property.Value) map[string]any {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = *e.value(v)
+	}
 	return out
 }
 
-func (e diffJSONEncoder) elements(m map[int]resource.PropertyValue) map[int]any {
+func (e diffJSONEncoder) elements(m map[int]property.Value) map[int]any {
 	if len(m) == 0 {
 		return nil
 	}
@@ -106,7 +112,7 @@ func (e diffJSONEncoder) elements(m map[int]resource.PropertyValue) map[int]any 
 	return out
 }
 
-func (e diffJSONEncoder) objectDiff(diff *resource.ObjectDiff) *ObjectDiffJSON {
+func (e diffJSONEncoder) objectDiff(diff *property.ObjectDiff) *ObjectDiffJSON {
 	if diff == nil {
 		return nil
 	}
@@ -117,13 +123,13 @@ func (e diffJSONEncoder) objectDiff(diff *resource.ObjectDiff) *ObjectDiffJSON {
 	if len(diff.Updates) > 0 {
 		out.Updates = make(map[string]ValueDiffJSON, len(diff.Updates))
 		for k, v := range diff.Updates {
-			out.Updates[string(k)] = e.valueDiff(v)
+			out.Updates[k] = e.valueDiff(v)
 		}
 	}
 	return out
 }
 
-func (e diffJSONEncoder) valueDiff(diff resource.ValueDiff) ValueDiffJSON {
+func (e diffJSONEncoder) valueDiff(diff property.ValueDiff) ValueDiffJSON {
 	switch {
 	case diff.Array != nil:
 		return ValueDiffJSON{Array: e.arrayDiff(diff.Array)}
@@ -134,7 +140,7 @@ func (e diffJSONEncoder) valueDiff(diff resource.ValueDiff) ValueDiffJSON {
 	}
 }
 
-func (e diffJSONEncoder) arrayDiff(diff *resource.ArrayDiff) *ArrayDiffJSON {
+func (e diffJSONEncoder) arrayDiff(diff *property.ArrayDiff) *ArrayDiffJSON {
 	out := &ArrayDiffJSON{
 		Creates: e.elements(diff.Adds),
 		Deletes: e.elements(diff.Deletes),
@@ -150,18 +156,18 @@ func (e diffJSONEncoder) arrayDiff(diff *resource.ArrayDiff) *ArrayDiffJSON {
 
 // filterObjectDiff restricts a diff to the given top-level keys, matching the
 // filtering printObjectDiff applies when a step reports its changed keys.
-func filterObjectDiff(diff *resource.ObjectDiff, include []resource.PropertyKey) *resource.ObjectDiff {
+func filterObjectDiff(diff *property.ObjectDiff, include []resource.PropertyKey) *property.ObjectDiff {
 	if diff == nil || include == nil {
 		return diff
 	}
 
-	keep := make(map[resource.PropertyKey]bool, len(include))
+	keep := make(map[string]bool, len(include))
 	for _, k := range include {
-		keep[k] = true
+		keep[string(k)] = true
 	}
 
-	filterMap := func(m resource.PropertyMap) resource.PropertyMap {
-		out := make(resource.PropertyMap, len(m))
+	filterMap := func(m map[string]property.Value) map[string]property.Value {
+		out := make(map[string]property.Value, len(m))
 		for k, v := range m {
 			if keep[k] {
 				out[k] = v
@@ -170,11 +176,11 @@ func filterObjectDiff(diff *resource.ObjectDiff, include []resource.PropertyKey)
 		return out
 	}
 
-	out := &resource.ObjectDiff{
+	out := &property.ObjectDiff{
 		Adds:    filterMap(diff.Adds),
 		Deletes: filterMap(diff.Deletes),
 		Sames:   filterMap(diff.Sames),
-		Updates: make(map[resource.PropertyKey]resource.ValueDiff, len(diff.Updates)),
+		Updates: make(map[string]property.ValueDiff, len(diff.Updates)),
 	}
 	for k, v := range diff.Updates {
 		if keep[k] {

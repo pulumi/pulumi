@@ -75,7 +75,7 @@ hook error "foo" {
 
 	_, diags, err = ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -127,7 +127,7 @@ hook resource "foo" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -162,7 +162,7 @@ hook resource "foo" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -196,7 +196,7 @@ hook resource "foo" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -311,7 +311,7 @@ resource "example" "infra:index:Vpc" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -346,7 +346,7 @@ resource "example" "infra:index:Vpc" {
 
 	_, diags, err = ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -378,7 +378,7 @@ hook "foo" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t,
 		"hook blocks must have exactly two labels: a kind ('resource' or 'error') and a name",
@@ -391,7 +391,7 @@ hook banana "foo" {
 
 	_, diags, err = ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, "invalid hook kind 'banana': must be 'resource' or 'error'", diags[0].Summary)
 }
@@ -409,7 +409,7 @@ hook error "foo" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 2)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -466,7 +466,7 @@ resource "example" "infra:index:Vpc" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -504,7 +504,7 @@ resource "example" "infra:index:Vpc" {
 
 	_, diags, err := ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
@@ -539,7 +539,7 @@ resource "example" "infra:index:Vpc" {
 
 	_, diags, err = ParseAndBindProgram(t, source, "program.pp")
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

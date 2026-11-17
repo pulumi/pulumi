@@ -1404,10 +1404,7 @@ func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirp
 		resp *pulumirpc.RegisterResourceResponse,
 		err error,
 	) {
-		deps := slice.Prealloc[URN](len(in.GetDependencies()))
-		for _, dep := range in.GetDependencies() {
-			deps = append(deps, URN(dep))
-		}
+		deps := slice.Cast[URN](in.GetDependencies())
 		dt.dependsOn.Store(URN(resp.Urn), deps)
 	}
 	return m

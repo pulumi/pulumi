@@ -124,7 +124,7 @@ func TestStartTemplatePublish(t *testing.T) {
 			resp, err := client.StartTemplatePublish(t.Context(), tt.source, tt.publisher, tt.templateName, tt.version)
 
 			if tt.expectedError != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedError)
 				assert.Nil(t, resp)
 			} else {
@@ -215,7 +215,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			)
 
 			if tt.expectedError != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
 				require.NoError(t, err)
@@ -425,7 +425,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			err := registry.PublishTemplate(t.Context(), op)
 
 			if tt.errorMessage != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.errorMessage)
 			} else {
 				require.NoError(t, err)
@@ -591,7 +591,7 @@ func TestDownloadTemplate(t *testing.T) {
 		downloadURL := server.URL + "/api/template/download"
 
 		_, err := client.DownloadTemplate(t.Context(), downloadURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("ErrorResponseFromPresignedURL", func(t *testing.T) {
@@ -611,7 +611,7 @@ func TestDownloadTemplate(t *testing.T) {
 		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
 		_, err := client.DownloadTemplate(t.Context(), presignedURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "HTTP 403")
 		assert.Contains(t, err.Error(), "Access denied")
 	})
@@ -626,7 +626,7 @@ func TestDownloadTemplate(t *testing.T) {
 		presignedURL := "http://127.0.0.1:1/invalid?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
 		_, err := client.DownloadTemplate(t.Context(), presignedURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("InvalidPresignedURL", func(t *testing.T) {
@@ -639,7 +639,7 @@ func TestDownloadTemplate(t *testing.T) {
 		presignedURL := "://invalid-url?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
 		_, err := client.DownloadTemplate(t.Context(), presignedURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 

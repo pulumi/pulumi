@@ -202,7 +202,7 @@ func newSearchCmd() *cobra.Command {
 			"May be formatted as a single query, or multiple:\n"+
 			"\t-q \"type:aws:s3/bucketv2:BucketV2 modified:>=2023-09-01\"\n"+
 			"\t-q \"type:aws:s3/bucketv2:BucketV2\" -q \"modified:>=2023-09-01\"\n"+
-			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
+			"See https://www.pulumi.com/docs/discovery-governance/guides/search-resources/#query-syntax for syntax reference.",
 	)
 	outputflag.Var(cmd.PersistentFlags(), &scmd.outputFormat)
 	cmd.PersistentFlags().Var(

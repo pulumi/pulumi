@@ -42,17 +42,17 @@ func main() {
 		if err != nil {
 			return err
 		}
-		idMap := map[string]pulumi.IDInput{
+		idMap := pulumi.IDMap{
 			"source1Token": source1.ID(),
 			"source2Token": source2.ID(),
 		}
 		_, err = primitive.NewResource(ctx, "sink1", &primitive.ResourceArgs{
 			Boolean: pulumi.Bool(false),
-			Float:   idMap["source1Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) { return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output),
-			Integer: idMap["source1Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) { return strconv.Atoi(string(id)) }).(pulumi.IntOutput),
-			String:  idMap["source1Token"].ToIDOutput().ToStringOutput(),
+			Float:   idMap["source1Token"].ToStringOutput().ApplyT(func(id string) (float64, error) { return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output),
+			Integer: idMap["source1Token"].ToStringOutput().ApplyT(strconv.Atoi).(pulumi.IntOutput),
+			String:  idMap["source1Token"],
 			NumberArray: pulumi.Float64Array{
-				idMap["source1Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) { return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output),
+				idMap["source1Token"].ToStringOutput().ApplyT(func(id string) (float64, error) { return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output),
 			},
 			BooleanMap: pulumi.BoolMap{
 				"sink": pulumi.Bool(false),
@@ -62,7 +62,7 @@ func main() {
 			return err
 		}
 		sink2, err := primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
-			Boolean: idMap["source2Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) { return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput),
+			Boolean: idMap["source2Token"].ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput),
 			Float:   pulumi.Float64(1),
 			Integer: pulumi.Int(2),
 			String:  pulumi.String("abc"),
@@ -70,13 +70,13 @@ func main() {
 				pulumi.Float64(3),
 			},
 			BooleanMap: pulumi.BoolMap{
-				"sink": idMap["source2Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) { return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput),
+				"sink": idMap["source2Token"].ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput),
 			},
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("ids", pulumi.IDMap(idMap))
+		ctx.Export("ids", idMap)
 		ctx.Export("base64", sink2.ID().ApplyT(func(id pulumi.ID) (pulumi.String, error) {
 			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(id))), nil
 		}).(pulumi.StringOutput))

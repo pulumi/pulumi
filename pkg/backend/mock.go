@@ -26,7 +26,6 @@ import (
 	"github.com/blang/semver"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -89,15 +88,11 @@ type MockBackend struct {
 	UpdateF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	ImportF func(context.Context, Stack,
-		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, error)
+		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error)
 	RefreshF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	WatchF func(context.Context, Stack,
-		UpdateOperation, []string) error
-	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
-		operations.LogQuery) ([]operations.LogEntry, error)
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
@@ -326,7 +321,7 @@ func (be *MockBackend) Update(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Import(ctx context.Context, stack Stack,
 	op UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	if be.ImportF != nil {
 		return be.ImportF(ctx, stack, op, imports)
 	}
@@ -351,15 +346,6 @@ func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Watch(ctx context.Context, stack Stack,
-	op UpdateOperation, paths []string,
-) error {
-	if be.WatchF != nil {
-		return be.WatchF(ctx, stack, op, paths)
-	}
-	panic("not implemented")
-}
-
 func (be *MockBackend) GetHistory(ctx context.Context,
 	stackRef StackReference,
 	pageSize int,
@@ -367,16 +353,6 @@ func (be *MockBackend) GetHistory(ctx context.Context,
 ) ([]UpdateInfo, error) {
 	if be.GetHistoryF != nil {
 		return be.GetHistoryF(ctx, stackRef, pageSize, page)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetLogs(
-	ctx context.Context, secretsProvider secrets.Provider, stack Stack,
-	cfg StackConfiguration, query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	if be.GetLogsF != nil {
-		return be.GetLogsF(ctx, secretsProvider, stack, cfg, query)
 	}
 	panic("not implemented")
 }
@@ -562,6 +538,54 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	panic("not implemented")
 }
 
+var _ = ManagedEnvironmentsBackend((*MockManagedEnvironmentsBackend)(nil))
+
+type MockManagedEnvironmentsBackend struct {
+	MockEnvironmentsBackend
+
+	EvaluateManagedEnvironmentF func(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		definition []byte,
+	) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+
+	EncryptEnvironmentSecretsF func(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		plaintexts [][]byte,
+	) ([]string, error)
+}
+
+func (be *MockManagedEnvironmentsBackend) EvaluateManagedEnvironment(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	definition []byte,
+) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+	if be.EvaluateManagedEnvironmentF != nil {
+		return be.EvaluateManagedEnvironmentF(ctx, org, project, name, definition)
+	}
+	panic("not implemented")
+}
+
+func (be *MockManagedEnvironmentsBackend) EncryptEnvironmentSecrets(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	if be.EncryptEnvironmentSecretsF != nil {
+		return be.EncryptEnvironmentSecretsF(ctx, org, project, name, plaintexts)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //
@@ -723,7 +747,7 @@ func (r *MockStackReference) FullyQualifiedName() tokens.QName {
 type MockPolicyPack struct {
 	RefF      func() PolicyPackReference
 	BackendF  func() Backend
-	PublishF  func(context.Context, PublishOperation) error
+	PublishF  func(context.Context, PublishOperation) (PublishResult, error)
 	EnableF   func(context.Context, string, PolicyPackOperation) error
 	DisableF  func(context.Context, string, PolicyPackOperation) error
 	ValidateF func(context.Context, PolicyPackOperation) error
@@ -746,7 +770,7 @@ func (mp *MockPolicyPack) Backend() Backend {
 	panic("not implemented: MockPolicyPack.Backend")
 }
 
-func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) error {
+func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) (PublishResult, error) {
 	if mp.PublishF != nil {
 		return mp.PublishF(ctx, op)
 	}

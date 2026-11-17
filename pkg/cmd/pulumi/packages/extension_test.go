@@ -91,7 +91,7 @@ func TestAddExtensionFlag(t *testing.T) {
 
 			err := cmd.PreRunE(cmd, cmd.Flags().Args())
 			if tt.wantErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.ErrorContains(t, err, tt.wantErr)
 				return
 			}

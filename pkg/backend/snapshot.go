@@ -57,6 +57,15 @@ type SnapshotPersister interface {
 	Save(deployment apitype.TypedDeployment) error
 }
 
+// DiscardPersister is a SnapshotPersister that drops all writes. It's used for dry-run operations
+// (preview, preview-only import) where we want a SnapshotManager to build the final in-memory
+// snapshot for consumers like import codegen, but must not persist anything.
+type DiscardPersister struct{}
+
+func (DiscardPersister) Save(apitype.TypedDeployment) error { return nil }
+
+var _ SnapshotPersister = DiscardPersister{}
+
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
 // mutations on the global snapshot object serially. This implementation maintains two bits of state: the "base"
 // snapshot, which is completely immutable and represents the state of the world prior to the application

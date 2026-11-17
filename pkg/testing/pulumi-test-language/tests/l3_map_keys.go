@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,22 +33,22 @@ func init() {
 	const formatKey = "Format and glob specifiers: %percent ...ellipsis {open }close *asterisk " +
 		"?question ,comma &&and ||or !not =>arrow ==equal :colon /slash"
 
-	adversarialMap := resource.PropertyMap{
-		"my key":                        resource.NewProperty(false),
-		"my.key":                        resource.NewProperty(true),
-		"my-key":                        resource.NewProperty(false),
-		"my_key":                        resource.NewProperty(true),
-		"MY_KEY":                        resource.NewProperty(false),
-		"myKey":                         resource.NewProperty(true),
-		"__type":                        resource.NewProperty(true),
-		"__internal":                    resource.NewProperty(false),
-		"__provider":                    resource.NewProperty(true),
-		"__version":                     resource.NewProperty(false),
-		"":                              resource.NewProperty(true),
-		resource.PropertyKey(escapeKey): resource.NewProperty(false),
-		resource.PropertyKey(formatKey): resource.NewProperty(true),
+	adversarialMap := map[string]property.Value{
+		"my key":     property.New(false),
+		"my.key":     property.New(true),
+		"my-key":     property.New(false),
+		"my_key":     property.New(true),
+		"MY_KEY":     property.New(false),
+		"myKey":      property.New(true),
+		"__type":     property.New(true),
+		"__internal": property.New(false),
+		"__provider": property.New(true),
+		"__version":  property.New(false),
+		"":           property.New(true),
+		escapeKey:    property.New(false),
+		formatKey:    property.New(true),
 	}
-	adversarialProp := resource.NewProperty(adversarialMap)
+	adversarialProp := property.New(adversarialMap)
 
 	LanguageTests["l3-map-keys"] = LanguageTest{
 		Providers: []func() plugin.Provider{
@@ -62,19 +63,20 @@ func init() {
 					require.Len(l, res.Snap.Resources, 4, "expected 4 resources")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "resourceBooleanMap", adversarialProp)
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(stack.Outputs),
+						"resourceBooleanMap", adversarialProp)
 
 					child := RequireSingleNamedResource(l, res.Snap.Resources, "cmp-res")
 					assert.Equal(l, "primitive:index:Resource", child.Type.String())
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     false,
-						"float":       2.17,
-						"integer":     -12,
-						"string":      "adversarial",
-						"numberArray": []any{0, 1},
+					want := property.NewMap(map[string]property.Value{
+						"boolean":     property.New(false),
+						"float":       property.New(2.17),
+						"integer":     property.New(-12.0),
+						"string":      property.New("adversarial"),
+						"numberArray": property.New([]property.Value{property.New(0.0), property.New(1.0)}),
+						"booleanMap":  adversarialProp,
 					})
-					want["booleanMap"] = adversarialProp
-					assert.Equal(l, want, child.Inputs)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(child.Inputs))
 					assert.Equal(l, child.Inputs, child.Outputs)
 				},
 			},

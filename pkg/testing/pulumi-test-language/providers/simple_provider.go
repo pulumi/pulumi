@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type SimpleProvider struct {
@@ -96,6 +97,13 @@ func makeCheckFailure(property resource.PropertyKey, reason string) []plugin.Che
 	}}
 }
 
+func makeCheckConfigFailure(property resource.PropertyKey, reason string) []plugin.CheckConfigFailure {
+	return []plugin.CheckConfigFailure{{
+		Property: property,
+		Reason:   reason,
+	}}
+}
+
 func (p *SimpleProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
@@ -103,23 +111,23 @@ func (p *SimpleProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != p.version().String() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", fmt.Sprintf("version is not %s", p.version())),
+			Failures: makeCheckConfigFailure("version", fmt.Sprintf("version is not %s", p.version())),
 		}, nil
 	}
 
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -129,7 +137,6 @@ func (p *SimpleProvider) CheckConfig(
 func (p *SimpleProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "simple:index:Resource"
 	if req.URN.Type() != "simple:index:Resource" {
 		return plugin.CheckResponse{
@@ -138,24 +145,25 @@ func (p *SimpleProvider) Check(
 	}
 
 	// Expect just the boolean value
-	value, ok := news["value"]
+	value, ok := req.NewInputs.GetOk("value")
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
 		}, nil
 	}
+
 	if !value.IsBool() && !value.IsComputed() {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil
 	}
-	if len(news) != 1 {
+	if req.NewInputs.Len() != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.NewInputs)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
+	return plugin.CheckResponse{Properties: req.NewInputs}, nil
 }
 
 func (p *SimpleProvider) Create(
@@ -244,11 +252,11 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	inputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	inputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
-	outputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	outputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{

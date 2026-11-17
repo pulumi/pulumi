@@ -359,6 +359,17 @@ func TestDescribeEngineEvent(t *testing.T) {
 			wantDetails: "engine exploded",
 		},
 		{
+			name: "exempted policy violation",
+			event: apitype.EngineEvent{PolicyEvent: &apitype.PolicyEvent{
+				PolicyPackName: "pack",
+				PolicyName:     "public-read",
+				Message:        "bucket is public",
+				Exceptions:     []apitype.PolicyEventException{{ID: "EXC-42", Reason: "CDN"}, {ID: "EXC-50", Reason: "Old"}},
+			}},
+			wantKind:    "policy",
+			wantDetails: "pack/public-read: bucket is public (exempted: EXC-42, EXC-50)",
+		},
+		{
 			name:     "unknown",
 			event:    apitype.EngineEvent{},
 			wantKind: "unknown",

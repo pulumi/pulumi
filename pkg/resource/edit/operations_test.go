@@ -299,7 +299,7 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 	})
 
 	err := DeleteResource(snap, pA, nil, false)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	depErr, ok := err.(ResourceHasDependenciesError)
 	if !assert.True(t, ok) {
 		t.FailNow()
@@ -327,7 +327,7 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 	})
 
 	err := DeleteResource(snap, a, nil, false)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	depErr, ok := err.(ResourceHasDependenciesError)
 	if !assert.True(t, ok) {
 		t.FailNow()
@@ -353,7 +353,7 @@ func TestFailedDeletionProtected(t *testing.T) {
 	})
 
 	err := DeleteResource(snap, a, nil, false)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	_, ok := err.(ResourceProtectedError)
 	assert.True(t, ok)
 }
@@ -472,7 +472,7 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 	})
 
 	err := DeleteResource(snap, a, nil, false)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	depErr, ok := err.(ResourceHasDependenciesError)
 	if !assert.True(t, ok) {
 		t.FailNow()
@@ -902,7 +902,7 @@ func TestRenameStack_InvalidProviderReference(t *testing.T) {
 
 	err := RenameStack(newDeployment(), tokens.MustParseStackName("renamed"), "",
 		RenameStackOptions{OldName: tokens.MustParseStackName("test"), OldProject: "test"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "parsing provider reference")
 
 	var warnings strings.Builder

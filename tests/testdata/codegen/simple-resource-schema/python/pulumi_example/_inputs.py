@@ -13,7 +13,6 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
-from .resource import Resource
 
 __all__ = [
     'ConfigMapArgs',
@@ -49,7 +48,7 @@ class ConfigMapArgs:
 class ObjectArgsDict(TypedDict):
     bar: NotRequired[pulumi.Input[Optional[_builtins.str]]]
     configs: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgsDict']]]]]
-    foo: NotRequired[pulumi.Input[Optional['Resource']]]
+    foo: NotRequired[pulumi.Input[Optional['_resource.Resource']]]
     others: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
     """
     List of lists of other objects
@@ -64,7 +63,7 @@ class ObjectArgs:
     def __init__(__self__, *,
                  bar: pulumi.Input[Optional[_builtins.str]] = None,
                  configs: pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]] = None,
-                 foo: pulumi.Input[Optional['Resource']] = None,
+                 foo: pulumi.Input[Optional['_resource.Resource']] = None,
                  others: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
                  still_others: pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None):
         """
@@ -102,11 +101,11 @@ class ObjectArgs:
 
     @_builtins.property
     @pulumi.getter
-    def foo(self) -> pulumi.Input[Optional['Resource']]:
+    def foo(self) -> pulumi.Input[Optional['_resource.Resource']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: pulumi.Input[Optional['Resource']]):
+    def foo(self, value: pulumi.Input[Optional['_resource.Resource']]):
         pulumi.set(self, "foo", value)
 
     @_builtins.property
@@ -186,3 +185,4 @@ class SomeOtherObjectArgs:
         pulumi.set(self, "baz", value)
 
 
+from . import resource as _resource

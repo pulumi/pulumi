@@ -29,7 +29,9 @@ import (
 	"strings"
 	"sync"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -248,7 +250,8 @@ func New(
 	templateKind TemplateKind, e env.Env,
 ) *Source {
 	return newImpl(
-		ctx, templateNamePathOrURL, scope,
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
+		templateNamePathOrURL, scope,
 		templateKind,
 		RetrieveTemplates,
 		e,
@@ -257,9 +260,11 @@ func New(
 
 // The impl for [New].
 //
-// having a separate impl function allows mocking out getProjectTemplates.
+// having a separate impl function allows mocking out the workspace, the login manager and
+// getProjectTemplates.
 func newImpl(
-	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	templateNamePathOrURL string, scope SearchScope,
 	templateKind TemplateKind,
 	getProjectTemplates getProjectTemplateFunc,
 	e env.Env,
@@ -282,12 +287,12 @@ func newImpl(
 			// TODO[pulumi/pulumi#24250]: remove the org templates API once we're confident in
 			// registry resolution.
 			source.upstream.wg.Go(func() {
-				source.upstream.listOrgTemplates(ctx, templateNamePathOrURL, e, &source.cleanup)
+				source.upstream.listOrgTemplates(ctx, ws, lm, templateNamePathOrURL, e, &source.cleanup)
 			})
 		case templateNamePathOrURL == "":
 			// Split so the database half can be joined without waiting on the upstream half.
 			// Neither asks for [apitype.TemplateBackingPulumi]: the project fetch has those.
-			r := defaultRegistry(ctx, e)
+			r := defaultRegistry(ctx, ws, lm, e)
 			source.database.wg.Go(func() {
 				source.database.listRegistry(ctx, r, registry.ListTemplatesOptions{
 					Backing: []apitype.TemplateBacking{apitype.TemplateBackingRegistry},
@@ -301,7 +306,7 @@ func newImpl(
 		default:
 			source.upstream.wg.Go(func() {
 				source.upstream.resolveRegistryName(
-					ctx, defaultRegistry(ctx, e), templateNamePathOrURL, &source.cleanup,
+					ctx, defaultRegistry(ctx, ws, lm, e), templateNamePathOrURL, &source.cleanup,
 				)
 			})
 		}

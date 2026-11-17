@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Add `Keys()` method to `property.Map`
+time: 2026-11-14T13:53:22.525245Z

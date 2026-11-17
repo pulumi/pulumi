@@ -130,6 +130,12 @@ class SomeResource(pulumi.CustomResource):
         __props__.__dict__["the_output"] = None
         return SomeResource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'kebab-names:kebab-module:some-resource', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="the-output")
     def the_output(self) -> pulumi.Output['outputs.OutputItem']:

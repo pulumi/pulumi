@@ -15,14 +15,17 @@
 package host
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
@@ -103,9 +106,9 @@ func TestContextCloseReleasesProviders(t *testing.T) {
 	sink := diagtest.LogSink(t)
 	host := newHost(t, nil)
 
-	ctxA, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctxA, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
-	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, ctxA.Close()) })
 
@@ -159,7 +162,7 @@ func TestContextCloseGracefulShutdownBudget(t *testing.T) {
 	sink := diagtest.LogSink(t)
 	host := newHost(t, nil)
 
-	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
 
 	var mu sync.Mutex
@@ -200,6 +203,55 @@ func TestContextCloseGracefulShutdownBudget(t *testing.T) {
 	assert.LessOrEqual(t, gotBudget, 5*time.Second)
 }
 
+// TestContextCloseSlowCloseKeepsCancelBudget is a regression test for
+// https://github.com/pulumi/pulumi/issues/24917. A provider that is slow to exit must not use up
+// the Cancel budget of the other providers released with it, otherwise their Cancel fails and
+// Plugin.Close reports them as having exited prematurely.
+func TestContextCloseSlowCloseKeepsCancelBudget(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	host := newHost(t, nil)
+
+	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
+	require.NoError(t, err)
+
+	const n = 4
+	var mu sync.Mutex
+	var cancelErrs []error
+	allCancelled := make(chan struct{})
+	for i := range n {
+		prov := &plugin.MockProvider{
+			SignalCancellationF: func(cancelCtx context.Context) error {
+				mu.Lock()
+				defer mu.Unlock()
+				cancelErrs = append(cancelErrs, cancelCtx.Err())
+				if len(cancelErrs) == n {
+					close(allCancelled)
+				}
+				return nil
+			},
+			CloseF: func() error {
+				select {
+				case <-allCancelled:
+				case <-time.After(10 * time.Second):
+				}
+				return nil
+			},
+		}
+		host.resourcePlugins[prov] = &resourcePlugin{Plugin: prov, Name: fmt.Sprintf("p%d", i), ctx: ctxB}
+	}
+
+	require.NoError(t, ctxB.Close())
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, cancelErrs, n)
+	for _, err := range cancelErrs {
+		require.NoError(t, err)
+	}
+}
+
 type stubLanguageRuntime struct {
 	plugin.LanguageRuntime
 	closed bool
@@ -226,9 +278,9 @@ func TestContextCloseRefcountsSharedPlugins(t *testing.T) {
 	sink := diagtest.LogSink(t)
 	host := newHost(t, nil)
 
-	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
-	ctxC, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctxC, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
 
 	runtime := &stubLanguageRuntime{}
@@ -301,7 +353,7 @@ func TestContextCloseReleasesPluginsLoadedThroughView(t *testing.T) {
 	sink := diagtest.LogSink(t)
 	host := newHost(t, nil)
 
-	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
 	view := ctx.WithoutProviderDebugging()
 	require.NotSame(t, ctx, view)
@@ -368,7 +420,7 @@ func TestContextLoaderAddr(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
-	ctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil)
+	ctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, ctx, captureCtx, "the loader is bound to the context it was constructed with")
@@ -393,7 +445,7 @@ func TestContextMapperAddr(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, host.Close()) })
 
-	ctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil)
+	ctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, ctx, captureCtx, "the mapper is bound to the context it was constructed with")
@@ -413,14 +465,14 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 		installCalls int
 		gotRuntime   string
 	)
-	installLang := func(_ context.Context, runtime string) error {
+	installLang := func(_ context.Context, runtime string, _ func(diag.Severity, string)) error {
 		installCalls++
 		gotRuntime = runtime
 		return errInstall
 	}
 
 	host := newHost(t, installLang)
-	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
 
 	lang, err := host.LanguageRuntime(ctx, "test-lang")
@@ -431,4 +483,31 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	assert.Nil(t, lang)
 	assert.Equal(t, 1, installCalls)
 	assert.Equal(t, "test-lang", gotRuntime)
+}
+
+// The host must route the installer's progress messages to its diagnostic sink, so that users see when a
+// language runtime is downloaded.
+func TestDefaultHostLanguageRuntimeInstallLogsToSink(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never})
+
+	errInstall := errors.New("install boom")
+	installLang := func(_ context.Context, _ string, log func(diag.Severity, string)) error {
+		log(diag.Infoerr, "Downloading language plugin: test-lang")
+		return errInstall
+	}
+
+	h, err := New(t.Context(), sink, sink, nil, installLang, nil, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, h.Close()) })
+	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, h, "", "", nil, nil)
+	require.NoError(t, err)
+
+	_, err = h.LanguageRuntime(ctx, "test-lang")
+	require.ErrorIs(t, err, errInstall)
+
+	assert.Equal(t, "", stdout.String())
+	assert.Equal(t, "Downloading language plugin: test-lang\n", stderr.String())
 }

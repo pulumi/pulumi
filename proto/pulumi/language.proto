@@ -526,6 +526,9 @@ message GenerateProgramRequest {
 
     // True if [PCL binding](pcl-binding) should be strict.
     bool strict = 3;
+
+    // The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+    string mapper_target = 4;
 }
 
 // `GenerateProgramResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProgram) call.
@@ -561,6 +564,9 @@ message GenerateProjectRequest {
     // used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
     // published `@pulumi/aws` package.
     map<string, string> local_dependencies = 6;
+
+    // The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+    string mapper_target = 7;
 }
 
 // `GenerateProjectResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProject) call.

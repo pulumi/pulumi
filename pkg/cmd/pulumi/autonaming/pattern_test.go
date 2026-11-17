@@ -109,7 +109,7 @@ func TestResolveStackExpressions(t *testing.T) {
 			result, err := eval.resolveStackExpressions(tt.pattern)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expected, result)

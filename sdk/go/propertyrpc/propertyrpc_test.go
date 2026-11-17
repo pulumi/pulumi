@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pTest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
@@ -108,20 +109,21 @@ func TestResourceReferenceRoundTrip(t *testing.T) {
 		name string
 		ref  property.ResourceReference
 	}{
-		{"known-id", property.ResourceReference{
-			URN:            "urn:pulumi:stack::proj::pkg:index:Res::name",
-			Name:           "name",
-			Type:           "pkg:index:Res",
-			ID:             property.New("id"),
-			PackageVersion: "1.2.3",
-		}},
-		{"unknown-id", property.ResourceReference{
-			URN: "urn:pulumi:stack::proj::pkg:index:Res::name",
-			ID:  property.New(property.Computed),
-		}},
-		{"component", property.ResourceReference{
-			URN: "urn:pulumi:stack::proj::pkg:index:Component::name",
-		}},
+		{"known-id", property.NewResourceReference(
+			"urn:pulumi:stack::proj::pkg:index:Res::name",
+			property.New("id"),
+			"1.2.3",
+		)},
+		{"unknown-id", property.NewResourceReference(
+			"urn:pulumi:stack::proj::pkg:index:Res::name",
+			property.New(property.Computed),
+			"",
+		)},
+		{"component", property.NewResourceReference(
+			"urn:pulumi:stack::proj::pkg:index:Component::name",
+			property.Value{},
+			"",
+		)},
 	}
 
 	for _, tt := range tests {
@@ -361,6 +363,156 @@ func TestByteString(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		actual, err := propertyrpc.Unmarshal(marshalled)
+		require.NoError(t, err)
+		assert.Equal(t, source, actual)
+	})
+}
+
+// TestMarshalWithOptions_PreferOutputValues checks that when PreferOutputValues is set, bare
+// secrets and bare computed values are wrapped in OutputValue envelopes (with an empty dependency
+// list) rather than Secret / unknown sentinels. Plain values are unaffected.
+func TestMarshalWithOptions_PreferOutputValues(t *testing.T) {
+	t.Parallel()
+
+	emptyDeps := structpb.NewListValue(&structpb.ListValue{Values: []*structpb.Value{}})
+
+	t.Run("secret", func(t *testing.T) {
+		t.Parallel()
+
+		source := property.NewMap(map[string]property.Value{
+			"s": property.New("shh").WithSecret(true),
+		})
+
+		got := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
+
+		assert.Equal(t, &structpb.Struct{Fields: map[string]*structpb.Value{
+			"s": structpb.NewStructValue(&structpb.Struct{Fields: map[string]*structpb.Value{
+				sig.Key:        structpb.NewStringValue(sig.OutputValue),
+				"value":        structpb.NewStringValue("shh"),
+				"secret":       structpb.NewBoolValue(true),
+				"dependencies": emptyDeps,
+			}}),
+		}}, got)
+	})
+
+	t.Run("computed", func(t *testing.T) {
+		t.Parallel()
+
+		source := property.NewMap(map[string]property.Value{
+			"c": property.New(property.Computed),
+		})
+
+		got := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
+
+		// A computed OutputValue envelope has no "value" field.
+		assert.Equal(t, &structpb.Struct{Fields: map[string]*structpb.Value{
+			"c": structpb.NewStructValue(&structpb.Struct{Fields: map[string]*structpb.Value{
+				sig.Key:        structpb.NewStringValue(sig.OutputValue),
+				"dependencies": emptyDeps,
+			}}),
+		}}, got)
+	})
+
+	t.Run("secret-computed", func(t *testing.T) {
+		t.Parallel()
+
+		source := property.NewMap(map[string]property.Value{
+			"sc": property.New(property.Computed).WithSecret(true),
+		})
+
+		got := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
+
+		assert.Equal(t, &structpb.Struct{Fields: map[string]*structpb.Value{
+			"sc": structpb.NewStructValue(&structpb.Struct{Fields: map[string]*structpb.Value{
+				sig.Key:        structpb.NewStringValue(sig.OutputValue),
+				"secret":       structpb.NewBoolValue(true),
+				"dependencies": emptyDeps,
+			}}),
+		}}, got)
+	})
+
+	t.Run("plain-unaffected", func(t *testing.T) {
+		t.Parallel()
+
+		source := property.NewMap(map[string]property.Value{
+			"n": property.New(1.0),
+			"s": property.New("hello"),
+		})
+
+		plain := propertyrpc.Marshal(source)
+		prefer := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
+
+		// Plain values should serialize identically regardless of PreferOutputValues.
+		assert.Equal(t, plain, prefer)
+	})
+
+	t.Run("nested-secret", func(t *testing.T) {
+		t.Parallel()
+
+		// A secret buried inside a map should still be wrapped as an OutputValue envelope,
+		// while its enclosing map stays a plain struct. This mirrors the Construct wire shape
+		// that providers that negotiated OutputValue support expect.
+		source := property.NewMap(map[string]property.Value{
+			"bar": property.New(property.NewMap(map[string]property.Value{
+				"tags": property.New(property.NewMap(map[string]property.Value{
+					"a": property.New("world"),
+					"b": property.New("shh").WithSecret(true),
+				})),
+			})),
+		})
+
+		got := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
+
+		bar := got.Fields["bar"].GetStructValue()
+		require.NotNil(t, bar, "bar should be a plain struct, not wrapped")
+		assert.NotContains(t, bar.Fields, sig.Key, "bar should not carry a signature")
+
+		tags := bar.Fields["tags"].GetStructValue()
+		require.NotNil(t, tags)
+		assert.NotContains(t, tags.Fields, sig.Key, "tags should not carry a signature")
+
+		assert.Equal(t, structpb.NewStringValue("world"), tags.Fields["a"])
+
+		b := tags.Fields["b"].GetStructValue()
+		require.NotNil(t, b)
+		assert.Equal(t, sig.OutputValue, b.Fields[sig.Key].GetStringValue())
+		assert.Equal(t, structpb.NewStringValue("shh"), b.Fields["value"])
+		assert.Equal(t, structpb.NewBoolValue(true), b.Fields["secret"])
+		assert.Equal(t, emptyDeps, b.Fields["dependencies"])
+	})
+
+	t.Run("dependencies-still-wrapped-without-option", func(t *testing.T) {
+		t.Parallel()
+
+		// A value that already carries dependencies is wrapped as OutputValue regardless of
+		// the PreferOutputValues setting (this is the pre-existing behavior).
+		source := property.NewMap(map[string]property.Value{
+			"d": property.New("x").WithDependencies([]urn.URN{"urn:pulumi:stack::proj::type::name"}),
+		})
+
+		plain := propertyrpc.Marshal(source)
+		prefer := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
+		assert.Equal(t, plain, prefer)
+
+		d := plain.Fields["d"].GetStructValue()
+		require.NotNil(t, d)
+		assert.Equal(t, sig.OutputValue, d.Fields[sig.Key].GetStringValue())
+	})
+
+	t.Run("roundtrip", func(t *testing.T) {
+		t.Parallel()
+
+		// Values wrapped as OutputValue envelopes should round-trip through Unmarshal back
+		// into their original shape. Secret-only values come back as plain secrets (empty
+		// dependencies collapse the output marker) and computed values come back as computed.
+		source := property.NewMap(map[string]property.Value{
+			"s": property.New("shh").WithSecret(true),
+			"c": property.New(property.Computed),
+			"p": property.New(42.0),
+		})
+
+		marshalled := propertyrpc.MarshalWithOptions(source, propertyrpc.MarshalOptions{PreferOutputValues: true})
 		actual, err := propertyrpc.Unmarshal(marshalled)
 		require.NoError(t, err)
 		assert.Equal(t, source, actual)

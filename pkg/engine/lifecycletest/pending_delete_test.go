@@ -246,24 +246,21 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 	require.Equal(t, true, snap.Resources[0].Delete)
 }
 
-// The state holds two pending-delete copies of parent, one before and one after its protected child. The destroy
-// cannot delete the child, but deletes the first copy of parent, which leaves the child before the only remaining
-// copy of its parent.
+// A failed delete of a protected child must preserve the pending-delete copy of its parent that precedes the child in
+// the snapshot. The copy that follows the child cannot be its parent, so the engine deletes it.
 func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 	t.Parallel()
-
-	// TODO[https://github.com/pulumi/pulumi/issues/25004]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: destroy deletes a pending-delete parent copy that precedes its protected child")
 
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
 	}
 
+	var prov, parent, child *pkgresource.State
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &pkgresource.State{
+		prov = &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -274,7 +271,7 @@ func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		parent := &pkgresource.State{
+		parent = &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::parent",
 			Custom:   true,
@@ -284,7 +281,7 @@ func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, parent)
 
-		child := &pkgresource.State{
+		child = &pkgresource.State{
 			Type:     "pkgA:m:typB",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::child",
 			Custom:   true,
@@ -295,7 +292,9 @@ func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, child)
 
-		s.Resources = append(s.Resources, parent.Copy())
+		trailingParent := parent.Copy()
+		trailingParent.ID = "id-trailing-parent"
+		s.Resources = append(s.Resources, trailingParent)
 
 		return s
 	}()
@@ -312,14 +311,25 @@ func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
-	opts := lt.TestUpdateOptions{
-		T:                t,
-		HostF:            hostF,
-		SkipDisplayTests: true,
-	}
+	for name, op := range map[string]lt.TestOp{
+		"destroy":   Destroy,
+		"destroyV2": DestroyV2,
+		"update":    Update,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	_, err := lt.TestOp(Destroy).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
-	require.ErrorContains(t, err, "cannot be deleted")
-	_, isSIE := snapshot.AsSnapshotIntegrityError(err)
-	require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
+			opts := lt.TestUpdateOptions{
+				T:                t,
+				HostF:            hostF,
+				SkipDisplayTests: true,
+			}
+
+			finalSnap, err := op.RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+			require.ErrorContains(t, err, "cannot be deleted")
+			_, isSIE := snapshot.AsSnapshotIntegrityError(err)
+			require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
+			assert.Equal(t, []*pkgresource.State{prov, parent, child}, finalSnap.Resources)
+		})
+	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,24 +37,27 @@ func init() {
 
 					largeMap := makeLargeMap()
 					large := RequireSingleResource(l, res.Snap.Resources, "large:index:Map")
-					require.Equal(l, resource.NewProperty("leaf"), large.Inputs["value"])
-					require.Equal(l, resource.NewProperty(float64(largeMapDepth)), large.Inputs["depth"])
-					require.Equal(l, largeMap, large.Outputs["value"])
+					largeInputs := resource.FromResourcePropertyMap(large.Inputs)
+					require.Equal(l, property.New("leaf"), largeInputs.Get("value"))
+					require.Equal(l, property.New(float64(largeMapDepth)), largeInputs.Get("depth"))
+					require.Equal(l, largeMap, resource.FromResourcePropertyMap(large.Outputs).Get("value"))
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					require.Equal(l, largeMap, stack.Outputs["output"], "expected large map stack output")
+					require.Equal(l, largeMap,
+						resource.FromResourcePropertyMap(stack.Outputs).Get("output"),
+						"expected large map stack output")
 				},
 			},
 		},
 	}
 }
 
-func makeLargeMap() resource.PropertyValue {
-	value := resource.NewProperty(resource.PropertyMap{
-		"value": resource.NewProperty("leaf"),
+func makeLargeMap() property.Value {
+	value := property.New(map[string]property.Value{
+		"value": property.New("leaf"),
 	})
 	for range largeMapDepth {
-		value = resource.NewProperty(resource.PropertyMap{
+		value = property.New(map[string]property.Value{
 			"next": value,
 		})
 	}

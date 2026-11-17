@@ -50,7 +50,7 @@ func TestBadArchiveOfAssets(t *testing.T) {
 	inner, err := archive.FromAssets(map[string]any{"..": textAsset})
 	require.NoError(t, err)
 	_, err = archive.FromAssets(map[string]any{"/": inner})
-	require.Error(t, err, "can't path above /")
+	require.Error(t, err, "can't path above /") //nolint:forbidigo // pre-existing
 }
 
 // TODO[pulumi/pulumi#8647]

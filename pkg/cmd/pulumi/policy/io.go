@@ -78,6 +78,11 @@ func InstallPluginDependencies(
 		return err
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+	if err != nil {
+		return err
+	}
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
@@ -87,6 +92,7 @@ func InstallPluginDependencies(
 		false,
 		span,
 		nil,
+		cloudCredentialEnv,
 	)
 	if err != nil {
 		return err

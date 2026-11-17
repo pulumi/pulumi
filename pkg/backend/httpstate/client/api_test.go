@@ -399,7 +399,7 @@ func TestCall_RefreshOn401(t *testing.T) {
 
 		err := rest.Call(t.Context(), sink,
 			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		var loginErr backenderr.LoginRequiredError
 		assert.ErrorAs(t, err, &loginErr)
 		assert.Equal(t, int32(1), calls.Load(), "no retry when the refresh attempt fails")
@@ -420,7 +420,7 @@ func TestCall_RefreshOn401(t *testing.T) {
 		err := rest.Call(t.Context(), sink,
 			"https://api.example.com", "GET", "/api/test", nil, nil, nil,
 			apiAccessToken("plain"), httpCallOptions{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		var loginErr backenderr.LoginRequiredError
 		assert.ErrorAs(t, err, &loginErr)
 		assert.Equal(t, int32(1), calls.Load())
@@ -451,7 +451,7 @@ func TestCall_RefreshOn401(t *testing.T) {
 
 		err := rest.Call(t.Context(), sink,
 			"https://api.example.com", "GET", "/api/test", nil, nil, nil, tok, httpCallOptions{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		var loginErr backenderr.LoginRequiredError
 		assert.ErrorAs(t, err, &loginErr)
 		assert.Equal(t, int32(2), calls.Load(), "retry once, then surface")

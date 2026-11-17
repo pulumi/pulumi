@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,42 +56,50 @@ func init() {
 					secretValues := RequireSingleNamedResource(l, snap.Resources, "secretValues")
 					invokeValues := RequireSingleNamedResource(l, snap.Resources, "invokeValues")
 
-					expectedPlainValues := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       2.0,
-						"integer":     42,
-						"string":      "6.5",
-						"numberArray": []any{2.0, 42.0, 6.5},
-						"booleanMap":  map[string]any{"fromBool": true, "fromString": true},
+					expectedPlainValues := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(2.0),
+						"integer": property.New(42.0),
+						"string":  property.New("6.5"),
+						"numberArray": property.New([]property.Value{
+							property.New(2.0), property.New(42.0), property.New(6.5),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"fromBool": property.New(true), "fromString": property.New(true),
+						}),
 					})
-					require.Equal(l, expectedPlainValues, plainValues.Inputs)
-					require.Equal(l, expectedPlainValues, plainValues.Outputs)
+					require.Equal(l, expectedPlainValues, resource.FromResourcePropertyMap(plainValues.Inputs))
+					require.Equal(l, expectedPlainValues, resource.FromResourcePropertyMap(plainValues.Outputs))
 
-					expectedSecretValues := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean": resource.MakeSecret(resource.NewProperty(false)),
-						"float":   resource.MakeSecret(resource.NewProperty(7.0)),
-						"integer": resource.MakeSecret(resource.NewProperty(84.0)),
-						"string":  resource.MakeSecret(resource.NewProperty("7.5")),
-						"numberArray": []any{
-							2.0,
-							42.0,
-							6.5,
-						},
-						"booleanMap": map[string]any{"fromBool": true, "fromString": true},
+					expectedSecretValues := property.NewMap(map[string]property.Value{
+						"boolean": property.New(false).WithSecret(true),
+						"float":   property.New(7.0).WithSecret(true),
+						"integer": property.New(84.0).WithSecret(true),
+						"string":  property.New("7.5").WithSecret(true),
+						"numberArray": property.New([]property.Value{
+							property.New(2.0), property.New(42.0), property.New(6.5),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"fromBool": property.New(true), "fromString": property.New(true),
+						}),
 					})
-					require.Equal(l, expectedSecretValues, secretValues.Inputs)
-					require.Equal(l, expectedSecretValues, secretValues.Outputs)
+					require.Equal(l, expectedSecretValues, resource.FromResourcePropertyMap(secretValues.Inputs))
+					require.Equal(l, expectedSecretValues, resource.FromResourcePropertyMap(secretValues.Outputs))
 
-					expectedInvokeValues := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       2.0,
-						"integer":     42,
-						"string":      "true",
-						"numberArray": []any{2.0, 42.0, 6.5},
-						"booleanMap":  map[string]any{"fromBool": true, "fromString": true},
+					expectedInvokeValues := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(2.0),
+						"integer": property.New(42.0),
+						"string":  property.New("true"),
+						"numberArray": property.New([]property.Value{
+							property.New(2.0), property.New(42.0), property.New(6.5),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"fromBool": property.New(true), "fromString": property.New(true),
+						}),
 					})
-					require.Equal(l, expectedInvokeValues, invokeValues.Inputs)
-					require.Equal(l, expectedInvokeValues, invokeValues.Outputs)
+					require.Equal(l, expectedInvokeValues, resource.FromResourcePropertyMap(invokeValues.Inputs))
+					require.Equal(l, expectedInvokeValues, resource.FromResourcePropertyMap(invokeValues.Outputs))
 				},
 			},
 		},

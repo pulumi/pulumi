@@ -243,3 +243,17 @@ func TestDetectProjectPathFrom(t *testing.T) {
 	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
 	assert.Equal(t, "", negative)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25125. Searching from a relative directory,
+// including the empty one that many commands pass for the current directory, names that directory in the
+// error.
+func TestDetectProjectPathFromRelativeDir(t *testing.T) { //nolint:paralleltest
+	tmpDir := mkTempDir(t)
+	t.Chdir(tmpDir)
+
+	for _, dir := range []string{"", "."} {
+		negative, err := DetectProjectPathFrom(dir)
+		assert.ErrorContains(t, err, "no Pulumi.yaml project file found (searching upwards from "+tmpDir+")")
+		assert.Equal(t, "", negative)
+	}
+}

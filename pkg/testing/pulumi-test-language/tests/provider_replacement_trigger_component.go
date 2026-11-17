@@ -46,8 +46,9 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:conformance-component")
 					component := RequireSingleResource(l, snap.Resources, "conformance-component:index:Simple")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-					assert.Equal(l, want, component.Inputs, "expected inputs to be {value: true}")
+					want := property.NewMap(map[string]property.Value{"value": property.New(true)})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(component.Inputs),
+						"expected inputs to be {value: true}")
 					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
 					require.EqualValues(
@@ -59,8 +60,9 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 					simple := RequireSingleNamedResource(l, snap.Resources, "res-child")
 
-					want = resource.NewPropertyMapFromMap(map[string]any{"value": false})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: false}")
+					want = property.NewMap(map[string]property.Value{"value": property.New(false)})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(simple.Inputs),
+						"expected inputs to be {value: false}")
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 
 					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")
@@ -104,8 +106,9 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:conformance-component")
 					component := RequireSingleResource(l, snap.Resources, "conformance-component:index:Simple")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-					assert.Equal(l, want, component.Inputs, "expected inputs to be {value: true}")
+					want := property.NewMap(map[string]property.Value{"value": property.New(true)})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(component.Inputs),
+						"expected inputs to be {value: true}")
 					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
 					require.EqualValues(
@@ -130,8 +133,9 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 					simple := RequireSingleNamedResource(l, snap.Resources, "res-child")
 
-					want = resource.NewPropertyMapFromMap(map[string]any{"value": false})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: false}")
+					want = property.NewMap(map[string]property.Value{"value": property.New(false)})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(simple.Inputs),
+						"expected inputs to be {value: false}")
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 
 					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")

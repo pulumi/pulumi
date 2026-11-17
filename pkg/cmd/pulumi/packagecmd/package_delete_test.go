@@ -45,6 +45,7 @@ func mockCurrentBackend(t *testing.T, mockBackend backend.Backend) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -70,6 +71,21 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 		{
 			name:           "successful delete",
 			packageVersion: "private/myorg/my-package@1.0.0",
+			expectedDeleteArg: struct {
+				source    string
+				publisher string
+				name      string
+				version   semver.Version
+			}{
+				source:    "private",
+				publisher: "myorg",
+				name:      "my-package",
+				version:   semver.MustParse("1.0.0"),
+			},
+		},
+		{
+			name:           "delete without version resolves latest",
+			packageVersion: "private/myorg/my-package",
 			expectedDeleteArg: struct {
 				source    string
 				publisher string
@@ -154,7 +170,7 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 			err := cmd.ExecuteContext(t.Context())
 
 			if tt.expectedErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)

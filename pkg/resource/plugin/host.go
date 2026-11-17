@@ -64,6 +64,13 @@ type Host interface {
 	// found, or an error occurs while creating it, a non-nil error is returned. The provider is booted with the
 	// workspace state carried by ctx (stack configuration, runtime options, project name).
 	Provider(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+
+	// ProviderFromPath loads a new copy of the provider for a given package from the binary at path. If a provider
+	// for this package could not be found, or an error occurs while creating it, a non-nil error is returned. The
+	// provider is booted with the workspace state carried by ctx (stack configuration, runtime options, project
+	// name).
+	ProviderFromPath(ctx *Context, path string, e env.Env) (Provider, error)
+
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(ctx *Context, runtime string) (LanguageRuntime, error)
@@ -214,8 +221,8 @@ type NewResolverFunc = func(ctx *Context) pulumirpc.PackageResolverServer
 // are shared across workspaces and are never run with the support of another language runtime
 // — so installation is a plain download-and-unpack and needs no workspace state. A nil
 // LanguageInstaller disables on-demand install (the host then relies on the runtime already
-// being present).
-type LanguageInstaller = func(ctx context.Context, runtime string) error
+// being present). The installer reports download progress to the user through log.
+type LanguageInstaller = func(ctx context.Context, runtime string, log func(sev diag.Severity, msg string)) error
 
 // projectPluginsFromProject parses the plugins and packages declared by a project into the list
 // of project plugins that take precedence over installed plugins when resolving plugin binaries.

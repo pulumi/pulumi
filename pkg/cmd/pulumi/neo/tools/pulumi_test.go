@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -48,7 +50,7 @@ func TestPulumi_NewPulumiRejectsMissingWorkspace(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewPulumi(t.TempDir(), nil, nil)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "workspace")
 }
 
@@ -79,7 +81,7 @@ func TestPulumi_InvokeUnknownMethod(t *testing.T) {
 
 	p := &Pulumi{Cwd: t.TempDir()}
 	_, err := p.Invoke(t.Context(), "pulumi_destroy", json.RawMessage(`{}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "unknown pulumi method")
 }
 
@@ -88,7 +90,7 @@ func TestPulumi_InvokeRejectsBadJSON(t *testing.T) {
 
 	p := &Pulumi{Cwd: t.TempDir()}
 	_, err := p.Invoke(t.Context(), "pulumi_preview", json.RawMessage(`not json`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "decoding")
 }
 
@@ -108,7 +110,7 @@ func TestPulumi_RunRejectsMissingStackName(t *testing.T) {
 	p := &Pulumi{Cwd: t.TempDir()}
 	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","local_pulumi_dir":"/tmp"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "stack_name is required")
 }
 
@@ -118,7 +120,7 @@ func TestPulumi_RunRejectsMissingLocalDir(t *testing.T) {
 	p := &Pulumi{Cwd: t.TempDir()}
 	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "local_pulumi_dir is required")
 }
 
@@ -128,7 +130,7 @@ func TestPulumi_RunRejectsRelativeLocalDir(t *testing.T) {
 	p := &Pulumi{Cwd: t.TempDir()}
 	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","stack_name":"dev","local_pulumi_dir":"relative/path"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "must be an absolute path")
 }
 
@@ -149,7 +151,7 @@ func TestPulumi_RunRejectsEscapingLocalDir(t *testing.T) {
 	})
 	require.NoError(t, err)
 	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "outside")
 }
 
@@ -167,7 +169,7 @@ func TestPulumi_RunRejectsMissingPulumiYaml(t *testing.T) {
 	})
 	require.NoError(t, err)
 	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "Pulumi.yaml not found")
 }
 
@@ -208,7 +210,7 @@ func TestEnvValUnmarshal(t *testing.T) {
 			var got envVal
 			err := json.Unmarshal([]byte(tc.input), &got)
 			if tc.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 			require.NoError(t, err)
@@ -348,7 +350,7 @@ func TestPulumi_InvokeRoutesPreviewAndUp(t *testing.T) {
 			p := &Pulumi{Cwd: t.TempDir()}
 			value, err := p.Invoke(t.Context(), method,
 				json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assertFailedResult(t, value, "local_pulumi_dir is required")
 		})
 	}
@@ -398,7 +400,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
-			insecure bool, color colors.Colorization,
+			insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -423,7 +425,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	require.NoError(t, err)
 
 	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, resolved, "freshly resolved backend was never consulted")
 	assert.Equal(t, "live-token", capturedToken)
 	assertFailedResult(t, value, "parsing stack reference")
@@ -459,7 +461,7 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 				},
 				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 					url string, project *workspace.Project, setCurrent bool,
-					insecure bool, color colors.Colorization,
+					insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return be, nil
 				},
@@ -481,9 +483,128 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 			require.NoError(t, err)
 
 			value, err := p.Invoke(t.Context(), method, args)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.True(t, resolved, "backend was not resolved via CurrentBackend")
 			assertFailedResult(t, value, "parsing stack reference")
+		})
+	}
+}
+
+func TestPulumi_Run_PreviewRefresh(t *testing.T) {
+	plain := func(value string) *envVal { return &envVal{Plain: value} }
+	for _, tt := range []struct {
+		name           string
+		method         string
+		value          *envVal
+		ambient        string
+		projectOptions *workspace.ProjectOptions
+		wantRefresh    bool
+		wantError      bool
+	}{
+		{name: "default"},
+		{name: "true", value: plain("true"), wantRefresh: true},
+		{name: "false", value: plain("false")},
+		{name: "one", value: plain("1"), wantRefresh: true},
+		{name: "zero", value: plain("0")},
+		{name: "secret", value: &envVal{Secret: "true"}, wantRefresh: true},
+		{name: "ambient", ambient: "true", wantRefresh: true},
+		{name: "override ambient", ambient: "true", value: plain("false")},
+		{name: "project default", projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true},
+		{
+			name: "override project", value: plain("false"),
+			projectOptions: &workspace.ProjectOptions{Refresh: "always"},
+		},
+		{
+			name: "empty uses project", value: plain(""),
+			projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true,
+		},
+		{name: "invalid", value: plain("invalid-refresh-value"), wantError: true},
+		{name: "invalid secret", value: &envVal{Secret: "secret-refresh-value"}, wantError: true},
+		{name: "up ignores option", method: "pulumi_up", value: plain("true")},
+		{name: "up ignores invalid", method: "pulumi_up", value: plain("invalid-refresh-value")},
+		{name: "up ignores project", method: "pulumi_up", projectOptions: &workspace.ProjectOptions{Refresh: "always"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_OPTION_REFRESH", tt.ambient)
+			t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", "false")
+			dir := newProjectDir(t)
+			beforeDir, err := os.Getwd()
+			require.NoError(t, err)
+			ref := &backend.MockStackReference{
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "organization/p/dev",
+			}
+			be := &backend.MockBackend{}
+			stk := &backend.MockStack{
+				RefF:     func() backend.StackReference { return ref },
+				BackendF: func() backend.Backend { return be },
+				DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+					return b64.NewBase64SecretsManager(), nil
+				},
+			}
+			be.ParseStackReferenceF = func(string) (backend.StackReference, error) { return ref, nil }
+			be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return stk, nil }
+			var invoked string
+			var options backend.UpdateOptions
+			be.PreviewF = func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (
+				*deploy.Plan, display.ResourceChanges, error,
+			) {
+				invoked, options = "pulumi_preview", op.Opts
+				return nil, nil, nil
+			}
+			be.UpdateF = func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (
+				display.ResourceChanges, error,
+			) {
+				invoked, options = "pulumi_up", op.Opts
+				return nil, nil
+			}
+			previous := cmdBackend.DefaultLoginManager
+			cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+				CurrentF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool) (
+					backend.Backend, error,
+				) {
+					return be, nil
+				},
+				LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project,
+					bool, bool, colors.Colorization, ...cmdBackend.LoginOption,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+			}
+			t.Cleanup(func() { cmdBackend.DefaultLoginManager = previous })
+			p := &Pulumi{Cwd: dir, Workspace: &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "p", Options: tt.projectOptions}, dir, nil
+				},
+			}}
+			args := pulumiArgs{ProjectName: "p", StackName: "dev", LocalPulumiDir: dir}
+			if tt.value != nil {
+				args.EnvironmentVariables = map[string]envVal{"PULUMI_OPTION_REFRESH": *tt.value}
+			}
+			method := tt.method
+			if method == "" {
+				method = "pulumi_preview"
+			}
+			result, err := p.run(t.Context(), args, method == "pulumi_preview")
+			if result.EventsFile != "" {
+				t.Cleanup(func() { require.NoError(t, os.Remove(result.EventsFile)) })
+			}
+			assert.Equal(t, tt.ambient, os.Getenv("PULUMI_OPTION_REFRESH"))
+			afterDir, cwdErr := os.Getwd()
+			require.NoError(t, cwdErr)
+			assert.Equal(t, beforeDir, afterDir)
+			if tt.wantError {
+				require.Error(t, err) //nolint:forbidigo // pre-existing
+				assertFailedResult(t, result, "unable to determine value for --refresh")
+				assert.NotContains(t, result.Logs, tt.value.Value())
+				assert.Empty(t, invoked)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "succeeded", result.Status)
+			assert.Equal(t, method, invoked)
+			assert.Equal(t, tt.wantRefresh, options.Engine.Refresh)
+			assert.Equal(t, method == "pulumi_up", options.SkipPreview)
 		})
 	}
 }

@@ -78,7 +78,7 @@ func TestCredentialsDoNotFallbackToTemp(t *testing.T) {
 	t.Setenv("PULUMI_HOME", homePath)
 
 	err := StoreAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestExplicitCredentialsPathDoesNotFallbackToTemp(t *testing.T) {
@@ -89,7 +89,7 @@ func TestExplicitCredentialsPathDoesNotFallbackToTemp(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIALS_PATH", credentialsPath)
 
 	err := StoreAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestAccountHasCredential(t *testing.T) {
@@ -118,7 +118,7 @@ func TestAccountSaveErrorsOnEmptySource(t *testing.T) {
 	// A literal Account has no source (it wasn't loaded from a file). Save must refuse rather
 	// than silently writing somewhere a caller didn't ask for.
 	err := Account{AccessToken: "x"}.Save("https://api.example.com", false)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not loaded")
 }
 
@@ -601,7 +601,7 @@ func TestDeleteAllAccountsReturnsCredentialsDeleteError(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(credentialsPath, "file"), []byte("token-value"), 0o600))
 
 	err := DeleteAllAccounts()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
@@ -684,7 +684,7 @@ func TestAgentPulumiConfigExplicitPathDoesNotFallbackToAgentPath(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 
 	err := SetBackendConfigDefaultOrg("https://api.example.com", "agent-org")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 
 	_, err = os.Stat(filepath.Join(agentPulumiDir, "config.json"))
 	require.True(t, os.IsNotExist(err))
@@ -698,7 +698,7 @@ func TestAgentPulumiConfigExplicitHomeDoesNotFallbackToAgentPath(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
 
 	err := SetBackendConfigDefaultOrg("https://api.example.com", "agent-org")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 
 	_, err = os.Stat(filepath.Join(agentPulumiDir, "config.json"))
 	require.True(t, os.IsNotExist(err))

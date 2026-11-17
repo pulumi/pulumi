@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,13 +42,13 @@ func init() {
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
 					alpha := RequireSingleNamedResource(l, snap.Resources, "aA-Alpha_alpha.🤯⁉️")
-					assert.Equal(l, resource.PropertyMap{
-						"value": resource.NewProperty(true),
-					}, alpha.Outputs)
-					assert.Equal(l, resource.PropertyMap{
-						"bB-Beta_beta.💜⁉":   resource.NewProperty(true),
-						"dD-Delta_delta.🔥⁉": resource.NewProperty(true),
-					}, stack.Outputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"value": property.New(true),
+					}), resource.FromResourcePropertyMap(alpha.Outputs))
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"bB-Beta_beta.💜⁉":   property.New(true),
+						"dD-Delta_delta.🔥⁉": property.New(true),
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

@@ -586,6 +586,10 @@ func TestInputType(t *testing.T) {
 		NewOutputType(NewListType(BoolType))), InputType(NewListType(BoolType)))
 
 	assert.Equal(t, NewUnionType(
+		NewTupleType(NewUnionType(BoolType, NewOutputType(BoolType)), NewUnionType(IntType, NewOutputType(IntType))),
+		NewOutputType(NewTupleType(BoolType, IntType))), InputType(NewTupleType(BoolType, IntType)))
+
+	assert.Equal(t, NewUnionType(
 		NewUnionType(BoolType, IntType, NewOutputType(BoolType), NewOutputType(IntType)),
 		NewOutputType(NewUnionType(BoolType, IntType))),
 		InputType(NewUnionType(BoolType, IntType)))
@@ -1315,3 +1319,195 @@ func (*y) f() string {
 var _ i = (*y)(nil)
 
 type z struct{}
+
+// TestUnifyRecursiveObjectTypes verifies that two recursive object types of different shapes unify to one
+// recursive object type instead of recursing without end.
+func TestUnifyRecursiveObjectTypes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("list", func(t *testing.T) {
+		t.Parallel()
+
+		aProps := map[string]Type{}
+		a := NewObjectType(aProps)
+		aProps["self"] = NewListType(a)
+		bProps := map[string]Type{"b": IntType}
+		b := NewObjectType(bProps)
+		bProps["self"] = NewListType(b)
+
+		expectedProps := map[string]Type{"b": NewOptionalType(IntType)}
+		expected := NewObjectType(expectedProps)
+		expectedProps["self"] = NewListType(expected)
+
+		assertUnified(t, expected, expected, a, b)
+	})
+
+	t.Run("optional", func(t *testing.T) {
+		t.Parallel()
+
+		aProps := map[string]Type{}
+		a := NewObjectType(aProps)
+		aProps["self"] = NewOptionalType(a)
+		bProps := map[string]Type{"b": IntType}
+		b := NewObjectType(bProps)
+		bProps["self"] = NewOptionalType(b)
+
+		expected := NewObjectType(map[string]Type{
+			"b":    NewOptionalType(IntType),
+			"self": NewUnionType(NoneType, a, b),
+		})
+
+		assertUnified(t, expected, expected, a, b)
+	})
+}
+
+// TestUnifyMapWithObject verifies that a map unifies with an object by folding the object's property types into
+// the map's element type in an order that does not depend on the property names.
+func TestUnifyMapWithObject(t *testing.T) {
+	t.Parallel()
+
+	m := NewMapType(NewUnionType(BoolType, IntType, NoneType))
+	properties := map[string]Type{
+		"a": BoolType,
+		"b": NumberType,
+		"c": NewConstType(StringType, cty.StringVal("y")),
+	}
+	reordered := map[string]Type{
+		"a": properties["c"],
+		"b": properties["a"],
+		"c": properties["b"],
+	}
+	expectedUnsafe := NewMapType(NewUnionType(NumberType, NoneType, NewConstType(StringType, cty.StringVal("y"))))
+
+	for _, obj := range []Type{NewObjectType(properties), NewObjectType(reordered)} {
+		assertUnified(t, NewUnionType(m, obj), expectedUnsafe, m, obj)
+	}
+}
+
+// TestTupleConversionFromShorterTuple verifies that a tuple converts from a shorter tuple only when the elements
+// that the source lacks are optional.
+func TestTupleConversionFromShorterTuple(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, SafeConversion,
+		NewTupleType(IntType, NewOptionalType(BoolType)).ConversionFrom(NewTupleType(IntType)))
+	assert.Equal(t, NoConversion, NewTupleType(IntType, BoolType).ConversionFrom(NewTupleType(IntType)))
+	assert.Equal(t, NoConversion, NewTupleType(IntType).ConversionFrom(NewTupleType(IntType, BoolType)))
+}
+
+// A recursive type, such as a WAF statement that nests statements, must not send assignability into an
+// infinite descent. A cycle is assumed assignable only for the exact `(dest, src)` pair that is mid-flight, so a
+// mismatch at any finite leaf is still found.
+func TestAssignableFromRecursiveType(t *testing.T) {
+	t.Parallel()
+
+	// statement = { statements: list(statement) }
+	statement := NewObjectType(map[string]Type{})
+	statement.Properties["statements"] = NewListType(statement)
+
+	// named = { statements: list(named), name: string }
+	named := NewObjectType(map[string]Type{"name": StringType})
+	named.Properties["statements"] = NewListType(named)
+
+	// node = { next: optional(node) }
+	node := NewObjectType(map[string]Type{})
+	node.Properties["next"] = NewOptionalType(node)
+
+	// tree = { children: map(tree) }
+	tree := NewObjectType(map[string]Type{})
+	tree.Properties["children"] = NewMapType(tree)
+
+	// even = { odd: odd }, odd = { even: optional(even) }
+	even, odd := NewObjectType(map[string]Type{}), NewObjectType(map[string]Type{})
+	even.Properties["odd"] = odd
+	odd.Properties["even"] = NewOptionalType(even)
+
+	// outerNamed = { statements: list(statement), name: string }: named at the top level only.
+	outerNamed := NewObjectType(map[string]Type{"name": StringType, "statements": NewListType(statement)})
+
+	cases := []struct {
+		name      string
+		dest, src Type
+		want      bool
+	}{
+		{"input from self", InputType(statement), statement, true},
+		{"output from self", NewOutputType(statement), statement, true},
+		{"promise from self", NewPromiseType(statement), statement, true},
+		{"list of input from list of self", NewListType(InputType(statement)), NewListType(statement), true},
+		{"optional self reference", InputType(node), node, true},
+		{"map self reference", InputType(tree), tree, true},
+		{"mutual recursion", InputType(even), even, true},
+		{"wider recursive source", statement, named, true},
+		{"narrower recursive source", named, statement, false},
+		{"finite source mismatch at a leaf", statement, NewObjectType(map[string]Type{
+			"statements": NewListType(NewObjectType(map[string]Type{"statements": NewListType(StringType)})),
+		}), false},
+		{"re-entry with a different source", named, outerNamed, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.want, c.dest.AssignableFrom(c.src))
+		})
+	}
+}
+
+// A constant keeps its identity under assignability: a union that lists the constant accepts it, and a type that
+// accepts the constant's value type accepts the constant.
+func TestAssignableFromConst(t *testing.T) {
+	t.Parallel()
+
+	a := NewConstType(StringType, cty.StringVal("a"))
+	b := NewConstType(StringType, cty.StringVal("b"))
+	c := NewConstType(StringType, cty.StringVal("c"))
+	aOrB := NewUnionType(a, b)
+
+	assert.True(t, aOrB.AssignableFrom(NewConstType(StringType, cty.StringVal("a"))))
+	assert.False(t, aOrB.AssignableFrom(c))
+	assert.False(t, aOrB.AssignableFrom(StringType))
+	assert.True(t, NewOutputType(StringType).AssignableFrom(a))
+	assert.True(t, NewListType(StringType).AssignableFrom(NewTupleType(a, b)))
+}
+
+// Two recursive objects are equal when every finite leaf matches. A cycle counts as equal only for the exact pair of
+// objects that is mid-flight, so an object that re-enters the cycle against a different other is still compared.
+func TestObjectTypeEqualsRecursive(t *testing.T) {
+	t.Parallel()
+
+	// statement = { statements: list(statement) }, twice, as two distinct values.
+	newStatement := func() *ObjectType {
+		statement := NewObjectType(map[string]Type{})
+		statement.Properties["statements"] = NewListType(statement)
+		return statement
+	}
+	statement, sameShape := newStatement(), newStatement()
+
+	// named = { statements: list(named), name: string }
+	named := NewObjectType(map[string]Type{"name": StringType})
+	named.Properties["statements"] = NewListType(named)
+
+	// outerNamed = { statements: list(statement), name: string }: named at the top level only.
+	outerNamed := NewObjectType(map[string]Type{"name": StringType, "statements": NewListType(statement)})
+
+	// twoDeep = { statements: list({ statements: list(string) }) }: finite, and differs from statement at depth two.
+	twoDeep := NewObjectType(map[string]Type{
+		"statements": NewListType(NewObjectType(map[string]Type{"statements": NewListType(StringType)})),
+	})
+
+	cases := []struct {
+		name string
+		a, b Type
+		want bool
+	}{
+		{"same shape", statement, sameShape, true},
+		{"differs in a leaf", statement, twoDeep, false},
+		{"differs under a cycle", named, outerNamed, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.want, c.a.Equals(c.b))
+			assert.Equal(t, c.want, c.b.Equals(c.a))
+		})
+	}
+}

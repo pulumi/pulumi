@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -77,4 +78,36 @@ func TestNonInteractiveCurrentBackendPassesDefaultURL(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.noninteractive.example.com", gotURL)
+}
+
+func TestCurrentBackendWithOptionsForwardsLoginOptions(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv(env.BackendURL.Var().Name(), "https://api.example.com")
+
+	login := func(loginOpts ...LoginOption) loginOptions {
+		var got loginOptions
+		_, err := CurrentBackendWithOptions(t.Context(), &pkgWorkspace.MockContext{}, &MockLoginManager{
+			LoginF: func(
+				ctx context.Context,
+				ws pkgWorkspace.Context,
+				sink diag.Sink,
+				url string,
+				project *workspace.Project,
+				setCurrent bool,
+				insecure bool,
+				color colors.Colorization,
+				opts ...LoginOption,
+			) (pkgBackend.Backend, error) {
+				for _, opt := range opts {
+					opt(&got)
+				}
+				return nil, nil
+			},
+		}, nil, display.Options{}, loginOpts...)
+		require.NoError(t, err)
+		return got
+	}
+
+	assert.False(t, login().omitNewProjectHint)
+	assert.True(t, login(WithoutNewProjectHint()).omitNewProjectHint)
 }

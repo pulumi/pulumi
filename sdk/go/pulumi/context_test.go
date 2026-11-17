@@ -182,8 +182,8 @@ func TestRegisterResourceMarshalErrorLogged(t *testing.T) {
 		return ctx.RegisterResource("test:index:res", "test", Map{"badProp": out}, &res)
 	}, logError, WithMocks("project", "stack", mocks))
 
-	require.Error(t, err)
-	require.Error(t, loggedErr)
+	require.Error(t, err)       //nolint:forbidigo // pre-existing
+	require.Error(t, loggedErr) //nolint:forbidigo // pre-existing
 	assert.Contains(t, loggedErr.Error(), "marshaling properties")
 	assert.Contains(t, loggedErr.Error(), "badProp")
 }
@@ -562,9 +562,9 @@ type resmonClientWithFeatures struct {
 	notFeatures map[string]struct{}
 }
 
-// resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
+// resourceMonitorClientWithoutFeatures builds a ResourceMonitorClient
 // that reports the provided feature names as not supported
-// even if it is supported in the client
+// even if they are supported by the client.
 func resourceMonitorClientWithoutFeatures(
 	cl pulumirpc.ResourceMonitorClient,
 	features ...string,
@@ -1268,4 +1268,27 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		}
 		assert.Equal(t, int32(1), mon.calls.Load(), "concurrent calls should result in single registration")
 	})
+}
+
+func TestExistsResource(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var res testResource
+		require.NoError(t, ctx.RegisterResource("pkg:index:Resource", "existing", nil, &res))
+		_, _, _, _, err := await(res.ID())
+		require.NoError(t, err)
+
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", String("existing"), nil, ""))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, true, exists)
+
+		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", String("missing"), nil, ""))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, false, exists)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
 }

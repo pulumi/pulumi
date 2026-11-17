@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -37,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -588,7 +589,7 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.ProviderInputs = providerInputs
+					imp.ProviderInputs = resource.FromResourcePropertyMap(providerInputs)
 				}
 			}
 		}
@@ -604,7 +605,7 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.Inputs = inputs
+					imp.Inputs = resource.FromResourcePropertyMap(inputs)
 				}
 			}
 		} else {
@@ -613,7 +614,7 @@ func parseImportFile(
 				if err != nil {
 					pusherrf("could not deserialize inputs for %v: %w", describeResource(i, spec), err)
 				} else {
-					imp.Inputs = inputs
+					imp.Inputs = resource.FromResourcePropertyMap(inputs)
 				}
 			}
 			if spec.Outputs != nil {
@@ -621,7 +622,7 @@ func parseImportFile(
 				if err != nil {
 					pusherrf("could not deserialize outputs for %v: %w", describeResource(i, spec), err)
 				} else {
-					imp.Outputs = outputs
+					imp.Outputs = resource.FromResourcePropertyMap(outputs)
 				}
 			}
 		}
@@ -662,12 +663,12 @@ func parseImportFile(
 			}
 		}
 
-		for field, props := range map[string]resource.PropertyMap{
+		for field, props := range map[string]property.Map{
 			"inputs":         imp.Inputs,
 			"outputs":        imp.Outputs,
 			"providerInputs": imp.ProviderInputs,
 		} {
-			if props.ContainsUnknowns() {
+			if props.HasComputed() {
 				pusherrf("the %v for %v contain unknown values; fill them in before importing",
 					field, describeResource(i, spec))
 			}
@@ -677,21 +678,6 @@ func parseImportFile(
 	}
 
 	return imports, names, errs
-}
-
-func getCurrentDeploymentForStack(
-	ctx context.Context,
-	s backend.Stack,
-) (*deploy.Snapshot, error) {
-	deployment, err := backend.ExportStackDeployment(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
-	if err != nil {
-		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
-	}
-	return snap, err
 }
 
 type programGeneratorFunc func(
@@ -754,15 +740,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				return err
 			}
 
-			var contents []byte
-			for _, v := range files {
-				contents = v
-			}
-
-			if _, err := w.Write(contents); err != nil {
-				return err
-			}
-			return nil
+			return writeGeneratedProgram(w, files)
 		},
 		resources,
 		snap.Resources,
@@ -770,6 +748,24 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	)
 
 	return true, err
+}
+
+func writeGeneratedProgram(w io.Writer, files map[string][]byte) error {
+	for _, name := range slices.Sorted(maps.Keys(files)) {
+		if strings.HasPrefix(name, "sdks/") {
+			continue
+		}
+		contents := files[name]
+		if _, err := w.Write(contents); err != nil {
+			return err
+		}
+		if len(contents) > 0 && contents[len(contents)-1] != '\n' {
+			if _, err := io.WriteString(w, "\n"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func NewImportCmd() *cobra.Command {
@@ -858,7 +854,7 @@ func NewImportCmd() *cobra.Command {
 			"    }\n" +
 			"\n" +
 			"The full import file schema references can be found in the " +
-			"[import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
+			"[import documentation](https://www.pulumi.com/docs/iac/guides/migration/import/#import-file-schema).\n" +
 			"\n" +
 			"The import JSON file can be generated from a Pulumi program by running\n" +
 			"\n" +
@@ -912,7 +908,11 @@ func NewImportCmd() *cobra.Command {
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -958,7 +958,8 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
+					version, err := pkgWorkspace.InstallPlugin(
+						ctx, pluginSpec, log, schema.NewLoaderServerFromContext, pCtx.CloudCredentialEnv)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -1094,7 +1095,7 @@ func NewImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -1117,6 +1118,9 @@ func NewImportCmd() *cobra.Command {
 				configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
 				return err
 			}
 
@@ -1157,7 +1161,7 @@ func NewImportCmd() *cobra.Command {
 				}
 				// host is owned here, closed after the context
 				defer contract.IgnoreClose(innerHost)
-				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil, pCtx.CloudCredentialEnv)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1179,7 +1183,7 @@ func NewImportCmd() *cobra.Command {
 				// a parent resource or a provider
 				strict := false
 				files, diagnostics, err := languagePlugin.GenerateProgram(
-					pCtx.Request(), program.Source(), grpcServer.Addr(), strict)
+					pCtx.Request(), program.Source(), grpcServer.Addr(), pCtx.MapperAddr(), strict)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1207,6 +1211,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
+				CloudCredentialEnv:   cloudCredentialEnv,
 				Parallel:             parallel,
 				Debug:                debug,
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
@@ -1215,31 +1220,27 @@ func NewImportCmd() *cobra.Command {
 				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
-			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
+			_, finalSnap, err := backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 			}, imports)
+			// err is checked below after handling context.Canceled and writing the import file.
 
-			if generateCode && proj.Runtime.Name() != "" {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
-				if err != nil {
-					return err
-				}
-
-				validImports, err := generateImportedDefinitions(
-					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+			if generateCode && proj.Runtime.Name() != "" && finalSnap != nil {
+				validImports, err2 := generateImportedDefinitions(
+					pCtx, output, s.Ref().Name(), proj.Name, finalSnap, programGenerator, nameTable, imports,
 					protectResources)
-				if err != nil {
-					if _, ok := err.(*importer.DiagnosticsError); ok {
-						err = fmt.Errorf("internal error: %w", err)
+				if err2 != nil {
+					if _, ok := err2.(*importer.DiagnosticsError); ok {
+						err2 = fmt.Errorf("internal error: %w", err2)
 					}
-					return err
+					return err2
 				}
 
 				if validImports {

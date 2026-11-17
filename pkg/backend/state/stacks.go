@@ -27,7 +27,7 @@ import (
 // BackendURLKey returns the stable URL used to scope workspace stack selection.
 // For Pulumi Cloud backends this is the API URL (e.g. https://api.pulumi.com), matching
 // GetCurrentCloudURL / credentials.Current. Backend.URL() is wrong here: for the cloud
-// backend it returns a console URL that may include the current user.
+// backend it returns the console URL, not the API URL.
 func BackendURLKey(b backend.Backend) string {
 	type cloudURLer interface{ CloudURL() string }
 	if c, ok := b.(cloudURLer); ok {

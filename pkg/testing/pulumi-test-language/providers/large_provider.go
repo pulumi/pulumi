@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // LargeProvider is a test provider that exercises the provider protocol by returning really large strings, lists, and
@@ -116,18 +117,18 @@ func (p *LargeProvider) CheckConfig(
 	// Expect just the version
 	version, ok := req.News.GetOk("version")
 	if !ok {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "version is not a string")}, nil
 	}
 	if version.AsString() != "4.3.2" {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 4.3.2")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "version is not 4.3.2")}, nil
 	}
 
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -214,8 +215,8 @@ func (p *LargeProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"value": built,
+			Properties: property.NewMap(map[string]property.Value{
+				"value": resource.FromResourcePropertyValue(built),
 			}),
 			Status: resource.StatusOK,
 		}, nil

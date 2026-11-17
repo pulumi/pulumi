@@ -51,7 +51,7 @@ func mockSchemaHost(
 			}, nil
 		},
 	}
-	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(t, err)
 	return pctx
 }
@@ -219,7 +219,7 @@ func TestLoaderServerCachedEntryBypassesRawPath(t *testing.T) {
 			return nil, workspace.NewMissingError(spec, false)
 		},
 	}
-	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(t, err)
 	loader := NewCachedLoaderWithEntries(
 		NewPluginLoader(pctx),

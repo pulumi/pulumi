@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,25 +42,25 @@ func init() {
 
 					require.NotNil(l, stack, "expected a stack resource")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					AssertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewProperty(7.0)))
-					AssertPropertyMapMember(l, outputs, "array", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(false), // t
-						resource.NewProperty(false), // h
-						resource.NewProperty(true),  // e
-						resource.NewProperty(false), // (space)
-						resource.NewProperty(false), // w
-						resource.NewProperty(true),  // o
-						resource.NewProperty(false), // r
-						resource.NewProperty(false), // d
+					AssertPropertyMapMember(l, outputs, "secret", property.New(7.0).WithSecret(true))
+					AssertPropertyMapMember(l, outputs, "array", property.New([]property.Value{
+						property.New(false), // t
+						property.New(false), // h
+						property.New(true),  // e
+						property.New(false), // (space)
+						property.New(false), // w
+						property.New(true),  // o
+						property.New(false), // r
+						property.New(false), // d
 					}))
-					AssertPropertyMapMember(l, outputs, "map", resource.NewProperty(resource.PropertyMap{
-						"value": resource.NewProperty("hello world"),
+					AssertPropertyMapMember(l, outputs, "map", property.New(map[string]property.Value{
+						"value": property.New("hello world"),
 					}))
-					AssertPropertyMapMember(l, outputs, "secretMap", resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-						"value": resource.NewProperty("secret world"),
-					})))
+					AssertPropertyMapMember(l, outputs, "secretMap", property.New(map[string]property.Value{
+						"value": property.New("secret world"),
+					}).WithSecret(true))
 				},
 			},
 		},

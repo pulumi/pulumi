@@ -37,6 +37,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -399,8 +400,9 @@ type defaultHTTPClient struct {
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
+	ctx := credentialhelper.WithOperation(req.Context())
 	requestSpan, ctx := opentracing.StartSpanFromContext(
-		req.Context(),
+		ctx,
 		"HTTP request",
 		opentracing.Tag{Key: "method", Value: req.Method},
 		opentracing.Tag{Key: "url", Value: req.URL},

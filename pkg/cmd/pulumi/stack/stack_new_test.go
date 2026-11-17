@@ -16,16 +16,26 @@ package stack
 
 import (
 	"context"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // When a backend doesn't support the --teams flag,
@@ -70,6 +80,103 @@ func TestStackNew_teamsUnsupportedByBackend(t *testing.T) {
 
 	err := cmd.Run(t.Context(), nil /* args */)
 	assert.ErrorContains(t, err, "stack dev uses the mock backend: mock does not support --teams")
+}
+
+//nolint:paralleltest // uses t.Chdir
+func TestStackNewESCConfig(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: proj\nruntime: yaml\n"), 0o600))
+	t.Chdir(dir)
+	var createdManaged bool
+	cmd := &stackNewCmd{
+		stackName: "dev",
+		noSelect:  true,
+		escConfig: true,
+		stdout:    io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return newManagedTestBackend("proj/renamed", &createdManaged), nil
+		},
+	}
+
+	require.NoError(t, cmd.Run(t.Context(), nil /* args */))
+
+	assert.True(t, createdManaged)
+	stackFile := filepath.Join(dir, "Pulumi.dev.yaml")
+	contents, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+	assert.Equal(t, "environment:\n  values:\n    pulumiConfig: {}\n", string(contents))
+	ps, err := workspace.LoadProjectStack(diagtest.LogSink(t), &workspace.Project{Name: "proj"}, stackFile)
+	require.NoError(t, err)
+	_, err = ps.Environment.DefinitionNode()
+	require.NoError(t, err)
+}
+
+func TestStackNewESCConfigExclusiveFlags(t *testing.T) {
+	t.Parallel()
+
+	for _, other := range []string{"--remote-config", "--copy-config-from=prod"} {
+		cmd := newStackNewCmd()
+		cmd.SetArgs([]string{"--esc-config", other, "dev"})
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		assert.ErrorContains(t, cmd.Execute(), "none of the others can be")
+	}
+}
+
+//nolint:paralleltest // mutates global state
+func TestStackNew_RejectsCopyConfigFromManagedStack(t *testing.T) {
+	parseRef := func(name string) (backend.StackReference, error) {
+		return &backend.MockStackReference{StringV: name, NameV: tokens.MustParseStackName(name)}, nil
+	}
+	managedStack := &backend.MockStack{
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+		},
+	}
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization, ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				ParseStackReferenceF: parseRef,
+				GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+					return managedStack, nil
+				},
+			}, nil
+		},
+	})
+	t.Chdir(t.TempDir())
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+
+	newBackend := &backend.MockBackend{
+		ParseStackReferenceF: parseRef,
+		ValidateStackNameF:   func(string) error { return nil },
+		GetStackF:            func(context.Context, backend.StackReference) (backend.Stack, error) { return nil, nil },
+		CreateStackF: func(
+			context.Context, backend.StackReference, string, *apitype.UntypedDeployment, *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			t.Error("no stack may be created")
+			return nil, errors.New("unexpected CreateStack")
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+	}
+	cmd := &stackNewCmd{
+		stackName:   "dev",
+		stackToCopy: "managed",
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return newBackend, nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), nil /* args */)
+	require.EqualError(t, err,
+		"`pulumi stack init --copy-config-from` is not supported on stacks with an ESC-managed environment yet")
 }
 
 // This test demonstrates that newCreateStackOptions will filter

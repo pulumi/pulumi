@@ -31,7 +31,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -118,7 +117,7 @@ func TotalStateEdit(
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 	overridePromptMessage *string,
 ) error {
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -134,7 +133,7 @@ func TotalStateEdit(
 		} else {
 			prompt += "This command will edit your stack's state directly. Confirm?"
 		}
-		if err = survey.AskOne(&survey.Confirm{
+		if err = ui.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
 			// Shared helper; uses process stdout when not given a writer.
@@ -281,7 +280,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	}
 
 	var option string
-	if err := survey.AskOne(&survey.Select{
+	if err := ui.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
@@ -336,7 +335,7 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
-		*snap, err = s.Snapshot(ctx, secrets.DefaultProvider)
+		*snap, err = s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 		if err != nil {
 			return "", err
 		}
@@ -349,7 +348,7 @@ func getURNFromState(
 		urnList[i] = string(r.URN)
 	}
 	var urn string
-	err := survey.AskOne(&survey.Select{
+	err := ui.AskOne(&survey.Select{
 		Message: prompt,
 		Options: urnList,
 	}, &urn, survey.WithValidator(survey.Required), ui.SurveyIcons(cmdutil.GetGlobalColorization()))
@@ -365,7 +364,7 @@ func getURNFromState(
 // Ask the user for a resource name.
 func getNewResourceName() (string, error) {
 	var resourceName string
-	err := survey.AskOne(&survey.Input{
+	err := ui.AskOne(&survey.Input{
 		Message: "Choose a new resource name:",
 	}, &resourceName, ui.SurveyIcons(cmdutil.GetGlobalColorization()))
 	if err != nil {

@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,9 +37,9 @@ func init() {
 			Assert: func(l *L, res AssertArgs) {
 				require.NoError(l, res.Err)
 				stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-				assert.Equal(l, resource.PropertyMap{
-					"hash": resource.NewProperty(expected),
-				}, stack.Outputs)
+				assert.Equal(l, property.NewMap(map[string]property.Value{
+					"hash": property.New(expected),
+				}), resource.FromResourcePropertyMap(stack.Outputs))
 			},
 		}
 	}

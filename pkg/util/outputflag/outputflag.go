@@ -29,8 +29,8 @@ func Var[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 	flags.Var(output, "output", usage(*output))
 }
 
-// VarP registers the OutputFlag on flags as --output with the conventional
-// -o shorthand.
+// VarP registers the OutputFlag on flags as --output. It has no -o shorthand,
+// which was removed from --output across the CLI.
 func VarP[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 	flags.VarP(output, "output", "", usage(*output))
 }

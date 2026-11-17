@@ -52,7 +52,7 @@ func (v Value) Equals(other Value, opts ...EqualOption) bool {
 }
 
 func (v Value) equals(other Value, opts eqOpts) bool {
-	if v.isSecret != other.isSecret {
+	if (v.secret != nil) != (other.secret != nil) {
 		return false
 	}
 

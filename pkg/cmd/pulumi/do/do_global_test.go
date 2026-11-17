@@ -18,6 +18,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,4 +36,21 @@ func TestEnsureGlobalProjectUsesPulumiHome(t *testing.T) {
 	assert.Equal(t, globalProjectName, string(proj.Name))
 	assert.Equal(t, filepath.Join(home, globalProjectName), root)
 	require.FileExists(t, filepath.Join(root, "Pulumi.yaml"))
+}
+
+func TestEnsureGlobalStackFromUnrelatedCwd(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(t.TempDir()))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+
+	proj, root, err := ensureGlobalProject()
+	require.NoError(t, err)
+
+	stack, err := ensureGlobalStack(t.Context(), diagtest.LogSink(t), pkgWorkspace.Instance,
+		cmdBackend.DefaultLoginManager, proj, root, display.Options{})
+	require.NoError(t, err)
+
+	assert.Equal(t, globalStackName, stack.Ref().Name().String())
+	require.FileExists(t, filepath.Join(root, "Pulumi.default.yaml"))
 }

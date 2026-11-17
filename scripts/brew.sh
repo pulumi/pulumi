@@ -11,7 +11,7 @@ BREW_VERSION=$(./scripts/get-version HEAD)
               -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" \
               ${PROJECT})
 
-# Fetch extra language binaries like YAML and Java from GitHub releases.
+# Fetch extra language binaries like YAML and .NET from GitHub releases.
 ./scripts/prep-for-goreleaser.sh "local"
 
 # Install these extra binaries into $GOPATH/bin

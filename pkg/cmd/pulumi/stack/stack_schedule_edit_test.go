@@ -175,7 +175,7 @@ func TestStackScheduleEdit_Raw_InvalidOperation(t *testing.T) {
 	err := runStackScheduleEdit(
 		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "raw-id", flags, renderScheduleGetText,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "invalid --operation")
 }
 
@@ -307,7 +307,7 @@ func TestStackScheduleEdit_RejectsWrongKindFlags(t *testing.T) {
 			err := runStackScheduleEdit(
 				t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "id", tc.flags, renderScheduleGetText,
 			)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tc.want)
 		})
 	}
@@ -322,7 +322,7 @@ func TestStackScheduleEdit_GetError(t *testing.T) {
 		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "no-such",
 		flags, renderScheduleGetText,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading stack schedule")
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -373,7 +373,7 @@ func TestStackScheduleEdit_TTL_RejectsInvalidOnce(t *testing.T) {
 	err := runStackScheduleEdit(
 		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "ttl-id", flags, renderScheduleGetText,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--once invalid timestamp")
 	assert.Nil(t, c.gotTTLReq)
 }
@@ -386,7 +386,7 @@ func TestStackScheduleEdit_NoFlags(t *testing.T) {
 		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "raw-id",
 		stackScheduleEditFlags{}, renderScheduleGetText,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "at least one of")
 	// No request should have been issued.
 	assert.Nil(t, c.gotRawReq)

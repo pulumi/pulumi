@@ -37,9 +37,10 @@ import (
 )
 
 type testRequiredPolicy struct {
-	name    string
-	version string
-	config  map[string]*json.RawMessage
+	name       string
+	version    string
+	config     map[string]*json.RawMessage
+	exceptions map[string]json.RawMessage
 }
 
 func (p *testRequiredPolicy) Name() string {
@@ -67,6 +68,10 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 
 func (p *testRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
+}
+
+func (p *testRequiredPolicy) Exceptions() map[string]json.RawMessage {
+	return p.exceptions
 }
 
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
@@ -174,7 +179,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -237,7 +242,7 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestSimpleAnalyzeStackFailure(t *testing.T) {
@@ -325,7 +330,7 @@ func TestSimpleAnalyzeStackFailure(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestResourceRemediation tests a very simple sequence of remediations. We register two, to ensure that
@@ -613,7 +618,7 @@ func TestSimpleAnalyzeResourceFailureRemediateDowngradedToMandatory(t *testing.T
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -895,7 +900,7 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -912,7 +917,7 @@ func TestSimpleAnalyzeResourceMultipleViolations(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Test data contains golden files for expected sorted output.
 }
@@ -964,7 +969,7 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -1027,7 +1032,7 @@ func TestSimpleAnalyzeResourceFailureSeverityOverride(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestAnalyzeRunsInParallel verifies that per-resource Analyze calls across multiple
@@ -1211,6 +1216,8 @@ func (p *failingRequiredPolicy) EnsureInstalled(
 func (p *failingRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
 }
+
+func (p *failingRequiredPolicy) Exceptions() map[string]json.RawMessage { return nil }
 
 // TestPolicyPackInstallFailureReturnsError is a regression test verifying that errors from the install
 // step of policy pack installation are returned to the caller rather than silently dropped.

@@ -22,6 +22,7 @@ from typing import (
     Any,
     Generic,
     Optional,
+    Protocol,
     TypeVar,
     Union,
     cast,
@@ -50,10 +51,16 @@ T2 = TypeVar("T2")
 T3 = TypeVar("T3")
 T_co = TypeVar("T_co", covariant=True)
 U = TypeVar("U")
+K = TypeVar("K")
+K_contra = TypeVar("K_contra", contravariant=True)
 
 Input = Union[T, Awaitable[T], "Output[T]"]
 Inputs = Mapping[str, Input[Any]]
 InputType = Union[T, Mapping[str, Any]]
+
+
+class _SupportsGetItem(Protocol[K_contra, T_co]):
+    def __getitem__(self, key: K_contra, /) -> T_co: ...
 
 
 @dataclasses.dataclass
@@ -151,6 +158,11 @@ class Output(Generic[T_co]):
         self._data = asyncio.ensure_future(compute_data())
         self._track()
 
+    def _untrack(self) -> None:
+        """Stop tracking _data, because a derived output has taken over responsibility for it."""
+        with SETTINGS.lock:
+            SETTINGS.outputs.discard(self._data)
+
     def _track(self) -> None:
         """Register _data with SETTINGS.outputs for lifecycle tracking."""
         with SETTINGS.lock:
@@ -223,8 +235,12 @@ class Output(Generic[T_co]):
 
         value = state["value"]
 
+        # Overwrite methods with setattr rather than `self.x = ...`: some type checkers (e.g. ty,
+        # see https://github.com/astral-sh/ty/issues/350) treat the assignment as declaring an
+        # instance attribute and union it with the method, breaking every call to it.
+
         # Replace '.get' with a function that returns the value without raising an error.
-        self.get = lambda: value
+        setattr(self, "get", lambda: value)
 
         def error(name: str):
             def f(*args: Any, **kwargs: Any):
@@ -236,11 +252,8 @@ class Output(Generic[T_co]):
             return f
 
         # Replace '.apply' and other methods on Output with implementations that raise an error.
-        self.apply = error("apply")
-        self.resources = error("resources")
-        self.future = error("future")
-        self.is_known = error("is_known")
-        self.is_secret = error("is_secret")
+        for method in ("apply", "resources", "future", "is_known", "is_secret"):
+            setattr(self, method, error(method))
 
     def get(self) -> T_co:
         """
@@ -342,6 +355,9 @@ class Output(Generic[T_co]):
                 is_secret=is_secret,
             )
 
+        # The derived output awaits this one and carries any fault it raises, so this output no
+        # longer needs tracking: a fault is reported (or recovered) at the end of the chain.
+        self._untrack()
         return Output._from_data(run())
 
     def recover(self, func: Callable[[Exception], Input[T_co]]) -> "Output[T_co]":
@@ -349,9 +365,9 @@ class Output(Generic[T_co]):
         Returns an Output that yields this Output's value, or — if this Output
         faulted with an exception — the value produced by calling ``func``.
 
-        When recovery happens, the original faulted Output is removed from the
-        runtime's tracking set so it no longer causes the program to error at
-        exit. ``func`` is only invoked if this Output failed.
+        This Output is removed from the runtime's tracking set, so a fault in it
+        no longer causes the program to error at exit. ``func`` is only invoked
+        if this Output failed.
 
         :param Callable[[Exception],Input[T_co]] func: A thunk producing a replacement value
                (which may itself be an Input/Output) when this Output has faulted.
@@ -365,11 +381,10 @@ class Output(Generic[T_co]):
             try:
                 return await original
             except Exception as exc:  # noqa: BLE001 catch blind exception
-                with SETTINGS.lock:
-                    SETTINGS.outputs.discard(original)
                 recovered = Output.from_input(func(exc))
                 return await recovered._data
 
+        self._untrack()
         return Output._from_data(run())
 
     def __getattr__(self, item: str) -> "Output[Any]":  # type: ignore
@@ -405,13 +420,21 @@ class Output(Generic[T_co]):
 
         return self.apply(lift, True)
 
+    @overload
+    def __getitem__(
+        self: "Output[_SupportsGetItem[slice, U]]", key: slice
+    ) -> "Output[U]": ...
+
+    @overload
+    def __getitem__(self: "Output[_SupportsGetItem[K, U]]", key: K) -> "Output[U]": ...
+
     def __getitem__(self, key: Any) -> "Output[Any]":
         """
         Syntactic sugar for looking up attributes dynamically off of outputs.
 
         :param Any key: Key for the attribute dictionary.
-        :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
-        :rtype: Output[Any]
+        :return: An Output containing the indexed value.
+        :rtype: Output[U]
         """
 
         def lift(v: Any) -> Any:

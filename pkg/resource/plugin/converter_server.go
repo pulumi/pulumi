@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -77,18 +77,18 @@ func (c *converterServer) ConvertState(ctx context.Context,
 			}
 		}
 		if res.Inputs != nil {
-			inputs, err := MarshalProperties(resource.ToResourcePropertyMap(*res.Inputs), MarshalOptions{KeepSecrets: true})
+			filtered, err := FilterProperties(*res.Inputs, FilterOptions{KeepSecrets: true})
 			if err != nil {
-				return nil, fmt.Errorf("marshaling inputs for resource %q: %w", res.Name, err)
+				return nil, fmt.Errorf("filtering inputs for resource %q: %w", res.Name, err)
 			}
-			resources[i].Inputs = inputs
+			resources[i].Inputs = propertyrpc.Marshal(filtered)
 		}
 		if res.Outputs != nil {
-			outputs, err := MarshalProperties(resource.ToResourcePropertyMap(*res.Outputs), MarshalOptions{KeepSecrets: true})
+			filtered, err := FilterProperties(*res.Outputs, FilterOptions{KeepSecrets: true})
 			if err != nil {
-				return nil, fmt.Errorf("marshaling outputs for resource %q: %w", res.Name, err)
+				return nil, fmt.Errorf("filtering outputs for resource %q: %w", res.Name, err)
 			}
-			resources[i].Outputs = outputs
+			resources[i].Outputs = propertyrpc.Marshal(filtered)
 		}
 	}
 

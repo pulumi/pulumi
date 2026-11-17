@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,29 +44,33 @@ func init() {
 					second := RequireSingleNamedResource(l, snap.Resources, "secondResource")
 					third := RequireSingleNamedResource(l, snap.Resources, "thirdResource")
 
-					wantInputs := resource.NewPropertyMapFromMap(map[string]any{
-						"theInput": resource.NewProperty(true),
+					wantInputs := property.NewMap(map[string]property.Value{
+						"theInput": property.New(true),
 					})
-					assert.Equal(l, wantInputs, first.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, second.Inputs, "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.FromResourcePropertyMap(first.Inputs),
+						"expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.FromResourcePropertyMap(second.Inputs),
+						"expected inputs to be %v", wantInputs)
 
-					wantOutputs := resource.NewPropertyMapFromMap(map[string]any{
-						"theOutput": resource.NewProperty(true),
+					wantOutputs := property.NewMap(map[string]property.Value{
+						"theOutput": property.New(true),
 					})
-					assert.Equal(l, wantOutputs, first.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, second.Outputs, "expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.FromResourcePropertyMap(first.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.FromResourcePropertyMap(second.Outputs),
+						"expected outputs to be %v", wantOutputs)
 
-					wantThirdInputs := resource.NewPropertyMapFromMap(map[string]any{
-						"theInput":     resource.NewProperty(true),
-						"resourceName": "my-cluster",
+					wantThirdInputs := property.NewMap(map[string]property.Value{
+						"theInput":     property.New(true),
+						"resourceName": property.New("my-cluster"),
 					})
-					assert.Equal(l, wantThirdInputs, third.Inputs)
+					assert.Equal(l, wantThirdInputs, resource.FromResourcePropertyMap(third.Inputs))
 
-					wantThirdOutputs := resource.NewPropertyMapFromMap(map[string]any{
-						"theOutput":    resource.NewProperty(true),
-						"resourceName": "my-cluster",
+					wantThirdOutputs := property.NewMap(map[string]property.Value{
+						"theOutput":    property.New(true),
+						"resourceName": property.New("my-cluster"),
 					})
-					assert.Equal(l, wantThirdOutputs, third.Outputs)
+					assert.Equal(l, wantThirdOutputs, resource.FromResourcePropertyMap(third.Outputs))
 				},
 			},
 		},

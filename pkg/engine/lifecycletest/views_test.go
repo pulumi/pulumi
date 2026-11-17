@@ -57,11 +57,11 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
 								}),
 							},
 						},
@@ -115,11 +115,11 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
 								}),
 							},
 						},
@@ -173,8 +173,8 @@ func TestViewsBasic(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -250,8 +250,8 @@ func TestViewsBasic(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run a third update with a change, should update.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -301,11 +301,11 @@ func TestViewsUpdateError(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
 								}),
 							},
 						},
@@ -376,8 +376,8 @@ func TestViewsUpdateError(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	expectError := false
@@ -437,8 +437,8 @@ func TestViewsUpdateError(t *testing.T) {
 
 	// Run a second update, we should get an error for the view.
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "something went wrong")
@@ -463,11 +463,11 @@ func TestViewsUpdateDelete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
 								}),
 							},
 						},
@@ -531,8 +531,8 @@ func TestViewsUpdateDelete(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -589,8 +589,8 @@ func TestViewsUpdateDelete(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run an update that will delete the view.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -1501,11 +1501,11 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
 								}),
 							},
 						},
@@ -1569,11 +1569,11 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
 								}),
 							},
 						},
@@ -1583,11 +1583,11 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
 								}),
 							},
 						},
@@ -1603,8 +1603,8 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -1661,8 +1661,8 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -1703,11 +1703,11 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
 								}),
 							},
 						},
@@ -1761,11 +1761,11 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
 								}),
 							},
 						},
@@ -1781,11 +1781,11 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.NewInputs.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.NewInputs)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.NewInputs.Get("foo"),
 								}),
 							},
 						},
@@ -1811,8 +1811,8 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	creating := true
@@ -1869,8 +1869,8 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	}, snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		validateSummaryEvent(display.ResourceChanges{
@@ -2416,11 +2416,11 @@ func TestViewsDestroyPreview(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"input": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Inputs: property.NewMap(map[string]property.Value{
+									"input": req.Properties.Get("foo"),
 								}),
-								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
-									"result": resource.ToResourcePropertyMap(req.Properties)["foo"],
+								Outputs: property.NewMap(map[string]property.Value{
+									"result": req.Properties.Get("foo"),
 								}),
 							},
 						},
@@ -2439,9 +2439,9 @@ func TestViewsDestroyPreview(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		require.NoError(t, err)
 

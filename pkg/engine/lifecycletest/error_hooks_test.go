@@ -74,7 +74,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -89,7 +89,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -103,7 +103,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: []*deploytest.ResourceHook{hook1, hook2},
 			},
@@ -165,7 +165,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -180,7 +180,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -193,9 +193,9 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -263,7 +263,7 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 		hook, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
 				_ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
-				_, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				_, _, _ *property.Map, failedOperation string, errs []string,
 			) (bool, error) {
 				hookCalled = true
 				require.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), urn)
@@ -284,10 +284,10 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 
 		protect := !isUpdate
 		ignore := []string{"old"}
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
 			ignore = []string{"new"}
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -321,7 +321,7 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 	// Update fails; error hook should run and receive both old and new options.
 	isUpdate = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, hookCalled)
 }
 
@@ -359,7 +359,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -374,7 +374,7 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -461,7 +461,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 		var hooks []*deploytest.ResourceHook
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -470,7 +470,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_RetryIfAnyHookRet
 		hooks = []*deploytest.ResourceHook{h}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: hooks,
 			},
@@ -528,7 +528,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 		var hooks []*deploytest.ResourceHook
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: hooks,
 			},
@@ -548,7 +548,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 0, hookCalls)
 }
 
@@ -588,7 +588,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 		var hooks []*deploytest.ResourceHook
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -596,9 +596,9 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_RetryIfAnyHookRet
 		require.NoError(t, err)
 		hooks = []*deploytest.ResourceHook{h}
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -667,9 +667,9 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 		// No error hooks.
 		var hooks []*deploytest.ResourceHook
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -700,7 +700,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 	// Update
 	isUpdate = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 0, hookCalls)
 }
 
@@ -737,7 +737,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_RetryIfAnyHookRet
 		var hooks []*deploytest.ResourceHook
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -836,7 +836,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHook
 	// Delete
 	programCreate = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 0, hookCalls)
 }
 
@@ -869,7 +869,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return false, nil
@@ -877,7 +877,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: []*deploytest.ResourceHook{h},
 			},
@@ -897,7 +897,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -937,16 +937,16 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return false, nil
 			})
 		require.NoError(t, err)
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
@@ -976,7 +976,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 	// Update should fail (no retry because hook returns false)
 	isUpdate = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -1007,7 +1007,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return false, nil
@@ -1040,7 +1040,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 	// Delete should fail (no retry because hook returns false)
 	programCreate = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -1071,16 +1071,16 @@ func TestErrorHooks_NotCalledOnSuccess_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
 			})
 		require.NoError(t, err)
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1141,7 +1141,7 @@ func TestErrorHooks_NotCalledOnSuccess_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				hookCalls++
 				return true, nil
@@ -1221,7 +1221,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, errs []string,
 			) (bool, error) {
 				// Always retry until max retries is reached.
 				hookCalls++
@@ -1231,7 +1231,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: []*deploytest.ResourceHook{h},
 			},
@@ -1251,7 +1251,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 	}
 
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
@@ -1283,7 +1283,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateWarn, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // The hook only gets tried up to 100 times.
@@ -1318,7 +1318,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				require.NotEmpty(t, errs)
@@ -1326,9 +1326,9 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1351,7 +1351,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
@@ -1395,7 +1395,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		validateWarn,
 		"1",
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // The hook only gets tried up to 100 times.
@@ -1427,7 +1427,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				require.NotEmpty(t, errs)
@@ -1459,7 +1459,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		return nil
 	}
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
@@ -1502,7 +1502,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		validateWarn,
 		"1",
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // Retrying and then failing still fails.
@@ -1537,7 +1537,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				switch hookCalls {
@@ -1551,7 +1551,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: []*deploytest.ResourceHook{h},
 			},
@@ -1571,7 +1571,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 2, hookCalls)
 }
 
@@ -1611,7 +1611,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				switch hookCalls {
@@ -1624,9 +1624,9 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Update(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputs := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputs = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1692,7 +1692,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Delete(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, errs []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, errs []string,
 			) (bool, error) {
 				hookCalls++
 				switch hookCalls {
@@ -1794,7 +1794,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 
 		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resA" {
 					resAHooks++
@@ -1805,7 +1805,7 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resB" {
 					resBHooks++
@@ -1814,8 +1814,8 @@ func TestErrorHooks_IndependentPerResource_Create(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		inputsA := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
-		inputsB := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputsA := property.NewMap(map[string]property.Value{"v": property.New("a")})
+		inputsB := property.NewMap(map[string]property.Value{"v": property.New("a")})
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:               inputsA,
@@ -1896,7 +1896,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 
 		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resA" {
 					resAHooks++
@@ -1907,7 +1907,7 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resB" {
 					resBHooks++
@@ -1916,11 +1916,11 @@ func TestErrorHooks_IndependentPerResource_Update(t *testing.T) {
 			})
 		require.NoError(t, err)
 
-		inputsA := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
-		inputsB := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		inputsA := property.NewMap(map[string]property.Value{"v": property.New("a")})
+		inputsB := property.NewMap(map[string]property.Value{"v": property.New("a")})
 		if isUpdate {
-			inputsA = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
-			inputsB = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+			inputsA = property.NewMap(map[string]property.Value{"v": property.New("b")})
+			inputsB = property.NewMap(map[string]property.Value{"v": property.New("b")})
 		}
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -2001,7 +2001,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 
 		hA, err := deploytest.NewErrorHook(monitor, callbacks, "hook-A",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resA" {
 					resAHooks++
@@ -2012,7 +2012,7 @@ func TestErrorHooks_IndependentPerResource_Delete(t *testing.T) {
 
 		hB, err := deploytest.NewErrorHook(monitor, callbacks, "hook-B",
 			func(_ context.Context, urn resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, _ string, _ []string,
+				_ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map, _ string, _ []string,
 			) (bool, error) {
 				if urn.Name() == "resB" {
 					resBHooks++
@@ -2080,7 +2080,7 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ *property.Map,
 				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
@@ -2094,7 +2094,7 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs: property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				OnError: []*deploytest.ResourceHook{h},
 			},
@@ -2114,7 +2114,7 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -2152,7 +2152,7 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 	hookCalls := 0
 	var hookOp string
 	var hookOldOpts *pulumirpc.ResourceOptions
-	var hookOldInputs, hookOldOutputs resource.PropertyMap
+	var hookOldInputs, hookOldOutputs property.Map
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		callbacks, err := deploytest.NewCallbacksServer()
 		require.NoError(t, err)
@@ -2160,17 +2160,23 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 
 		h, err := deploytest.NewErrorHook(monitor, callbacks, "hook",
 			func(_ context.Context, _ resource.URN, _ resource.ID, _ string,
-				_ tokens.Type, oldOpts, _ *pulumirpc.ResourceOptions, _, oldInputs, oldOutputs resource.PropertyMap,
+				_ tokens.Type, oldOpts, _ *pulumirpc.ResourceOptions, _, oldInputs, oldOutputs *property.Map,
 				failedOperation string, _ []string,
 			) (bool, error) {
 				hookCalls++
-				hookOp, hookOldOpts, hookOldInputs, hookOldOutputs = failedOperation, oldOpts, oldInputs, oldOutputs
+				hookOp, hookOldOpts = failedOperation, oldOpts
+				if oldInputs != nil {
+					hookOldInputs = *oldInputs
+				}
+				if oldOutputs != nil {
+					hookOldOutputs = *oldOutputs
+				}
 				return hookCalls == 1, nil
 			})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:               resource.NewPropertyMapFromMap(map[string]any{"v": "a"}),
+			Inputs:               property.NewMap(map[string]property.Value{"v": property.New("a")}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{OnError: []*deploytest.ResourceHook{h}},
 		})
 		require.NoError(t, err)
@@ -2192,8 +2198,8 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 	require.Equal(t, 1, hookCalls)
 	require.Equal(t, "create", hookOp)
 	require.Nil(t, hookOldOpts)
-	require.Empty(t, hookOldInputs)
-	require.Empty(t, hookOldOutputs)
+	require.Zero(t, hookOldInputs.Len())
+	require.Zero(t, hookOldOutputs.Len())
 	require.Len(t, updateReqs, 1)
 	require.Equal(t, resource.ID("created-id"), updateReqs[0].ID)
 	require.Equal(t, property.NewMap(map[string]property.Value{"v": property.New("a")}), updateReqs[0].OldInputs)

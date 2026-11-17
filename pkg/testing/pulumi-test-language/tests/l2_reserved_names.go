@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,19 +43,24 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:reservednames")
 
 					elem := RequireSingleResource(l, snap.Resources, "reservednames:index:ElementType")
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"elementType": map[string]any{"elementType": "nested"},
+					want := property.NewMap(map[string]property.Value{
+						"elementType": property.New(map[string]property.Value{
+							"elementType": property.New("nested"),
+						}),
 					})
-					assert.Equal(l, want, elem.Inputs, "expected the elementType input")
-					assert.Equal(l, want, elem.Outputs, "expected the echoed elementType output")
+					assert.Equal(l, want, resource.FromResourcePropertyMap(elem.Inputs),
+						"expected the elementType input")
+					assert.Equal(l, want, resource.FromResourcePropertyMap(elem.Outputs),
+						"expected the echoed elementType output")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
 					// The whole object checks that languages serialize typed objects in
 					// stack outputs with their wire-format (camelCase) keys.
-					AssertPropertyMapMember(l, stack.Outputs, "elementType", resource.NewProperty(resource.PropertyMap{
-						"elementType": resource.NewProperty("nested"),
+					AssertPropertyMapMember(l, stackOutputs, "elementType", property.New(map[string]property.Value{
+						"elementType": property.New("nested"),
 					}))
-					AssertPropertyMapMember(l, stack.Outputs, "nested", resource.NewProperty("nested"))
+					AssertPropertyMapMember(l, stackOutputs, "nested", property.New("nested"))
 				},
 			},
 		},

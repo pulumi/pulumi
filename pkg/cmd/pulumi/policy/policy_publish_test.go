@@ -15,63 +15,44 @@
 package policy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const publishedPackPath = "/api/orgs/org1/policypacks/pack/versions/1.2.0"
 
 func TestPolicyPublishCmd_default(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
-			return nil
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
 		},
 	}
 
-	lm := &cmdBackend.MockLoginManager{
-		CurrentF: func(
-			ctx context.Context,
-			ws pkgWorkspace.Context,
-			sink diag.Sink,
-			url string,
-			project *workspace.Project,
-			setCurrent bool,
-		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
-					assert.Contains(t, name, "org1")
-					return mockPolicyPack, nil
-				},
-				GetDefaultOrgF: func(ctx context.Context) (string, error) {
-					return "org1", nil
-				},
-			}, nil
-		},
+	be := newTestCloudBackend(t, mockPolicyPack,
+		respondJSON(t, publishedPackPath, apitype.GetPolicyPackResponse{}))
+	be.GetPolicyPackF = func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
+		assert.Contains(t, name, "org1")
+		return mockPolicyPack, nil
 	}
+	ws, lm := newTestWsAndLm(be)
 
-	cmd := policyPublishCmd{
-		getwd: func() (string, error) {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return "", err
-			}
-			return filepath.Join(cwd, "testdata"), nil
-		},
-	}
-
-	err := cmd.Run(t.Context(), lm, []string{})
+	cmd := policyPublishCmd{getwd: testdataGetwd}
+	err := cmd.Run(t.Context(), ws, lm, []string{})
 	require.NoError(t, err)
 }
 
@@ -79,40 +60,23 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
-			return nil
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
 		},
 	}
 
-	lm := &cmdBackend.MockLoginManager{
-		CurrentF: func(
-			ctx context.Context,
-			ws pkgWorkspace.Context,
-			sink diag.Sink,
-			url string,
-			project *workspace.Project,
-			setCurrent bool,
-		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
-					assert.Contains(t, name, "org1")
-					return mockPolicyPack, nil
-				},
-			}, nil
-		},
+	be := newTestCloudBackend(t, mockPolicyPack,
+		respondJSON(t, publishedPackPath, apitype.GetPolicyPackResponse{}))
+	be.GetDefaultOrgF = nil
+	be.GetPolicyPackF = func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
+		assert.Contains(t, name, "org1")
+		return mockPolicyPack, nil
 	}
+	ws, lm := newTestWsAndLm(be)
 
-	cmd := policyPublishCmd{
-		getwd: func() (string, error) {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return "", err
-			}
-			return filepath.Join(cwd, "testdata"), nil
-		},
-	}
-
-	err := cmd.Run(t.Context(), lm, []string{"org1"})
+	cmd := policyPublishCmd{getwd: testdataGetwd}
+	err := cmd.Run(t.Context(), ws, lm, []string{"org1"})
 	require.NoError(t, err)
 }
 
@@ -142,28 +106,15 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	var metadata map[string]string
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
 			metadata = opts.Metadata
-			return nil
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
 		},
 	}
 
-	lm := &cmdBackend.MockLoginManager{
-		CurrentF: func(
-			ctx context.Context,
-			ws pkgWorkspace.Context,
-			sink diag.Sink,
-			url string,
-			project *workspace.Project,
-			setCurrent bool,
-		) (backend.Backend, error) {
-			return &backend.MockBackend{
-				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
-					return mockPolicyPack, nil
-				},
-			}, nil
-		},
-	}
+	ws, lm := newTestWsAndLm(newTestCloudBackend(t, mockPolicyPack,
+		respondJSON(t, publishedPackPath, apitype.GetPolicyPackResponse{})))
 
 	cmd := policyPublishCmd{
 		getwd: func() (string, error) {
@@ -172,7 +123,7 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(t.Context(), lm, []string{})
+	err := cmd.Run(t.Context(), ws, lm, []string{})
 	require.NoError(t, err)
 
 	assertEnvValue := func(env map[string]string, key, val string) {
@@ -192,4 +143,83 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	assertEnvValue(metadata, backend.GitCommitterEmail, "repo-user@example.com")
 	assertEnvValue(metadata, backend.GitAuthor, "repo-user")
 	assertEnvValue(metadata, backend.GitAuthorEmail, "repo-user@example.com")
+}
+
+func testdataGetwd() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cwd, "testdata"), nil
+}
+
+func TestPolicyPublish_JSONReadsBackPack(t *testing.T) {
+	t.Parallel()
+
+	pack := &backend.MockPolicyPack{
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, op backend.PublishOperation) (backend.PublishResult, error) {
+			_, err := op.Progress.Write([]byte("Obtaining policy metadata from policy plugin\n"))
+			require.NoError(t, err)
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
+		},
+	}
+	ws, lm := newTestWsAndLm(newTestCloudBackend(t, pack, respondJSON(t, publishedPackPath,
+		apitype.GetPolicyPackResponse{
+			Name: "pack", DisplayName: "Pack", Version: 4, VersionTag: "1.2.0",
+			Policies: []apitype.Policy{{Name: "no-public-buckets"}},
+		})))
+
+	var stdout, stderr bytes.Buffer
+	cmd := policyPublishCmd{
+		getwd: testdataGetwd, stdout: &stdout, stderr: &stderr, json: true, render: renderPolicyGetJSON,
+	}
+	require.NoError(t, cmd.Run(t.Context(), ws, lm, []string{}))
+
+	var got apitype.GetPolicyPackResponse
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got))
+	assert.Equal(t, "pack", got.Name)
+	assert.Equal(t, 4, got.Version)
+	assert.Equal(t, "1.2.0", got.VersionTag)
+	require.Len(t, got.Policies, 1)
+	assert.Contains(t, stderr.String(), "Obtaining policy metadata from policy plugin")
+	assert.NotContains(t, stdout.String(), "Obtaining")
+}
+
+func TestPolicyPublish_ReadBackFailure(t *testing.T) {
+	t.Parallel()
+
+	pack := &backend.MockPolicyPack{
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(context.Context, backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
+		},
+	}
+	ws, lm := newTestWsAndLm(newTestCloudBackend(t, pack, respondError))
+	cmd := policyPublishCmd{getwd: testdataGetwd}
+	err := cmd.Run(t.Context(), ws, lm, []string{})
+	require.ErrorContains(t, err, "published policy pack pack@1.2.0, but reading it back failed: ")
+}
+
+func TestPolicyPublish_DefaultProgressOnStdout(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	pack := &backend.MockPolicyPack{
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, op backend.PublishOperation) (backend.PublishResult, error) {
+			assert.Same(t, &stdout, op.Progress)
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
+		},
+	}
+	published := apitype.GetPolicyPackResponse{Name: "pack", Version: 4, VersionTag: "1.2.0"}
+
+	ws, lm := newTestWsAndLm(newTestCloudBackend(t, pack, respondJSON(t, publishedPackPath, published)))
+	cmd := policyPublishCmd{getwd: testdataGetwd, stdout: &stdout, stderr: &stderr}
+	require.NoError(t, cmd.Run(t.Context(), ws, lm, []string{"org1"}))
+
+	published.Policies = []apitype.Policy{}
+	want := bytes.NewBufferString("\n")
+	require.NoError(t, renderPolicyGetText(want, published))
+	assert.Equal(t, want.String(), stdout.String())
 }

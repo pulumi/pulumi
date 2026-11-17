@@ -49,7 +49,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 		pkg := rapidschema.Package().Filter(hasSelectableResource).Draw(t, "pkg")
 		sample := rapidimporter.State(pkg).Draw(t, "sample")
 
-		if checkPropertyMap(sample.State.Inputs, property.Value.IsNull) {
+		if checkPropertyMap(resource.FromResourcePropertyMap(sample.State.Inputs), property.Value.IsNull) {
 			// generatePropertyValue (pkg/importer/hcl2.go:588) normalizes a
 			// null value for an optional property to "no attribute emitted",
 			// so an original `{b: null}` round-trips to `{}`. Skip these
@@ -58,7 +58,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			t.Skip("inputs contain an explicit null; production normalizes optional-null to absent")
 		}
 
-		if checkPropertyMap(sample.State.Inputs, func(v property.Value) bool {
+		if checkPropertyMap(resource.FromResourcePropertyMap(sample.State.Inputs), func(v property.Value) bool {
 			if v.IsString() && !norm.NFC.IsNormalString(v.AsString()) {
 				return true
 			}
@@ -89,7 +89,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			t.Skip("inputs contain a non-NFC string; HCL round-trip silently NFC-normalizes")
 		}
 
-		if checkPropertyMap(sample.State.Inputs, func(p property.Value) bool {
+		if checkPropertyMap(resource.FromResourcePropertyMap(sample.State.Inputs), func(p property.Value) bool {
 			if !p.IsMap() {
 				return false
 			}
@@ -172,7 +172,7 @@ func archiveHasNonNFC(a property.Archive) bool {
 	return false
 }
 
-func checkPropertyMap(m resource.PropertyMap, check func(property.Value) bool) bool {
+func checkPropertyMap(m property.Map, check func(property.Value) bool) bool {
 	var walk func(property.Value) bool
 	walk = func(v property.Value) bool {
 		switch {
@@ -196,7 +196,7 @@ func checkPropertyMap(m resource.PropertyMap, check func(property.Value) bool) b
 			return false
 		}
 	}
-	return walk(property.New(resource.FromResourcePropertyMap(m)))
+	return walk(property.New(m))
 }
 
 // renderInputs extracts a [resource.PropertyMap] from a bound [pcl.Resource]

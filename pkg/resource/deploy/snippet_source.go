@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"strings"
 	"sync"
 
@@ -181,7 +180,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 					fail(fmt.Errorf("waiting for reference %q (%s): %w", name, urn, err))
 					return
 				}
-				scopeVars[name] = resource.FromResourcePropertyValue(snippetReferenceValue(urn, reg))
+				scopeVars[name] = snippetReferenceValue(urn, reg)
 			}
 		}
 
@@ -217,18 +216,13 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 	return cts.Promise()
 }
 
-func snippetReferenceValue(urn resource.URN, reg URNRegistration) resource.PropertyValue {
-	obj := make(resource.PropertyMap, len(reg.Outputs)+4)
-	maps.Copy(obj, reg.Outputs)
-	obj["urn"] = resource.NewProperty(string(urn))
-	obj["id"] = resource.NewProperty(string(reg.ID))
-	obj["__name"] = resource.NewProperty(urn.Name())
-	obj["__type"] = resource.NewProperty(string(urn.Type()))
-	return resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(obj),
-		Dependencies: []resource.URN{urn},
-		Known:        true,
-	})
+func snippetReferenceValue(urn resource.URN, reg URNRegistration) property.Value {
+	obj := reg.Outputs.AsMap()
+	obj["urn"] = property.New(string(urn))
+	obj["id"] = property.New(string(reg.ID))
+	obj["__name"] = property.New(urn.Name())
+	obj["__type"] = property.New(string(urn.Type()))
+	return property.New(obj).WithDependencies([]resource.URN{urn})
 }
 
 func snippetRunInfo(

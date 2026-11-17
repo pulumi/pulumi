@@ -141,9 +141,9 @@ func TestSetConfigOptionRejectsInvalid(t *testing.T) {
 	t.Parallel()
 
 	s := &acpSession{}
-	require.Error(t, s.setConfigOption(t.Context(), acpConfigPermission, "bogus"))
-	require.Error(t, s.setConfigOption(t.Context(), acpConfigPlan, "bogus"))
-	require.Error(t, s.setConfigOption(t.Context(), "unknown", "x"))
+	require.Error(t, s.setConfigOption(t.Context(), acpConfigPermission, "bogus")) //nolint:forbidigo // pre-existing
+	require.Error(t, s.setConfigOption(t.Context(), acpConfigPlan, "bogus"))       //nolint:forbidigo // pre-existing
+	require.Error(t, s.setConfigOption(t.Context(), "unknown", "x"))               //nolint:forbidigo // pre-existing
 }
 
 func TestDelegateSetConfigOption(t *testing.T) {

@@ -115,7 +115,7 @@ func TestDoCmdShowResourcesRejectsArgs(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"show-resources", "extra"})
-	require.Error(t, cmd.Execute())
+	require.Error(t, cmd.Execute()) //nolint:forbidigo // pre-existing
 }
 
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
@@ -192,7 +192,7 @@ func TestDoCmdShowResourcesFallsBackToGlobalProject(t *testing.T) {
 		},
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink,
-			string, *workspace.Project, bool, bool, colors.Colorization,
+			string, *workspace.Project, bool, bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},

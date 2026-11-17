@@ -22,14 +22,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type testConverterClient struct {
@@ -73,25 +72,17 @@ func (c *testConverterClient) ConvertState(
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
 				Provider:   "test:provider",
-				Inputs: mustMarshalProperties(resource.PropertyMap{
-					"region": resource.NewProperty("us-east-1"),
-					"secret": resource.MakeSecret(resource.NewProperty("shh")),
-				}),
-				Outputs: mustMarshalProperties(resource.PropertyMap{
-					"arn": resource.NewProperty("test:arn"),
-				}),
+				Inputs: propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+					"region": property.New("us-east-1"),
+					"secret": property.New("shh").WithSecret(true),
+				})),
+				Outputs: propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+					"arn": property.New("test:arn"),
+				})),
 			},
 		},
 		Diagnostics: c.diagnostics,
 	}, nil
-}
-
-func mustMarshalProperties(m resource.PropertyMap) *structpb.Struct {
-	s, err := MarshalProperties(m, MarshalOptions{KeepSecrets: true})
-	if err != nil {
-		panic(err)
-	}
-	return s
 }
 
 func (c *testConverterClient) ConvertProgram(

@@ -23,14 +23,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -48,6 +51,12 @@ type providerServer struct {
 
 	// True if the provider negotiated OutputValues on Invoke via Handshake (both sides opted in).
 	invokeOutputValues bool
+
+	// True if the provider negotiated OutputValues on Call via Handshake (both sides opted in).
+	callOutputValues bool
+
+	// True if the provider negotiated OutputValues on Check via Handshake (both sides opted in).
+	checkOutputValues bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -59,25 +68,52 @@ func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
 	}
 }
 
-func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) MarshalOptions {
-	return MarshalOptions{
-		Label:            label,
+func (p *providerServer) unmarshalFilterOptions(keepDependencies bool) FilterOptions {
+	return FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      p.acceptSecrets,
 		KeepResources:    p.acceptResources,
-		KeepOutputValues: keepOutputValues,
-		PropagateNil:     true,
+		KeepDependencies: keepDependencies,
 	}
 }
 
-func (p *providerServer) marshalOptions(label string) MarshalOptions {
-	return MarshalOptions{
-		Label:          label,
-		KeepUnknowns:   true,
-		KeepSecrets:    p.sendSecrets,
-		KeepResources:  p.sendResources,
-		KeepByteString: p.sendByteString,
-		PropagateNil:   true,
+func (p *providerServer) marshalFilterOptions() FilterOptions {
+	return FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          p.sendSecrets,
+		KeepResources:        p.sendResources,
+		RejectNonUTF8Strings: !p.sendByteString,
+	}
+}
+
+// jsonValueToProperty converts a value produced by [json.Unmarshal] into a [property.Value]. It handles only the
+// concrete types json.Unmarshal yields when decoding into `any` (nil, bool, float64, string, []any, map[string]any)
+// plus plain string, which Configure's legacy variables path falls back to when a value isn't valid JSON.
+func jsonValueToProperty(v any) property.Value {
+	switch v := v.(type) {
+	case nil:
+		return property.New(property.Null)
+	case bool:
+		return property.New(v)
+	case float64:
+		return property.New(v)
+	case string:
+		return property.New(v)
+	case []any:
+		arr := make([]property.Value, len(v))
+		for i, e := range v {
+			arr[i] = jsonValueToProperty(e)
+		}
+		return property.New(arr)
+	case map[string]any:
+		m := make(map[string]property.Value, len(v))
+		for k, e := range v {
+			m[k] = jsonValueToProperty(e)
+		}
+		return property.New(m)
+	default:
+		contract.Failf("unexpected json.Unmarshal value of type %T", v)
+		return property.Value{}
 	}
 }
 
@@ -168,6 +204,8 @@ func (p *providerServer) Handshake(
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -177,6 +215,8 @@ func (p *providerServer) Handshake(
 	p.acceptResources = res.AcceptResources
 	p.sendByteString = req.AcceptsByteString
 	p.invokeOutputValues = req.AcceptsOutputsInInvoke && res.AcceptsOutputsInInvoke
+	p.callOutputValues = req.AcceptsOutputsInCall && res.AcceptsOutputsInCall
+	p.checkOutputValues = req.AcceptsOutputsInCheck && res.AcceptsOutputsInCheck
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
@@ -187,6 +227,8 @@ func (p *providerServer) Handshake(
 		// provider, so it can shim support regardless of the provider's own answer.
 		AcceptsByteString:      true,
 		AcceptsOutputsInInvoke: res.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:   res.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:  res.AcceptsOutputsInCheck,
 	}, nil
 }
 
@@ -273,55 +315,103 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	urn := resource.URN(req.GetUrn())
-
-	// To support old engines fill in Name/Type if the engine didn't send them
-	if req.Name == "" {
-		req.Name = urn.Name()
-	}
-	if req.Name != urn.Name() {
-		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
-	}
-	if req.Type == "" {
-		req.Type = string(urn.Type())
-	}
-	if req.Type != string(urn.Type()) {
-		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
-	}
-
-	state, err := UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("olds", false /* keepOutputValues */))
+	rpcInputs, failures, err := p.checkConfig(ctx,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
 	}
 
-	inputs, err := UnmarshalProperties(req.GetNews(), p.unmarshalOptions("news", false /* keepOutputValues */))
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
-		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
-		Olds:          resource.FromResourcePropertyMap(state),
-		News:          resource.FromResourcePropertyMap(inputs),
-		AllowUnknowns: true,
-	})
-	if err != nil {
-		return nil, p.checkNYI("CheckConfig", err)
-	}
-
-	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("inputs"))
-	if err != nil {
-		return nil, err
-	}
-
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
-	for i, f := range resp.Failures {
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
+	for i, f := range failures {
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+func (p *providerServer) CheckConfig2(ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	rpcInputs, failures, err := p.checkConfig(ctx,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOldInputs(), req.GetNewInputs())
+	if err != nil {
+		return nil, err
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
+	for i, f := range failures {
+		rpcFailures[i] = checkConfigFailureToRPC(f)
+	}
+
+	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+// checkConfigFailureToRPC converts a failure to send in a CheckConfig2 response.
+func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigFailure {
+	return &pulumirpc.CheckConfigFailure{
+		Property: string(failure.Property),
+		Reason:   failure.Reason,
+	}
+}
+
+// checkConfig is the part of CheckConfig and CheckConfig2 that does not depend on their wire types.
+func (p *providerServer) checkConfig(
+	ctx context.Context,
+	rawURN, name, typ string,
+	olds, news *structpb.Struct,
+) (*structpb.Struct, []CheckConfigFailure, error) {
+	urn := resource.URN(rawURN)
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if name == "" {
+		name = urn.Name()
+	}
+	if name != urn.Name() {
+		return nil, nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if typ == "" {
+		typ = string(urn.Type())
+	}
+	if typ != string(urn.Type()) {
+		return nil, nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawState, err := propertyrpc.Unmarshal(olds)
+	if err != nil {
+		return nil, nil, err
+	}
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rawInputs, err := propertyrpc.Unmarshal(news)
+	if err != nil {
+		return nil, nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
+		URN:           urn,
+		Name:          name,
+		Type:          tokens.Type(typ),
+		Olds:          state,
+		News:          inputs,
+		AllowUnknowns: true,
+	})
+	if err != nil {
+		return nil, nil, p.checkNYI("CheckConfig", err)
+	}
+
+	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return propertyrpc.Marshal(filteredInputs), resp.Failures, nil
 }
 
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
@@ -341,20 +431,29 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+	rawOldInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	oldInputs, err := FilterProperties(rawOldInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+	rawOldOutputs, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	oldOutputs, err := FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+	rawNewInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	newInputs, err := FilterProperties(rawNewInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -363,9 +462,9 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
-		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
-		NewInputs:     resource.FromResourcePropertyMap(newInputs),
+		OldInputs:     oldInputs,
+		OldOutputs:    oldOutputs,
+		NewInputs:     newInputs,
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})
@@ -378,15 +477,19 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 func (p *providerServer) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
-	var inputs resource.PropertyMap
+	var inputs property.Map
 	if req.GetArgs() != nil {
-		args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", false /* keepOutputValues */))
+		rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
+		if err != nil {
+			return nil, err
+		}
+		args, err := FilterProperties(rawArgs, p.unmarshalFilterOptions(false /* keepDependencies */))
 		if err != nil {
 			return nil, err
 		}
 		inputs = args
 	} else {
-		inputs = make(resource.PropertyMap)
+		legacy := map[string]property.Value{}
 		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
 			key, err := config.ParseKey(k)
 			if err != nil {
@@ -399,8 +502,9 @@ func (p *providerServer) Configure(ctx context.Context,
 				value = v
 			}
 
-			inputs[resource.PropertyKey(key.Name())] = resource.NewPropertyValue(value)
+			legacy[key.Name()] = jsonValueToProperty(value)
 		}
+		inputs = property.NewMap(legacy)
 	}
 
 	var urn *resource.URN
@@ -424,7 +528,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		Name:   req.Name,
 		Type:   typ,
 		ID:     id,
-		Inputs: resource.FromResourcePropertyMap(inputs),
+		Inputs: inputs,
 	})
 	if err != nil {
 		return nil, err
@@ -459,19 +563,31 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	state, err := UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("state", false /* keepOutputValues */))
+	rawState, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	inputs, err := UnmarshalProperties(req.GetNews(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	rawInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	var oldOutputs resource.PropertyMap
+	var oldOutputs property.Map
 	if req.OldOutputs != nil {
-		oldOutputs, err = UnmarshalProperties(req.OldOutputs, p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		rawOldOutputs, err := propertyrpc.Unmarshal(req.OldOutputs)
+		if err != nil {
+			return nil, err
+		}
+		oldOutputs, err = FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 		if err != nil {
 			return nil, err
 		}
@@ -489,9 +605,9 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		OldInputs:     resource.FromResourcePropertyMap(state),
-		NewInputs:     resource.FromResourcePropertyMap(inputs),
-		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
+		OldInputs:     state,
+		NewInputs:     inputs,
+		OldOutputs:    oldOutputs,
 		AllowUnknowns: true,
 		RandomSeed:    req.RandomSeed,
 		Autonaming:    autonaming,
@@ -500,10 +616,11 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newInputs"))
+	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
 	if err != nil {
 		return nil, err
 	}
+	rpcInputs := propertyrpc.Marshal(filteredInputs)
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
@@ -530,20 +647,29 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+	rawOldInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	oldInputs, err := FilterProperties(rawOldInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+	rawOldOutputs, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	oldOutputs, err := FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+	rawNewInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	newInputs, err := FilterProperties(rawNewInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -553,9 +679,9 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
 		ID:            id,
-		OldInputs:     resource.FromResourcePropertyMap(oldInputs),
-		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
-		NewInputs:     resource.FromResourcePropertyMap(newInputs),
+		OldInputs:     oldInputs,
+		OldOutputs:    oldOutputs,
+		NewInputs:     newInputs,
 		AllowUnknowns: true,
 		IgnoreChanges: req.GetIgnoreChanges(),
 	})
@@ -582,7 +708,11 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	inputs, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	rawInputs, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -591,7 +721,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		URN:                   urn,
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
-		Properties:            resource.FromResourcePropertyMap(inputs),
+		Properties:            inputs,
 		Timeout:               req.GetTimeout(),
 		Preview:               req.GetPreview(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
@@ -601,10 +731,11 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
+	filteredState, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
 	if err != nil {
 		return nil, err
 	}
+	rpcState := propertyrpc.Marshal(filteredState)
 
 	return &pulumirpc.CreateResponse{
 		Id:                  string(resp.ID),
@@ -630,17 +761,25 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	state, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("state", false /* keepOutputValues */))
+	rawState, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	rawInputs, err := propertyrpc.Unmarshal(req.GetInputs())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -650,8 +789,8 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    requestID,
-		Inputs:                resource.FromResourcePropertyMap(inputs),
-		State:                 resource.FromResourcePropertyMap(state),
+		Inputs:                inputs,
+		State:                 state,
 		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
@@ -661,21 +800,22 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	var respOutputs, respInputs property.Map
+	// A nil Outputs or Inputs on the response signals "resource not found" to the engine;
+	// preserve that by sending nil on the wire rather than a non-nil empty Struct.
+	var rpcState, rpcInputs *structpb.Struct
 	if resp.Outputs != nil {
-		respOutputs = *resp.Outputs
+		filteredState, err := FilterProperties(*resp.Outputs, p.marshalFilterOptions())
+		if err != nil {
+			return nil, err
+		}
+		rpcState = propertyrpc.Marshal(filteredState)
 	}
 	if resp.Inputs != nil {
-		respInputs = *resp.Inputs
-	}
-	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(respOutputs), p.marshalOptions("newState"))
-	if err != nil {
-		return nil, err
-	}
-
-	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(respInputs), p.marshalOptions("newInputs"))
-	if err != nil {
-		return nil, err
+		filteredInputs, err := FilterProperties(*resp.Inputs, p.marshalFilterOptions())
+		if err != nil {
+			return nil, err
+		}
+		rpcInputs = propertyrpc.Marshal(filteredInputs)
 	}
 
 	return &pulumirpc.ReadResponse{
@@ -690,13 +830,17 @@ func (p *providerServer) List(
 	req *pulumirpc.ListRequest,
 	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
 ) error {
-	query, err := UnmarshalProperties(req.GetQuery(), p.unmarshalOptions("list.query", false))
+	rawQuery, err := propertyrpc.Unmarshal(req.GetQuery())
+	if err != nil {
+		return err
+	}
+	query, err := FilterProperties(rawQuery, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return err
 	}
 	listStream, err := p.provider.List(stream.Context(), ListRequest{
 		Token:             tokens.Type(req.GetToken()),
-		Query:             resource.FromResourcePropertyMap(query),
+		Query:             query,
 		Limit:             req.GetLimit(),
 		PageSize:          req.GetPageSize(),
 		ContinuationToken: req.GetContinuationToken(),
@@ -755,26 +899,34 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+	rawOldOutputs, err := propertyrpc.Unmarshal(req.GetOlds())
+	if err != nil {
+		return nil, err
+	}
+	oldOutputs, err := FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+	rawOldInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	oldInputs, err := FilterProperties(rawOldInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+	rawNewInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	newInputs, err := FilterProperties(rawNewInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	oldViews, err := unmarshalViews(
-		req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -784,9 +936,9 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		OldInputs:             resource.FromResourcePropertyMap(oldInputs),
-		OldOutputs:            resource.FromResourcePropertyMap(oldOutputs),
-		NewInputs:             resource.FromResourcePropertyMap(newInputs),
+		OldInputs:             oldInputs,
+		OldOutputs:            oldOutputs,
+		NewInputs:             newInputs,
 		Timeout:               req.GetTimeout(),
 		IgnoreChanges:         req.GetIgnoreChanges(),
 		Preview:               req.GetPreview(),
@@ -798,10 +950,11 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("newState"))
+	filteredState, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
 	if err != nil {
 		return nil, err
 	}
+	rpcState := propertyrpc.Marshal(filteredState)
 
 	return &pulumirpc.UpdateResponse{
 		Properties:          rpcState,
@@ -826,17 +979,25 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	inputs, err := UnmarshalProperties(req.GetOldInputs(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	rawInputs, err := propertyrpc.Unmarshal(req.GetOldInputs())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	outputs, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("outputs", false /* keepOutputValues */))
+	rawOutputs, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	outputs, err := FilterProperties(rawOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
 
-	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -846,8 +1007,8 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		Name:                  req.Name,
 		Type:                  tokens.Type(req.Type),
 		ID:                    id,
-		Inputs:                resource.FromResourcePropertyMap(inputs),
-		Outputs:               resource.FromResourcePropertyMap(outputs),
+		Inputs:                inputs,
+		Outputs:               outputs,
 		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
@@ -864,9 +1025,11 @@ func (p *providerServer) Construct(ctx context.Context,
 ) (*pulumirpc.ConstructResponse, error) {
 	typ, name, parent := tokens.Type(req.GetType()), req.GetName(), resource.URN(req.GetParent())
 
-	opts := p.unmarshalOptions("inputs", true /* keepOutputValues */)
-	opts.UpgradeToOutputValues = true
-	inputs, err := UnmarshalProperties(req.GetInputs(), opts)
+	rawInputs, err := propertyrpc.Unmarshal(req.GetInputs())
+	if err != nil {
+		return nil, err
+	}
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(true /* keepDependencies */))
 	if err != nil {
 		return nil, err
 	}
@@ -923,16 +1086,10 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		aliases[i] = result
 	}
-	dependencies := make([]resource.URN, len(req.GetDependencies()))
-	for i, urn := range req.GetDependencies() {
-		dependencies[i] = resource.URN(urn)
-	}
+	dependencies := slice.Cast[resource.URN](req.GetDependencies())
 	propertyDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetInputDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
-		}
+		urns := slice.Cast[resource.URN](deps.Urns)
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
 
@@ -949,20 +1106,20 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.OnError] = binding.GetOnError()
 	}
 
-	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
-	for i, urn := range req.GetReplaceWith() {
-		replaceWith[i] = resource.URN(urn)
-	}
+	replaceWith := slice.Cast[resource.URN](req.GetReplaceWith())
 
-	var replacementTrigger resource.PropertyValue
+	var replacementTrigger property.Value
 	if trigger := req.GetReplacementTrigger(); trigger != nil {
-		rt, err := UnmarshalPropertyValue("replacementTrigger", trigger, p.unmarshalOptions(
-			"replacementTrigger", true /* keepOutputValues */))
+		rawRT, err := propertyrpc.UnmarshalValue(trigger)
 		if err != nil {
 			return nil, err
 		}
-		if rt != nil {
-			replacementTrigger = *rt
+		filteredRT, keep, err := FilterPropertyValue(rawRT, p.unmarshalFilterOptions(true /* keepDependencies */))
+		if err != nil {
+			return nil, err
+		}
+		if keep {
+			replacementTrigger = filteredRT
 		}
 	}
 
@@ -975,7 +1132,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		ResourceHooks:        hooks,
 		DeletedWith:          resource.URN(req.DeletedWith),
 		ReplaceWith:          replaceWith,
-		ReplacementTrigger:   resource.FromResourcePropertyValue(replacementTrigger),
+		ReplacementTrigger:   replacementTrigger,
 		IgnoreChanges:        req.GetIgnoreChanges(),
 		ReplaceOnChanges:     req.GetReplaceOnChanges(),
 	}
@@ -985,26 +1142,24 @@ func (p *providerServer) Construct(ctx context.Context,
 		Type:    typ,
 		Name:    name,
 		Parent:  parent,
-		Inputs:  resource.FromResourcePropertyMap(inputs),
+		Inputs:  inputs,
 		Options: options,
 	})
 	if err != nil {
 		return nil, rpcerror.WrapDetailedError(err)
 	}
 
-	opts = p.marshalOptions("outputs")
-	opts.KeepOutputValues = req.AcceptsOutputValues
-	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Outputs), opts)
+	outOpts := p.marshalFilterOptions()
+	outOpts.KeepDependencies = req.AcceptsOutputValues
+	filteredOutputs, err := FilterProperties(resp.Outputs, outOpts)
 	if err != nil {
 		return nil, err
 	}
+	outputs := propertyrpc.Marshal(filteredOutputs)
 
 	outputDependencies := map[string]*pulumirpc.ConstructResponse_PropertyDependencies{}
 	for name, deps := range resp.OutputDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		outputDependencies[string(name)] = &pulumirpc.ConstructResponse_PropertyDependencies{Urns: urns}
 	}
 
@@ -1016,26 +1171,31 @@ func (p *providerServer) Construct(ctx context.Context,
 }
 
 func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", p.invokeOutputValues))
+	rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
+	if err != nil {
+		return nil, err
+	}
+	args, err := FilterProperties(rawArgs, p.unmarshalFilterOptions(p.invokeOutputValues))
 	if err != nil {
 		return nil, err
 	}
 
 	resp, err := p.provider.Invoke(ctx, InvokeRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    resource.FromResourcePropertyMap(args),
+		Args:    args,
 		Preview: req.GetPreview(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	resultOpts := p.marshalOptions("result")
-	resultOpts.KeepOutputValues = p.invokeOutputValues
-	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), resultOpts)
+	resultOpts := p.marshalFilterOptions()
+	resultOpts.KeepDependencies = p.invokeOutputValues
+	filteredResult, err := FilterProperties(resp.Properties, resultOpts)
 	if err != nil {
 		return nil, err
 	}
+	rpcResult := propertyrpc.Marshal(filteredResult)
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
@@ -1049,7 +1209,11 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 }
 
 func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", true /* keepOutputValues */))
+	rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
+	if err != nil {
+		return nil, err
+	}
+	args, err := FilterProperties(rawArgs, p.unmarshalFilterOptions(p.callOutputValues))
 	if err != nil {
 		return nil, err
 	}
@@ -1073,10 +1237,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
-		}
+		urns := slice.Cast[resource.URN](deps.Urns)
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
 	options := CallOptions{
@@ -1085,7 +1246,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	result, err := p.provider.Call(ctx, CallRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    resource.FromResourcePropertyMap(args),
+		Args:    args,
 		Info:    info,
 		Options: options,
 	})
@@ -1094,19 +1255,17 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		return nil, err
 	}
 
-	opts := p.marshalOptions("return")
-	opts.KeepOutputValues = req.AcceptsOutputValues
-	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(result.Return), opts)
+	retOpts := p.marshalFilterOptions()
+	retOpts.KeepDependencies = req.AcceptsOutputValues && p.callOutputValues
+	filteredReturn, err := FilterProperties(result.Return, retOpts)
 	if err != nil {
 		return nil, err
 	}
+	rpcResult := propertyrpc.Marshal(filteredReturn)
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
 	for name, deps := range result.ReturnDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
@@ -1148,30 +1307,36 @@ func (p *providerServer) GetMappings(ctx context.Context,
 }
 
 // unmarshalViews is a helper that unmarshals a slice of views from gRPC into a slice of View structs.
-func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error) {
+func unmarshalViews(views []*pulumirpc.View, opts FilterOptions) ([]View, error) {
 	return slice.MapError(views, func(v *pulumirpc.View) (View, error) {
 		return unmarshalView(v, opts)
 	})
 }
 
 // unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
-func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
+func unmarshalView(v *pulumirpc.View, opts FilterOptions) (View, error) {
 	var inputs property.Map
 	if v.Inputs != nil {
-		minputs, err := UnmarshalProperties(v.Inputs, opts)
+		raw, err := propertyrpc.Unmarshal(v.Inputs)
 		if err != nil {
 			return View{}, err
 		}
-		inputs = resource.FromResourcePropertyMap(minputs)
+		inputs, err = FilterProperties(raw, opts)
+		if err != nil {
+			return View{}, err
+		}
 	}
 
 	var outputs property.Map
 	if v.Outputs != nil {
-		moutputs, err := UnmarshalProperties(v.Outputs, opts)
+		raw, err := propertyrpc.Unmarshal(v.Outputs)
 		if err != nil {
 			return View{}, err
 		}
-		outputs = resource.FromResourcePropertyMap(moutputs)
+		outputs, err = FilterProperties(raw, opts)
+		if err != nil {
+			return View{}, err
+		}
 	}
 
 	return View{

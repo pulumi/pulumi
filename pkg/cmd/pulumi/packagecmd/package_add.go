@@ -146,8 +146,14 @@ quoted as a single shell-style string:
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil,
+				cloudCredentialEnv)
 			if err != nil {
 				return err
 			}

@@ -90,7 +90,7 @@ func TestOrgMemberRemove_ClientError(t *testing.T) {
 	err := runOrgMemberRemove(t.Context(), &buf,
 		stubOrgMemberRemoveFactory(c, "acme"), "alice",
 		orgMemberRemoveArgs{yes: true, outputFormat: defaultOrgMemberRemoveOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "removing organization member: cannot remove self", err.Error())
 	assert.Equal(t, "", buf.String())
 }
@@ -102,6 +102,6 @@ func TestOrgMemberRemove_FactoryError(t *testing.T) {
 	err := runOrgMemberRemove(t.Context(), &buf,
 		failingOrgMemberRemoveFactory(errors.New("not logged in")),
 		"alice", orgMemberRemoveArgs{yes: true, outputFormat: defaultOrgMemberRemoveOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }

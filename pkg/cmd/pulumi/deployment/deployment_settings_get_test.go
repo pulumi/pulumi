@@ -175,7 +175,7 @@ func TestDeploymentSettingsGet_OtherErrorsAreFatal(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
 		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting deployment settings")
 }
 
@@ -1003,7 +1003,7 @@ func TestDeploymentSettingsGet_ClientError(t *testing.T) {
 	c := &mockDeploymentSettingsGetClient{err: errors.New("boom")}
 	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
 		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting deployment settings")
 	assert.Contains(t, err.Error(), "boom")
 }
@@ -1015,6 +1015,6 @@ func TestDeploymentSettingsGet_FactoryError(t *testing.T) {
 	err := runDeploymentSettingsGet(t.Context(), &buf,
 		failingSettingsGetFactory(errors.New("not logged in")),
 		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }

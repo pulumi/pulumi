@@ -468,19 +468,42 @@ class ProviderServicer(ResourceProviderServicer):
     @_raise_with_traceback
     async def CheckConfig(self, request: pulumi.runtime.proto.CheckRequest, context):
         resp = await self._provider.check_config(
-            provider.CheckRequest(
+            provider.CheckConfigRequest(
                 request.urn,
                 PropertyValue.unmarshal_map(request.olds),
                 PropertyValue.unmarshal_map(request.news),
-                request.randomSeed,
             )
         )
+        # CheckConfig can only carry the property and reason of a failure.
         return proto.CheckResponse(
             inputs=PropertyValue.marshal_map(resp.inputs)
             if resp.inputs is not None
             else None,
             failures=[
                 proto.CheckFailure(property=f.property, reason=f.reason)
+                for f in resp.failures
+            ]
+            if resp.failures is not None
+            else None,
+        )
+
+    @_raise_with_traceback
+    async def CheckConfig2(
+        self, request: pulumi.runtime.proto.CheckConfigRequest, context
+    ):
+        resp = await self._provider.check_config(
+            provider.CheckConfigRequest(
+                request.urn,
+                PropertyValue.unmarshal_map(request.old_inputs),
+                PropertyValue.unmarshal_map(request.new_inputs),
+            )
+        )
+        return proto.CheckConfigResponse(
+            inputs=PropertyValue.marshal_map(resp.inputs)
+            if resp.inputs is not None
+            else None,
+            failures=[
+                proto.CheckConfigFailure(property=f.property, reason=f.reason)
                 for f in resp.failures
             ]
             if resp.failures is not None

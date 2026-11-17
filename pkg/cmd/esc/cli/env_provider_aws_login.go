@@ -33,7 +33,7 @@ func newEnvProviderAWSLoginCmd(env *envCommand) *cobra.Command {
 			"Subcommands select the authentication mode: `static` for static credentials,\n" +
 			"`oidc` for federated identity via OpenID Connect.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/aws-login/\n" +
 			"for the full provider reference.\n",
 		Args: cobra.NoArgs,
 	}
@@ -48,6 +48,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	var sessionToken string
 	var pathStr string
 	var draft string
+	var reason string
 	var create bool
 	var exportEnvVars bool
 
@@ -61,7 +62,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 			"path under `values`. The secret access key and session token, if any, are\n" +
 			"wrapped in `fn::secret`. If a block already exists at the path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/aws-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -97,7 +98,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
+			return applyProviderUpdate(ctx, env, ref, draft, reason, path, node, envVars)
 		},
 	}
 
@@ -111,6 +112,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&draft, "draft", "",
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
 }
@@ -129,7 +131,7 @@ func awsLoginEnvVars(pathRef string) []envVar {
 // are wrapped in `fn::secret`. sessionToken is omitted when empty.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/
+// https://www.pulumi.com/docs/esc/providers/login/aws-login/
 func buildAWSLoginStaticNode(accessKeyID, secretAccessKey, sessionToken string) *yaml.Node {
 	staticContent := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "accessKeyId"},
@@ -167,6 +169,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 	var subjectAttributes []string
 	var pathStr string
 	var draft string
+	var reason string
 	var create bool
 	var exportEnvVars bool
 
@@ -181,7 +184,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"provisioned separately (e.g. with Pulumi). If a block already exists at the\n" +
 			"path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/aws-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -217,7 +220,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
+			return applyProviderUpdate(ctx, env, ref, draft, reason, path, node, envVars)
 		},
 	}
 
@@ -235,6 +238,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&draft, "draft", "",
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
 }
@@ -244,7 +248,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 // subjectAttributes are omitted when empty.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/
+// https://www.pulumi.com/docs/esc/providers/login/aws-login/
 func buildAWSLoginOIDCNode(roleArn, sessionName, duration string, policyArns, subjectAttributes []string) *yaml.Node {
 	oidcContent := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "roleArn"},

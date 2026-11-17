@@ -65,7 +65,7 @@ func TestConfirmDeletion(t *testing.T) {
 		var w, out bytes.Buffer
 		err := ConfirmDeletion(false /*yes*/, true /*interactive*/, "prompt", "my-thing", &w,
 			display.Options{Color: colors.Never, Stdin: strings.NewReader("nope\n"), Stdout: &out})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, result.IsBail(err), "declining must return a bail error")
 		assert.Contains(t, w.String(), "confirmation declined")
 	})

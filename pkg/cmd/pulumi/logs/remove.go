@@ -192,7 +192,7 @@ func chooseLogToRemove(logsDir string) (logEntry, error) {
 	options, optionMap := formatLogRemovalChoices(entries)
 
 	var choice string
-	if err := survey.AskOne(&survey.Select{
+	if err := ui.AskOne(&survey.Select{
 		Message:  "Select a log file to remove:",
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),

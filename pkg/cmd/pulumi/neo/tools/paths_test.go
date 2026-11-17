@@ -59,7 +59,7 @@ func TestResolveUnderRoots_EmptyRootsRejected(t *testing.T) {
 	// Defensive guard: a caller mistakenly passing no roots should produce a clear
 	// error rather than indexing into roots[0].
 	_, err := resolveUnderRoots(nil, t.TempDir(), false)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "no allowed roots")
 }
 
@@ -74,7 +74,7 @@ func TestResolveUnderRoots_RejectsEscapeOutsideRoot(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = resolveUnderRoots([]string{root}, outside, false)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
@@ -91,7 +91,7 @@ func TestResolveUnderRoots_RejectsSymlinkEscape(t *testing.T) {
 	require.NoError(t, os.Symlink(outside, link))
 
 	_, err = resolveUnderRoots([]string{root}, filepath.Join(link, "passwd"), false)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
@@ -115,7 +115,7 @@ func TestResolveUnderRoots_MissingLeafRejectedWhenNotAllowed(t *testing.T) {
 	target := filepath.Join(root, "does-not-exist")
 
 	_, err = resolveUnderRoots([]string{root}, target, false)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "resolving")
 }
 
@@ -131,7 +131,7 @@ func TestResolveUnderRoots_MissingLeafEscapeStillRejected(t *testing.T) {
 	require.NoError(t, os.Symlink(outside, link))
 
 	_, err = resolveUnderRoots([]string{root}, filepath.Join(link, "new-file"), true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
@@ -156,7 +156,7 @@ func TestCanonicalRoot_ReturnsErrorWhenRootMissing(t *testing.T) {
 	// canonicalRoot calls EvalSymlinks, which must fail for a non-existent path.
 	// NewFilesystem relies on this error path to reject bad roots early.
 	_, err := canonicalRoot(filepath.Join(t.TempDir(), "does-not-exist"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestEvalClosestAncestor_UsesClosestExistingDirectory(t *testing.T) {

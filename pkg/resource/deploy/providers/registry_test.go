@@ -56,7 +56,7 @@ type testProvider struct {
 	version     semver.Version
 	configured  bool
 	checkConfig func(resource.URN, property.Map,
-		property.Map, bool) (property.Map, []plugin.CheckFailure, error)
+		property.Map, bool) (property.Map, []plugin.CheckConfigFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(property.Map) error
 }
@@ -181,7 +181,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(property.Map
 			version: ver,
 			checkConfig: func(urn resource.URN, olds,
 				news property.Map, allowUnknowns bool,
-			) (property.Map, []plugin.CheckFailure, error) {
+			) (property.Map, []plugin.CheckConfigFailure, error) {
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -464,7 +464,7 @@ func TestCRUDPreview(t *testing.T) {
 				version: ver,
 				checkConfig: func(urn resource.URN, olds,
 					news property.Map, allowUnknowns bool,
-				) (property.Map, []plugin.CheckFailure, error) {
+				) (property.Map, []plugin.CheckConfigFailure, error) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -629,7 +629,7 @@ func TestCRUDNoProviders(t *testing.T) {
 		OldInputs: resource.FromResourcePropertyMap(olds),
 		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
 	assert.Equal(t, property.Map{}, check.Properties)
 }
@@ -655,7 +655,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 		OldInputs: resource.FromResourcePropertyMap(olds),
 		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
 	assert.Equal(t, property.Map{}, check.Properties)
 }
@@ -681,7 +681,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 		OldInputs: resource.FromResourcePropertyMap(olds),
 		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
 	assert.Equal(t, property.Map{}, check.Properties)
 }
@@ -1139,7 +1139,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 				pkg:     tokens.Package(descriptor.Name),
 				version: semver.MustParse("1.0.0"),
 				//nolint:lll
-				checkConfig: func(urn resource.URN, olds, news property.Map, allowUnknowns bool) (property.Map, []plugin.CheckFailure, error) {
+				checkConfig: func(urn resource.URN, olds, news property.Map, allowUnknowns bool) (property.Map, []plugin.CheckConfigFailure, error) {
 					return news, nil, nil
 				},
 				//nolint:lll
@@ -1221,7 +1221,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
 						urn resource.URN, olds, news property.Map, allowUnknowns bool,
-					) (property.Map, []plugin.CheckFailure, error) {
+					) (property.Map, []plugin.CheckConfigFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1309,7 +1309,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
 						urn resource.URN, olds, news property.Map, allowUnknowns bool,
-					) (property.Map, []plugin.CheckFailure, error) {
+					) (property.Map, []plugin.CheckConfigFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1408,7 +1408,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 							version: semver.MustParse("1.0.0"),
 							checkConfig: func(
 								urn resource.URN, olds, news property.Map, allowUnknowns bool,
-							) (property.Map, []plugin.CheckFailure, error) {
+							) (property.Map, []plugin.CheckConfigFailure, error) {
 								return news, nil, nil
 							},
 							diffConfig: func(

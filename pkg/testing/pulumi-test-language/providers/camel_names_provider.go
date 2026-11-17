@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // CamelNamesProvider is used to test camel naming features in the Pulumi SDK, and that they are used
@@ -98,23 +99,23 @@ func (p *CamelNamesProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != "19.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 19.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 19.0.0"),
 		}, nil
 	}
 
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -258,11 +259,11 @@ func (p *CamelNamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"theInput": resource.NewProperty(true),
+	readInputs := property.NewMap(map[string]property.Value{
+		"theInput": property.New(true),
 	})
-	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"theOutput": resource.NewProperty(true),
+	readOutputs := property.NewMap(map[string]property.Value{
+		"theOutput": property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{

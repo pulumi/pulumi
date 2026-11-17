@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,9 +31,13 @@ func TestStepDiffJSON_SameHasNoDiff(t *testing.T) {
 	t.Parallel()
 
 	step := engine.StepEventMetadata{
-		Op:  deploy.OpSame,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"a": resource.NewProperty("1")}},
-		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"a": resource.NewProperty("2")}},
+		Op: deploy.OpSame,
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"a": property.New("1"),
+		})},
+		New: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"a": property.New("2"),
+		})},
 	}
 
 	assert.Nil(t, stepDiffJSON(step, false))
@@ -43,9 +48,9 @@ func TestStepDiffJSON_CreateIsAllCreates(t *testing.T) {
 
 	step := engine.StepEventMetadata{
 		Op: deploy.OpCreate,
-		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"bucket": resource.NewProperty("mybucket"),
-		}},
+		New: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"bucket": property.New("mybucket"),
+		})},
 	}
 
 	got := stepDiffJSON(step, false)
@@ -60,9 +65,9 @@ func TestStepDiffJSON_DeleteIsAllDeletes(t *testing.T) {
 
 	step := engine.StepEventMetadata{
 		Op: deploy.OpDelete,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"bucket": resource.NewProperty("mybucket"),
-		}},
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"bucket": property.New("mybucket"),
+		})},
 	}
 
 	got := stepDiffJSON(step, false)
@@ -76,18 +81,18 @@ func TestStepDiffJSON_UpdateUsesDetailedDiff(t *testing.T) {
 
 	step := engine.StepEventMetadata{
 		Op: deploy.OpUpdate,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"tags": resource.NewProperty(resource.PropertyMap{
-				"owner": resource.NewProperty("tom"),
-			}),
-		}},
-		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"tags": resource.NewProperty(resource.PropertyMap{
-				"owner": resource.NewProperty("tim"),
-				"env":   resource.NewProperty("prod"),
-			}),
-			"versioning": resource.NewProperty(true),
-		}},
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"tags": property.New(property.NewMap(map[string]property.Value{
+				"owner": property.New("tom"),
+			})),
+		})},
+		New: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"tags": property.New(property.NewMap(map[string]property.Value{
+				"owner": property.New("tim"),
+				"env":   property.New("prod"),
+			})),
+			"versioning": property.New(true),
+		})},
 		DetailedDiff: map[string]plugin.PropertyDiff{
 			"tags.owner": {Kind: plugin.DiffUpdate, InputDiff: true},
 			"tags.env":   {Kind: plugin.DiffAdd, InputDiff: true},
@@ -118,9 +123,9 @@ func TestStepDiffJSON_SecretsAreBlinded(t *testing.T) {
 
 	step := engine.StepEventMetadata{
 		Op: deploy.OpCreate,
-		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"password": resource.MakeSecret(resource.NewProperty("hunter2")),
-		}},
+		New: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"password": property.New("hunter2").WithSecret(true),
+		})},
 	}
 
 	encoded, err := json.Marshal(stepDiffJSON(step, false /* showSecrets */))
@@ -140,15 +145,15 @@ func TestStepDiffJSON_HiddenPathIsReportedNotLeaked(t *testing.T) {
 	// one of which the program asked to hide.
 	step := engine.StepEventMetadata{
 		Op: deploy.OpUpdate,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"password": resource.NewProperty("before"),
-			"plain":    resource.NewProperty("a"),
-		}},
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"password": property.New("before"),
+			"plain":    property.New("a"),
+		})},
 		New: &engine.StepEventStateMetadata{
-			Inputs: resource.PropertyMap{
-				"password": resource.NewProperty("after"),
-				"plain":    resource.NewProperty("b"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"password": property.New("after"),
+				"plain":    property.New("b"),
+			}),
 			HideDiffs: []resource.PropertyPath{{"password"}},
 		},
 	}
@@ -172,15 +177,15 @@ func TestStepDiffJSON_HiddenPathIsReportedFromDetailedDiff(t *testing.T) {
 	// diff: TranslateDetailedDiff drops the hidden path and reports it instead.
 	step := engine.StepEventMetadata{
 		Op: deploy.OpUpdate,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"password": resource.NewProperty("before"),
-			"plain":    resource.NewProperty("a"),
-		}},
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"password": property.New("before"),
+			"plain":    property.New("a"),
+		})},
 		New: &engine.StepEventStateMetadata{
-			Inputs: resource.PropertyMap{
-				"password": resource.NewProperty("after"),
-				"plain":    resource.NewProperty("b"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"password": property.New("after"),
+				"plain":    property.New("b"),
+			}),
 			HideDiffs: []resource.PropertyPath{{"password"}},
 		},
 		DetailedDiff: map[string]plugin.PropertyDiff{
@@ -204,13 +209,13 @@ func TestStepDiffJSON_HiddenPathIsReportedWhenItIsTheOnlyChange(t *testing.T) {
 	// which would otherwise read as "nothing changed".
 	step := engine.StepEventMetadata{
 		Op: deploy.OpUpdate,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
-			"password": resource.NewProperty("before"),
-		}},
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"password": property.New("before"),
+		})},
 		New: &engine.StepEventStateMetadata{
-			Inputs: resource.PropertyMap{
-				"password": resource.NewProperty("after"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"password": property.New("after"),
+			}),
 			HideDiffs: []resource.PropertyPath{{"password"}},
 		},
 	}
@@ -231,9 +236,13 @@ func TestStepDiffJSON_NoHiddenPathsMeansNoHiddenField(t *testing.T) {
 	t.Parallel()
 
 	step := engine.StepEventMetadata{
-		Op:  deploy.OpUpdate,
-		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"plain": resource.NewProperty("a")}},
-		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"plain": resource.NewProperty("b")}},
+		Op: deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"plain": property.New("a"),
+		})},
+		New: &engine.StepEventStateMetadata{Inputs: property.NewMap(map[string]property.Value{
+			"plain": property.New("b"),
+		})},
 	}
 
 	got := stepDiffJSON(step, false)

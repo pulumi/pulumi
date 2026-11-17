@@ -49,13 +49,13 @@ build:: build_package build_plugin
 
 lint:: ensure
 	uv run -m ruff format --check
-	uv run -m mypy ./lib/pulumi
+	uv run -m mypy ./lib/pulumi ./lib/test_types
 	uv run -m ruff check
 	uv run -m pyright
 
 lint_fix:: ensure
 	make format
-	uv run -m mypy ./lib/pulumi
+	uv run -m mypy ./lib/pulumi ./lib/test_types
 	uv run -m ruff check --fix
 	uv run -m pyright
 

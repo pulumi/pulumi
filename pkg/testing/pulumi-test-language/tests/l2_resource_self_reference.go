@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,13 +33,13 @@ func init() {
 				RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:selfref")
 				root := RequireSingleNamedResource(l, res.Snap.Resources, "root")
 				child := RequireSingleNamedResource(l, res.Snap.Resources, "child")
-				ref := resource.MakeCustomResourceReference(root.URN, root.ID, "")
-				assert.Equal(l, resource.PropertyMap{
+				ref := resource.FromResourcePropertyValue(resource.MakeCustomResourceReference(root.URN, root.ID, ""))
+				assert.Equal(l, property.NewMap(map[string]property.Value{
 					"parent":       ref,
-					"parents":      resource.NewProperty([]resource.PropertyValue{ref}),
-					"namedParents": resource.NewProperty(resource.PropertyMap{"root": ref}),
+					"parents":      property.New([]property.Value{ref}),
+					"namedParents": property.New(map[string]property.Value{"root": ref}),
 					"parentOrName": ref,
-				}, child.Inputs)
+				}), resource.FromResourcePropertyMap(child.Inputs))
 			},
 		}},
 	}

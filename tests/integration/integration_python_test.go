@@ -1416,7 +1416,7 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 	t.Cleanup(pt.TestCleanUp)
 
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
-	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
+	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview") //nolint:forbidigo // pre-existing
 }
 
 // Test a paramaterized provider with python.
@@ -2000,8 +2000,9 @@ func TestRegress18176(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestStuckEventLoop(t *testing.T) {
+	t.Parallel()
+
 	done := make(chan struct{})
 	stderr := &bytes.Buffer{}
 	go func() {
@@ -2015,6 +2016,7 @@ func TestStuckEventLoop(t *testing.T) {
 			},
 			Stderr:        stderr,
 			Quick:         true,
+			NoParallel:    true,
 			ExpectFailure: true, // We expect a failure, but the program shouldn't hang indefinitely.
 		})
 		done <- struct{}{}

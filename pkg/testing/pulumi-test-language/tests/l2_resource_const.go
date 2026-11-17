@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func init() {
@@ -34,10 +35,11 @@ func init() {
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					RequireSingleResource(l, res.Snap.Resources, "constant:index:Resource")
 
-					AssertPropertyMapMember(l, stack.Outputs, "kind", resource.NewProperty("Constant"))
-					AssertPropertyMapMember(l, stack.Outputs, "flag", resource.NewProperty(true))
-					AssertPropertyMapMember(l, stack.Outputs, "count", resource.NewProperty(3.0))
-					AssertPropertyMapMember(l, stack.Outputs, "ratio", resource.NewProperty(1.5))
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, outputs, "kind", property.New("Constant"))
+					AssertPropertyMapMember(l, outputs, "flag", property.New(true))
+					AssertPropertyMapMember(l, outputs, "count", property.New(3.0))
+					AssertPropertyMapMember(l, outputs, "ratio", property.New(1.5))
 				},
 			},
 		},

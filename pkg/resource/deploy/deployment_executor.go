@@ -24,6 +24,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -48,6 +49,17 @@ type deploymentExecutor struct {
 	// The number of expected events remaining from step generaton, this tells us we're still expecting events
 	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
+
+	// The completion tokens for each URN. These can be used to wait for a resource to complete before continuing.
+	// This can be used for example for waiting for dependencies in untargeted same steps.
+	chainTokens map[resource.URN]completionToken
+}
+
+func newDeploymentExecutor(deployment *Deployment) *deploymentExecutor {
+	return &deploymentExecutor{
+		deployment:  deployment,
+		chainTokens: map[resource.URN]completionToken{},
+	}
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -235,6 +247,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// these events back to the step gen in the main loop with program events.
 	stepGenEvents := make(chan SourceEvent)
 	ex.stepGen = newStepGenerator(ex.deployment, refresh, mode, stepGenEvents)
+	ex.stepGen.skipped = ex.skipped
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -406,6 +419,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			ex.deployment.PostStepError() != nil
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
+			if !result.IsBail(err) {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): error finalizing stack outputs: %v", err)
+				ex.reportError(e.URN(), err)
+			}
 			return nil, result.BailError(err)
 		}
 	}
@@ -485,6 +502,19 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	} else if canceled {
 		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
+	}
+
+	// If any step ended in an await (no other real errors above), surface a dedicated error so the
+	// CLI can exit with the await-specific exit code. Emit a warning-level diagnostic rather than
+	// the standard "update failed" error, since nothing failed — the engine just couldn't await
+	// one or more operations.
+	if ex.stepExec.Awaited() {
+		kind := "update"
+		if ex.deployment.opts.DryRun {
+			kind = "preview"
+		}
+		ex.deployment.Diag().Warningf(diag.RawMessage("", kind+" has awaiting resources"))
+		return nil, result.BailError(&plugin.AwaitError{})
 	}
 
 	return ex.deployment.newPlans.plan(), err
@@ -612,10 +642,21 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 	if res == nil {
 		return false
 	}
-	_, allDeps := res.GetAllDependencies()
+	return doesResourceDependOn(res, skipped)
+}
+
+func doesResourceDependOn(res *pkgresource.State, skipped mapset.Set[urn.URN]) bool {
+	provider, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true
+		}
+	}
+	if provider != "" {
+		if ref, err := sdkproviders.ParseReference(provider); err == nil {
+			if skipped.Contains(ref.URN()) {
+				return true
+			}
 		}
 	}
 
@@ -633,6 +674,12 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return err
 	}
 	event = normalizedEvent
+
+	// Record errored steps before generating new ones, so that the step generator doesn't send
+	// resources that depend on them (or on a failed provider) to providers or analyzers.
+	for _, errored := range ex.stepExec.GetErroredSteps() {
+		ex.skipped.Add(errored.Res().URN)
+	}
 
 	var steps []Step
 	switch e := event.(type) {
@@ -676,6 +723,11 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
+		// A skipped resource was never operated on, so there's nothing to record its outputs against.
+		if ex.skipped.Contains(e.URN()) {
+			e.Done()
+			return nil
+		}
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 
@@ -703,7 +755,21 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return nil
 	}
 
-	ex.stepExec.ExecuteSerial(newSteps)
+	stepURNs := make([]resource.URN, len(newSteps))
+	for i, step := range newSteps {
+		stepURNs[i] = step.URN()
+		if same, ok := step.(*SameStep); ok {
+			for _, urn := range same.waitURNs {
+				if tok, has := ex.chainTokens[urn]; has {
+					same.waitTokens = append(same.waitTokens, tok)
+				}
+			}
+		}
+	}
+	tok := ex.stepExec.ExecuteSerial(newSteps)
+	for _, urn := range stepURNs {
+		ex.chainTokens[urn] = tok
+	}
 	return nil
 }
 

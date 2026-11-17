@@ -19,7 +19,8 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, NamedTuple, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, ParamSpec
 
 from google.protobuf import empty_pb2
 
@@ -46,14 +47,17 @@ if TYPE_CHECKING:
     from ..resource import ResourceTransform
 
 
-def test(fn):
+P = ParamSpec("P")
+
+
+def test(fn: Callable[P, Any]) -> Callable[P, None]:
     """
     Decorates a test function to make sure that a returned Future
     or Output is awaited as part of the test.
     """
 
     @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
         from .. import Output
 
         SETTINGS.rpc_manager.clear()
@@ -295,6 +299,15 @@ class MockMonitor:
         self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
 
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
+
+    def ExistsResource(self, request):
+        prefix = "urn:pulumi:" + "::".join([get_stack(), get_project()]) + "::"
+        exists = any(
+            r.id == request.id
+            and r.urn[len(prefix) :].split("::")[0].split("$")[-1] == request.type
+            for r in self.resources.values()
+        )
+        return resource_pb2.ExistsResourceResponse(exists=exists)
 
     def RegisterResource(self, request):
         urn = self.make_urn(request.parent, request.type, request.name)

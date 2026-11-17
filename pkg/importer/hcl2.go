@@ -240,9 +240,9 @@ func GenerateHCL2Definition(
 	}
 
 	importStateContext := filterReferences(name, importState)
+	stateInputs := resource.FromResourcePropertyMap(state.Inputs)
 	for _, p := range r.InputProperties {
-		input := state.Inputs[resource.PropertyKey(p.Name)]
-		inputV := resource.FromResourcePropertyValue(input)
+		inputV := stateInputs.Get(p.Name)
 		x, err := generatePropertyValue(p, inputV, importStateContext, onReferenceFound)
 		if err != nil {
 			return nil, nil, err

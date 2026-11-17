@@ -2324,7 +2324,7 @@ func TestEnvFunctions(t *testing.T) {
 	}()
 
 	// Errors when trying to add a non-existent env
-	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env"))
+	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env")) //nolint:forbidigo // pre-existing
 
 	// No error when adding an existing env
 	require.NoError(t, s.AddEnvironments(ctx, "automation-api-test-env", "automation-api-test-env-2"),
@@ -2347,7 +2347,7 @@ func TestEnvFunctions(t *testing.T) {
 
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "new_key")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	v, err := s.GetConfig(ctx, "also")
 	assert.Equal(t, "business", v.Value)
 
@@ -2357,7 +2357,7 @@ func TestEnvFunctions(t *testing.T) {
 	require.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	require.NoError(t, s.AddEnvironments(ctx, "secrets-test-env-DO-NOT-DELETE"),
 		"adding environments failed, err: %v", err)
@@ -4083,4 +4083,35 @@ func TestNewGenerateOnlyInSubDir(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(contents), "name: sub-project")
 	require.Contains(t, string(contents), "description: A sub-project for testing")
+}
+
+func TestStackSelectedThroughSymlinkedWorkDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks require elevated privileges on Windows")
+	}
+
+	root := t.TempDir()
+	t.Setenv("PULUMI_HOME", filepath.Join(root, "home"))
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(filepath.Join(root, "state")))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+
+	realDir := filepath.Join(root, "real")
+	linkDir := filepath.Join(root, "link")
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "state"), 0o755))
+	require.NoError(t, os.Mkdir(realDir, 0o755))
+	require.NoError(t, os.Symlink(realDir, linkDir))
+	require.NoError(t, os.WriteFile(filepath.Join(realDir, "Pulumi.yaml"), []byte("name: p\nruntime: yaml\n"), 0o600))
+
+	cmd := exec.Command("pulumi", "stack", "init", "dev")
+	cmd.Dir = linkDir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	ws, err := NewLocalWorkspace(t.Context(), WorkDir(linkDir))
+	require.NoError(t, err)
+
+	stack, err := ws.Stack(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, stack)
+	require.Equal(t, "dev", stack.Name)
 }

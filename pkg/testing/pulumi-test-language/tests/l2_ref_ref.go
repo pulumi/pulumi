@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,31 +43,34 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:ref-ref")
 					simple := RequireSingleResource(l, snap.Resources, "ref-ref:index:Resource")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{
-							"innerData": resource.NewPropertyMapFromMap(map[string]any{
-								"boolean":   false,
-								"float":     2.17,
-								"integer":   -12,
-								"string":    "Goodbye",
-								"boolArray": []any{false, true},
-								"stringMap": map[string]any{
-									"two":   "turtle doves",
-									"three": "french hens",
-								},
+					want := property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"innerData": property.New(map[string]property.Value{
+								"boolean": property.New(false),
+								"float":   property.New(2.17),
+								"integer": property.New(-12.0),
+								"string":  property.New("Goodbye"),
+								"boolArray": property.New([]property.Value{
+									property.New(false), property.New(true),
+								}),
+								"stringMap": property.New(map[string]property.Value{
+									"two":   property.New("turtle doves"),
+									"three": property.New("french hens"),
+								}),
 							}),
-							"boolean":   true,
-							"float":     4.5,
-							"integer":   1024,
-							"string":    "Hello",
-							"boolArray": []any{},
-							"stringMap": map[string]any{
-								"x": "100",
-								"y": "200",
-							},
+							"boolean":   property.New(true),
+							"float":     property.New(4.5),
+							"integer":   property.New(1024.0),
+							"string":    property.New("Hello"),
+							"boolArray": property.New([]property.Value{}),
+							"stringMap": property.New(map[string]property.Value{
+								"x": property.New("100"),
+								"y": property.New("200"),
+							}),
 						}),
 					})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(simple.Inputs),
+						"expected inputs to be %v", want)
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 				},
 			},

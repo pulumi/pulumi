@@ -49,7 +49,8 @@ func LoadConverterPlugin(
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
+		_, err = pkgWorkspace.InstallPlugin(
+			ctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext, ctx.CloudCredentialEnv)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}

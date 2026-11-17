@@ -268,6 +268,7 @@ runtime: nodejs
 				},
 				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 					url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+					_ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return mockBackend, nil
 				},
@@ -278,7 +279,7 @@ runtime: nodejs
 			mockCmd := &cobra.Command{}
 			err := cmd.Run(t.Context(), mockCmd, tt.args, templateDir)
 			if tt.expectedErr != "" {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)
@@ -311,6 +312,7 @@ func TestTemplatePublishCmd_BackendErrors(t *testing.T) {
 					},
 					LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 						url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+						_ ...cmdBackend.LoginOption,
 					) (backend.Backend, error) {
 						return mockBackend, nil
 					},
@@ -339,7 +341,7 @@ runtime: nodejs
 				version:   "1.0.0",
 			}, tmpDir)
 
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
@@ -376,7 +378,7 @@ runtime: nodejs
 		version:   "1.0.0",
 	}, tmpDir)
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, customErr)
 }
 
@@ -430,6 +432,7 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -572,6 +575,7 @@ dist/
 				},
 				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 					url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+					_ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return mockBackend, nil
 				},

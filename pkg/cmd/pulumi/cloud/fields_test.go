@@ -62,13 +62,13 @@ func TestParseField_AtStdin(t *testing.T) {
 func TestParseField_EmptyKey(t *testing.T) {
 	t.Parallel()
 	_, err := parseField("=value", true, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestParseField_NoEquals(t *testing.T) {
 	t.Parallel()
 	_, err := parseField("nokvhere", true, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestParseHeaders(t *testing.T) {
@@ -89,9 +89,9 @@ func TestParseHeaders(t *testing.T) {
 func TestParseHeaders_Invalid(t *testing.T) {
 	t.Parallel()
 	_, err := parseHeaders([]string{"NoColon"})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	_, err = parseHeaders([]string{": value"})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestMethodDefaultsToPost(t *testing.T) {

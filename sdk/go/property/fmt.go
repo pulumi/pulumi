@@ -37,7 +37,7 @@ var (
 func (v Value) GoString() string {
 	value := func(s string) string {
 		var withSecret, withDependencies string
-		if v.isSecret {
+		if v.secret != nil {
 			withSecret = ".WithSecret(true)"
 		}
 		if len(v.dependencies) > 0 {

@@ -63,7 +63,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Remove existing version
-        run: sudo rm /usr/local/bin/pulumi
+        run: |
+          if PULUMI_PATH=$(command -v pulumi); then
+            sudo rm "$PULUMI_PATH"
+          fi
       - run: curl -fsSL https://get.pulumi.com | sh
       - run: echo "/home/runner/.pulumi/bin" >> "${GITHUB_PATH}"
       - name: Pulumi Version Details
@@ -183,7 +186,7 @@ jobs:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
     steps:
       - name: Install Pulumi CLI
-        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7
         with:
           pulumi-version: latest
       - name: Pulumi Version Details

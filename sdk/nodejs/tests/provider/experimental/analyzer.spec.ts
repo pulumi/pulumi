@@ -765,7 +765,7 @@ describe("Analyzer", function () {
             () => analyzer.analyze(),
             (err) =>
                 err.message ===
-                "Unsupported type for component 'MyComponent' input 'MyOtherArgs.invalidProp values': type '\"fixed value\"'",
+                "Unsupported type for component 'MyComponent' input 'MyOtherArgs.invalidProp values': type '\"fixed value\"'. Use an enum or an `as const` object for literal values.",
         );
     });
 
@@ -1167,6 +1167,60 @@ describe("Analyzer", function () {
                 type: "number",
             },
         });
+    });
+
+    it("supports single-member enums", async function () {
+        const dir = path.join(__dirname, "testdata", "enum-single-member");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components, typeDefinitions } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    env: { $ref: "#/types/provider:index:Environment" },
+                    version: { $ref: "#/types/provider:index:Version", optional: true },
+                    mode: { $ref: "#/types/provider:index:Mode", optional: true },
+                },
+                outputs: {
+                    env: { $ref: "#/types/provider:index:Environment" },
+                },
+            },
+        });
+        assert.deepStrictEqual(typeDefinitions, {
+            Environment: {
+                name: "Environment",
+                description: "A string enum with a single member",
+                enum: [{ name: "Dev", value: "development", description: "The only environment" }],
+                type: "string",
+            },
+            Version: {
+                name: "Version",
+                description: "A numeric enum with a single member",
+                enum: [{ name: "V1", value: 1 }],
+                type: "number",
+            },
+            Mode: {
+                name: "Mode",
+                description: "An `as const` object with a single member",
+                enum: [{ name: "Only", value: "only" }],
+                type: "string",
+            },
+        });
+    });
+
+    it("suggests an enum for bare literal types", async function () {
+        const dir = path.join(__dirname, "testdata", "literal-type");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        assert.throws(
+            () => analyzer.analyze(),
+            (err: Error) => {
+                assert.match(
+                    err.message,
+                    /Unsupported type for component 'MyComponent' input 'MyComponentArgs.region': type '"us-west-2"'. Use an enum or an `as const` object for literal values./,
+                );
+                return true;
+            },
+        );
     });
 
     it("supports imported `as const` object pattern enums", async function () {

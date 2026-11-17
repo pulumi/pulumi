@@ -409,7 +409,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		pctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromContext)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromContext, pctx.CloudCredentialEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -682,7 +682,11 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	})
 	if len(resp.Failures) != 0 || err != nil {
 		contract.IgnoreClose(provider)
-		return plugin.CheckResponse{Failures: resp.Failures}, err
+		var failures []plugin.CheckFailure
+		for _, f := range resp.Failures {
+			failures = append(failures, plugin.CheckFailure(f))
+		}
+		return plugin.CheckResponse{Failures: failures}, err
 	}
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.

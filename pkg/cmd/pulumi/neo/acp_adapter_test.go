@@ -320,7 +320,7 @@ func TestRunInEditorTerminalTimeout(t *testing.T) {
 	ct := &acp.ClientTerminal{Caller: sc, SessionID: "sess_1"}
 
 	out, err := runInEditorTerminal(t.Context(), ct, "sleep 100", "/work", time.Minute)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, out.TimedOut)
 	assert.Contains(t, sc.methods, "terminal/kill")
 }

@@ -1311,6 +1311,35 @@ describe("rpc", () => {
                 assert.deepStrictEqual(outputs, { a: 1 });
             },
         },
+        // A whole resource exported as a stack output must be serialized the same way in previews and updates.
+        stack_export_resource: {
+            pwd: path.join(base, "082.stack_export_resource"),
+            expectResourceCount: 2,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource");
+                return { urn: makeUrn(t, name), id: name, props: res };
+            },
+            registerResourceOutputs: (
+                ctx: any,
+                dryrun: boolean,
+                urn: URN,
+                t: string,
+                name: string,
+                res: any,
+                outputs: any | undefined,
+            ) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs.res.urn, makeUrn("test:index:MyResource", "testResource"));
+                assert.strictEqual(outputs.res.foo, "bar");
+                assert.ok(!("@isPulumiResource" in outputs.res), `unexpected marker in ${JSON.stringify(outputs)}`);
+            },
+        },
         provider_invokes: {
             pwd: path.join(base, "060.provider_invokes"),
             expectResourceCount: 1,

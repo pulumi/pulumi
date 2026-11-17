@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -72,7 +73,7 @@ func TestNeoDebugFlags(t *testing.T) {
 	cmd.SetArgs([]string{"--debug-update", "--debug-preview"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
-	assert.Error(t, cmd.Execute())
+	assert.Error(t, cmd.Execute()) //nolint:forbidigo // pre-existing
 }
 
 // fakeHTTPBackend embeds a generic MockBackend and adds the few extra methods the
@@ -91,6 +92,7 @@ type fakeHTTPBackend struct {
 func (f *fakeHTTPBackend) CloudURL() string                                       { return "" }
 func (f *fakeHTTPBackend) StackConsoleURL(backend.StackReference) (string, error) { return "", nil }
 func (f *fakeHTTPBackend) Client() *client.Client                                 { return f.ClientV }
+func (f *fakeHTTPBackend) ESCClient() esc_client.Client                           { return nil }
 
 func (f *fakeHTTPBackend) GetLatestStackPreview(
 	ctx context.Context, stackRef backend.StackReference,
@@ -210,7 +212,7 @@ func TestResolveTaskTarget_ErrorsWhenOrgUnresolvable(t *testing.T) {
 
 	ws := &pkgWorkspace.MockContext{}
 	_, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pass --org")
 }
 
@@ -225,7 +227,7 @@ func TestResolveTaskTarget_DefaultOrgLookupErrorIsWrapped(t *testing.T) {
 
 	ws := &pkgWorkspace.MockContext{}
 	_, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "determining default organization")
 	assert.Contains(t, err.Error(), "boom")
 }
@@ -241,7 +243,7 @@ func TestResolveTaskTarget_InvalidStackReferenceErrors(t *testing.T) {
 
 	ws := &pkgWorkspace.MockContext{}
 	_, err := resolveTaskTarget(t.Context(), ws, be, nil, taskTargetOpts{stackName: "bad/stack/name/here"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "invalid stack")
 }
 
@@ -391,6 +393,7 @@ func TestNewNeoCmd_RegistersFlags(t *testing.T) {
 	// cobra.MaximumNArgs(1): 0 or 1 prompt args OK, 2+ rejected.
 	require.NoError(t, cmd.Args(cmd, []string{}))
 	require.NoError(t, cmd.Args(cmd, []string{"hello"}))
+	//nolint:forbidigo // pre-existing
 	require.Error(t, cmd.Args(cmd, []string{"a", "b"}), "more than one positional arg must be rejected")
 }
 
@@ -405,7 +408,7 @@ func TestNewNeoCmd_PrintRejectsManualApproval(t *testing.T) {
 	require.NoError(t, cmd.Flags().Set("approval-mode", "manual"))
 
 	err := cmd.RunE(cmd, []string{"hello"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--approval-mode=manual is incompatible with --print")
 }
 
@@ -1454,7 +1457,7 @@ func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
 			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
 			client.CreateNeoTaskOptions{},
 			func(error) { t.Fatal("onEntityDropped should not fire on unrelated errors") })
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, 1, calls)
 	})
 
@@ -1475,7 +1478,7 @@ func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
 		_, err := createNeoTaskWithEntityRetry(
 			t.Context(), pc, "my-org", "hello", "", "", client.CreateNeoTaskOptions{},
 			func(error) { t.Fatal("onEntityDropped should not fire when no stack is attached") })
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, 1, calls)
 	})
 }
@@ -1597,7 +1600,7 @@ func TestParseApprovalMode(t *testing.T) {
 	t.Run("RejectsUnknown", func(t *testing.T) {
 		t.Parallel()
 		_, err := parseApprovalMode("yolo")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "manual, balanced, auto")
 	})
 }
@@ -1617,7 +1620,7 @@ func TestParsePermissionMode(t *testing.T) {
 	t.Run("RejectsUnknown", func(t *testing.T) {
 		t.Parallel()
 		_, err := parsePermissionMode("admin")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "default, read-only")
 	})
 }

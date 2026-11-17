@@ -29,11 +29,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -243,6 +243,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
 
+	refresh := false
+	if isPreview {
+		refresh, err = operations.GetRefreshOption(proj, os.Getenv("PULUMI_OPTION_REFRESH"))
+		if err != nil {
+			return failedResult(a, "", err)
+		}
+	}
+
 	// Resolve the backend fresh per tool call, the same way `pulumi preview`/`pulumi up`
 	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). Reusing the backend
 	// frozen at `pulumi neo` startup would pin the access token resolved back then, so the
@@ -295,14 +303,20 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, p.Workspace, cmdBackend.DefaultLoginManager, proj)
+	if err != nil {
+		return failedResult(a, "", fmt.Errorf("preparing plugin credentials: %w", err))
+	}
 	opts := backend.UpdateOptions{
 		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
 		// pulumi_up follows an approved pulumi_preview, so don't run a second preview first.
 		// Matches the Automation API's `up --yes --skip-preview`. Never set for pulumi_preview.
 		SkipPreview: !isPreview,
 		Engine: engine.UpdateOptions{
-			Experimental: true,
-			Autonamer:    autonamer,
+			CloudCredentialEnv: cloudCredentialEnv,
+			Experimental:       true,
+			Autonamer:          autonamer,
+			Refresh:            refresh,
 		},
 		Display: backendDisplay.Options{
 			// Mute the backend's own progress renderer so it doesn't fight the Neo TUI.
@@ -354,7 +368,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		Opts:               opts,
 		StackConfiguration: cfg,
 		SecretsManager:     sm,
-		SecretsProvider:    secrets.DefaultProvider,
+		SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 		Scopes:             ctxOnlyCancellationSource{},
 	}
 

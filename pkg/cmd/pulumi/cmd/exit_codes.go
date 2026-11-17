@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -36,6 +37,7 @@ const (
 	ExitNoChanges           = 7
 	ExitCancelled           = 8
 	ExitTimeout             = 9
+	ExitAwaitError          = 10 // a provider needs to await an operation
 	ExitInternalError       = 255
 )
 
@@ -76,6 +78,13 @@ func ExitCodeFor(err error) int {
 	// wraps these in a BailError to suppress double-printing the message.
 	if apiErr, ok := errors.AsType[*cloud.APIError](err); ok {
 		return apiErr.ExitCode
+	}
+
+	// A deployment that ended with only await failures surfaces as an AwaitError. The engine wraps
+	// this in a BailError, so peek inside before mapping. Checked before the general bail branch
+	// so that the dedicated exit code wins.
+	if _, ok := errors.AsType[*plugin.AwaitError](result.UnwrapBail(err)); ok {
+		return ExitAwaitError
 	}
 
 	// Respect bail semantics first – still a failure, but don't print anything.

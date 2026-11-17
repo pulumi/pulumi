@@ -82,20 +82,20 @@ func newPackagePublishCmd() *cobra.Command {
 		Long: "Publish a package to the Private Registry.\n\n" +
 			"This command publishes a package to the Private Registry. The package can be a provider " +
 			"or a schema.\n\n" +
-			"When <provider> is specified as a PLUGIN[@VERSION] reference, Pulumi attempts to " +
+			"When `<provider>` is specified as a `PLUGIN[@VERSION]` reference, Pulumi attempts to " +
 			"resolve a resource plugin first, installing it on-demand, similarly to:\n\n" +
-			"  pulumi plugin install resource PLUGIN [VERSION]\n\n" +
-			"When <provider> is specified as a local path, Pulumi executes the provider " +
+			"    pulumi plugin install resource PLUGIN [VERSION]\n\n" +
+			"When `<provider>` is specified as a local path, Pulumi executes the provider " +
 			"binary to extract its package schema.\n\n" +
 			"For parameterized providers, parameters may be specified as additional " +
 			"arguments. The exact format of parameters is provider-specific; consult the " +
 			"provider's documentation for more information. If the parameters include flags " +
-			"that begin with dashes, you may need to use '--' to separate the provider name " +
+			"that begin with dashes, you may need to use `--` to separate the provider name " +
 			"from the parameters, as in:\n\n" +
-			"  pulumi package publish <provider> --readme ./README.md -- --provider-parameter-flag value\n\n" +
-			"When <schema> is a path to a local file with a '.json', '.yml' or '.yaml' " +
+			"    pulumi package publish <provider> --readme ./README.md -- --provider-parameter-flag value\n\n" +
+			"When `<schema>` is a path to a local file with a `.json`, `.yml` or `.yaml` " +
 			"extension, Pulumi package schema is read from it directly:\n\n" +
-			"  pulumi package publish ./my/schema.json --readme ./README.md",
+			"    pulumi package publish ./my/schema.json --readme ./README.md",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			pkgPublishCmd.extractSchema = packages.SchemaFromSchemaSource
@@ -178,7 +178,12 @@ func (cmd *packagePublishCmd) Run(
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil)
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+	if err != nil {
+		return err
+	}
+	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil, cloudCredentialEnv)
 	if err != nil {
 		return err
 	}

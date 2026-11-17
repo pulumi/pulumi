@@ -98,7 +98,7 @@ func installMockUpsertBackend(t *testing.T, snapshot *deploy.Snapshot) (pkgWorks
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -653,7 +653,7 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
   }
 }`
 
-	var createdInputs resource.PropertyMap
+	var createdInputs property.Map
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("azure", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -661,7 +661,7 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(azureSchemaJSON)}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					createdInputs = resource.ToResourcePropertyMap(req.Properties)
+					createdInputs = req.Properties
 					return plugin.CreateResponse{
 						ID:         "res-1",
 						Properties: req.Properties,
@@ -732,9 +732,8 @@ size = 3
 	assert.Equal(t, tokens.Type("azure:index:myResource"), finalSnap.Resources[1].Type)
 	assert.Equal(t, "myres", finalSnap.Resources[1].URN.Name())
 
-	require.NotNil(t, createdInputs, "provider.Create should have been called")
-	assert.Equal(t, "myres", createdInputs["name"].StringValue())
-	assert.Equal(t, 3.0, createdInputs["size"].NumberValue())
+	assert.Equal(t, "myres", createdInputs.Get("name").AsString())
+	assert.Equal(t, 3.0, createdInputs.Get("size").AsNumber())
 	_ = stderr
 }
 
@@ -786,15 +785,14 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
-					assert.Equal(t, "new", newInputs["name"].StringValue())
-					assert.Equal(t, 2.0, newInputs["size"].NumberValue())
-					_, hasEnabled := newInputs["enabled"]
+					assert.Equal(t, "new", req.NewInputs.Get("name").AsString())
+					assert.Equal(t, 2.0, req.NewInputs.Get("size").AsNumber())
+					_, hasEnabled := req.NewInputs.GetOk("enabled")
 					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
 					return plugin.UpdateResponse{
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"name": resource.NewProperty("new"),
-							"size": resource.NewProperty(2.0),
+						Properties: property.NewMap(map[string]property.Value{
+							"name": property.New("new"),
+							"size": property.New(2.0),
 						}),
 					}, nil
 				},
@@ -1134,7 +1132,7 @@ func TestDoCmdResourceCreateStatelessTakesNoNameArg(t *testing.T) {
 	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
 	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "myres"})
 	err := cmd.Execute()
-	require.Error(t, err, "stateless create should reject a positional name arg")
+	require.Error(t, err, "stateless create should reject a positional name arg") //nolint:forbidigo // pre-existing
 	_ = stdout
 }
 

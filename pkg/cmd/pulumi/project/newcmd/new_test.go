@@ -71,7 +71,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	}
 
 	err := runNew(t.Context(), args)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager
@@ -571,6 +571,7 @@ func mockCurrentBackend(t *testing.T, mockBackend backend.Backend) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -665,7 +666,7 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 			if tt.valid {
 				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			}
 		})
 	}
@@ -736,7 +737,7 @@ func TestProjectExists(t *testing.T) {
 			t.Parallel()
 			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName, false /* generateOnly */, display.Options{})
 			if tt.hasErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}

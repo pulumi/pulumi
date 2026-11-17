@@ -712,6 +712,8 @@ export class GenerateProgramRequest extends jspb.Message {
     setLoaderTarget(value: string): GenerateProgramRequest;
     getStrict(): boolean;
     setStrict(value: boolean): GenerateProgramRequest;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): GenerateProgramRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateProgramRequest.AsObject;
@@ -729,6 +731,7 @@ export namespace GenerateProgramRequest {
         sourceMap: Array<[string, string]>,
         loaderTarget: string,
         strict: boolean,
+        mapperTarget: string,
     }
 }
 
@@ -773,6 +776,8 @@ export class GenerateProjectRequest extends jspb.Message {
 
     getLocalDependenciesMap(): jspb.Map<string, string>;
     clearLocalDependenciesMap(): void;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): GenerateProjectRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GenerateProjectRequest.AsObject;
@@ -793,6 +798,7 @@ export namespace GenerateProjectRequest {
         loaderTarget: string,
 
         localDependenciesMap: Array<[string, string]>,
+        mapperTarget: string,
     }
 }
 

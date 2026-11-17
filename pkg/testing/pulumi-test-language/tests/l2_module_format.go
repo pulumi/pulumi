@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,52 +41,33 @@ func init() {
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:module-format")
 
-					res1 := RequireSingleNamedResource(l, snap.Resources, "res1")
-					want := resource.NewPropertyMapFromMap(map[string]any{"text": "hello world"})
-					assert.Equal(l, want, res1.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res1.Inputs, res1.Outputs, "expected inputs and outputs to match")
+					checkText := func(name, text string) {
+						r := RequireSingleNamedResource(l, snap.Resources, name)
+						want := property.NewMap(map[string]property.Value{"text": property.New(text)})
+						inputs := resource.FromResourcePropertyMap(r.Inputs)
+						assert.Equal(l, want, inputs, "expected inputs to be %v", want)
+						assert.Equal(l, inputs, resource.FromResourcePropertyMap(r.Outputs), "expected inputs and outputs to match")
+					}
 
-					res2 := RequireSingleNamedResource(l, snap.Resources, "res2")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "goodbye world"})
-					assert.Equal(l, want, res2.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res2.Inputs, res2.Outputs, "expected inputs and outputs to match")
-
-					res3 := RequireSingleNamedResource(l, snap.Resources, "res3")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "hello world"})
-					assert.Equal(l, want, res3.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res3.Inputs, res3.Outputs, "expected inputs and outputs to match")
-
-					res4 := RequireSingleNamedResource(l, snap.Resources, "res4")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "goodbye world"})
-					assert.Equal(l, want, res4.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res4.Inputs, res4.Outputs, "expected inputs and outputs to match")
-
-					res5 := RequireSingleNamedResource(l, snap.Resources, "res5")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "bonjour world"})
-					assert.Equal(l, want, res5.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res5.Inputs, res5.Outputs, "expected inputs and outputs to match")
-
-					res6 := RequireSingleNamedResource(l, snap.Resources, "res6")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "youkoso world"})
-					assert.Equal(l, want, res6.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res6.Inputs, res6.Outputs, "expected inputs and outputs to match")
-
-					res7 := RequireSingleNamedResource(l, snap.Resources, "res7")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "guten tag world"})
-					assert.Equal(l, want, res7.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res7.Inputs, res7.Outputs, "expected inputs and outputs to match")
+					checkText("res1", "hello world")
+					checkText("res2", "goodbye world")
+					checkText("res3", "hello world")
+					checkText("res4", "goodbye world")
+					checkText("res5", "bonjour world")
+					checkText("res6", "youkoso world")
+					checkText("res7", "guten tag world")
 
 					stk := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"out1": 12,
-						"out2": 15,
-						"out3": 12,
-						"out4": 15,
-						"out5": 14,
-						"out6": 15,
-						"out7": 18,
+					want := property.NewMap(map[string]property.Value{
+						"out1": property.New(12.0),
+						"out2": property.New(15.0),
+						"out3": property.New(12.0),
+						"out4": property.New(15.0),
+						"out5": property.New(14.0),
+						"out6": property.New(15.0),
+						"out7": property.New(18.0),
 					})
-					assert.Equal(l, want, stk.Outputs, "expected stack outputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(stk.Outputs), "expected stack outputs to be %v", want)
 				},
 			},
 		},

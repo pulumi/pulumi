@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,11 +51,12 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					stack := snap.Resources[0]
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
 
 					// Plain integer return.
-					AssertPropertyMapMember(l, stack.Outputs, "plainValue", resource.NewProperty(42.0))
+					AssertPropertyMapMember(l, stackOutputs, "plainValue", property.New(42.0))
 					// Plain integer returned as a field of the plain struct from nestedPlainProvider().
-					AssertPropertyMapMember(l, stack.Outputs, "nestedPlainValue", resource.NewProperty(42.0))
+					AssertPropertyMapMember(l, stackOutputs, "nestedPlainValue", property.New(42.0))
 
 					// The Custom resource created with the provider returned from plainProvider()
 					// should have echoed the providerConfig value that was passed into the

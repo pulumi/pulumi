@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,21 +39,21 @@ func init() {
 					outer := RequireSingleResource(l, snap.Resources, "components:index:OuterComponent")
 					assert.Equal(l, "outerComponent", outer.URN.Name())
 					assert.Equal(l,
-						resource.NewPropertyMapFromMap(map[string]any{"input": true}),
-						outer.Inputs)
+						property.NewMap(map[string]property.Value{"input": property.New(true)}),
+						resource.FromResourcePropertyMap(outer.Inputs))
 					assert.Equal(l,
-						resource.NewPropertyMapFromMap(map[string]any{"output": true}),
-						outer.Outputs)
+						property.NewMap(map[string]property.Value{"output": property.New(true)}),
+						resource.FromResourcePropertyMap(outer.Outputs))
 
 					inner := RequireSingleResource(l, snap.Resources, "components:index:InnerComponent")
 					assert.Equal(l, "outerComponent-innerComponent", inner.URN.Name())
 					assert.Equal(l, outer.URN, inner.Parent)
 					assert.Equal(l,
-						resource.NewPropertyMapFromMap(map[string]any{"input": false}),
-						inner.Inputs)
+						property.NewMap(map[string]property.Value{"input": property.New(false)}),
+						resource.FromResourcePropertyMap(inner.Inputs))
 					assert.Equal(l,
-						resource.NewPropertyMapFromMap(map[string]any{"output": true}),
-						inner.Outputs)
+						property.NewMap(map[string]property.Value{"output": property.New(true)}),
+						resource.FromResourcePropertyMap(inner.Outputs))
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 
@@ -60,8 +61,8 @@ func init() {
 					assert.Equal(l, "outerComponent-innerComponent-res", simple.URN.Name())
 					assert.Equal(l, inner.URN, simple.Parent)
 					assert.Equal(l,
-						resource.NewPropertyMapFromMap(map[string]any{"value": true}),
-						simple.Inputs)
+						property.NewMap(map[string]property.Value{"value": property.New(true)}),
+						resource.FromResourcePropertyMap(simple.Inputs))
 					assert.Equal(l, simple.Inputs, simple.Outputs)
 				},
 			},

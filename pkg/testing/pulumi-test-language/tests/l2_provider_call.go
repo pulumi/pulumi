@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,11 +67,11 @@ func init() {
 					//
 					// * defaultProviderValue, whose value should be the value of the default provider concatenated with the
 					//   defaultRes resource's value.
-					outputs := stack.Outputs
-					require.Len(l, outputs, 1, "expected 1 output")
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					require.Equal(l, 1, outputs.Len(), "expected 1 output")
 					AssertPropertyMapMember(
 						l, outputs,
-						"defaultProviderValue", resource.NewProperty("defaultProvValuedefaultValue"),
+						"defaultProviderValue", property.New("defaultProvValuedefaultValue"),
 					)
 				},
 			},

@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,11 +41,12 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "parameterValue", resource.NewProperty("Hello"))
-					AssertPropertyMapMember(l, stack.Outputs, "parameterValueFromComponent",
-						resource.NewProperty("HelloComponent"))
-					AssertPropertyMapMember(l, stack.Outputs, "invokeGreeting",
-						resource.NewProperty("Hello, Pulumi"))
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "parameterValue", property.New("Hello"))
+					AssertPropertyMapMember(l, stackOutputs, "parameterValueFromComponent",
+						property.New("HelloComponent"))
+					AssertPropertyMapMember(l, stackOutputs, "invokeGreeting",
+						property.New("Hello, Pulumi"))
 
 					// The Greeting custom resource lives under the extension's own
 					// namespace. Its state must carry an ExtensionRef so the engine

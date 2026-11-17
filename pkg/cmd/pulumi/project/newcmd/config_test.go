@@ -298,7 +298,7 @@ func TestSetFail(t *testing.T) {
 			t.Parallel()
 
 			_, err := ParseConfig(test.Array, true /*path*/)
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		})
 	}
 }

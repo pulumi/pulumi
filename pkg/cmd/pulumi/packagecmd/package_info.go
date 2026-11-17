@@ -75,8 +75,13 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
-				nil)
+				nil, cloudCredentialEnv)
 			if err != nil {
 				return err
 			}

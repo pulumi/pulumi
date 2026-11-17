@@ -22,9 +22,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -43,13 +45,17 @@ import (
 )
 
 var invokeOptionsType = cty.ObjectWithOptionalAttrs(map[string]cty.Type{
-	"version":   cty.String,
-	"dependsOn": cty.List(cty.DynamicPseudoType),
-	"provider":  cty.DynamicPseudoType,
+	"version":           cty.String,
+	"dependsOn":         cty.List(cty.DynamicPseudoType),
+	"provider":          cty.DynamicPseudoType,
+	"parent":            cty.DynamicPseudoType,
+	"pluginDownloadUrl": cty.String,
 }, []string{
 	"version",
 	"dependsOn",
 	"provider",
+	"parent",
+	"pluginDownloadUrl",
 })
 
 func tryExpressions(
@@ -109,24 +115,22 @@ func recoverExpression(
 
 	valueClosure := customdecode.ExpressionClosureFromVal(args[0])
 	value, diags := valueClosure.Value()
+
+	var faultErr error
 	if diags.HasErrors() {
-		return cty.NilVal, errors.New(diags.Error())
-	}
-
-	pv, err := ctyToPropertyValue(value)
-	if err == nil {
-		return propertyValueToCty(context.TODO(), getResource, pv)
-	}
-
-	poison, ok := errors.AsType[*poisonError](err)
-	if !ok {
-		return cty.NilVal, err
+		faultErr = errors.New(diags.Error())
+	} else {
+		pv, err := ctyToPropertyValue(value)
+		if err == nil {
+			return propertyValueToCty(context.TODO(), getResource, pv)
+		}
+		faultErr = err
 	}
 
 	recoveryClosure := customdecode.ExpressionClosureFromVal(args[1])
 	childContext := recoveryClosure.EvalContext.NewChild()
 	childContext.Variables = map[string]cty.Value{
-		"error": cty.StringVal(poison.Error()),
+		"error": cty.StringVal(faultErr.Error()),
 	}
 	recoveryClosure = &customdecode.ExpressionClosure{
 		Expression:  recoveryClosure.Expression,
@@ -424,6 +428,25 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					}
 					request.Provider = fmt.Sprintf("%s::%s", urnAttr.AsString(), idAttr.AsString())
 				}
+
+				parent := options.GetAttr("parent")
+				if !parent.IsNull() && parent.IsKnown() {
+					if !parent.Type().IsObjectType() || !parent.Type().HasAttribute("urn") {
+						return cty.NilVal, errors.New("invoke options parent must be a resource object")
+					}
+					urnAttr := parent.GetAttr("urn")
+					if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
+						return cty.NilVal, errors.New("invoke options parent must be a resource object with known urn property")
+					}
+					request.Parent = urnAttr.AsString()
+				}
+
+				if version := options.GetAttr("version"); !version.IsNull() && version.IsKnown() {
+					request.Version = version.AsString()
+				}
+				if url := options.GetAttr("pluginDownloadUrl"); !url.IsNull() && url.IsKnown() {
+					request.PluginDownloadURL = url.AsString()
+				}
 			}
 
 			request.DependsOn = make([]string, len(dependsOn))
@@ -568,15 +591,17 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if id.IsKnown() {
 				idPV = property.New(id.AsString())
 			}
-			argsPM = argsPM.Set("__self__", property.New(property.ResourceReference{
-				URN: resource.URN(urnVal.AsString()),
-				ID:  idPV,
-			}))
+			argsPM = argsPM.Set("__self__", property.New(property.NewResourceReference(
+				resource.URN(urnVal.AsString()),
+				idPV,
+				"",
+			)))
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:               fun.Token,
-				Args:              propertyrpc.Marshal(argsPM),
-				AcceptsByteString: true,
+				Tok:                fun.Token,
+				Args:               propertyrpc.Marshal(argsPM),
+				AcceptsByteString:  true,
+				AcceptOutputValues: ectx.callOutputValues,
 			}
 
 			var dependsOn []resource.URN
@@ -624,6 +649,21 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
+			// In the legacy path per-value deps come from the response's ReturnDependencies map, not from
+			// OutputValues on the return value itself. Attach them per-key before wrapping, so a downstream
+			// consumer of resultPM[k] sees the deps the provider recorded for k. In the CALL_OUTPUT_VALUES
+			// path the engine and provider already stamped per-value deps onto the returned values and the
+			// ReturnDependencies entries are redundant with them.
+			if !ectx.callOutputValues {
+				for k, deps := range resp.GetReturnDependencies() {
+					v, ok := resultPM.GetOk(k)
+					if !ok {
+						continue
+					}
+					urns := slice.Cast[resource.URN](deps.GetUrns())
+					resultPM = resultPM.Set(k, v.WithDependencies(append(v.Dependencies(), urns...)))
+				}
+			}
 			// Methods declared with ReturnTypePlain but no object return type carry the single value in a
 			// property map with exactly one entry, whose key may be any name. Unwrap it so callers get the
 			// value directly.
@@ -643,8 +683,64 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			} else {
 				resultPV = property.New(resultPM)
 			}
-			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			// User-declared dependsOn always applies at the top level, in both modes.
+			if len(dependsOn) > 0 {
+				resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			}
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
+		},
+	})
+
+	// resourceExists reports whether a resource of the given type with the given ID exists, passing any state to the
+	// provider's Read. A resource being checked for existence has no logical identity, so no name is required. If the
+	// ID is unknown (e.g. during preview), or the engine can't determine existence, the result is unknown.
+	existsResourceFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "type",
+				Type: cty.String,
+			},
+			{
+				Name:        "id",
+				Type:        cty.String,
+				AllowMarked: true,
+			},
+		},
+		VarParam: &function.Parameter{
+			Name:        "state",
+			Type:        cty.DynamicPseudoType,
+			AllowMarked: true,
+			AllowNull:   true,
+		},
+		Type: function.StaticReturnType(cty.Bool),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			// The ID is typically an output of the resource being checked, so it carries secret and dependency
+			// marks. Strip them before reading the underlying string.
+			id, _ := args[1].Unmark()
+			// During preview the ID of a resource that has not yet been created is unknown; the runtime represents
+			// this as an empty string. We can't check existence without an ID, so the result is unknown.
+			if !id.IsKnown() || id.AsString() == "" {
+				return cty.UnknownVal(cty.Bool), nil
+			}
+			req := &pulumirpc.ExistsResourceRequest{
+				Type: args[0].AsString(),
+				Id:   id.AsString(),
+			}
+			if len(args) == 3 && !args[2].IsNull() {
+				state, err := ctyToPropertyValue(args[2])
+				if err != nil {
+					return cty.NilVal, fmt.Errorf("resourceExists: invalid state: %w", err)
+				}
+				req.Properties = propertyrpc.Marshal(stripOutputs(state).AsMap())
+			}
+			resp, err := ectx.existsResource(context.TODO(), req)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("resourceExists: %w", err)
+			}
+			if resp.GetUnknown() {
+				return cty.UnknownVal(cty.Bool), nil
+			}
+			return cty.BoolVal(resp.GetExists()), nil
 		},
 	})
 
@@ -883,6 +979,52 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	// lookupFn returns the default unchanged when the key is absent. cty's lookup converts the default to the
+	// element type of a map, but the binder types the result as the unification of the element type and the
+	// default, so the default need not convert.
+	lookupFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name:        "collection",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
+			},
+			{
+				Name:        "key",
+				Type:        cty.String,
+				AllowMarked: true,
+			},
+			{
+				Name:        "default",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
+			},
+		},
+		Type: func(args []cty.Value) (cty.Type, error) {
+			collection := args[0].Type()
+			if !collection.IsObjectType() && !collection.IsMapType() {
+				return cty.NilType, function.NewArgErrorf(0, "the first argument to 'lookup' must be a map")
+			}
+			return cty.DynamicPseudoType, nil
+		},
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			collection, marks := args[0].Unmark()
+			key, keyMarks := args[1].Unmark()
+			if !collection.IsWhollyKnown() || !key.IsKnown() {
+				return cty.DynamicVal.WithMarks(marks, keyMarks), nil
+			}
+			name := key.AsString()
+			if collection.Type().IsObjectType() {
+				if collection.Type().HasAttribute(name) {
+					return collection.GetAttr(name).WithMarks(marks, keyMarks), nil
+				}
+			} else if collection.HasIndex(key) == cty.True {
+				return collection.Index(key).WithMarks(marks, keyMarks), nil
+			}
+			return args[2].WithMarks(marks, keyMarks), nil
+		},
+	})
+
 	entriesFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -890,31 +1032,56 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				Type: cty.DynamicPseudoType,
 			},
 		},
-		Type: function.StaticReturnType(cty.List(cty.Object(map[string]cty.Type{
-			"key":   cty.String,
-			"value": cty.DynamicPseudoType,
-		}))),
+		Type: func(args []cty.Value) (cty.Type, error) {
+			collection := args[0].Type()
+			keyType := cty.String
+			if collection.IsListType() || collection.IsTupleType() {
+				keyType = cty.Number
+			}
+			entryType := func(valueType cty.Type) cty.Type {
+				return cty.Object(map[string]cty.Type{"key": keyType, "value": valueType})
+			}
+			switch {
+			case collection.IsMapType() || collection.IsListType():
+				return cty.List(entryType(collection.ElementType())), nil
+			case collection.IsObjectType() || collection.IsTupleType():
+				var types []cty.Type
+				if collection.IsObjectType() {
+					attributes := collection.AttributeTypes()
+					for _, k := range slices.Sorted(maps.Keys(attributes)) {
+						types = append(types, entryType(attributes[k]))
+					}
+				} else {
+					for _, t := range collection.TupleElementTypes() {
+						types = append(types, entryType(t))
+					}
+				}
+				if len(types) == 0 {
+					return cty.List(entryType(cty.DynamicPseudoType)), nil
+				}
+				for _, t := range types[1:] {
+					if !t.Equals(types[0]) {
+						return cty.Tuple(types), nil
+					}
+				}
+				return cty.List(types[0]), nil
+			}
+			return cty.NilType, fmt.Errorf("entries argument must be a collection, was %s", collection.FriendlyName())
+		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if len(args) != 1 {
-				return cty.NilVal, errors.New("entries requires a collection argument")
+			entries := make([]cty.Value, 0, args[0].LengthInt())
+			for it := args[0].ElementIterator(); it.Next(); {
+				key, value := it.Element()
+				entries = append(entries, cty.ObjectVal(map[string]cty.Value{
+					"key":   key,
+					"value": value,
+				}))
 			}
-			if !args[0].Type().IsMapType() && !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("entries argument must be a collection, was %s", args[0].Type().FriendlyName())
-			}
-			obj := args[0]
-			valueMap := obj.AsValueMap()
-			keys := make([]string, 0, len(valueMap))
-			for k := range valueMap {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			var entries []cty.Value
-			for _, k := range keys {
-				entry := cty.ObjectVal(map[string]cty.Value{
-					"key":   cty.StringVal(k),
-					"value": valueMap[k],
-				})
-				entries = append(entries, entry)
+			switch {
+			case retType.IsTupleType():
+				return cty.TupleVal(entries), nil
+			case len(entries) == 0:
+				return cty.ListValEmpty(retType.ElementType()), nil
 			}
 			return cty.ListVal(entries), nil
 		},
@@ -1126,6 +1293,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"getOutput":          getOutputFn,
 		"invoke":             invokeFn,
 		"call":               callFn,
+		"resourceExists":     existsResourceFn,
 		"fileAsset":          fileAssetFn,
 		"fileArchive":        fileArchiveFn,
 		"assetArchive":       assetArchiveFn,
@@ -1143,7 +1311,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"range":              stdlib.RangeFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
-		"lookup":             stdlib.LookupFunc,
+		"lookup":             lookupFn,
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
 		"toJSON":             toJSONFn,

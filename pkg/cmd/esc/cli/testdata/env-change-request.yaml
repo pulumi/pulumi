@@ -1,0 +1,462 @@
+run: |
+  esc env init default/test
+  esc env set default/test foo baz
+  esc env set default/test foo bar --draft
+  esc env change-request ls
+  esc env change-request ls --env default/test --status pending
+  esc env change-request ls --env default/test --status applied
+  esc env change-request ls --env default/test
+  esc env change-request list --env default/test
+  esc env change-request get 00000000-0000-0000-0000-000000000000
+  esc env change-request diff 00000000-0000-0000-0000-000000000000
+  esc env change-request comment 00000000-0000-0000-0000-000000000000 -m "looks good"
+  esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
+  esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
+  esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes -m "lgtm again" || true
+  esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+  esc env change-request unapprove 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+  esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+  esc env change-request apply 00000000-0000-0000-0000-000000000000
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+  esc env change-request close 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request ls
+  esc env change-request ls --status all --output json
+  esc env change-request diff 00000000-0000-0000-0000-000000000000
+  esc env change-request log 00000000-0000-0000-0000-000000000000
+  esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+  esc env get default/test
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test foo baz
+> esc env set default/test foo bar --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env change-request ls
+┌──────────────────────────────────────┬──────────────┬───────────┐
+│ ID                                   │ ENVIRONMENT  │ AUTHOR    │
+├──────────────────────────────────────┼──────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ test-user │
+└──────────────────────────────────────┴──────────────┴───────────┘
+> esc env change-request ls --env default/test --status pending
+┌──────────────────────────────────────┬─────────┬───────────┐
+│ ID                                   │ STATUS  │ AUTHOR    │
+├──────────────────────────────────────┼─────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ pending │ test-user │
+└──────────────────────────────────────┴─────────┴───────────┘
+> esc env change-request ls --env default/test --status applied
+> esc env change-request ls --env default/test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request list --env default/test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+ID: 00000000-0000-0000-0000-000000000000
+Environment: test-user/default/test
+Action: update
+Status: pending
+Author: Test User <test-user>
+Created: a long while ago
+Revision: 1
+Base environment revision: 2
+Current environment revision: 2
+Approved: false
+  Require approval (not satisfied): 0 of 1 approvals
+URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
+--- test-user/default/test@2
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes -m lgtm again
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+{
+  "changeRequestId": "00000000-0000-0000-0000-000000000000",
+  "draftRevisionNumber": 1,
+  "conflicts": []
+}
+> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "status": "ready",
+  "action": "update",
+  "description": "",
+  "createdAt": "0001-01-01T00:00:00Z",
+  "createdBy": {
+    "name": "Test User",
+    "githubLogin": "test-user"
+  },
+  "latestRevisionNumber": 1,
+  "entity": {
+    "entityType": "environment",
+    "project": "default",
+    "name": "test"
+  },
+  "gateEvaluation": {
+    "satisfied": true,
+    "applicableGates": [
+      {
+        "id": "gate-1",
+        "name": "Require approval",
+        "satisfied": true,
+        "ruleDetails": {
+          "ruleType": "approval_required",
+          "requiredApprovals": 1,
+          "approvers": [
+            {
+              "name": "Test User",
+              "githubLogin": "test-user"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "draftStatus": {
+    "baseRevision": 2,
+    "environmentRevision": 2,
+    "draftRevisionNumber": 1
+  },
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000"
+}
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+{
+  "entityUrl": ""
+}
+> esc env change-request close 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+> esc env change-request ls
+> esc env change-request ls --status all --output json
+{
+  "changeRequests": [
+    {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "status": "applied",
+      "action": "update",
+      "description": "",
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "latestRevisionNumber": 1,
+      "entity": {
+        "entityType": "environment",
+        "project": "default",
+        "name": "test"
+      }
+    }
+  ]
+}
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
+--- test-user/default/test@2
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+> esc env change-request log 00000000-0000-0000-0000-000000000000
+a long while ago  test-user created the change request
+a long while ago  test-user added revision 1
+a long while ago  test-user submitted the change request for approval
+a long while ago  test-user commented
+    looks good
+a long while ago  test-user approved revision 1
+    lgtm
+a long while ago  test-user changed the status from pending to ready (approval rules met)
+a long while ago  test-user removed their approval
+a long while ago  test-user changed the status from ready to pending (approval rules no longer met)
+a long while ago  test-user approved revision 1
+a long while ago  test-user changed the status from pending to ready (approval rules met)
+a long while ago  test-user applied the change request
+> esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+{
+  "events": [
+    {
+      "id": "1",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "newStatus": "draft",
+      "reason": "change_request_created"
+    },
+    {
+      "id": "2",
+      "eventType": "revision_added",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      }
+    },
+    {
+      "id": "3",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "draft",
+      "newStatus": "pending",
+      "reason": "submitted_for_approval"
+    },
+    {
+      "id": "4",
+      "eventType": "commented",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "comment": "looks good"
+    },
+    {
+      "id": "5",
+      "eventType": "approved_by_user",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "comment": "lgtm"
+    },
+    {
+      "id": "6",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "pending",
+      "newStatus": "ready",
+      "reason": "gate_evaluation"
+    },
+    {
+      "id": "7",
+      "eventType": "unapproved_by_user",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      }
+    },
+    {
+      "id": "8",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "ready",
+      "newStatus": "pending",
+      "reason": "gate_evaluation"
+    },
+    {
+      "id": "9",
+      "eventType": "approved_by_user",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      }
+    },
+    {
+      "id": "10",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "pending",
+      "newStatus": "ready",
+      "reason": "gate_evaluation"
+    },
+    {
+      "id": "11",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "ready",
+      "newStatus": "applied",
+      "reason": "applied successfully"
+    }
+  ]
+}
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "bar"
+}
+```
+# Definition
+```yaml
+values:
+  foo: bar
+
+```
+
+
+---
+> esc env init default/test
+> esc env set default/test foo baz
+> esc env set default/test foo bar --draft
+> esc env change-request ls
+> esc env change-request ls --env default/test --status pending
+> esc env change-request ls --env default/test --status applied
+No change requests found.
+> esc env change-request ls --env default/test
+> esc env change-request list --env default/test
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
+> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
+Added comment to change request 00000000-0000-0000-0000-000000000000
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
+Approved change request 00000000-0000-0000-0000-000000000000
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes -m lgtm again
+Error: approving change request: already approved
+> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+Removed approval from change request 00000000-0000-0000-0000-000000000000
+> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+Error: removing approval: not approved
+> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
+Approved change request 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+warning: Change request 00000000-0000-0000-0000-000000000000 is already based on the current environment revision.
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+warning: Change request 00000000-0000-0000-0000-000000000000 is already based on the current environment revision.
+> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+Error: non-interactive mode requires --yes flag
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+Applied change request 00000000-0000-0000-0000-000000000000
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
+> esc env change-request close 00000000-0000-0000-0000-000000000000
+Error: closing change request: change request is not active
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+Error: change request 00000000-0000-0000-0000-000000000000 is applied
+> esc env change-request ls
+No change requests found.
+> esc env change-request ls --status all --output json
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
+> esc env change-request log 00000000-0000-0000-0000-000000000000
+> esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+> esc env get default/test

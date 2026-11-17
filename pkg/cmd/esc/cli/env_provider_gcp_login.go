@@ -34,7 +34,7 @@ func newEnvProviderGCPLoginCmd(env *envCommand) *cobra.Command {
 			"Subcommands select the authentication mode: `static` for static credentials,\n" +
 			"`oidc` for federated identity via OpenID Connect.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/gcp-login/\n" +
 			"for the full provider reference.\n",
 		Args: cobra.NoArgs,
 	}
@@ -50,6 +50,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 	var tokenLifetime string
 	var pathStr string
 	var draft string
+	var reason string
 	var create bool
 	var exportEnvVars bool
 
@@ -63,7 +64,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 			"access token is wrapped in `fn::secret`. <project-number> must be the numerical\n" +
 			"GCP project ID. If a block already exists at the path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/gcp-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -106,7 +107,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
+			return applyProviderUpdate(ctx, env, ref, draft, reason, path, node, envVars)
 		},
 	}
 
@@ -122,6 +123,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&draft, "draft", "",
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
 }
@@ -131,7 +133,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 // serviceAccount and tokenLifetime are omitted when empty.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/
+// https://www.pulumi.com/docs/esc/providers/login/gcp-login/
 func buildGCPLoginStaticNode(project int64, accessToken, serviceAccount, tokenLifetime string) *yaml.Node {
 	accessTokenContent := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "accessToken"},
@@ -178,6 +180,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	var subjectAttributes []string
 	var pathStr string
 	var draft string
+	var reason string
 	var create bool
 	var exportEnvVars bool
 
@@ -193,7 +196,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"service account must be provisioned separately (e.g. with Pulumi). If a block\n" +
 			"already exists at the path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/gcp-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -243,7 +246,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
+			return applyProviderUpdate(ctx, env, ref, draft, reason, path, node, envVars)
 		},
 	}
 
@@ -264,6 +267,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&draft, "draft", "",
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	_ = cmd.MarkFlagRequired("workload-pool-id")
 	_ = cmd.MarkFlagRequired("provider-id")
@@ -286,7 +290,7 @@ func gcpLoginEnvVars(pathRef string) []envVar {
 // subjectAttributes are omitted when empty.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/
+// https://www.pulumi.com/docs/esc/providers/login/gcp-login/
 func buildGCPLoginOIDCNode(
 	project int64,
 	workloadPoolID, providerID, serviceAccount, region, tokenLifetime string,

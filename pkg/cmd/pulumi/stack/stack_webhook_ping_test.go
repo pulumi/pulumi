@@ -133,7 +133,7 @@ func TestStackWebhookPing_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockWebhookPingClient{err: errors.New("connection refused")}
 	err := runStackWebhookPing(t.Context(), &buf, stubPingFactory(c), "", "hook", renderWebhookPingText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pinging stack webhook")
 	assert.Contains(t, err.Error(), "connection refused")
 }

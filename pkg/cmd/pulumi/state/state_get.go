@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -38,7 +37,9 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type stateGetRenderFunc func(cmd *cobra.Command, res *pkgresource.State, showSecrets bool) error
@@ -72,7 +73,7 @@ this command will prompt for one.`,
 			if err != nil {
 				return fmt.Errorf("load stack: %w", err)
 			}
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 			if err != nil {
 				return fmt.Errorf("load stack snapshot: %w", err)
 			}
@@ -172,10 +173,7 @@ func resolveResourceRef(snap *deploy.Snapshot, arg string, warn io.Writer) (*pkg
 	case 1:
 		return resolveResourceRef(snap, string(named[0]), warn)
 	default:
-		urns := make([]string, len(named))
-		for i, urn := range named {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](named)
 		return nil, fmt.Errorf("%d resources in the stack are named %q:\n    %s\n"+
 			"specify one by URN",
 			len(named), arg, strings.Join(urns, "\n    "))
@@ -198,11 +196,11 @@ func namedResourceURNs(snap *deploy.Snapshot, name string) []resource.URN {
 }
 
 func renderResourceStateJSON(cmd *cobra.Command, res *pkgresource.State, showSecrets bool) error {
-	inputs, err := renderProperties(cmd.Context(), res.Inputs, showSecrets)
+	inputs, err := renderProperties(cmd.Context(), resource.FromResourcePropertyMap(res.Inputs), showSecrets)
 	if err != nil {
 		return err
 	}
-	outputs, err := renderProperties(cmd.Context(), res.Outputs, showSecrets)
+	outputs, err := renderProperties(cmd.Context(), resource.FromResourcePropertyMap(res.Outputs), showSecrets)
 	if err != nil {
 		return err
 	}
@@ -241,7 +239,8 @@ func renderResourceStateText(cmd *cobra.Command, res *pkgresource.State, showSec
 			continue
 		}
 		var buf bytes.Buffer
-		display.PrintObject(&buf, section.props, false /* planning */, 1 /* indent */, deploy.OpSame,
+		display.PrintObject(&buf, resource.FromResourcePropertyMap(section.props),
+			false /* planning */, 1 /* indent */, deploy.OpSame,
 			false /* prefix */, false /* truncateOutput */, false /* debug */, showSecrets)
 		fmt.Fprintf(w, "%s:\n%s\n", section.title, color.Colorize(buf.String()))
 	}
@@ -251,13 +250,14 @@ func renderResourceStateText(cmd *cobra.Command, res *pkgresource.State, showSec
 // renderProperties converts a property map to plain JSON-marshalable values via the same
 // MassageSecrets+SerializeProperties path as `pulumi stack output`, after dropping internal
 // (double-underscore) keys.
-func renderProperties(ctx context.Context, props resource.PropertyMap, showSecrets bool) (map[string]any, error) {
-	visible := make(resource.PropertyMap, len(props))
-	for k, v := range props {
-		if !resource.IsInternalPropertyKey(k) {
+func renderProperties(ctx context.Context, props property.Map, showSecrets bool) (map[string]any, error) {
+	visible := make(map[string]property.Value, props.Len())
+	for k, v := range props.All {
+		if !resource.IsInternalPropertyKey(resource.PropertyKey(k)) {
 			visible[k] = v
 		}
 	}
-	return stack.SerializeProperties(ctx, display.MassageSecrets(visible, showSecrets),
+	return stack.SerializeProperties(ctx,
+		resource.ToResourcePropertyMap(display.MassageSecrets(property.NewMap(visible), showSecrets)),
 		config.NewPanicCrypter(), showSecrets)
 }

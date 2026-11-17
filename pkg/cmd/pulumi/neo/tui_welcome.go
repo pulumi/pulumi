@@ -133,11 +133,11 @@ func (w welcomeModel) View() string {
 	}
 
 	parts := []string{
+		strings.TrimRight(neoArt, "\n"),
+		"",
 		titleStyle.Render("Pulumi Neo"),
 		"",
 		w.greeting,
-		"",
-		strings.TrimRight(neoArt, "\n"),
 		"",
 		dim.Render(infoText),
 	}

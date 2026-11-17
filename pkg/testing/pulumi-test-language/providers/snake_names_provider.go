@@ -189,22 +189,22 @@ func (p *SnakeNamesProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != "33.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 33.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 33.0.0"),
 		}, nil
 	}
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
@@ -271,14 +271,14 @@ func (p *SnakeNamesProvider) Create(
 		nestedValue := nested.ObjectValue()["nested_value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"the_output": resource.NewProperty(resource.PropertyMap{
-					"someKey": resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(resource.PropertyMap{
-							"nested_output": resource.NewProperty(nestedValue),
-						}),
+			Properties: property.NewMap(map[string]property.Value{
+				"the_output": property.New(property.NewMap(map[string]property.Value{
+					"someKey": property.New([]property.Value{
+						property.New(property.NewMap(map[string]property.Value{
+							"nested_output": property.New(nestedValue),
+						})),
 					}),
-				}),
+				})),
 			}),
 			Status: resource.StatusOK,
 		}, nil
@@ -289,8 +289,8 @@ func (p *SnakeNamesProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"the_input": theInput,
+			Properties: property.NewMap(map[string]property.Value{
+				"the_input": resource.FromResourcePropertyValue(theInput),
 			}),
 			Status: resource.StatusOK,
 		}, nil

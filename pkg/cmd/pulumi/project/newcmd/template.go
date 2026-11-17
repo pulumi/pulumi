@@ -17,6 +17,7 @@ package newcmd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"slices"
 	"strings"
@@ -78,10 +79,16 @@ func declinedToChoose(
 }
 
 func friendlyInterrupt(err, friendly error) error {
-	if errors.Is(err, terminal.InterruptErr) {
+	if isCancelled(err) {
 		return friendly
 	}
 	return err
+}
+
+// isCancelled reports whether err is a prompt the user cancelled. Select prompts report Ctrl-C as
+// terminal.InterruptErr, and text prompts (ui.PromptForValue, the passphrase prompt) as io.EOF.
+func isCancelled(err error) bool {
+	return errors.Is(err, terminal.InterruptErr) || errors.Is(err, io.EOF)
 }
 
 func resolveTemplate(

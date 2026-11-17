@@ -501,7 +501,7 @@ func TestInsightsAccountListCmd_NegativeCount(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--count must be non-negative")
 	assert.Empty(t, client.calls, "no API call should be made on invalid --count")
 }
@@ -514,7 +514,7 @@ func TestInsightsAccountListCmd_ClientError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, defaultListArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing insights accounts")
 	assert.Contains(t, err.Error(), "403 forbidden")
 }
@@ -528,7 +528,7 @@ func TestInsightsAccountListCmd_FactoryError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, defaultListArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -553,7 +553,7 @@ func TestInsightsAccountListCmd_PaginationLimit(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pagination exceeded")
 }
 

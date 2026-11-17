@@ -6,7 +6,10 @@
 <{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::my:component:First$my:component:Second::child: (create)
 <{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::my:component:First$pkgA:m:typA::custom: (create)
 <{%fg 2%}>        [provider=urn:pulumi:test::test::pulumi:providers:pkgA::explicit::2]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
-    <{%fg 2%}>+ 5 created<{%reset%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::explicitCustom: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::other::3]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::defaultCustom: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 7 created<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

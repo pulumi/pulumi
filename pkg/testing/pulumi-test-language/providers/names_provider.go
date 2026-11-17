@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // This provider offers resources with names that could potentially cause problems in go
@@ -104,23 +105,23 @@ func (p *NamesProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != "6.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 6.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 6.0.0"),
 		}, nil
 	}
 
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -243,11 +244,11 @@ func (p *NamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugi
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	readInputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
-	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	readOutputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{

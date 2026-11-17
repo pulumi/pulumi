@@ -17,7 +17,6 @@ package policy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -59,6 +58,8 @@ type policyIssueListArgs struct {
 	org          string
 	count        int64
 	all          bool
+	closed       bool
+	filters      policyIssueFilters
 	outputFormat outputflag.OutputFlag[policyIssueListRenderFunc]
 }
 
@@ -86,16 +87,25 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List all policy issues for an organization",
-		Long: "[EXPERIMENTAL] List all policy issues for an organization.\n" +
+		Short:   "[EXPERIMENTAL] List policy issues for an organization",
+		Long: "[EXPERIMENTAL] List policy issues for an organization.\n" +
 			"\n" +
-			"Returns a list of policy issues for the organization. Each issue\n" +
-			"represents a violation detected by a Policy Pack during a stack update\n" +
-			"or a continuous-compliance scan, and includes the violating resource,\n" +
-			"policy details, and enforcement level.\n" +
+			"Lists the active policy issues for the organization, or the closed\n" +
+			"issues when --closed is passed. Each issue represents a violation\n" +
+			"detected by a Policy Pack during a stack update or a continuous-compliance\n" +
+			"scan, and includes the violating resource, policy details, status, and\n" +
+			"enforcement level.\n" +
 			"\n" +
 			"Default output is a human-readable table; pass --output=json for the\n" +
 			"full response as a JSON envelope.",
+		Example: "  # List active policy issues\n" +
+			"  pulumi policy issue ls\n\n" +
+			"  # List all closed policy issues as JSON\n" +
+			"  pulumi policy issue ls --closed --all --output json\n\n" +
+			"  # List open high and critical severity issues\n" +
+			"  pulumi policy issue ls --severity high --severity critical --status open\n\n" +
+			"  # List issues for a stack, newest first, as JSON\n" +
+			"  pulumi policy issue ls --stack web/prod --sort observedAt:desc --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPolicyIssueList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -107,6 +117,8 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	cmd.Flags().Int64Var(&args.count, "count", 0,
 		"Maximum number of issues to return (default 100)")
 	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching issues; mutually exclusive with --count")
+	cmd.Flags().BoolVar(&args.closed, "closed", false, "List closed issues instead of active ones")
+	addPolicyIssueFilterFlags(cmd.Flags(), &args.filters)
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
@@ -119,17 +131,29 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 func defaultPolicyIssueListClientFactory(
 	ctx context.Context, orgFlag string,
 ) (policyIssueListClient, string, error) {
-	ws := pkgWorkspace.Instance
+	c, org, err := resolvePolicyIssueCloudClient(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, orgFlag, "listing policy issues")
+	if err != nil {
+		return nil, "", err
+	}
+	return c, org, nil
+}
+
+// resolvePolicyIssueCloudClient resolves the Pulumi Cloud client and the effective
+// organization. action completes the sentence
+// "<action> requires the Pulumi Cloud backend" when the backend isn't cloud.
+func resolvePolicyIssueCloudClient(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, orgFlag, action string,
+) (*client.Client, string, error) {
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, lm, nil, opts)
 	if err != nil {
 		return nil, "", err
 	}
 	cloudBackend, ok := be.(httpstate.Backend)
 	if !ok {
-		return nil, "", errors.New(
-			"listing policy issues requires the Pulumi Cloud backend; run `pulumi login`")
+		return nil, "", fmt.Errorf("%s requires the Pulumi Cloud backend; run `pulumi login`", action)
 	}
 
 	userName, orgs, _, err := cloudBackend.CurrentUser()
@@ -165,7 +189,16 @@ func runPolicyIssueList(
 	ctx context.Context, w io.Writer,
 	factory policyIssueListClientFactory, args policyIssueListArgs,
 ) error {
+	if err := validatePolicyIssueFilters(args.filters); err != nil {
+		return err
+	}
+
 	c, org, err := factory(ctx, args.org)
+	if err != nil {
+		return err
+	}
+
+	filterModel, sortModel, err := buildPolicyIssueGrid(args.filters)
 	if err != nil {
 		return err
 	}
@@ -179,7 +212,7 @@ func runPolicyIssueList(
 	}
 
 	var allIssues []apitype.PolicyIssue
-	var total int64
+	var rowCount *int
 	startRow := 0
 
 	for {
@@ -189,34 +222,37 @@ func runPolicyIssueList(
 		}
 
 		resp, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
-			StartRow: startRow,
-			EndRow:   startRow + pageSize,
+			StartRow:    startRow,
+			EndRow:      startRow + pageSize,
+			Closed:      args.closed,
+			FilterModel: filterModel,
+			SortModel:   sortModel,
 		})
 		if err != nil {
-			return fmt.Errorf("listing policy issues: %w", err)
+			return err
 		}
-		total = resp.Total
-		allIssues = append(allIssues, resp.Issues...)
+		rowCount = resp.RowCount
+		allIssues = append(allIssues, resp.PolicyIssues...)
 
 		// Stop if we've collected enough, or there are no more results.
 		if want > 0 && int64(len(allIssues)) >= want {
 			allIssues = allIssues[:want]
 			break
 		}
-		if int64(len(allIssues)) >= total || len(resp.Issues) == 0 {
+		if rowCount == nil || len(allIssues) >= *rowCount || len(resp.PolicyIssues) == 0 {
 			break
 		}
-		startRow += len(resp.Issues)
+		startRow += len(resp.PolicyIssues)
 	}
 
 	return args.outputFormat.Get()(w, apitype.ListPolicyIssuesResponse{
-		Issues: allIssues,
-		Total:  total,
-	})
+		PolicyIssues: allIssues,
+		RowCount:     rowCount,
+	}, args.closed)
 }
 
 type policyIssueListRenderFunc func(
-	w io.Writer, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp apitype.ListPolicyIssuesResponse, closed bool,
 ) error
 
 // policyIssueMessageMax is the maximum width of the message column in the
@@ -240,9 +276,13 @@ func truncateMessage(s string, max int) string {
 }
 
 func renderPolicyIssueListTable(
-	w io.Writer, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp apitype.ListPolicyIssuesResponse, closed bool,
 ) error {
-	if len(resp.Issues) == 0 {
+	if len(resp.PolicyIssues) == 0 {
+		if closed {
+			fmt.Fprintln(w, "No closed policy issues found for this organization.")
+			return nil
+		}
 		fmt.Fprintln(w, "No policy issues found for this organization.")
 		return nil
 	}
@@ -250,9 +290,9 @@ func renderPolicyIssueListTable(
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
+	t.AppendHeader(table.Row{"ID", "STATUS", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
 
-	for _, issue := range resp.Issues {
+	for _, issue := range resp.PolicyIssues {
 		pack := issue.PolicyPack
 		if issue.PolicyPackTag != "" {
 			pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
@@ -268,8 +308,13 @@ func renderPolicyIssueListTable(
 		if stack == "" {
 			stack = "-"
 		}
+		status := string(issue.Status)
+		if status == "" {
+			status = "-"
+		}
 		t.AppendRow(table.Row{
 			issue.ID,
+			status,
 			pack,
 			issue.PolicyName,
 			enforcement,
@@ -279,29 +324,26 @@ func renderPolicyIssueListTable(
 	}
 	t.Render()
 
-	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.Issues), resp.Total)
+	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.PolicyIssues), policyIssueTotal(resp))
 	return nil
 }
 
-// policyIssueListEnvelope is the JSON shape emitted by
-// `pulumi policy issue list --output=json`.
-type policyIssueListEnvelope struct {
-	Issues []apitype.PolicyIssue `json:"issues"`
-	Total  int64                 `json:"total"`
-}
-
 func renderPolicyIssueListJSON(
-	w io.Writer, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp apitype.ListPolicyIssuesResponse, _ bool,
 ) error {
-	issues := resp.Issues
-	if issues == nil {
-		issues = []apitype.PolicyIssue{}
+	if resp.PolicyIssues == nil {
+		resp.PolicyIssues = []apitype.PolicyIssue{}
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(policyIssueListEnvelope{
-		Issues: issues,
-		Total:  resp.Total,
-	})
+	return enc.Encode(resp)
+}
+
+// policyIssueTotal falls back to the number of returned issues when the server omits rowCount.
+func policyIssueTotal(resp apitype.ListPolicyIssuesResponse) int64 {
+	if resp.RowCount == nil {
+		return int64(len(resp.PolicyIssues))
+	}
+	return int64(*resp.RowCount)
 }

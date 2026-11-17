@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/iter"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -223,10 +225,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
 			}, nil
@@ -305,19 +304,16 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
 			}, nil
 		}),
 	}
 
-	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewProperty("bar"),
-	}
+	providerInputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{Inputs: providerInputs})
@@ -347,7 +343,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the config and run an update. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewProperty("baz")
+	providerInputs = providerInputs.Set("foo", property.New("baz"))
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -451,9 +447,9 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 		}),
 	}
 
-	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("id"): resource.NewProperty("first"),
-	}
+	providerInputs := property.NewMap(map[string]property.Value{
+		"id": property.New("first"),
+	})
 	providerName := "provA"
 	aliases := []resource.URN{}
 	registerResource := true
@@ -499,7 +495,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	// Change the provider name and configuration and remove the resource. This will cause an Update for the provider
 	// and a Delete for the resource. The updated provider instance should be used to perform the delete.
 	providerName = "provB"
-	providerInputs[resource.PropertyKey("id")] = resource.NewProperty("second")
+	providerInputs = providerInputs.Set("id", property.New("second"))
 	registerResource = false
 
 	p.Steps = []lt.TestStep{{Op: Update}}
@@ -531,10 +527,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
 				ConfigureF: configurable.configure,
@@ -544,9 +537,9 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 		}),
 	}
 
-	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("id"): resource.NewProperty("first"),
-	}
+	providerInputs := property.NewMap(map[string]property.Value{
+		"id": property.New("first"),
+	})
 	providerName := "provA"
 	aliases := []resource.URN{}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -603,7 +596,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the config and run an update maintaining the alias. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("id")] = resource.NewProperty("second")
+	providerInputs = providerInputs.Set("id", property.New("second"))
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -678,19 +671,16 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys, DeleteBeforeReplace: true}, nil
 				},
 			}, nil
 		}),
 	}
 
-	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewProperty("bar"),
-	}
+	providerInputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{Inputs: providerInputs})
@@ -720,7 +710,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the config and run an update. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewProperty("baz")
+	providerInputs = providerInputs.Set("foo", property.New("baz"))
 	p.Steps = []lt.TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -913,10 +903,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ReplaceKeys: keys,
@@ -1022,10 +1009,7 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ReplaceKeys: keys,
@@ -1220,9 +1204,9 @@ func TestProviderVersionInput(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
-					"version": resource.NewProperty("1.0.0"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"version": property.New("1.0.0"),
+				}),
 			})
 		require.NoError(t, err)
 
@@ -1265,9 +1249,9 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
 			deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
-					"version": resource.NewProperty("1.5.0"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"version": property.New("1.5.0"),
+				}),
 				Version: "1.0.0",
 			})
 		require.NoError(t, err)
@@ -2235,7 +2219,7 @@ func TestInternalFiltered(t *testing.T) {
 func TestProviderSameStep(t *testing.T) {
 	t.Parallel()
 
-	providerConfigValue := resource.NewProperty("100")
+	providerConfigValue := property.New("100")
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -2256,9 +2240,9 @@ func TestProviderSameStep(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pulumi:providers:pkg", "provA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
+			Inputs: property.NewMap(map[string]property.Value{
 				"value": providerConfigValue,
-			},
+			}),
 		})
 		require.NoError(t, err)
 
@@ -2278,7 +2262,7 @@ func TestProviderSameStep(t *testing.T) {
 
 	// Run another update where we send a new value for the provider config, but diff reports no diff so we
 	// should same step
-	providerConfigValue = resource.NewProperty("200")
+	providerConfigValue = property.New("200")
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 
@@ -2365,9 +2349,9 @@ func TestMissingIDRefresh(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, expectedID, resp.ID)

@@ -78,7 +78,7 @@ func TestWorkerPool_error(t *testing.T) {
 	}
 
 	err := pool.Wait()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Validate that the returned error matches
 	// the errors returned by the tasks.
@@ -105,7 +105,7 @@ func TestWorkerPool_oneError(t *testing.T) {
 	}
 
 	err := pool.Wait()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, giveErr)
 }
 

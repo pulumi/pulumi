@@ -356,7 +356,7 @@ func TestGlobGet(t *testing.T) {
 
 			got, err := tt.glob.Get(tt.from)
 			if tt.errMsg != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Equal(t, tt.errMsg, err.Error())
 				return
 			}

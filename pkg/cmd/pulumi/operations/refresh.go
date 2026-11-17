@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -35,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -56,6 +56,7 @@ func NewRefreshCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
+	var coherenceWindow string
 	var execKind string
 	var execAgent string
 	var stackName string
@@ -187,9 +188,9 @@ func NewRefreshCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, nil, false, client, jsonDisplay, nil,
-					nil, "", showConfig, false, showReplacementSteps, showSames, false,
+					nil, "", showConfig, false, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil, nil,
-					false, "", configFile, runProgram)
+					false, "", configFile, runProgram, coherenceWindow)
 				if err != nil {
 					return err
 				}
@@ -206,7 +207,7 @@ func NewRefreshCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -230,6 +231,9 @@ func NewRefreshCmd() *cobra.Command {
 				configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
 				return err
 			}
 
@@ -302,7 +306,7 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 			if err != nil {
 				return fmt.Errorf("getting snapshot: %w", err)
 			}
@@ -333,7 +337,12 @@ func NewRefreshCmd() *cobra.Command {
 			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts.Engine = engine.UpdateOptions{
+				CloudCredentialEnv:        cloudCredentialEnv,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
@@ -359,8 +368,9 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
+				CoherenceWindow:    coherenceWindow,
 			})
 
 			switch {
@@ -517,6 +527,8 @@ func NewRefreshCmd() *cobra.Command {
 	}
 
 	// internal flags
+	cmd.PersistentFlags().StringVar(&coherenceWindow, "coherence-window", "", "")
+	_ = cmd.PersistentFlags().MarkHidden("coherence-window")
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
@@ -611,7 +623,7 @@ func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operati
 			"skip (do nothing)",
 			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 		}
-		if err := survey.AskOne(&survey.Select{
+		if err := ui.AskOne(&survey.Select{
 			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
 			Options: options,
 		}, &option, nil); err != nil {
@@ -626,7 +638,7 @@ func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operati
 			return &op, nil
 		case options[2]:
 			var id string
-			err = survey.AskOne(&survey.Input{
+			err = ui.AskOne(&survey.Input{
 				Message: "ID: ",
 			}, &id, nil)
 			if err == nil {

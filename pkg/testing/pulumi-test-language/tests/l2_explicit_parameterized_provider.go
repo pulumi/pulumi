@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,8 +42,8 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
-						resource.NewProperty("Goodbye World"),
-						stack.Outputs["parameterValue"],
+						property.New("Goodbye World"),
+						resource.FromResourcePropertyMap(stack.Outputs).Get("parameterValue"),
 						"parameter value and provider config should be correct")
 
 					provider := RequireSingleResource(l, snap.Resources, "pulumi:providers:goodbye")

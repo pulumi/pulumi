@@ -105,7 +105,7 @@ func TestConvertTerraformToHclErrors(t *testing.T) {
 		t.Context(), io.Discard, io.Discard, &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance,
 		env.Global(), []string{}, cwd, []string{},
 		"terraform", "hcl", t.TempDir(), true, true, "")
-	require.Error(t, result)
+	require.Error(t, result) //nolint:forbidigo // pre-existing
 	assert.Contains(t, result.Error(), "pulumi-hcl runs Terraform directly")
 }
 

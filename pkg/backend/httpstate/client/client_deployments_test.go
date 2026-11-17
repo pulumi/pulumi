@@ -149,7 +149,7 @@ func TestListStackDeployments(t *testing.T) {
 
 		c := newMockClient(server)
 		_, err := c.ListStackDeployments(t.Context(), stackID, ListStackDeploymentsOptions{Page: -1})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -202,7 +202,7 @@ func TestPatchStackDeploymentSettings(t *testing.T) {
 
 		c := newMockClient(server)
 		err := c.PatchStackDeploymentSettings(t.Context(), stackID, json.RawMessage(`{}`))
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -247,7 +247,7 @@ func TestCancelStackDeployment(t *testing.T) {
 
 		c := newMockClient(server)
 		err := c.CancelStackDeployment(t.Context(), stackID, "missing")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 

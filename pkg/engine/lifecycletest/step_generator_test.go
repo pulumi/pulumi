@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -49,11 +50,11 @@ func TestDuplicateURN(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		// Reads use the same URN namespace as register so make sure this also errors
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", nil, "", "")
-		assert.Error(t, err)
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", property.Map{}, "", "", "", nil, "", "")
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		return nil
 	})
@@ -65,7 +66,7 @@ func TestDuplicateURN(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestDuplicateAlias tests that multiple new resources may not claim to be aliases for the same old resource.
@@ -107,12 +108,12 @@ func TestDuplicateAlias(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			AliasURNs: []resource.URN{resURN},
 		})
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestSecretMasked(t *testing.T) {
@@ -137,9 +138,9 @@ func TestSecretMasked(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"shouldBeSecret": resource.MakeSecret(resource.NewProperty("bar")),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"shouldBeSecret": property.New("bar").WithSecret(true),
+			}),
 		})
 		require.NoError(t, err)
 
@@ -202,7 +203,7 @@ func TestReadReplaceStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", nil, "", "", "", nil, "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "read-id", "", property.Map{}, "", "", "", nil, "", "")
 					require.NoError(t, err)
 					return nil
 				}, false).
@@ -255,7 +256,7 @@ func TestRelinquishStep(t *testing.T) {
 					},
 				}).
 				RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
+					_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", property.Map{}, "", "", "", nil, "", "")
 					require.NoError(t, err)
 					return nil
 				}, true).
@@ -284,7 +285,8 @@ func TestTakeOwnershipStep(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "my-resource-id", "", nil, "", "", "", nil, "", "")
+			_, _, err := monitor.ReadResource(
+				"pkgA:m:typA", "resA", "my-resource-id", "", property.Map{}, "", "", "", nil, "", "")
 			require.NoError(t, err)
 			return nil
 		}, false).
@@ -444,7 +446,7 @@ func TestReadNilOutputs(t *testing.T) {
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", nil, "", "", "", nil, "", "")
+			_, _, _ = monitor.ReadResource("pkgA:m:typA", "resA", resourceID, "", property.Map{}, "", "", "", nil, "", "")
 			return nil
 		}, true).
 		Then(func(snap *deploy.Snapshot, err error) {
@@ -484,7 +486,7 @@ func TestExternalEventMetadata(t *testing.T) {
 		require.NoError(t, err)
 
 		// Register an external (read) resource.
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "externalRes", "read-id", "", nil, "", "", "", nil, "", "")
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "externalRes", "read-id", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
 
 		return nil
@@ -528,4 +530,139 @@ func TestExternalEventMetadata(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, snap)
+}
+
+// TestExistsResourceTrue tests that ExistsResource returns true for a resource that exists.
+func TestExistsResourceTrue(t *testing.T) {
+	t.Parallel()
+
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				outputs := property.NewMap(map[string]property.Value{
+					"value": property.New(true),
+				})
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{
+						Outputs: &outputs,
+					},
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			exists, err := monitor.ExistsResource("pkgA:m:typA", "existing-id", "", property.Map{}, "", "", "")
+			if err != nil {
+				return fmt.Errorf("ExistsResource failed: %w", err)
+			}
+			if !exists {
+				return errors.New("expected resource to exist, got false")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+			// ExistsResource triggers default provider registration but doesn't register
+			// the checked resource itself. Only the default provider should be present.
+			require.Len(t, snap.Resources, 1)
+			assert.Equal(t, "pulumi:providers:pkgA", string(snap.Resources[0].Type))
+		})
+}
+
+// TestExistsResourceFalse tests that ExistsResource returns false for a resource that does not exist.
+func TestExistsResourceFalse(t *testing.T) {
+	t.Parallel()
+
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				// Return nil outputs to indicate the resource does not exist.
+				return plugin.ReadResponse{
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			exists, err := monitor.ExistsResource("pkgA:m:typA", "nonexistent-id", "", property.Map{}, "", "", "")
+			if err != nil {
+				return fmt.Errorf("ExistsResource failed: %w", err)
+			}
+			if exists {
+				return errors.New("expected resource to not exist, got true")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+			require.Len(t, snap.Resources, 1)
+		})
+}
+
+// TestExistsResourceProviderError tests that ExistsResource returns an error when the provider Read errors.
+func TestExistsResourceProviderError(t *testing.T) {
+	t.Parallel()
+
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{}, errors.New("provider error")
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.ExistsResource("pkgA:m:typA", "error-id", "", property.Map{}, "", "", "")
+			if err == nil {
+				return errors.New("expected ExistsResource to return an error")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			require.NotNil(t, snap)
+		})
+}
+
+// TestExistsResourceWithProperties tests ExistsResource with state properties passed through.
+func TestExistsResourceWithProperties(t *testing.T) {
+	t.Parallel()
+
+	var readCalled bool
+	lt.NewTestBuilder(t, nil).
+		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
+			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				readCalled = true
+				// Verify that properties were passed through as inputs, with no state.
+				if foo := req.Inputs.Get("foo"); !foo.IsString() || foo.AsString() != "bar" {
+					return plugin.ReadResponse{}, fmt.Errorf("expected foo=bar, got %v", foo)
+				}
+				if req.State.Len() != 0 {
+					return plugin.ReadResponse{}, fmt.Errorf("expected no state, got %v", req.State)
+				}
+				return plugin.ReadResponse{
+					ReadResult: plugin.ReadResult{
+						Outputs: &req.Inputs,
+					},
+					Status: resource.StatusOK,
+				}, nil
+			},
+		}).
+		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			props := property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			})
+			exists, err := monitor.ExistsResource(
+				"pkgA:m:typA", "prop-id", "", props, "", "", "")
+			if err != nil {
+				return fmt.Errorf("ExistsResource failed: %w", err)
+			}
+			if !exists {
+				return errors.New("expected resource to exist, got false")
+			}
+			return nil
+		}, true).
+		Then(func(snap *deploy.Snapshot, err error) {
+			require.NoError(t, err)
+			assert.True(t, readCalled, "provider Read should have been called")
+		})
 }

@@ -1,0 +1,10 @@
+<{%fg 2%}>+ pkgB:m:typB: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:typB::failing]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::independent]
+<{%reset%}><{%fg 2%}>    value: <{%reset%}><{%fg 2%}>"hello"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 1%}>1 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

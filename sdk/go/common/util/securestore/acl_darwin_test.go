@@ -76,10 +76,10 @@ func TestACLSelfCheckRejectsTestBinary(t *testing.T) {
 	require.Nil(t, aclSelfCheckOverride)
 
 	err := aclSelfCheck()
-	require.Error(t, err, "an ad-hoc-signed test binary must not pass the self-check")
+	require.Error(t, err, "an ad-hoc-signed test binary must not pass the self-check") //nolint:forbidigo // pre-existing
 
 	outcome, availErr := aclKeychainBackend(false).available()
-	require.Error(t, availErr)
+	require.Error(t, availErr) //nolint:forbidigo // pre-existing
 	assert.Equal(t, Absent, outcome)
 	assert.True(t, errors.Is(availErr, ErrUnavailable), "available() = %v, want ErrUnavailable", availErr)
 }
@@ -126,7 +126,7 @@ func TestACLAvailableUsesSelfCheckError(t *testing.T) {
 	boom := errors.New("not signed enough")
 	withSelfCheckOverride(t, func() error { return boom })
 	_, err := (&aclStore{service: "unused", account: "unused"}).available()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, errors.Is(err, ErrUnavailable))
 	assert.Contains(t, err.Error(), "not signed enough")
 }

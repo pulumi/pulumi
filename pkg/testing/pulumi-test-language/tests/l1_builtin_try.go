@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,29 +41,29 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 10, "expected 10 outputs")
-					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewProperty("MOK"))
-					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewProperty("fallback"))
+					require.Equal(l, 10, outputs.Len(), "expected 10 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", property.New("MOK"))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", property.New("fallback"))
 
 					// The output failure variants may or may not be secret, depending on the language. We allow either.
 					assertPropertyMapMember := func(
-						props resource.PropertyMap,
+						props property.Map,
 						key string,
-						want resource.PropertyValue,
+						want property.Value,
 					) (ok bool) {
 						l.Helper()
 
-						got, ok := props[resource.PropertyKey(key)]
+						got, ok := props.GetOk(key)
 						if !assert.True(l, ok, "expected property %q", key) {
 							return false
 						}
 
-						if got.DeepEquals(want) {
+						if got.Equals(want) {
 							return true
 						}
-						if got.DeepEquals(resource.MakeSecret(want)) {
+						if got.Equals(want.WithSecret(true)) {
 							return true
 						}
 
@@ -70,30 +71,30 @@ func init() {
 					}
 
 					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
-						resource.MakeSecret(resource.NewProperty("MOK")))
+						property.New("MOK").WithSecret(true))
 					assertPropertyMapMember(outputs, "outputTryFailure",
-						resource.NewProperty("fallback"))
+						property.New("fallback"))
 					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
-						resource.NewProperty("OOK"))
+						property.New("OOK"))
 					assertPropertyMapMember(outputs, "dynamicTryFailure",
-						resource.NewProperty("fallback"))
+						property.New("fallback"))
 					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
-						resource.MakeSecret(resource.NewProperty("OOK")))
+						property.New("OOK").WithSecret(true))
 					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
-						resource.NewProperty("fallback"))
+						property.New("fallback"))
 					AssertPropertyMapMember(l, outputs, "plainTryNull",
-						resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()}))
+						property.New([]property.Value{property.New(property.Null)}))
 
 					// This may be secret at the list level, or the element level, or none
-					got, ok := outputs["outputTryNull"]
+					got, ok := outputs.GetOk("outputTryNull")
 					if assert.True(l, ok, "expected property outputTryNull") {
 						// Must equal one of the following
 
-						ok := slices.ContainsFunc([]resource.PropertyValue{
-							resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()}),
-							resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()})),
-							resource.NewProperty([]resource.PropertyValue{resource.MakeSecret(resource.NewNullProperty())}),
-						}, got.DeepEquals)
+						ok := slices.ContainsFunc([]property.Value{
+							property.New([]property.Value{property.New(property.Null)}),
+							property.New([]property.Value{property.New(property.Null)}).WithSecret(true),
+							property.New([]property.Value{property.New(property.Null).WithSecret(true)}),
+						}, func(v property.Value) bool { return got.Equals(v) })
 
 						if !ok {
 							assert.Fail(l, "expected property outputTryNull to be one of the expected values, was %v", got)

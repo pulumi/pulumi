@@ -60,6 +60,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -555,7 +556,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("setup plugin host: %w", err)
 	}
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil)
+	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -756,17 +757,18 @@ func (eng *languageTestServer) RunLanguageTest(
 		token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	host := &testHost{
-		engine:          eng,
-		runtime:         languageClient,
-		runtimeName:     token.LanguagePluginName,
-		languageInfo:    token.LanguageInfo,
-		providers:       make(map[string]func() (plugin.Provider, error)),
-		connections:     make(map[plugin.Provider]io.Closer),
-		contextServices: make(map[*plugin.Context][]*plugin.GrpcServer),
+		engine:           eng,
+		runtime:          languageClient,
+		runtimeName:      token.LanguagePluginName,
+		languageInfo:     token.LanguageInfo,
+		providers:        make(map[string]func() (plugin.Provider, error)),
+		connections:      make(map[plugin.Provider]io.Closer),
+		contextServices:  make(map[*plugin.Context][]*plugin.GrpcServer),
+		contextProviders: make(map[*plugin.Context][]plugin.Provider),
 	}
 
 	pctx, err := plugin.NewContextWithRoot(
-		ctx, snk, snk, host, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil)
+		ctx, snk, snk, host, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -799,7 +801,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
 			if eng.providersCache[cacheKey] {
 				host.providers[key] = func() (plugin.Provider, error) {
-					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, targetDirectory)
+					pluginProvider, err := host.ProviderFromPath(pctx, targetDirectory, env.Global())
 					if err != nil {
 						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
 					}
@@ -841,7 +843,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 
 				host.providers[key] = func() (plugin.Provider, error) {
-					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, targetDirectory)
+					pluginProvider, err := host.ProviderFromPath(pctx, targetDirectory, env.Global())
 					if err != nil {
 						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
 					}
@@ -851,7 +853,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		} else {
 			host.providers[key] = func() (plugin.Provider, error) {
-				return provider(), nil
+				return host.serveProvider(provider())
 			}
 		}
 	}
@@ -1130,7 +1132,7 @@ func (eng *languageTestServer) RunLanguageTest(
 }
 
 func createStackReferences(
-	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]resource.PropertyMap,
+	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]property.Map,
 ) error {
 	for name, outputs := range stackRefs {
 		ref, err := b.ParseStackReference(name)
@@ -1157,7 +1159,7 @@ func createStackReferences(
 					Type: resource.RootStackType,
 					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
 						string(projectName), stackName.String()),
-					Outputs: outputs,
+					Outputs: resource.ToResourcePropertyMap(outputs),
 				},
 			},
 		}
@@ -1282,7 +1284,7 @@ func runLanguageTests(
 			} else {
 				diagnostics, err = languageClient.GenerateProject(
 					ctx,
-					sourceDir, projectDir, projectJSON, true, pctx.LoaderAddr(), localDependencies)
+					sourceDir, projectDir, projectJSON, true, pctx.LoaderAddr(), pctx.MapperAddr(), localDependencies)
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 				}
@@ -1819,9 +1821,10 @@ type roundTripClient struct {
 
 func (rtc roundTripClient) GenerateProject(ctx context.Context,
 	sourceDirectory, targetDirectory, project string,
-	strict bool, loaderTarget string, localDependencies map[string]string,
+	strict bool, loaderTarget, mapperTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDirectory, project, loaderTarget, strict, localDependencies)
+	pclDir, diags, err := rtc.roundTrip(
+		context.TODO(), sourceDirectory, project, loaderTarget, mapperTarget, strict, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return diags, err
 	}
@@ -1850,12 +1853,12 @@ func (rtc roundTripClient) GenerateProject(ctx context.Context,
 	}
 
 	diags2, err := rtc.LanguageRuntime.GenerateProject(ctx, pclDir, targetDirectory, project,
-		strict, loaderTarget, localDependencies)
+		strict, loaderTarget, mapperTarget, localDependencies)
 	return diags.Extend(diags2), err
 }
 
 func (rtc roundTripClient) GenerateProgram(ctx context.Context,
-	program map[string]string, loaderTarget string, strict bool,
+	program map[string]string, loaderTarget, mapperTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	sourceDir, err := os.MkdirTemp("", "lang-to-pcl-source-*")
 	if err != nil {
@@ -1874,7 +1877,7 @@ func (rtc roundTripClient) GenerateProgram(ctx context.Context,
 	}
 
 	project := "{\"name\": \"roundtrip\"}"
-	pclDir, diags, err := rtc.roundTrip(ctx, sourceDir, project, loaderTarget, strict, nil)
+	pclDir, diags, err := rtc.roundTrip(ctx, sourceDir, project, loaderTarget, mapperTarget, strict, nil)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
@@ -1896,13 +1899,13 @@ func (rtc roundTripClient) GenerateProgram(ctx context.Context,
 		return nil, diags, err
 	}
 	// TODO: Snapshot files
-	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(ctx, pclFiles, loaderTarget, strict)
+	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(ctx, pclFiles, loaderTarget, mapperTarget, strict)
 	return lang, diags.Extend(diags2), err
 }
 
 func (rtc roundTripClient) roundTrip(
 	ctx context.Context,
-	sourceDirectory, project, loaderTarget string, strict bool,
+	sourceDirectory, project, loaderTarget, mapperTarget string, strict bool,
 	localDependencies map[string]string,
 ) (string, hcl.Diagnostics, error) {
 	tmpDir, err := os.MkdirTemp("", "pcl-to-lang-1-*")
@@ -1912,7 +1915,7 @@ func (rtc roundTripClient) roundTrip(
 	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
 
 	diags, err := rtc.LanguageRuntime.GenerateProject(ctx,
-		sourceDirectory, tmpDir, project, strict, loaderTarget, localDependencies)
+		sourceDirectory, tmpDir, project, strict, loaderTarget, mapperTarget, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return "", diags, err
 	}
@@ -1926,6 +1929,7 @@ func (rtc roundTripClient) roundTrip(
 		SourceDirectory: tmpDir,
 		TargetDirectory: ejectDir,
 		LoaderTarget:    loaderTarget,
+		MapperTarget:    mapperTarget,
 	})
 	for _, diag := range resp.GetDiagnostics() {
 		diags = append(diags, plugin.RPCDiagnosticToHclDiagnostic(diag))

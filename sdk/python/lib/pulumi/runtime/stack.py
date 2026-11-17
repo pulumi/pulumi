@@ -122,15 +122,6 @@ async def _wait_for_shutdown() -> None:
             log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
 
 
-class ResourceRegistrationFailed(Exception):
-    """
-    Marker exception used to fault the outputs of a resource whose registration the engine
-    reported as failed (via a non-SUCCESS result). Consumers can catch it via `Output.recover`;
-    unrecovered instances are silently ignored by `wait_for_rpcs` at program exit so that
-    continue-on-error updates can keep going.
-    """
-
-
 async def run_pulumi_func(
     func: Callable[[], Optional[Awaitable[None]]],
 ) -> None:
@@ -217,15 +208,7 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
                 # Await the completed task so any exception is re-raised here.
                 for task in done:
-                    try:
-                        await task
-                    except ResourceRegistrationFailed:
-                        # Outputs of a resource whose registration the engine reported as failed
-                        # are intentionally faulted. Users can consume the failure via
-                        # `Output.recover`; if they don't, we still shouldn't tear down the
-                        # program at exit — continue-on-error updates want other resources to
-                        # keep running.
-                        pass
+                    await task
 
                 # Put unfinished tasks back for the next iteration.
                 if not_done:

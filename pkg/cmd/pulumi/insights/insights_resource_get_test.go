@@ -251,7 +251,7 @@ func TestInsightsResourceGetCmd_MissingAccount(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", insightsResourceGetArgs{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--account is required")
 }
 
@@ -263,7 +263,7 @@ func TestInsightsResourceGetCmd_ClientError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::missing", defaultGetArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading insights resource")
 	assert.Contains(t, err.Error(), "404 not found")
 }
@@ -275,7 +275,7 @@ func TestInsightsResourceGetCmd_FactoryError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "aws:s3/bucket:Bucket::my-bucket", defaultGetArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -323,7 +323,7 @@ func TestNewInsightsResourceGetCmd_RequiredAccount(t *testing.T) {
 	cmd.SetErr(&out)
 	// Cobra surfaces "required flag(s) ... not set" before RunE fires.
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "account")
 }
 

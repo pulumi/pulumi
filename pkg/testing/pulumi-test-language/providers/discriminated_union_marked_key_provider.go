@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // DiscriminatedUnionMarkedKeyProvider tests discriminated unions whose discriminator property is
@@ -195,12 +196,12 @@ func (p *DiscriminatedUnionMarkedKeyProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: id,
-		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-			"unionIn": properties["unionIn"],
-			"unionOut": resource.NewProperty(resource.PropertyMap{
-				"discriminantKind": discriminant,
-				"field1":           resource.NewProperty("hello"),
-			}),
+		Properties: property.NewMap(map[string]property.Value{
+			"unionIn": resource.FromResourcePropertyValue(properties["unionIn"]),
+			"unionOut": property.New(property.NewMap(map[string]property.Value{
+				"discriminantKind": resource.FromResourcePropertyValue(discriminant),
+				"field1":           property.New("hello"),
+			})),
 		}),
 		Status: resource.StatusOK,
 	}, nil

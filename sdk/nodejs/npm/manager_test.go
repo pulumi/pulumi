@@ -184,7 +184,7 @@ func TestResolvePackageManager(t *testing.T) {
 			}
 			pm, err := ResolvePackageManager(tt.pm, dir)
 			if tt.expectedErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				require.Contains(t, err.Error(), tt.expectedErr)
 				return
 			}
@@ -247,7 +247,7 @@ func TestResolvePackageManager_SearchesUp(t *testing.T) {
 		require.NoError(t, os.MkdirAll(project, 0o755))
 
 		_, err := ResolvePackageManager(NpmPackageManager, project)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "package.yaml")
 	})
 }

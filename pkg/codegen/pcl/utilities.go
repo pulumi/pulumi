@@ -318,15 +318,23 @@ func GenerateMultiArguments(
 func UnwrapOption(exprType model.Type) model.Type {
 	switch exprType := exprType.(type) {
 	case *model.UnionType:
-		if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[0] == model.NoneType {
+		if len(exprType.ElementTypes) == 2 && isNoneType(exprType.ElementTypes[0]) {
 			return exprType.ElementTypes[1]
-		} else if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[1] == model.NoneType {
+		} else if len(exprType.ElementTypes) == 2 && isNoneType(exprType.ElementTypes[1]) {
 			return exprType.ElementTypes[0]
 		}
 		return exprType
 	default:
 		return exprType
 	}
+}
+
+// isNoneType returns true if t is the none type or the type of a `null` literal.
+func isNoneType(t model.Type) bool {
+	if c, ok := t.(*model.ConstType); ok {
+		t = c.Type
+	}
+	return t == model.NoneType
 }
 
 // VariableAccessed returns whether the given variable name is accessed in the given expression.

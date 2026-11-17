@@ -65,7 +65,7 @@ func TestResolveFilePath(t *testing.T) {
 	t.Run("empty path returns error", func(t *testing.T) {
 		t.Parallel()
 		_, err := resolveFilePath("file://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -86,27 +86,27 @@ func TestNewExporterSchemes(t *testing.T) {
 	t.Run("empty endpoint returns error", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("unsupported scheme returns error", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("ftp://example.com")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "unsupported endpoint scheme")
 	})
 
 	t.Run("grpc:// scheme requires a host", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("grpc://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "host is required")
 	})
 
 	t.Run("grpcs:// scheme requires a host", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("grpcs://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "host is required")
 	})
 
@@ -143,14 +143,14 @@ func TestNewExporterSchemes(t *testing.T) {
 	t.Run("http:// scheme requires a host", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("http://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "host is required")
 	})
 
 	t.Run("https:// scheme requires a host", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("https://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "host is required")
 	})
 

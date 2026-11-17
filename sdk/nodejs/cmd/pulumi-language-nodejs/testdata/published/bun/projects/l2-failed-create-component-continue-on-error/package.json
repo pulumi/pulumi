@@ -1,0 +1,16 @@
+{
+	"name": "l2-failed-create-component-continue-on-error",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/failingcomponent": "ROOT/artifacts/pulumi-failingcomponent-59.0.0.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz"
+	}
+}

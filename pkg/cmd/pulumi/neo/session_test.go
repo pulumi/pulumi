@@ -683,7 +683,7 @@ func TestSession_ExecToolCallPostFailureAbortsBatch(t *testing.T) {
 
 	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
 	err := s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "exec_tool_call")
 	assert.Contains(t, err.Error(), "network down")
 
@@ -844,7 +844,7 @@ func TestSession_RunWrapsStreamOpenError(t *testing.T) {
 
 	s := &Session{Client: &errStreamer{err: errors.New("boom")}, OrgName: "o", TaskID: "t"}
 	err := s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "opening event stream")
 	assert.Contains(t, err.Error(), "boom")
 }
@@ -1055,7 +1055,7 @@ func TestSession_PropagatesNonTransientStreamError(t *testing.T) {
 
 	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
 	err := s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "rate limited")
 
 	streamer.mu.Lock()
@@ -1142,7 +1142,7 @@ func TestSession_AssistantMessageBodyShapeMismatchReturnsError(t *testing.T) {
 
 	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
 	err = s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "decoding assistantMessage")
 }
 

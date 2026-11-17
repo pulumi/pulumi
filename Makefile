@@ -77,11 +77,12 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
+	SHELL=sh go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
 	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs && make ensure && npx --no-install biome format --write automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec

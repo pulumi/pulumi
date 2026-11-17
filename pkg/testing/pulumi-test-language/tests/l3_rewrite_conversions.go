@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,32 +45,39 @@ func init() {
 
 					require.Equal(l, converted.URN, child.Parent, "expected child resource to have converted component as parent")
 
-					wantDirect := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       3.14,
-						"integer":     42.0,
-						"string":      "false",
-						"numberArray": []any{-1.0, 0.0, 1.0},
-						"booleanMap": map[string]any{
-							"t": true,
-							"f": false,
-						},
+					wantDirect := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(3.14),
+						"integer": property.New(42.0),
+						"string":  property.New("false"),
+						"numberArray": property.New([]property.Value{
+							property.New(-1.0), property.New(0.0), property.New(1.0),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"t": property.New(true),
+							"f": property.New(false),
+						}),
 					})
-					assert.Equal(l, wantDirect, direct.Inputs, "expected direct inputs to be rewritten")
+					assert.Equal(l, wantDirect, resource.FromResourcePropertyMap(direct.Inputs),
+						"expected direct inputs to be rewritten")
 
-					wantComponentInputs := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     false,
-						"float":       2.5,
-						"integer":     7.0,
-						"string":      "true",
-						"numberArray": []any{10.0, 11.0},
-						"booleanMap": map[string]any{
-							"left":  true,
-							"right": false,
-						},
+					wantComponentInputs := property.NewMap(map[string]property.Value{
+						"boolean": property.New(false),
+						"float":   property.New(2.5),
+						"integer": property.New(7.0),
+						"string":  property.New("true"),
+						"numberArray": property.New([]property.Value{
+							property.New(10.0), property.New(11.0),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"left":  property.New(true),
+							"right": property.New(false),
+						}),
 					})
-					assert.Equal(l, wantComponentInputs, converted.Inputs, "expected component inputs to be rewritten")
-					assert.Equal(l, wantComponentInputs, child.Inputs, "expected child inputs to reflect rewritten component inputs")
+					assert.Equal(l, wantComponentInputs, resource.FromResourcePropertyMap(converted.Inputs),
+						"expected component inputs to be rewritten")
+					assert.Equal(l, wantComponentInputs, resource.FromResourcePropertyMap(child.Inputs),
+						"expected child inputs to reflect rewritten component inputs")
 					assert.Equal(l, child.Inputs, child.Outputs, "expected child inputs and outputs to match")
 				},
 			},

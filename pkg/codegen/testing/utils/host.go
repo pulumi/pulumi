@@ -90,7 +90,7 @@ func NewContextWithProviders(schemaDirectoryPath string, providers ...SchemaProv
 	host := deploytest.NewPluginHost(nil, nil, nil,
 		pluginLoaders...,
 	)
-	pctx, err := plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(context.Background(), nil, nil, host, "", "", nil, nil)
 	contract.AssertNoErrorf(err, "failed to create schema-only plugin context")
 	return pctx
 }

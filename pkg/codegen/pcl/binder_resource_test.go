@@ -39,9 +39,13 @@ func TestBindResourceOptions(t *testing.T) {
 			Token: "foo:index:Foo",
 			InputProperties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
+				{Name: "inputOnly", Type: &schema.OptionalType{ElementType: schema.StringType}},
+				{Name: "shared", Type: &schema.OptionalType{ElementType: schema.StringType}},
 			},
 			Properties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
+				{Name: "outputOnly", Type: schema.StringType},
+				{Name: "shared", Type: &schema.MapType{ElementType: schema.StringType}},
 			},
 		},
 		Resources: []*schema.Resource{
@@ -49,9 +53,13 @@ func TestBindResourceOptions(t *testing.T) {
 				Token: "foo:index:Foo",
 				InputProperties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
+					{Name: "inputOnly", Type: &schema.OptionalType{ElementType: schema.StringType}},
+					{Name: "shared", Type: &schema.OptionalType{ElementType: schema.StringType}},
 				},
 				Properties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
+					{Name: "outputOnly", Type: schema.StringType},
+					{Name: "shared", Type: &schema.MapType{ElementType: schema.StringType}},
 				},
 			},
 		},
@@ -99,8 +107,13 @@ func TestBindResourceOptions(t *testing.T) {
 		},
 		{
 			name: "HideDiffs",
-			src:  `hideDiffs = [property]`,
-			want: cty.TupleVal([]cty.Value{cty.StringVal("property")}),
+			src:  `hideDiffs = [property, inputOnly, outputOnly, shared.key]`,
+			want: cty.TupleVal([]cty.Value{
+				cty.StringVal("property"),
+				cty.StringVal("inputOnly"),
+				cty.StringVal("outputOnly"),
+				cty.StringVal("shared.key"),
+			}),
 		},
 		{
 			name: "DeletedWith",
@@ -380,7 +393,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 	prog, diags, err := BindProgram(parser.Files, &stubSchemaLoader{
 		Package: fooPkg,
 	})
-	require.Error(t, err, "bind should fail")
+	require.Error(t, err, "bind should fail") //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors(), "expected bind diagnostics")
 	require.Nil(t, prog)
 	require.Contains(t, diags.Error(), "component resources cannot be read")

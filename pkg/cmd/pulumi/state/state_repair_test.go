@@ -335,7 +335,7 @@ func newStateRepairCmdFixture(
 			*workspace.Project,
 			bool,
 			bool,
-			colors.Colorization,
+			colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return b, nil
 		},

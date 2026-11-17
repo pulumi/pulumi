@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,35 +32,35 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 5, "expected 5 outputs")
-					AssertPropertyMapMember(l, outputs, "empty", resource.NewProperty([]resource.PropertyValue{}))
-					AssertPropertyMapMember(l, outputs, "small", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("Hello"),
-						resource.NewProperty("World"),
+					require.Equal(l, 5, outputs.Len(), "expected 5 outputs")
+					AssertPropertyMapMember(l, outputs, "empty", property.New([]property.Value{}))
+					AssertPropertyMapMember(l, outputs, "small", property.New([]property.Value{
+						property.New("Hello"),
+						property.New("World"),
 					}))
-					AssertPropertyMapMember(l, outputs, "numbers", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(0.0), resource.NewProperty(1.0), resource.NewProperty(2.0),
-						resource.NewProperty(3.0), resource.NewProperty(4.0), resource.NewProperty(5.0),
+					AssertPropertyMapMember(l, outputs, "numbers", property.New([]property.Value{
+						property.New(0.0), property.New(1.0), property.New(2.0),
+						property.New(3.0), property.New(4.0), property.New(5.0),
 					}))
-					AssertPropertyMapMember(l, outputs, "nested", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(1.0), resource.NewProperty(2.0), resource.NewProperty(3.0),
+					AssertPropertyMapMember(l, outputs, "nested", property.New([]property.Value{
+						property.New([]property.Value{
+							property.New(1.0), property.New(2.0), property.New(3.0),
 						}),
-						resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(4.0), resource.NewProperty(5.0), resource.NewProperty(6.0),
+						property.New([]property.Value{
+							property.New(4.0), property.New(5.0), property.New(6.0),
 						}),
-						resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(7.0), resource.NewProperty(8.0), resource.NewProperty(9.0),
+						property.New([]property.Value{
+							property.New(7.0), property.New(8.0), property.New(9.0),
 						}),
 					}))
 
-					large := make([]resource.PropertyValue, 0, 150)
+					large := make([]property.Value, 0, 150)
 					for range 150 {
-						large = append(large, resource.NewProperty(lorem))
+						large = append(large, property.New(lorem))
 					}
-					AssertPropertyMapMember(l, outputs, "large", resource.NewProperty(large))
+					AssertPropertyMapMember(l, outputs, "large", property.New(large))
 				},
 			},
 		},

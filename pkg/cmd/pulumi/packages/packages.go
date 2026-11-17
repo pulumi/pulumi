@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	segmentiojson "github.com/segmentio/encoding/json"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -195,7 +196,12 @@ func GenSDK(
 			return nil, err
 		}
 
-		pCtx, err := NewPluginContext(cwd, reg)
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+			ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+		if err != nil {
+			return nil, err
+		}
+		pCtx, err := NewPluginContext(cwd, reg, cloudCredentialEnv)
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
@@ -343,7 +349,7 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	return nil
 }
 
-func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error) {
+func NewPluginContext(cwd string, reg registry.Registry, credentials map[string]string) (*plugin.Context, error) {
 	// Helper used by callers without a *cobra.Command writer; emits to
 	// process stderr.
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
@@ -355,7 +361,7 @@ func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error
 	if err != nil {
 		return nil, err
 	}
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil, credentials)
 	if err != nil {
 		return nil, errors.Join(err, pluginHost.Close())
 	}
@@ -432,6 +438,13 @@ func SchemaFromSchemaSource(
 	}
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
+	}
+	// Mirror the plugin-version fallback in [schema.pluginLoader.LoadPackageReferenceV2]: if the schema the
+	// provider returned doesn't carry a version, use the resolved plugin version so downstream binding (and
+	// in particular SupportPack validation) has something to work with. Parameterized schemas have their own
+	// version decoupled from the plugin's, so we leave those alone.
+	if spec.Version == "" && spec.Parameterization == nil && parameterizationName == "" {
+		spec.Version = packageSpec.Version
 	}
 	setSpecNamespace(&spec, pluginSpec)
 	return &spec, packageSpec, nil

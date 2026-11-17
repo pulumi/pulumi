@@ -181,22 +181,22 @@ func (p *KebabNamesProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != "52.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 52.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 52.0.0"),
 		}, nil
 	}
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
@@ -263,10 +263,10 @@ func (p *KebabNamesProvider) Create(
 		nestedValue := nested.ObjectValue()["nested-value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"the-output": resource.NewProperty(resource.PropertyMap{
-					"nested-output": resource.NewProperty(nestedValue),
-				}),
+			Properties: property.NewMap(map[string]property.Value{
+				"the-output": property.New(property.NewMap(map[string]property.Value{
+					"nested-output": property.New(nestedValue),
+				})),
 			}),
 			Status: resource.StatusOK,
 		}, nil
@@ -277,8 +277,8 @@ func (p *KebabNamesProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"the-input": theInput,
+			Properties: property.NewMap(map[string]property.Value{
+				"the-input": resource.FromResourcePropertyValue(theInput),
 			}),
 			Status: resource.StatusOK,
 		}, nil

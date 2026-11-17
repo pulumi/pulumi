@@ -155,9 +155,22 @@ func TestEnsureLanguageInstalledUsesPathPlugin(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	err = EnsureLanguageInstalled(ctx, "hcl")
+	err = EnsureLanguageInstalled(ctx, "hcl", func(diag.Severity, string) {})
 
 	require.NoError(t, err, "EnsureLanguageInstalled should reuse the runtime on $PATH, not download it")
+}
+
+// The cancelled context turns any download attempt into a deterministic failure.
+func TestEnsureLanguageInstalledHonoursDisabledAcquisition(t *testing.T) {
+	// Not parallel: mutates PATH, PULUMI_HOME and PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION via t.Setenv.
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	require.NoError(t, EnsureLanguageInstalled(ctx, "opa", func(diag.Severity, string) {}))
 }
 
 func TestPluginInstallCancellation(t *testing.T) {
@@ -187,14 +200,14 @@ func TestPluginInstallCancellation(t *testing.T) {
 
 		assertCorrectFailureMode := func(err error) {
 			if canceled {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}
 		}
 
 		t.Logf("InstallPlugin")
-		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {}, nil)
+		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {}, nil, nil)
 		assertCorrectFailureMode(err)
 
 		t.Logf("GetLatestVersion")

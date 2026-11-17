@@ -134,7 +134,7 @@ def test_remote_workspace_errors(
     ],
 )
 @pytest.mark.skipif(
-    "PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set"
+    not os.getenv("PULUMI_ACCESS_TOKEN"), reason="PULUMI_ACCESS_TOKEN not set"
 )
 @pytest.mark.skipif(
     "PULUMI_TEST_DEPLOYMENTS_API" not in os.environ,

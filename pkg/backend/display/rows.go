@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type Row interface {
@@ -57,6 +58,8 @@ type ResourceRow interface {
 	IsDone() bool
 
 	SetFailed()
+	SetAwaited()
+	Awaited() bool
 
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
@@ -132,6 +135,10 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
+	// If the failure was because a provider returned AwaitError (operation had to be awaited). Rendered distinctly from
+	// a regular failure ("awaiting" in amber vs "failed" in red).
+	awaited bool
+
 	diagInfo                  *DiagInfo
 	policyPayloads            []engine.PolicyViolationEventPayload
 	policyRemediationPayloads []engine.PolicyRemediationEventPayload
@@ -187,6 +194,14 @@ func (data *resourceRowData) Failed() bool {
 
 func (data *resourceRowData) SetFailed() {
 	data.failed = true
+}
+
+func (data *resourceRowData) Awaited() bool {
+	return data.awaited
+}
+
+func (data *resourceRowData) SetAwaited() {
+	data.awaited = true
 }
 
 func (data *resourceRowData) DiagInfo() *DiagInfo {
@@ -356,6 +371,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	diagInfo := data.diagInfo
 	failed := data.failed || diagInfo.ErrorCount > 0
+	awaited := data.awaited
 	interrupted := !failed && data.isInterrupted()
 
 	if data.display.opts.ShowURNs {
@@ -364,7 +380,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		columns := make([]string, 4)
 		columns[opColumn] = data.display.getStepOpLabel(step, done)
 		columns[urnColumn] = escapeURN(string(urn))
-		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
+		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed, awaited, interrupted)
 		columns[urnInfoColumn] = data.getInfoColumn()
 		return columns
 	}
@@ -373,7 +389,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
 	columns[typeColumn] = urn.Type().DisplayName()
 	columns[nameColumn] = escapeURN(urn.Name())
-	columns[statusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
+	columns[statusColumn] = data.display.getStepStatus(step, done, failed, awaited, interrupted)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns
 }
@@ -466,75 +482,74 @@ func (data *resourceRowData) getInfoColumn() string {
 func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
-		var diff *resource.ObjectDiff
+		var diff *property.ObjectDiff
 		// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
 		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 		if step.Op != deploy.OpSame {
 			// The progress row lists property names only, and deliberately diffs
 			// inputs rather than outputs: it reports what the program changed.
-			if step.DetailedDiff != nil || (step.Old.Inputs != nil && step.New.Inputs != nil) {
-				diff, _ = stepObjectDiff(step, step.Old.Inputs, step.New.Inputs,
-					false /* refresh */, nil /* hidePaths */)
-			}
+			diff, _ = stepObjectDiff(step, step.Old.Inputs, step.New.Inputs,
+				false /* refresh */, nil /* hidePaths */)
 		}
 
 		// Show a diff if either `provider` or `protect` changed; they might not show a diff via inputs or outputs, but
 		// it is still useful to show that these changed in output.
-		recordMetadataDiff := func(name string, old, new resource.PropertyValue) {
-			if old != new {
+		recordMetadataDiff := func(name string, old, new property.Value) {
+			if !old.Equals(new) {
 				if diff == nil {
-					diff = &resource.ObjectDiff{
-						Adds:    make(resource.PropertyMap),
-						Deletes: make(resource.PropertyMap),
-						Sames:   make(resource.PropertyMap),
-						Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+					diff = &property.ObjectDiff{
+						Adds:    make(map[string]property.Value),
+						Deletes: make(map[string]property.Value),
+						Sames:   make(map[string]property.Value),
+						Updates: make(map[string]property.ValueDiff),
 					}
 				}
 
-				diff.Updates[resource.PropertyKey(name)] = resource.ValueDiff{Old: old, New: new}
+				diff.Updates[name] = property.ValueDiff{Old: old, New: new}
 			}
 		}
 
 		recordMetadataDiff("provider",
-			resource.NewProperty(step.Old.Provider), resource.NewProperty(step.New.Provider))
+			property.New(step.Old.Provider), property.New(step.New.Provider))
 		recordMetadataDiff("protect",
-			resource.NewProperty(step.Old.Protect), resource.NewProperty(step.New.Protect))
+			property.New(step.Old.Protect), property.New(step.New.Protect))
 		recordMetadataDiff(colors.Red+"taint"+colors.Reset,
-			resource.NewProperty(step.Old.Taint), resource.NewProperty(step.New.Taint))
+			property.New(step.Old.Taint), property.New(step.New.Taint))
 
-		writeShortDiff(changesBuf, diff, step.Diffs)
+		diffs := slice.Cast[string](step.Diffs)
+		writeShortDiff(changesBuf, diff, diffs)
 	}
 
 	fprintIgnoreError(changesBuf, colors.Reset)
 	return changesBuf.String()
 }
 
-func writeShortDiff(changesBuf io.StringWriter, diff *resource.ObjectDiff, include []resource.PropertyKey) {
+func writeShortDiff(changesBuf io.StringWriter, diff *property.ObjectDiff, include []string) {
 	if diff != nil {
 		writeString(changesBuf, "diff: ")
 
-		updates := make(resource.PropertyMap)
+		updates := make(map[string]property.Value)
 		for k := range diff.Updates {
-			updates[k] = resource.PropertyValue{}
+			updates[k] = property.Value{}
 		}
 
-		filteredKeys := func(m resource.PropertyMap) []string {
+		filteredKeys := func(m map[string]property.Value) []string {
 			keys := slice.Prealloc[string](len(m))
 			for k := range m {
-				keys = append(keys, string(k))
+				keys = append(keys, k)
 			}
 			return keys
 		}
 		if len(include) > 0 {
-			includeSet := make(map[resource.PropertyKey]bool)
+			includeSet := make(map[string]bool)
 			for _, k := range include {
 				includeSet[k] = true
 			}
-			filteredKeys = func(m resource.PropertyMap) []string {
+			filteredKeys = func(m map[string]property.Value) []string {
 				var filteredKeys []string
 				for k := range m {
 					if includeSet[k] {
-						filteredKeys = append(filteredKeys, string(k))
+						filteredKeys = append(filteredKeys, k)
 					}
 				}
 				return filteredKeys

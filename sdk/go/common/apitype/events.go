@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -83,22 +84,11 @@ type StartDebuggingEvent struct {
 	Config map[string]any `json:"config,omitempty"`
 }
 
-// PolicyEvent is emitted whenever there is Policy violation.
-type PolicyEvent struct {
-	ResourceURN          string `json:"resourceUrn,omitempty"`
-	Message              string `json:"message"`
-	Color                string `json:"color"`
-	PolicyName           string `json:"policyName"`
-	PolicyPackName       string `json:"policyPackName"`
-	PolicyPackVersion    string `json:"policyPackVersion"`
-	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+// PolicyEvent is the Cloud SDK's AppPolicyEvent.
+type PolicyEvent = cloudapitype.AppPolicyEvent
 
-	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
-	EnforcementLevel string `json:"enforcementLevel"`
-	// Severity is one of "low", "medium", "high", or "critical".
-	// An empty string is omitted and represents an unspecified severity.
-	Severity string `json:"severity,omitempty"`
-}
+// PolicyEventException is the Cloud SDK's AppPolicyEventException.
+type PolicyEventException = cloudapitype.AppPolicyEventException
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.
 type PolicyRemediationEvent struct {
@@ -300,6 +290,10 @@ type ResOpFailedEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Status   int               `json:"status"`
 	Steps    int               `json:"steps"`
+	// Awaited is true if the failure was caused by the provider returning AwaitError — i.e. the
+	// operation could not be awaited to completion. Consumers can use this to distinguish an
+	// await failure from a genuine resource failure.
+	Awaited bool `json:"awaited,omitempty"`
 }
 
 // PolicyLoadEvent is emitted when a policy starts loading

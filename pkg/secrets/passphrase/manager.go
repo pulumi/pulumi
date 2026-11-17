@@ -298,6 +298,11 @@ func NewStackPromptingPassphraseSecretsManagerFromState(
 	}
 }
 
+// NewPromptingPassphraseSecretsManager returns a passphrase secrets manager for the given stack,
+// reusing info.EncryptionSalt if set, or otherwise minting a new one. If info is missing a salt only
+// because local config isn't available (e.g. Automation API, saved plans), this mints an unrelated
+// salt; set PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER=true to reuse the checkpoint's provider instead.
+// See https://github.com/pulumi/pulumi/issues/16412.
 func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
 	rotateSecretsProvider bool,
 ) (secrets.Manager, error) {

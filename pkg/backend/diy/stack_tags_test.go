@@ -431,7 +431,7 @@ func TestInvalidStackReference(t *testing.T) {
 
 	tags := map[apitype.StackTagName]string{"test": "value"}
 	err := b.UpdateStackTags(ctx, mockStackWithRef, tags)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "invalid stack reference type")
 }
 

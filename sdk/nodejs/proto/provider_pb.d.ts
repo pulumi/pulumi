@@ -52,6 +52,10 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setSendsOldOutputsToCheck(value: boolean): ProviderHandshakeRequest;
     getAcceptsOutputsInInvoke(): boolean;
     setAcceptsOutputsInInvoke(value: boolean): ProviderHandshakeRequest;
+    getAcceptsOutputsInCall(): boolean;
+    setAcceptsOutputsInCall(value: boolean): ProviderHandshakeRequest;
+    getAcceptsOutputsInCheck(): boolean;
+    setAcceptsOutputsInCheck(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -78,6 +82,8 @@ export namespace ProviderHandshakeRequest {
         acceptsByteString: boolean,
         sendsOldOutputsToCheck: boolean,
         acceptsOutputsInInvoke: boolean,
+        acceptsOutputsInCall: boolean,
+        acceptsOutputsInCheck: boolean,
     }
 }
 
@@ -94,6 +100,10 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
     getAcceptsOutputsInInvoke(): boolean;
     setAcceptsOutputsInInvoke(value: boolean): ProviderHandshakeResponse;
+    getAcceptsOutputsInCall(): boolean;
+    setAcceptsOutputsInCall(value: boolean): ProviderHandshakeResponse;
+    getAcceptsOutputsInCheck(): boolean;
+    setAcceptsOutputsInCheck(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -113,6 +123,8 @@ export namespace ProviderHandshakeResponse {
         supportsAutonamingConfiguration: boolean,
         acceptsByteString: boolean,
         acceptsOutputsInInvoke: boolean,
+        acceptsOutputsInCall: boolean,
+        acceptsOutputsInCheck: boolean,
     }
 }
 
@@ -753,6 +765,106 @@ export class CheckFailure extends jspb.Message {
 }
 
 export namespace CheckFailure {
+    export type AsObject = {
+        property: string,
+        reason: string,
+    }
+}
+
+export class CheckConfigRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): CheckConfigRequest;
+    getName(): string;
+    setName(value: string): CheckConfigRequest;
+    getType(): string;
+    setType(value: string): CheckConfigRequest;
+
+    hasOldInputs(): boolean;
+    clearOldInputs(): void;
+    getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    hasNewInputs(): boolean;
+    clearNewInputs(): void;
+    getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+    getRandomSeed(): Uint8Array | string;
+    getRandomSeed_asU8(): Uint8Array;
+    getRandomSeed_asB64(): string;
+    setRandomSeed(value: Uint8Array | string): CheckConfigRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigRequest): CheckConfigRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigRequest;
+    static deserializeBinaryFromReader(message: CheckConfigRequest, reader: jspb.BinaryReader): CheckConfigRequest;
+}
+
+export namespace CheckConfigRequest {
+    export type AsObject = {
+        urn: string,
+        name: string,
+        type: string,
+        oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        randomSeed: Uint8Array | string,
+    }
+}
+
+export class CheckConfigResponse extends jspb.Message { 
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigResponse;
+    clearFailuresList(): void;
+    getFailuresList(): Array<CheckConfigFailure>;
+    setFailuresList(value: Array<CheckConfigFailure>): CheckConfigResponse;
+    addFailures(value?: CheckConfigFailure, index?: number): CheckConfigFailure;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigResponse): CheckConfigResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigResponse;
+    static deserializeBinaryFromReader(message: CheckConfigResponse, reader: jspb.BinaryReader): CheckConfigResponse;
+}
+
+export namespace CheckConfigResponse {
+    export type AsObject = {
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<CheckConfigFailure.AsObject>,
+    }
+}
+
+export class CheckConfigFailure extends jspb.Message { 
+    getProperty(): string;
+    setProperty(value: string): CheckConfigFailure;
+    getReason(): string;
+    setReason(value: string): CheckConfigFailure;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigFailure.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigFailure): CheckConfigFailure.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigFailure, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigFailure;
+    static deserializeBinaryFromReader(message: CheckConfigFailure, reader: jspb.BinaryReader): CheckConfigFailure;
+}
+
+export namespace CheckConfigFailure {
     export type AsObject = {
         property: string,
         reason: string,
@@ -1694,6 +1806,23 @@ export namespace ErrorResourceInitFailed {
         reasonsList: Array<string>,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+    }
+}
+
+export class ErrorResourceAwaitFailed extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ErrorResourceAwaitFailed.AsObject;
+    static toObject(includeInstance: boolean, msg: ErrorResourceAwaitFailed): ErrorResourceAwaitFailed.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ErrorResourceAwaitFailed, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ErrorResourceAwaitFailed;
+    static deserializeBinaryFromReader(message: ErrorResourceAwaitFailed, reader: jspb.BinaryReader): ErrorResourceAwaitFailed;
+}
+
+export namespace ErrorResourceAwaitFailed {
+    export type AsObject = {
     }
 }
 

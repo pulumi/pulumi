@@ -96,7 +96,10 @@ func ensureGlobalStack(
 	}
 	if stack == nil {
 		// SetCurrent stays off: we handle selection ourselves below to target the global project.
-		stack, err = cmdStack.CreateStack(ctx, sink, ws, b, ref, root, cmdStack.CreateStackOptions{})
+		stack, err = cmdStack.CreateStack(ctx, sink, ws, b, ref, root, cmdStack.CreateStackOptions{
+			ConfigFile: workspace.ProjectStackPath(
+				filepath.Join(root, workspace.ProjectFile+".yaml"), proj, ref.Name().Q()),
+		})
 		if err != nil {
 			return nil, fmt.Errorf("create global stack: %w", err)
 		}

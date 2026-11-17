@@ -9,3 +9,19 @@ read "res" "read:index:Resource" {
         dependsOn = [src]
     }
 }
+
+output "resourceUrn" {
+    value = res.urn
+}
+
+output "resourceId" {
+    value = res.id
+}
+
+output "lookup" {
+    value = res.lookup
+}
+
+output "value" {
+    value = res.value
+}

@@ -1156,65 +1156,11 @@ class Resource:
         self, t: str, pkg: Optional[str], opts: ResourceOptions
     ) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
         """
-        Fetches the correct provider and providers for this resource.
-
-        provider is the first option that does not return none
-            1. opts.provider
-            2. a matching provider in opts.providers
-            3. a matching provider inherited from opts.parent
-
-        providers is found by combining (in descending order of priority)
-            1. opts_providers
-            2. self_providers
-            3. provider
+        Fetches the correct provider and providers for this resource. See `_select_providers`.
 
         Does not mutate self.
         """
-        if isinstance(opts.providers, Sequence):
-            opts_providers = {p.package: p for p in opts.providers}
-        elif opts.providers:
-            opts_providers = {**opts.providers}
-        else:
-            opts_providers = {}
-
-        # The provider provided by opts.providers
-        ambient_provider: Optional[ProviderResource] = None
-        if pkg and pkg in opts_providers:
-            ambient_provider = opts_providers[pkg]
-
-        # The provider supplied by the parent
-
-        # Cast is safe because the `and` will resolve to only None or the result
-        # of get_provider (which is Optional[ProviderResource]). This holds as
-        # long as Resource does not impliment __bool__.
-        parent_provider = cast(
-            Optional[ProviderResource], opts.parent and opts.parent.get_provider(t)
-        )
-
-        provider = ambient_provider or parent_provider
-        if opts.provider:
-            # If an explicit provider was passed in,
-            # its package may or may not match the package we're looking for.
-            provider_pkg = opts.provider.package
-            if pkg == provider_pkg:
-                # Explicit provider takes precedence over parent or ambient providers.
-                provider = opts.provider
-
-            # Regardless of whether it matches,
-            # we still want to keep the provider in the
-            # providers map, so that it can be used for child resources.
-            if provider_pkg in opts_providers:
-                message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
-                deprecation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
-                warnings.warn(f"{message} for resource {t}. " + deprecation)
-                log.warn(f"{message}. {deprecation}", resource=self)
-            else:
-                opts_providers[provider_pkg] = opts.provider
-
-        # opts_providers takes priority over self._providers
-        providers = {**self._providers, **opts_providers}
-
-        return provider, providers
+        return _select_providers(t, pkg, opts, self._providers, self)
 
     @property
     def pulumi_resource_type(self) -> str:
@@ -1497,3 +1443,70 @@ def _parse_resource_reference(ref: str) -> tuple[str, str]:
     ref_urn = ref[:last_sep]
     ref_id = ref[last_sep + 2 :]
     return (ref_urn, ref_id)
+
+
+def _select_providers(
+    t: str,
+    pkg: Optional[str],
+    opts: ResourceOptions,
+    inherited_providers: Mapping[str, "ProviderResource"],
+    resource: Optional[Resource] = None,
+) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
+    """
+    Fetches the correct provider and providers for a resource of type `t`.
+
+    provider is the first option that does not return none
+        1. opts.provider
+        2. a matching provider in opts.providers
+        3. a matching provider inherited from opts.parent
+
+    providers is found by combining (in descending order of priority)
+        1. opts_providers
+        2. inherited_providers
+        3. provider
+    """
+    if isinstance(opts.providers, Sequence):
+        opts_providers = {p.package: p for p in opts.providers}
+    elif opts.providers:
+        opts_providers = {**opts.providers}
+    else:
+        opts_providers = {}
+
+    # The provider provided by opts.providers
+    ambient_provider: Optional[ProviderResource] = None
+    if pkg and pkg in opts_providers:
+        ambient_provider = opts_providers[pkg]
+
+    # The provider supplied by the parent
+
+    # Cast is safe because the `and` will resolve to only None or the result
+    # of get_provider (which is Optional[ProviderResource]). This holds as
+    # long as Resource does not impliment __bool__.
+    parent_provider = cast(
+        Optional[ProviderResource], opts.parent and opts.parent.get_provider(t)
+    )
+
+    provider = ambient_provider or parent_provider
+    if opts.provider:
+        # If an explicit provider was passed in,
+        # its package may or may not match the package we're looking for.
+        provider_pkg = opts.provider.package
+        if pkg == provider_pkg:
+            # Explicit provider takes precedence over parent or ambient providers.
+            provider = opts.provider
+
+        # Regardless of whether it matches,
+        # we still want to keep the provider in the
+        # providers map, so that it can be used for child resources.
+        if provider_pkg in opts_providers:
+            message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
+            deprecation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+            warnings.warn(f"{message} for resource {t}. " + deprecation)
+            log.warn(f"{message}. {deprecation}", resource=resource)
+        else:
+            opts_providers[provider_pkg] = opts.provider
+
+    # opts_providers takes priority over inherited_providers
+    providers = {**inherited_providers, **opts_providers}
+
+    return provider, providers

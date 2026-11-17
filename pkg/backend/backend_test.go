@@ -124,3 +124,28 @@ func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
 		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }
+
+func TestManagedEnvironmentRef(t *testing.T) {
+	t.Parallel()
+
+	project, name := StackConfigLocation{ManagedEnvironment: "proj/renamed"}.ManagedEnvironmentRef()
+	assert.Equal(t, "proj", project)
+	assert.Equal(t, "renamed", name)
+
+	project, name = StackConfigLocation{}.ManagedEnvironmentRef()
+	assert.Empty(t, project)
+	assert.Empty(t, name)
+}
+
+func TestAsManagedEnvironmentsBackend(t *testing.T) {
+	t.Parallel()
+
+	managed := &MockManagedEnvironmentsBackend{}
+	got, err := AsManagedEnvironmentsBackend(managed)
+	require.NoError(t, err)
+	assert.Same(t, managed, got)
+
+	_, err = AsManagedEnvironmentsBackend(&MockBackend{NameF: func() string { return "diy" }})
+	require.ErrorIs(t, err, ErrManagedEnvironmentNotSupported)
+	assert.EqualError(t, err, "ESC-managed environments are not supported by backend diy")
+}

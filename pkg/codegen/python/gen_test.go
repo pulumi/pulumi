@@ -319,7 +319,7 @@ func TestCalculateDeps(t *testing.T) {
 			// with packaging and semver formatted differently from Pulumi.
 			// Pulumi should not have a version.
 			{"packaging>=24.0", ""},
-			{"pulumi", ">=3.231.0,<4.0.0"},
+			{"pulumi", ">=3.269.0,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {
@@ -331,7 +331,7 @@ func TestCalculateDeps(t *testing.T) {
 		expected: [][2]string{
 			{"foobar", "7.10.8"},
 			{"packaging>=24.0", ""},
-			{"pulumi", ">=3.231.0,<4.0.0"},
+			{"pulumi", ">=3.269.0,<4.0.0"},
 			{"semver>=2.8.1"},
 		},
 	}, {

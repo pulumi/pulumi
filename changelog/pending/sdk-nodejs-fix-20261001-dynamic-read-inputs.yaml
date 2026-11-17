@@ -1,4 +1,0 @@
-component: sdk/nodejs
-kind: fix
-body: Dynamic providers now fall back to the `inputs` field of a `Read` request when `properties` is empty, so `Get` continues to work after the engine stops duplicating inputs into state
-time: 2026-10-01T16:30:00+01:00

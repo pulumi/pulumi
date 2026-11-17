@@ -60,6 +60,7 @@ type orgAuditLogExportArgs struct {
 	eventType    string
 	user         string
 	startTime    string
+	endTime      string
 	count        int64
 	outputFormat outputflag.OutputFlag[orgAuditLogExportRenderFunc]
 }
@@ -112,8 +113,8 @@ func newOrgAuditLogExportCmdWith(factory orgAuditLogExportClientFactory) *cobra.
 	cmd.Flags().StringVar(&args.format, "format", "csv", "The export format. One of: csv, cef")
 	cmd.Flags().StringVar(&args.eventType, "event-type", "", "Filter by event type")
 	cmd.Flags().StringVar(&args.user, "user", "", "Filter by user login")
-	cmd.Flags().StringVar(&args.startTime, "start-time", "",
-		"The upper bound of the time range (V1 semantics)")
+	cmd.Flags().StringVar(&args.startTime, "start-time", "", "The lower bound of the time range, as a Unix timestamp")
+	cmd.Flags().StringVar(&args.endTime, "end-time", "", "The upper bound of the time range, as a Unix timestamp")
 	cmd.Flags().Int64Var(&args.count, "count", 0,
 		"Truncate the exported response to the given number of bytes (0 returns the full response)")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
@@ -190,6 +191,7 @@ func runOrgAuditLogExport(
 		EventType: args.eventType,
 		User:      args.user,
 		StartTime: args.startTime,
+		EndTime:   args.endTime,
 	})
 	if err != nil {
 		return err

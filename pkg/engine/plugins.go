@@ -93,7 +93,10 @@ func (f tempFile) Close() error {
 }
 
 // The defaultPluginManager is implemented using the standard workspace methods.
-type defaultPluginManager struct{ pluginstorage.Context }
+type defaultPluginManager struct {
+	pluginstorage.Context
+	cloudCredentialEnv map[string]string
+}
 
 func (defaultPluginManager) GetPluginPath(
 	ctx context.Context,
@@ -119,13 +122,14 @@ func (defaultPluginManager) DownloadPlugin(
 	return tempFile{tarball}, info.Size(), nil
 }
 
-func (defaultPluginManager) InstallPlugin(
+func (m defaultPluginManager) InstallPlugin(
 	ctx context.Context,
 	plugin workspace.PluginDescriptor,
 	content pluginstorage.Content,
 	reinstall bool,
 ) error {
-	return pkgWorkspace.InstallPluginContent(ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext)
+	return pkgWorkspace.InstallPluginContent(
+		ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext, m.cloudCredentialEnv)
 }
 
 // PluginSet represents a set of plugins.
@@ -469,7 +473,11 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 		pluginManager = opts.pluginManager
 	}
 	if pluginManager == nil {
-		pluginManager = defaultPluginManager{pluginstorage.Instance}
+		var cloudCredentialEnv map[string]string
+		if opts != nil {
+			cloudCredentialEnv = opts.CloudCredentialEnv
+		}
+		pluginManager = defaultPluginManager{Context: pluginstorage.Instance, cloudCredentialEnv: cloudCredentialEnv}
 	}
 
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")

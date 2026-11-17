@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,8 +47,8 @@ func init() {
 					assert.Equal(l, "prov", provider.URN.Name())
 
 					component := RequireSingleResource(l, res.Snap.Resources, "components:index:InvokeComponent")
-					want := resource.NewPropertyMapFromMap(map[string]any{"result": "my config: hello"})
-					assert.Equal(l, want, component.Outputs)
+					want := property.NewMap(map[string]property.Value{"result": property.New("my config: hello")})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(component.Outputs))
 				},
 			},
 		},

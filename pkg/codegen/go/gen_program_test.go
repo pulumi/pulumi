@@ -520,6 +520,63 @@ func main() {
 `, string(files["main.go"]))
 }
 
+// A local object literal whose values are outputs must use the SDK's named map, which holds
+// outputs and is itself an Input, the same way list literals use the named array.
+func TestObjectLiteralOfOutputsUsesNamedMap(t *testing.T) {
+	t.Parallel()
+
+	source := `
+resource "src" "random:index/randomString:RandomString" {
+	length = 2
+}
+strMap = {
+	a = src.result
+}
+strList = [src.result]
+output "strs" {
+	value = strMap
+}
+output "strl" {
+	value = strList
+}`
+
+	program, diags, err := parseAndBindProgram(t, source, "object_literal_of_outputs.pp")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	assert.Equal(t, `package main
+
+import (
+	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		src, err := random.NewRandomString(ctx, "src", &random.RandomStringArgs{
+			Length: pulumi.Int(2),
+		})
+		if err != nil {
+			return err
+		}
+		strMap := pulumi.StringMap{
+			"a": src.Result,
+		}
+		strList := pulumi.StringArray{
+			src.Result,
+		}
+		ctx.Export("strs", strMap)
+		ctx.Export("strl", strList)
+		return nil
+	})
+}
+`, string(files["main.go"]))
+}
+
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
 	t.Parallel()
 

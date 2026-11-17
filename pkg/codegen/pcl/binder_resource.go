@@ -734,16 +734,24 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 		if s.resource == nil {
 			return s.root, nil
 		}
-		obj, ok := model.ResolveOutputs(s.resource.GetInputType()).(*model.ObjectType)
-		if !ok {
-			return nil, nil
+		propertyTypes := []model.Type{s.resource.GetInputType()}
+		if attr.Name == "hideDiffs" {
+			// Diffs can be reported against inputs or outputs. Define outputs first so that they take precedence:
+			// Define does not overwrite an existing definition.
+			propertyTypes = []model.Type{s.resource.GetOutputType(), s.resource.GetInputType()}
 		}
 		scope := model.NewRootScope(syntax.None)
-		for k, t := range obj.Properties {
-			scope.Define(k, &ResourceProperty{
-				Path:         hcl.Traversal{hcl.TraverseRoot{Name: k}},
-				PropertyType: t,
-			})
+		for _, propertyType := range propertyTypes {
+			obj, ok := model.ResolveOutputs(propertyType).(*model.ObjectType)
+			if !ok {
+				return nil, nil
+			}
+			for k, t := range obj.Properties {
+				scope.Define(k, &ResourceProperty{
+					Path:         hcl.Traversal{hcl.TraverseRoot{Name: k}},
+					PropertyType: t,
+				})
+			}
 		}
 		return scope, nil
 	default:

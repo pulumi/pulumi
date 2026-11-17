@@ -39,6 +39,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -243,6 +244,19 @@ func (w Workspace) GenerateLocalSDK(
 		return workspace.LinkablePackageDescriptor{}, err
 	}
 
+	// Mirror the plugin-version fallback in [schema.pluginLoader.LoadPackageReferenceV2]: if the provider
+	// didn't embed a version in its schema, use the resolved plugin version so SupportPack binding has
+	// something to validate against. Parameterized schemas have their own decoupled version.
+	if schemaSpec.Version == "" && schemaSpec.Parameterization == nil {
+		info, err := provider.GetPluginInfo(ctx)
+		if err != nil {
+			return workspace.LinkablePackageDescriptor{}, err
+		}
+		if info.Version != nil {
+			schemaSpec.Version = info.Version.String()
+		}
+	}
+
 	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.pctx))
 	if err != nil {
 		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to bind schema: %w", err)
@@ -384,7 +398,7 @@ func (w Workspace) servers(
 	}
 
 	host := cachedLoaderHost{Host: w.pctx.Host, refs: refs}
-	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan)
+	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan, w.pctx.CloudCredentialEnv)
 	if err != nil {
 		return servers{}, err
 	}
@@ -460,14 +474,14 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	pctx, err := plugin.NewContextWithHost(
+		ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan, w.pctx.CloudCredentialEnv)
 	if err != nil {
 		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
-	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
 	pctx.DialOptions = w.pctx.DialOptions
 	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
-	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
+	p, err := w.pctx.Host.ProviderFromPath(pctx, pluginPath, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}

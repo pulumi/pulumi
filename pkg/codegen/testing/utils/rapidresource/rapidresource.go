@@ -347,13 +347,15 @@ func drawResourceReferenceValue(t *rapid.T, typ *schema.ResourceType, label stri
 	if rapid.Bool().Draw(t, label+":haveParent") {
 		parentType = tokens.Type(component.Draw(t, label+":parent"))
 	}
-	return property.New(property.ResourceReference{
-		URN: urn.New(
+	return property.New(property.NewResourceReference(
+		urn.New(
 			tokens.QName(component.Draw(t, label+":stack")),
 			tokens.PackageName(component.Draw(t, label+":project")),
 			parentType,
 			tokens.Type(typ.Token),
 			rapid.String().Draw(t, label+":name"),
 		),
-	})
+		property.Value{},
+		""),
+	)
 }

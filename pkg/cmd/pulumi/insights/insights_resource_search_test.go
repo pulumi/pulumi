@@ -277,7 +277,7 @@ func TestInsightsResourceSearchCmd_InvalidSort(t *testing.T) {
 	args.sort = []string{"bogus"}
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `invalid --sort value "bogus"`)
 }
 
@@ -291,7 +291,7 @@ func TestInsightsResourceSearchCmd_ClientError(t *testing.T) {
 	args.properties = true
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "searching insights resources")
 	assert.Contains(t, err.Error(), "402 payment required")
 }
@@ -303,7 +303,7 @@ func TestInsightsResourceSearchCmd_FactoryError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, defaultSearchArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 

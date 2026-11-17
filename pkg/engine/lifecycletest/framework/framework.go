@@ -293,10 +293,14 @@ func (op TestOp) runWithContext(
 	ctx := &engine.Context{
 		Cancel:                      cancelCtx,
 		Events:                      events,
-		SnapshotManager:             combined,
 		BackendClient:               backendClient,
 		PluginManager:               pluginManager,
 		SnapshotManagerCapabilities: opts.SnapshotManagerCapabilities,
+	}
+	// Avoid storing a typed-nil interface value in SnapshotManager — the engine's preview actions
+	// now consult this field and would call methods on a nil receiver.
+	if combined != nil {
+		ctx.SnapshotManager = combined
 	}
 
 	updateOpts := opts.Options()
@@ -918,7 +922,7 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run),
 			)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				continue
 			}
 
@@ -930,7 +934,7 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 		snap, err = step.Op.RunStep(project, target, p.Options, false, p.BackendClient, step.Validate,
 			fmt.Sprintf("%s-%d-%d", name, i, p.run))
 		if step.ExpectFailure {
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			continue
 		}
 

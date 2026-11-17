@@ -193,7 +193,7 @@ func (p *languageRuntime) RunPlugin(ctx context.Context, info plugin.RunPluginIn
 }
 
 func (p *languageRuntime) GenerateProject(context.Context, string, string, string,
-	bool, string, map[string]string,
+	bool, string, string, map[string]string,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GenerateProject is not supported")
 }
@@ -205,7 +205,7 @@ func (p *languageRuntime) GeneratePackage(context.Context,
 }
 
 func (p *languageRuntime) GenerateProgram(
-	context.Context, map[string]string, string, bool,
+	context.Context, map[string]string, string, string, bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, errors.New("GenerateProgram is not supported")
 }

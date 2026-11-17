@@ -239,9 +239,9 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 
 		return plugin.CreateResponse{
 			ID: id,
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"input":  resource.ToResourcePropertyMap(req.Properties)["input"],
-				"output": resource.ToResourcePropertyMap(req.Properties)["input"],
+			Properties: property.NewMap(map[string]property.Value{
+				"input":  req.Properties.Get("input"),
+				"output": req.Properties.Get("input"),
 			}),
 			Status: resource.StatusOK,
 		}, nil
@@ -321,11 +321,13 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		if req.Inputs.Len() == 0 {
 			return plugin.ReadResponse{
 				ReadResult: plugin.ReadResult{
-					ID:     req.ID,
-					Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"input": resource.NewNullProperty()})),
-					Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
-						"input":  resource.NewNullProperty(),
-						"output": resource.NewNullProperty(),
+					ID: req.ID,
+					Inputs: new(property.NewMap(map[string]property.Value{
+						"input": {},
+					})),
+					Outputs: new(property.NewMap(map[string]property.Value{
+						"input":  {},
+						"output": {},
 					})),
 				},
 				Status: resource.StatusOK,

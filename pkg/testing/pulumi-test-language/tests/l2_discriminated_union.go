@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,36 +33,36 @@ func init() {
 				RequireStackResource(l, err, changes)
 
 				example1 := RequireSingleNamedResource(l, snapshot.Resources, "example1")
-				require.Equal(l, resource.PropertyMap{
-					"unionOf": resource.NewProperty(resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant1"),
-						"field1":           resource.NewProperty("v1 union"),
+				require.Equal(l, property.NewMap(map[string]property.Value{
+					"unionOf": property.New(map[string]property.Value{
+						"discriminantKind": property.New("variant1"),
+						"field1":           property.New("v1 union"),
 					}),
-					"arrayOfUnionOf": resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(resource.PropertyMap{
-							"discriminantKind": resource.NewProperty("variant1"),
-							"field1":           resource.NewProperty("v1 array(union)"),
+					"arrayOfUnionOf": property.New([]property.Value{
+						property.New(map[string]property.Value{
+							"discriminantKind": property.New("variant1"),
+							"field1":           property.New("v1 array(union)"),
 						}),
 					}),
-				}, example1.Outputs)
+				}), resource.FromResourcePropertyMap(example1.Outputs))
 
 				example2 := RequireSingleNamedResource(l, snapshot.Resources, "example2")
-				require.Equal(l, resource.PropertyMap{
-					"unionOf": resource.NewProperty(resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant2"),
-						"field2":           resource.NewProperty("v2 union"),
+				require.Equal(l, property.NewMap(map[string]property.Value{
+					"unionOf": property.New(map[string]property.Value{
+						"discriminantKind": property.New("variant2"),
+						"field2":           property.New("v2 union"),
 					}),
-					"arrayOfUnionOf": resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(resource.PropertyMap{
-							"discriminantKind": resource.NewProperty("variant2"),
-							"field2":           resource.NewProperty("v2 array(union)"),
+					"arrayOfUnionOf": property.New([]property.Value{
+						property.New(map[string]property.Value{
+							"discriminantKind": property.New("variant2"),
+							"field2":           property.New("v2 array(union)"),
 						}),
-						resource.NewProperty(resource.PropertyMap{
-							"discriminantKind": resource.NewProperty("variant1"),
-							"field1":           resource.NewProperty("v1 array(union)"),
+						property.New(map[string]property.Value{
+							"discriminantKind": property.New("variant1"),
+							"field1":           property.New("v1 array(union)"),
 						}),
 					}),
-				}, example2.Outputs)
+				}), resource.FromResourcePropertyMap(example2.Outputs))
 			},
 		}},
 	}

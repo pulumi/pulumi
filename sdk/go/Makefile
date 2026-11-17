@@ -82,4 +82,5 @@ clean::
 
 publish:
 	git tag sdk/v${VERSION}
-	git push origin sdk/v${VERSION}
+	git tag pkg/v${VERSION}
+	git push origin sdk/v${VERSION} pkg/v${VERSION}

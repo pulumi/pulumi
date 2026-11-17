@@ -1,4 +1,0 @@
-component: cli/package
-kind: fix
-body: Download plugins from Git repositories whose version tags have no `v` prefix
-time: 2026-10-02T10:37:50.079282+09:00

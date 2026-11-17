@@ -195,6 +195,12 @@ class Component(pulumi.CustomResource):
         __props__.__dict__["storage_classes"] = None
         return Component(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'example::Component', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def provider(self) -> pulumi.Output[Optional['pulumi_other.Provider']]:

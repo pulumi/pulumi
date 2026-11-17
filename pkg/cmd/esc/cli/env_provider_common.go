@@ -160,6 +160,7 @@ func applyProviderUpdate(
 	env *envCommand,
 	ref environmentRef,
 	draft string,
+	reason string,
 	path resource.PropertyPath,
 	providerNode *yaml.Node,
 	envVars []envVar,
@@ -193,7 +194,7 @@ func applyProviderUpdate(
 		return nil
 	}
 
-	diags, err := env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "Environment updated.")
+	diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.")
 	if err != nil {
 		return err
 	}
