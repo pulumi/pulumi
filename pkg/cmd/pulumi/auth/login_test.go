@@ -269,6 +269,43 @@ func TestLoginURLResolution(t *testing.T) {
 }
 
 //nolint:paralleltest // Shares an isolated credential directory and process environment.
+func TestLoginDefaultOrgIsKeyedByCloudURL(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	const cloudURL = "https://api.example.com"
+	ws := &pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{Current: cloudURL}, nil
+		},
+	}
+	lm := &backend.MockLoginManager{
+		LoginF: func(
+			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project,
+			setCurrent bool, insecure bool, color colors.Colorization, _ ...backend.LoginOption,
+		) (pkgBackend.Backend, error) {
+			return &pkgBackend.MockBackend{
+				URLF:  func() string { return "https://app.example.com/test-user" },
+				NameF: func() string { return "test-backend" },
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "test-user", nil, nil, nil
+				},
+			}, nil
+		},
+	}
+
+	cmd := NewLoginCmd(ws, lm, env.NewEnv(env.MapStore{}))
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetContext(t.Context())
+	cmd.SetArgs([]string{cloudURL, "--default-org", "my-org"})
+	require.NoError(t, cmd.Execute())
+
+	config, err := workspace.GetPulumiConfig()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]workspace.BackendConfig{cloudURL: {DefaultOrg: "my-org"}}, config.BackendConfig)
+}
+
+//nolint:paralleltest // Shares an isolated credential directory and process environment.
 func TestLoginOIDCUsesInjectedEnvironment(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_ACCESS_TOKEN", "process-token")
