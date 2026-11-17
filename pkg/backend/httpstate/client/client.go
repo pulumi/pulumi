@@ -1647,6 +1647,12 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 	return pc.restCall(ctx, "POST", getStackPath(currentID, "rename"), nil, &req, nil)
 }
 
+// TransferStack moves the provided stack to the destination organization, keeping its project and name.
+func (pc *Client) TransferStack(ctx context.Context, stackID StackIdentifier, toOrg string) error {
+	req := apitype.StackTransferRequest{ToOrg: toOrg}
+	return pc.restCall(ctx, "POST", getStackPath(stackID, "transfer"), nil, &req, nil)
+}
+
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,

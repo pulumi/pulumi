@@ -326,6 +326,11 @@ type StackRenameRequest struct {
 	NewProject string `json:"newProject"`
 }
 
+// StackTransferRequest is the shape of the request to move a stack to another organization.
+type StackTransferRequest struct {
+	ToOrg string `json:"toOrg"`
+}
+
 // BeginUpdateRequest is the combined request for creating and starting an update.
 // This endpoint combines the functionality of CreateUpdate and StartUpdate into a single
 // API call to reduce latency during startup.
