@@ -56,8 +56,6 @@ type pipelineSource struct {
 
 // registerHiddenFlags are flags of `pulumi up` that a registration never uses. They still work.
 var registerHiddenFlags = []string{
-	"expect-no-changes",
-	"secrets-provider",
 	"plan",
 	"strict",
 }

@@ -196,10 +196,10 @@ func TestRegisterRefusesArguments(t *testing.T) {
 func TestRegisterHiddenFlags(t *testing.T) {
 	t.Parallel()
 	up := operations.NewUpCmd()
-	var expectNop bool
+	var strict bool
 	up.RunE = func(cmd *cobra.Command, _ []string) error {
 		var err error
-		expectNop, err = cmd.Flags().GetBool("expect-no-changes")
+		strict, err = cmd.Flags().GetBool("strict")
 		return err
 	}
 	cmd := newRegisterCmd(up, noPrepare)
@@ -216,8 +216,10 @@ func TestRegisterHiddenFlags(t *testing.T) {
 	}
 	assert.False(t, flags["stack"].Hidden)
 	assert.False(t, flags["config"].Hidden)
+	assert.False(t, flags["expect-no-changes"].Hidden)
+	assert.False(t, flags["secrets-provider"].Hidden)
 
-	cmd.SetArgs([]string{"--expect-no-changes"})
+	cmd.SetArgs([]string{"--strict"})
 	require.NoError(t, cmd.Execute())
-	assert.True(t, expectNop)
+	assert.True(t, strict)
 }
