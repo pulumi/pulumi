@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Return an error instead of panicking when a custom resource with a parent has an invalid type token
+time: 2026-11-02T12:00:00.000000+07:00
