@@ -90,6 +90,7 @@ require (
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
 	github.com/natefinch/atomic v1.0.1
+	github.com/oracle/oci-go-sdk/v65 v65.50.0
 	github.com/pb33f/libopenapi v0.36.1
 	github.com/pgavlin/aho-corasick v0.5.1
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
@@ -121,6 +122,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	lukechampine.com/frand v1.5.1
 	mvdan.cc/sh/v3 v3.13.1
+)
+
+require (
+	github.com/gofrs/flock v0.8.1 // indirect
+	github.com/sony/gobreaker v0.5.0 // indirect
 )
 
 require (

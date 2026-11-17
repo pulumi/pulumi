@@ -34,6 +34,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	_ "github.com/pulumi/pulumi/pkg/v3/secrets/cloud/internal/ocikms" // support for ocikms://
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )

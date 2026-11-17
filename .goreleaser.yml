@@ -78,6 +78,9 @@ archives:
     - goos: windows
       formats: zip
   files:
+    - src: pkg/secrets/cloud/internal/ocikms/LICENSE
+      dst: licenses/ocikms
+      strip_parent: true
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
       dst: '.'

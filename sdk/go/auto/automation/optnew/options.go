@@ -72,7 +72,7 @@ type Options struct {
 	RemoteStackConfig bool
 	// Additional options for the language runtime (format: key1=value1,key2=value2)
 	RuntimeOptions []string
-	// The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)
+	// The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms)
 	SecretsProvider string
 	// The stack name; either an existing stack or stack to create; if not specified, a prompt will request it
 	Stack string
