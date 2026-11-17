@@ -102,7 +102,8 @@ func (p *Program) NewDiagnosticWriter(w io.Writer, width uint, color bool) hcl.D
 
 // BindExpression binds an HCL2 expression in the top-level context of the program.
 func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
-	return p.binder.bindExpression(node)
+	expr, diags := p.binder.bindExpression(node)
+	return expr, p.binder.options.traversalDiagnostics(diags)
 }
 
 // Packages returns the list of package referenced used by this program.

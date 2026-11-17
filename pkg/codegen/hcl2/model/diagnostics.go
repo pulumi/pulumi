@@ -95,6 +95,16 @@ func unsupportedTupleIndex(indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "tuple indices must be integers")
 }
 
+// ObjectTraversalDiagnostic identifies an invalid property traversal in a diagnostic's Extra field.
+type ObjectTraversalDiagnostic struct {
+	Receiver *ObjectType
+}
+
+// UnionTraversalDiagnostic records the causes of a failed union traversal in a diagnostic's Extra field.
+type UnionTraversalDiagnostic struct {
+	Causes hcl.Diagnostics
+}
+
 func unsupportedObjectProperty(indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "object properties must be strings")
 }
