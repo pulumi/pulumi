@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Use the base provider inherited from a parent for invokes and calls of an extension package
+time: 2026-10-27T00:00:00Z

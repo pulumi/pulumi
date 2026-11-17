@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Use the base provider inherited from a parent for resources and invokes of an extension package, instead of falling back to a default provider
+time: 2026-10-14T00:00:00Z

@@ -28,7 +28,7 @@ import {
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { ensureNotInStateMigration } from "./runtime/stateMigration";
-import { getStackResource } from "./runtime/state";
+import { getExtensionBaseProviders, getStackResource } from "./runtime/state";
 import * as utils from "./utils";
 
 export type ID = string; // a provider-assigned ID.
@@ -410,7 +410,14 @@ export abstract class Resource {
             return undefined;
         }
 
-        return this.__providers[pkg];
+        const provider = this.__providers[pkg];
+        if (provider !== undefined) {
+            return provider;
+        }
+
+        // An extension package has no provider of its own: its base provider serves it.
+        const base = getExtensionBaseProviders().get(pkg);
+        return base === undefined ? undefined : this.__providers[base];
     }
 
     /**
