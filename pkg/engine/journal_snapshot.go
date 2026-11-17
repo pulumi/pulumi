@@ -660,7 +660,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	journalEntry := ssm.manager.newJournalEntry(kind, ssm.operationID)
 
 	sameStep, isSameStep := step.(*deploy.SameStep)
-	if !isSameStep || !sameStep.IsSkippedCreate() {
+	if !isSameStep || sameStep.ShouldPersist() {
 		journalEntry.State = step.New().Copy()
 		ssm.manager.operationIDsByState.Store(step.New(), ssm.operationID)
 		if old := step.Old(); old != nil {
@@ -668,7 +668,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 		}
 	}
 
-	if successful && isSameStep && (sameStep.IsSkippedCreate() || !ssm.mustWrite(sameStep)) {
+	if successful && isSameStep && (!sameStep.ShouldPersist() || !ssm.mustWrite(sameStep)) {
 		journalEntry.ElideWrite = true
 	}
 
