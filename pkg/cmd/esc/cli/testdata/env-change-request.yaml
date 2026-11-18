@@ -2,35 +2,35 @@ run: |
   esc env init default/test
   esc env set default/test foo baz
   esc env set default/test foo bar --draft
-  esc env change-request ls
-  esc env change-request ls --env default/test --status pending
-  esc env change-request ls --env default/test --status applied
-  esc env change-request ls --env default/test
-  esc env change-request list --env default/test
-  esc env change-request get 00000000-0000-0000-0000-000000000000
-  esc env change-request diff 00000000-0000-0000-0000-000000000000
-  esc env change-request comment 00000000-0000-0000-0000-000000000000 -m "looks good"
-  esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
-  esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
-  esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes -m "lgtm again" || true
-  esc env change-request unapprove 00000000-0000-0000-0000-000000000000
-  esc env change-request unapprove 00000000-0000-0000-0000-000000000000 || true
-  esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
-  esc env change-request rebase 00000000-0000-0000-0000-000000000000
-  esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
-  esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
-  esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
-  esc env change-request apply 00000000-0000-0000-0000-000000000000 || true
-  esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
-  esc env change-request apply 00000000-0000-0000-0000-000000000000
-  esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
-  esc env change-request close 00000000-0000-0000-0000-000000000000 || true
-  esc env change-request rebase 00000000-0000-0000-0000-000000000000 || true
-  esc env change-request ls
-  esc env change-request ls --status all --output json
-  esc env change-request diff 00000000-0000-0000-0000-000000000000
-  esc env change-request log 00000000-0000-0000-0000-000000000000
-  esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+  esc env approvals ls
+  esc env approvals ls --env default/test --status pending
+  esc env approvals ls --env default/test --status applied
+  esc env approvals ls --env default/test
+  esc env approvals list --env default/test
+  esc env approvals get 00000000-0000-0000-0000-000000000000
+  esc env approvals diff 00000000-0000-0000-0000-000000000000
+  esc env approvals comment 00000000-0000-0000-0000-000000000000 -m "looks good"
+  esc env approvals approve 00000000-0000-0000-0000-000000000000 --dry-run
+  esc env approvals approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
+  esc env approvals approve 00000000-0000-0000-0000-000000000000 --yes -m "lgtm again" || true
+  esc env approvals unapprove 00000000-0000-0000-0000-000000000000
+  esc env approvals unapprove 00000000-0000-0000-0000-000000000000 || true
+  esc env approvals approve 00000000-0000-0000-0000-000000000000 --yes
+  esc env approvals rebase 00000000-0000-0000-0000-000000000000
+  esc env approvals rebase 00000000-0000-0000-0000-000000000000 --output json
+  esc env approvals get 00000000-0000-0000-0000-000000000000 --output json
+  esc env approvals apply 00000000-0000-0000-0000-000000000000 --dry-run
+  esc env approvals apply 00000000-0000-0000-0000-000000000000 || true
+  esc env approvals apply 00000000-0000-0000-0000-000000000000 --yes
+  esc env approvals apply 00000000-0000-0000-0000-000000000000
+  esc env approvals apply 00000000-0000-0000-0000-000000000000 --output json
+  esc env approvals close 00000000-0000-0000-0000-000000000000 || true
+  esc env approvals rebase 00000000-0000-0000-0000-000000000000 || true
+  esc env approvals ls
+  esc env approvals ls --status all --output json
+  esc env approvals diff 00000000-0000-0000-0000-000000000000
+  esc env approvals log 00000000-0000-0000-0000-000000000000
+  esc env approvals log 00000000-0000-0000-0000-000000000000 --output json
   esc env get default/test
 
 ---
@@ -41,32 +41,32 @@ Environment created: test-user/default/test
 Change request created: 00000000-0000-0000-0000-000000000000
 Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
 Change request submitted
-> esc env change-request ls
-┌──────────────────────────────────────┬──────────────┬───────────┐
-│ ID                                   │ ENVIRONMENT  │ AUTHOR    │
-├──────────────────────────────────────┼──────────────┼───────────┤
-│ 00000000-0000-0000-0000-000000000000 │ default/test │ test-user │
-└──────────────────────────────────────┴──────────────┴───────────┘
-> esc env change-request ls --env default/test --status pending
-┌──────────────────────────────────────┬─────────┬───────────┐
-│ ID                                   │ STATUS  │ AUTHOR    │
-├──────────────────────────────────────┼─────────┼───────────┤
-│ 00000000-0000-0000-0000-000000000000 │ pending │ test-user │
-└──────────────────────────────────────┴─────────┴───────────┘
-> esc env change-request ls --env default/test --status applied
-> esc env change-request ls --env default/test
-┌──────────────────────────────────────┬───────────┐
-│ ID                                   │ AUTHOR    │
-├──────────────────────────────────────┼───────────┤
-│ 00000000-0000-0000-0000-000000000000 │ test-user │
-└──────────────────────────────────────┴───────────┘
-> esc env change-request list --env default/test
-┌──────────────────────────────────────┬───────────┐
-│ ID                                   │ AUTHOR    │
-├──────────────────────────────────────┼───────────┤
-│ 00000000-0000-0000-0000-000000000000 │ test-user │
-└──────────────────────────────────────┴───────────┘
-> esc env change-request get 00000000-0000-0000-0000-000000000000
+> esc env approvals ls
+┌──────────────────────────────────────┬──────────────┬────────┬───────────┐
+│ ID                                   │ ENVIRONMENT  │ ACTION │ AUTHOR    │
+├──────────────────────────────────────┼──────────────┼────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ update │ test-user │
+└──────────────────────────────────────┴──────────────┴────────┴───────────┘
+> esc env approvals ls --env default/test --status pending
+┌──────────────────────────────────────┬────────┬─────────┬───────────┐
+│ ID                                   │ ACTION │ STATUS  │ AUTHOR    │
+├──────────────────────────────────────┼────────┼─────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ update │ pending │ test-user │
+└──────────────────────────────────────┴────────┴─────────┴───────────┘
+> esc env approvals ls --env default/test --status applied
+> esc env approvals ls --env default/test
+┌──────────────────────────────────────┬────────┬───────────┐
+│ ID                                   │ ACTION │ AUTHOR    │
+├──────────────────────────────────────┼────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ update │ test-user │
+└──────────────────────────────────────┴────────┴───────────┘
+> esc env approvals list --env default/test
+┌──────────────────────────────────────┬────────┬───────────┐
+│ ID                                   │ ACTION │ AUTHOR    │
+├──────────────────────────────────────┼────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ update │ test-user │
+└──────────────────────────────────────┴────────┴───────────┘
+> esc env approvals get 00000000-0000-0000-0000-000000000000
 ID: 00000000-0000-0000-0000-000000000000
 Environment: test-user/default/test
 Action: update
@@ -79,15 +79,15 @@ Current environment revision: 2
 Approved: false
   Require approval (not satisfied): 0 of 1 approvals
 URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
-> esc env change-request diff 00000000-0000-0000-0000-000000000000
+> esc env approvals diff 00000000-0000-0000-0000-000000000000
 --- test-user/default/test@2
 +++ draft 00000000-0000-0000-0000-000000000000
 @@ -1,2 +1,2 @@
  values:
 -  foo: baz
 +  foo: bar
-> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env approvals comment 00000000-0000-0000-0000-000000000000 -m looks good
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 --dry-run
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -97,7 +97,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -107,7 +107,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes -m lgtm again
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 --yes -m lgtm again
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -117,9 +117,9 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
-> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
+> esc env approvals unapprove 00000000-0000-0000-0000-000000000000
+> esc env approvals unapprove 00000000-0000-0000-0000-000000000000
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 --yes
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -129,14 +129,14 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request rebase 00000000-0000-0000-0000-000000000000
-> esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals rebase 00000000-0000-0000-0000-000000000000
+> esc env approvals rebase 00000000-0000-0000-0000-000000000000 --output json
 {
   "changeRequestId": "00000000-0000-0000-0000-000000000000",
   "draftRevisionNumber": 1,
   "conflicts": []
 }
-> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals get 00000000-0000-0000-0000-000000000000 --output json
 {
   "id": "00000000-0000-0000-0000-000000000000",
   "status": "ready",
@@ -180,7 +180,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
   },
   "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000"
 }
-> esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env approvals apply 00000000-0000-0000-0000-000000000000 --dry-run
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -190,7 +190,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request apply 00000000-0000-0000-0000-000000000000
+> esc env approvals apply 00000000-0000-0000-0000-000000000000
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -200,7 +200,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+> esc env approvals apply 00000000-0000-0000-0000-000000000000 --yes
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
 --- test-user/default/test
@@ -210,15 +210,15 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
-> esc env change-request apply 00000000-0000-0000-0000-000000000000
-> esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals apply 00000000-0000-0000-0000-000000000000
+> esc env approvals apply 00000000-0000-0000-0000-000000000000 --output json
 {
   "entityUrl": ""
 }
-> esc env change-request close 00000000-0000-0000-0000-000000000000
-> esc env change-request rebase 00000000-0000-0000-0000-000000000000
-> esc env change-request ls
-> esc env change-request ls --status all --output json
+> esc env approvals close 00000000-0000-0000-0000-000000000000
+> esc env approvals rebase 00000000-0000-0000-0000-000000000000
+> esc env approvals ls
+> esc env approvals ls --status all --output json
 {
   "changeRequests": [
     {
@@ -240,14 +240,14 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
     }
   ]
 }
-> esc env change-request diff 00000000-0000-0000-0000-000000000000
+> esc env approvals diff 00000000-0000-0000-0000-000000000000
 --- test-user/default/test@2
 +++ draft 00000000-0000-0000-0000-000000000000
 @@ -1,2 +1,2 @@
  values:
 -  foo: baz
 +  foo: bar
-> esc env change-request log 00000000-0000-0000-0000-000000000000
+> esc env approvals log 00000000-0000-0000-0000-000000000000
 a long while ago  test-user created the change request
 a long while ago  test-user added revision 1
 a long while ago  test-user submitted the change request for approval
@@ -261,7 +261,7 @@ a long while ago  test-user changed the status from ready to pending (approval r
 a long while ago  test-user approved revision 1
 a long while ago  test-user changed the status from pending to ready (approval rules met)
 a long while ago  test-user applied the change request
-> esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals log 00000000-0000-0000-0000-000000000000 --output json
 {
   "events": [
     {
@@ -414,49 +414,49 @@ values:
 > esc env init default/test
 > esc env set default/test foo baz
 > esc env set default/test foo bar --draft
-> esc env change-request ls
-> esc env change-request ls --env default/test --status pending
-> esc env change-request ls --env default/test --status applied
+> esc env approvals ls
+> esc env approvals ls --env default/test --status pending
+> esc env approvals ls --env default/test --status applied
 No change requests found.
-> esc env change-request ls --env default/test
-> esc env change-request list --env default/test
-> esc env change-request get 00000000-0000-0000-0000-000000000000
-> esc env change-request diff 00000000-0000-0000-0000-000000000000
-> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
+> esc env approvals ls --env default/test
+> esc env approvals list --env default/test
+> esc env approvals get 00000000-0000-0000-0000-000000000000
+> esc env approvals diff 00000000-0000-0000-0000-000000000000
+> esc env approvals comment 00000000-0000-0000-0000-000000000000 -m looks good
 Added comment to change request 00000000-0000-0000-0000-000000000000
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
 Approved change request 00000000-0000-0000-0000-000000000000
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes -m lgtm again
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 --yes -m lgtm again
 Error: approving change request: already approved
-> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+> esc env approvals unapprove 00000000-0000-0000-0000-000000000000
 Removed approval from change request 00000000-0000-0000-0000-000000000000
-> esc env change-request unapprove 00000000-0000-0000-0000-000000000000
+> esc env approvals unapprove 00000000-0000-0000-0000-000000000000
 Error: removing approval: not approved
-> esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
+> esc env approvals approve 00000000-0000-0000-0000-000000000000 --yes
 Approved change request 00000000-0000-0000-0000-000000000000
-> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+> esc env approvals rebase 00000000-0000-0000-0000-000000000000
 warning: Change request 00000000-0000-0000-0000-000000000000 is already based on the current environment revision.
-> esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals rebase 00000000-0000-0000-0000-000000000000 --output json
 warning: Change request 00000000-0000-0000-0000-000000000000 is already based on the current environment revision.
-> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
-> esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
-> esc env change-request apply 00000000-0000-0000-0000-000000000000
+> esc env approvals get 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals apply 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env approvals apply 00000000-0000-0000-0000-000000000000
 Error: non-interactive mode requires --yes flag
-> esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+> esc env approvals apply 00000000-0000-0000-0000-000000000000 --yes
 Applied change request 00000000-0000-0000-0000-000000000000
-> esc env change-request apply 00000000-0000-0000-0000-000000000000
+> esc env approvals apply 00000000-0000-0000-0000-000000000000
 warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
-> esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals apply 00000000-0000-0000-0000-000000000000 --output json
 warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
-> esc env change-request close 00000000-0000-0000-0000-000000000000
+> esc env approvals close 00000000-0000-0000-0000-000000000000
 Error: closing change request: change request is not active
-> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+> esc env approvals rebase 00000000-0000-0000-0000-000000000000
 Error: change request 00000000-0000-0000-0000-000000000000 is applied
-> esc env change-request ls
+> esc env approvals ls
 No change requests found.
-> esc env change-request ls --status all --output json
-> esc env change-request diff 00000000-0000-0000-0000-000000000000
-> esc env change-request log 00000000-0000-0000-0000-000000000000
-> esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+> esc env approvals ls --status all --output json
+> esc env approvals diff 00000000-0000-0000-0000-000000000000
+> esc env approvals log 00000000-0000-0000-0000-000000000000
+> esc env approvals log 00000000-0000-0000-0000-000000000000 --output json
 > esc env get default/test

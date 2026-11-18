@@ -98,6 +98,15 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	cmd.AddCommand(newEnvScheduleCmd(env))
 	cmd.AddCommand(newEnvChangeRequestCmd(env))
 
+	changeRequest := newEnvChangeRequestCmd(env)
+	changeRequest.Use = "change-request"
+	changeRequest.Hidden = true
+	changeRequest.Deprecated = "use `env approvals` instead"
+	for _, c := range changeRequest.Commands() {
+		c.Deprecated = fmt.Sprintf("use `env approvals %v` instead", c.Name())
+	}
+	cmd.AddCommand(changeRequest)
+
 	return cmd
 }
 
@@ -447,6 +456,23 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 		return path
 	}
 	return path + "?version=" + changeRequestID
+}
+
+// openRequestURL returns a URL to an open request in the Pulumi Cloud Console, rooted at cloudURL.
+// If there is an error, returns "".
+func (esc *escCommand) openRequestURL(ref environmentRef, changeRequestID string) string {
+	path := pulumiclient.CloudConsoleURL(
+		esc.client.URL(),
+		ref.orgName,
+		"esc",
+		ref.projectName,
+		ref.envName,
+		"change-requests",
+	)
+	if path == "" {
+		return path
+	}
+	return path + "?requestId=" + changeRequestID
 }
 
 // updateEnvironment updates an environment.

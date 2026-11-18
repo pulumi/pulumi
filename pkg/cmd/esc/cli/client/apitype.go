@@ -359,6 +359,11 @@ type EnvironmentOpenRequestChangeRequest struct {
 	ETag                 string `json:"etag"`
 }
 
+type EnvironmentOpenRequest struct {
+	GrantExpirationSeconds int `json:"grantExpirationSeconds"`
+	AccessDurationSeconds  int `json:"accessDurationSeconds"`
+}
+
 type RetractEnvironmentRevisionRequest struct {
 	Replacement *int   `json:"replacement,omitempty"`
 	Reason      string `json:"reason,omitempty"`
