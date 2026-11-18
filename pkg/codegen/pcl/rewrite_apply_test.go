@@ -311,3 +311,31 @@ func TestRewriteInvalidTraversal(t *testing.T) {
 		fmt.Sprintf("%v", expr),
 	)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25357: a `for` over a tuple of
+// outputs used to leave the whole expression rewritten to a dangling apply argument.
+func TestRewriteAppliesForOverTupleOfOutputs(t *testing.T) {
+	t.Parallel()
+
+	scope := model.NewRootScope(syntax.None)
+	scope.Define("resource", &model.Variable{
+		Name: "resource",
+		VariableType: model.NewObjectType(map[string]model.Type{
+			"objectOutput": model.NewOutputType(model.NewObjectType(map[string]model.Type{
+				"stringPlain": model.StringType,
+			})),
+		}),
+	})
+
+	expr, diags := model.BindExpressionText(`[for o in [resource.objectOutput]: o.stringPlain]`, scope, hcl.Pos{})
+	require.Len(t, diags, 0)
+
+	// Wrap the expression in a conversion to a list of string outputs, as the Go generator does.
+	convert := NewConvertCall(expr, model.NewOutputType(model.NewListType(model.StringType)))
+	rewritten, diags := RewriteApplies(convert, nameInfo(0), true)
+	require.Len(t, diags, 0)
+
+	assert.Equal(t,
+		`__convert([for o in [resource.objectOutput]: __apply(o, eval(o, o.stringPlain))])`,
+		fmt.Sprintf("%v", rewritten))
+}

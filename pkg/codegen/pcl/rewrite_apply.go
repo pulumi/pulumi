@@ -657,7 +657,7 @@ func (ctx *observeContext) PostVisit(expr model.Expression) (model.Expression, h
 		contract.Assertf(!diagnostics.HasErrors(), "error typechecking expression: %v; code: %v", diagnostics, expr)
 	}
 
-	if isIteratorExpr, _ := ctx.isIteratorExpr(expr); isIteratorExpr {
+	if isIteratorExpr, _ := ctx.isIteratorExpr(expr); isIteratorExpr && !isRoot {
 		return expr, nil
 	}
 

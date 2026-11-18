@@ -126,6 +126,13 @@ func main() {
 			setRes.Data.String(),
 			unsetRes.Data.String(),
 		})
+		var forResult0 pulumi.Array
+		for _, v := range []optionalprimitiveref.DataOutput{
+			setRes.Data,
+		} {
+			forResult0 = append(forResult0, v.String())
+		}
+		ctx.Export("forOverTuple", forResult0)
 		optionalLists := pulumi.Float64ArrayArray{
 			setRes.Data.NumberArray(),
 			unsetRes.Data.NumberArray(),

@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Fix `for` expressions over a tuple of outputs generating an undefined variable
+time: 2026-10-29T00:00:00Z
