@@ -653,7 +653,7 @@ describe("invoke source context", () => {
                     function sdkWrapper() {
                         return invoke("test:index:lookup", {});
                     }
-                    const callSite = getStackTrace(1)[0]!;
+                    const callSite = getStackTrace(0)[0]!;
                     const result = sdkWrapper();
                     state.setParentStackTraceHandle("later-context");
                     if (Output.isInstance(result)) {
