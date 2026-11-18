@@ -19,6 +19,7 @@ import { getAllResources, Input, Inputs, isUnknown, Output, unknown, OutputToStr
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
+import { isScanUnknown } from "./policyScan";
 import { excessiveDebugOutput, isDryRun } from "./settings";
 import { getStore, getResourcePackages, getResourceModules, PendingResourceRegistration } from "./state";
 
@@ -407,6 +408,12 @@ export async function serializeProperty(
     dependentResources?: Set<Resource>,
     opts?: SerializationOptions,
 ): Promise<any> {
+    // Stand-ins for values nothing can know without a deployment (a policy scan's invoke results and stubbed
+    // modules) are unknowns.
+    if (isScanUnknown(prop)) {
+        return unknownValue;
+    }
+
     // if prop is a function type just return undefined, we don't want to try and keep these values around.
     if (typeof prop === "function") {
         if (excessiveDebugOutput) {

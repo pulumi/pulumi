@@ -1,0 +1,3 @@
+invokes:
+  getAccount:
+    id: "123456789012"

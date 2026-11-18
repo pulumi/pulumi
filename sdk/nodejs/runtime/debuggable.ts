@@ -14,6 +14,7 @@
 
 import * as log from "../log";
 import type { Resource } from "../resource";
+import { isPolicyScan } from "./policyScan";
 import * as state from "./state";
 
 /**
@@ -284,7 +285,12 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
     // Whack some stack onto the promise.  Leave them non-enumerable to avoid awkward rendering.
     Object.defineProperty(p, "_debugId", { writable: true, value: promiseId });
     Object.defineProperty(p, "_debugCtx", { writable: true, value: ctx });
-    Object.defineProperty(p, "_debugStackTrace", { writable: true, value: new Error().stack });
+    // A stack per promise is only for leak reports, and a policy scan would spend much of its time
+    // source-mapping them.
+    Object.defineProperty(p, "_debugStackTrace", {
+        writable: true,
+        value: isPolicyScan() ? undefined : new Error().stack,
+    });
 
     promiseId++;
 

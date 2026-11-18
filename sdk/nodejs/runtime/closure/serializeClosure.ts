@@ -14,6 +14,7 @@
 
 import { log } from "../..";
 import { Resource } from "../../resource";
+import { isPolicyScan } from "../policyScan";
 import * as closure from "./createClosure";
 import * as utils from "./utils";
 
@@ -120,6 +121,10 @@ export async function serializeFunction(func: Function, args: SerializeFunctionA
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || ((_) => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
+    if (isPolicyScan()) {
+        // A policy scan never deploys the function, so its body isn't captured.
+        return { text: `exports.${exportName} = function () {};\n`, exportName, containsSecrets: false };
+    }
 
     const closureInfo = await closure.createClosureInfoAsync(func, serialize, args.logResource);
     if (!args.allowSecrets && closureInfo.containsSecrets) {
