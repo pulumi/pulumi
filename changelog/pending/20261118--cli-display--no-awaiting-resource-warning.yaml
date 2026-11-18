@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Stop printing a `resource is awaiting` warning for each awaiting resource
+time: 2026-11-18T21:00:00Z
