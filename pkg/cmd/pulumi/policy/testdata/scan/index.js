@@ -29,5 +29,10 @@ const bucket = new Bucket("public", {
 new Bucket("private", {
     acl: "private",
     vpcId: network.then((n) => n.vpcId),
+    // Another resource's output: an identifiable unknown, so a stack policy can join on it.
     source: bucket.id,
+    // Built in an apply, which runs with a probe for the unknown ID: the document is known around it.
+    policy: bucket.id.apply((id) => JSON.stringify({ Resource: `${id}/*` })),
+    // A callback that can't run on a probe falls back to unknown.
+    region: bucket.id.apply((id) => JSON.parse(id).region),
 });

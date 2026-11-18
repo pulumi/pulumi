@@ -211,6 +211,8 @@ function writeGraph() {
         networkBlocked: sorted(networkBlocked),
         usedFixtures: sorted(state.usedFixtures),
         unknownInvokes: sorted(state.unknownInvokes),
+        probedApplies: state.probedApplies || 0,
+        failedApplies: state.failedApplies || 0,
         errors,
         warnings,
         timings,

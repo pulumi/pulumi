@@ -16,7 +16,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as log from "../log";
 import * as utils from "../utils";
 
-import { Input, Inputs, Output, output } from "../output";
+import { Input, Inputs, Output, output, setOutputSource } from "../output";
 import {
     Alias,
     allAliases,
@@ -46,6 +46,7 @@ import {
     getStore,
     PendingResourceRegistration,
 } from "./state";
+import { isPolicyScan } from "./policyScan";
 import { ensureNotInStateMigration } from "./stateMigration";
 
 import { isGrpcError } from "../errors";
@@ -1077,6 +1078,7 @@ export async function prepareResource(
             Promise.resolve(false),
             Promise.resolve(res),
         );
+        setOutputSource((res as any).id, { resource: res, property: "id" });
 
         resolveID = (v, isKnown, err) => {
             if (err) {
@@ -1103,6 +1105,11 @@ export async function prepareResource(
     let resolvers: OutputResolvers = {};
     if (remote || custom || opts.urn !== undefined) {
         resolvers = transferProperties(res, label, props);
+    }
+    if (custom) {
+        for (const k of Object.keys(resolvers)) {
+            setOutputSource((res as any)[k], { resource: res, property: k });
+        }
     }
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
@@ -1139,6 +1146,8 @@ export async function prepareResource(
         // on 'propertyDependencies' won't create outputs for properties that only
         // contain resource references.
         excludeResourceReferencesFromDependencies: remote,
+        // During a policy scan, report which output each unknown input is, so policies can join on it.
+        keepOutputSources: !remote && isPolicyScan(),
         pendingRegistration: pending,
     });
     pending.inputProperty = undefined;

@@ -15,7 +15,17 @@
 import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
-import { getAllResources, Input, Inputs, isUnknown, Output, unknown, OutputToStringError } from "../output";
+import {
+    getAllResources,
+    getOutputSource,
+    getOutputTemplate,
+    Input,
+    Inputs,
+    isUnknown,
+    Output,
+    unknown,
+    OutputToStringError,
+} from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
@@ -156,6 +166,14 @@ export interface SerializationOptions {
      * this will have no effect.
      */
     excludeResourceReferencesFromDependencies?: boolean;
+
+    /**
+     * True to send unknown outputs as output values that say which resource output they are, or how they were
+     * built from outputs, for policies. Only a policy scan sets it.
+     *
+     * @internal
+     */
+    keepOutputSources?: boolean;
 
     /** @internal */
     pendingRegistration?: PendingResourceRegistration;
@@ -493,6 +511,8 @@ export async function serializeProperty(
         const promiseDeps = new Set<Resource>();
         const value = await serializeProperty(`${ctx}.id`, prop.promise(), promiseDeps, {
             keepOutputValues: false,
+            // A known value can hold unknown outputs (a probed apply's document); keep their sources.
+            keepOutputSources: opts?.keepOutputSources,
         });
         for (const resource of promiseDeps) {
             propResources.add(resource);
@@ -501,9 +521,13 @@ export async function serializeProperty(
             }
         }
 
-        if (opts?.keepOutputValues && getStore().supportsOutputValues) {
+        const keepOutputValue = opts?.keepOutputValues || (!isKnown && opts?.keepOutputSources);
+        if (keepOutputValue && getStore().supportsOutputValues) {
+            // A policy scan only needs the value's source, and awaiting the URNs of everything it depends on can
+            // wait forever on a resource no provider will finish (a remote component's outputs).
+            const sourcesOnly = !opts?.keepOutputValues;
             const urnDeps = new Set<Resource>();
-            for (const resource of propResources) {
+            for (const resource of sourcesOnly ? [] : propResources) {
                 await serializeProperty(`${ctx} dependency`, resource.urn, urnDeps, {
                     keepOutputValues: false,
                 });
@@ -515,7 +539,9 @@ export async function serializeProperty(
                 }
             }
 
-            const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources, new Set<Resource>());
+            const dependencies = sourcesOnly
+                ? new Set<string>()
+                : await getAllTransitivelyReferencedResourceURNs(propResources, new Set<Resource>());
 
             const obj: any = {
                 [specialSigKey]: specialOutputValueSig,
@@ -529,6 +555,25 @@ export async function serializeProperty(
             }
             if (dependencies.size > 0) {
                 obj["dependencies"] = Array.from(dependencies);
+            }
+            const source = opts?.keepOutputSources ? getOutputSource(prop) : undefined;
+            if (source !== undefined) {
+                obj["source"] = { urn: await source.resource.urn.promise(), property: source.property };
+            }
+            const template = opts?.keepOutputSources && !isKnown ? getOutputTemplate(prop) : undefined;
+            if (template !== undefined) {
+                // The parts are serialized on their own: their dependencies are already the output's.
+                const partOpts: SerializationOptions = { keepOutputSources: true };
+                obj["template"] =
+                    "concat" in template
+                        ? {
+                              concat: await Promise.all(
+                                  template.concat.map((p, i) =>
+                                      serializeProperty(`${ctx} part ${i}`, p, new Set(), partOpts),
+                                  ),
+                              ),
+                          }
+                        : { json: await serializeProperty(`${ctx} json`, template.json, new Set(), partOpts) };
             }
             return obj;
         }

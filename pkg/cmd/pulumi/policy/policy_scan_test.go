@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -210,6 +211,29 @@ func TestPolicyScanCmd_Program(t *testing.T) {
 		},
 	}
 
+	var stack []plugin.AnalyzerStackResource
+	analyzer.AnalyzeStackF = func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+		stack = resources
+		// A join on an output nothing has deployed yet: the private bucket names the public one.
+		ids := map[string]string{}
+		for _, r := range resources {
+			if id := r.Properties.Get("id"); id.IsString() {
+				ids[id.AsString()] = r.Name
+			}
+		}
+		var resp plugin.AnalyzeResponse
+		for _, r := range resources {
+			if src := r.Properties.Get("source"); src.IsString() && ids[src.AsString()] == "public" {
+				resp.Diagnostics = append(resp.Diagnostics, plugin.AnalyzeDiagnostic{
+					PolicyName: "no-public-sources", PolicyPackName: "pack", PolicyPackVersion: "1.0.0",
+					Message: "source " + src.AsString() + " is public", EnforcementLevel: apitype.Advisory,
+					URN: r.URN,
+				})
+			}
+		}
+		return resp, nil
+	}
+
 	stdout, stderr, err := runScanCmd(t, []plugin.Analyzer{analyzer},
 		filepath.Join("testdata", "scan"), "--policy-pack", "./pack", "--sdk", sdk, "--json")
 	require.ErrorContains(t, err, "mandatory policy violations", stderr)
@@ -218,11 +242,16 @@ func TestPolicyScanCmd_Program(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stdout), &report), stdout)
 	assert.Empty(t, report.Errors)
 	assert.Equal(t, 3, report.Resources) // the Stack and two buckets
-	require.Len(t, report.Findings, 1)
+	require.Len(t, report.Findings, 2)
 	f := report.Findings[0]
 	assert.Equal(t, "public", f.Name)
 	assert.Equal(t, "index.js", f.File)
 	assert.Equal(t, 22, f.Line)
+	join := report.Findings[1]
+	assert.Equal(t, "private", join.Name)
+	assert.Equal(t, "source <output public.id> is public", join.Message)
+	assert.Equal(t, 1, report.Probed)
+	assert.Equal(t, 1, report.Fallbacks)
 
 	assert.Equal(t, []string{"scan-test:owner"}, report.Missing)
 	assert.Equal(t, []string{"invoke getAccount"}, report.Fixtures)
@@ -239,5 +268,58 @@ func TestPolicyScanCmd_Program(t *testing.T) {
 	assert.Equal(t, "", public.Get("commit").AsString())
 	private := byName["private"].Properties
 	assert.True(t, private.Get("vpcId").IsComputed(), "a data source without a fixture is unknown")
-	assert.True(t, private.Get("source").IsComputed(), "an ID is unknown before deployment")
+	ref := scanRefFor(string(byName["public"].URN), "id")
+	assert.Equal(t, ref, private.Get("source").AsString(), "another resource's ID is its identifiable unknown")
+	assert.Equal(t, `{"Resource":"`+ref+`/*"}`, private.Get("policy").AsString(), "a probed apply's document")
+	assert.True(t, private.Get("region").IsComputed(), "an apply that can't run on a probe is unknown")
+	_, hasID := byName["public"].Properties.GetOk("id")
+	assert.False(t, hasID, "resource policies see the inputs only")
+
+	require.Len(t, stack, 3)
+	for _, r := range stack {
+		if r.Name == "public" {
+			assert.Equal(t, ref, r.Properties.Get("id").AsString(), "stack policies see the ID as its identifiable unknown")
+		}
+	}
+}
+
+func TestScanUnknownsRewrite(t *testing.T) {
+	t.Parallel()
+
+	const bucket = "urn:pulumi:scan::p::test:index:Bucket::b"
+	out := func(fields map[string]any) map[string]any {
+		fields[resource.SigKey] = resource.OutputValueSig
+		return fields
+	}
+	src := func(urn, prop string) map[string]any {
+		return out(map[string]any{"source": map[string]any{"urn": urn, "property": prop}})
+	}
+	g := &scanGraph{Resources: []scanResource{
+		{URN: bucket, Name: "b", Object: map[string]any{}},
+		{URN: "urn:pulumi:scan::p::test:index:Policy::p", Name: "p", Object: map[string]any{
+			"bucket": src(bucket, "id"),
+			"arn":    out(map[string]any{"template": map[string]any{"concat": []any{"arn:", src(bucket, "arn"), "/*"}}}),
+			"doc": out(map[string]any{"template": map[string]any{"json": map[string]any{
+				"Resource": src(bucket, "arn"), "Count": 1.0,
+			}}}),
+			"derived": out(map[string]any{"dependencies": []any{bucket}}),
+			"partly":  out(map[string]any{"template": map[string]any{"concat": []any{"x", plugin.UnknownStringValue}}}),
+			"other":   src("urn:pulumi:scan::p::test:index:Bucket::elsewhere", "id"),
+		}},
+	}}
+	u := newScanUnknowns(g)
+	got := u.rewrite(g.Resources[1].Object).(map[string]any)
+	id, arn := scanRefFor(bucket, "id"), scanRefFor(bucket, "arn")
+	assert.Equal(t, id, got["bucket"])
+	assert.Equal(t, "arn:"+arn+"/*", got["arn"])
+	assert.Equal(t, `{"Count":1,"Resource":"`+arn+`"}`, got["doc"])
+	assert.Equal(t, plugin.UnknownStringValue, got["derived"], "derived some other way: still unknown")
+	assert.Equal(t, plugin.UnknownStringValue, got["partly"], "a template with an unsourced part")
+	assert.Equal(t, plugin.UnknownStringValue, got["other"], "an output of a resource not in the program")
+	assert.Equal(t, 3, u.linked)
+	assert.Equal(t, 3, u.unlinked)
+
+	// Stack policies also see the bucket's id, and its arn since another resource reads it.
+	assert.Equal(t, map[string]any{"id": id, "arn": arn}, u.stackOutputs(&g.Resources[0], map[string]any{}))
+	assert.Equal(t, "bucket <output b.arn>/*", u.describe("bucket "+arn+"/*"))
 }

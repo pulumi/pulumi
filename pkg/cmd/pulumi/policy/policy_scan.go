@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"os/exec"
@@ -73,6 +74,8 @@ type scanGraph struct {
 	Blocked    []string         `json:"networkBlocked"`
 	Fixtures   []string         `json:"usedFixtures"`
 	Unmocked   []string         `json:"unknownInvokes"`
+	Probed     int              `json:"probedApplies"`
+	Fallbacks  int              `json:"failedApplies"`
 	Errors     []scanMessage    `json:"errors"`
 	Timings    map[string]int64 `json:"timings"`
 }
@@ -118,19 +121,25 @@ type scanFinding struct {
 }
 
 type scanReport struct {
-	Project    string           `json:"project"`
-	ProgramDir string           `json:"programDir"`
-	Resources  int              `json:"resources"`
-	Findings   []scanFinding    `json:"findings"`
-	Undecided  []scanFinding    `json:"undecided"`
-	Stubs      []string         `json:"stubs"`
-	Missing    []string         `json:"missingConfig"`
-	Assumed    []string         `json:"assumedArtifacts"`
-	Blocked    []string         `json:"blocked"`
-	Fixtures   []string         `json:"usedFixtures"`
-	Unmocked   []string         `json:"unknownWithoutFixture"`
-	Errors     []string         `json:"errors"`
-	Timings    map[string]int64 `json:"timings"`
+	Project    string        `json:"project"`
+	ProgramDir string        `json:"programDir"`
+	Resources  int           `json:"resources"`
+	Findings   []scanFinding `json:"findings"`
+	Undecided  []scanFinding `json:"undecided"`
+	Stubs      []string      `json:"stubs"`
+	Missing    []string      `json:"missingConfig"`
+	Assumed    []string      `json:"assumedArtifacts"`
+	Blocked    []string      `json:"blocked"`
+	Fixtures   []string      `json:"usedFixtures"`
+	Unmocked   []string      `json:"unknownWithoutFixture"`
+	Probed     int           `json:"probedApplies"`
+	Fallbacks  int           `json:"failedApplies"`
+	// Linked and Unlinked count unknown inputs that are another resource's output (or built from outputs), and
+	// those that aren't.
+	Linked   int              `json:"identifiableUnknowns"`
+	Unlinked int              `json:"otherUnknowns"`
+	Errors   []string         `json:"errors"`
+	Timings  map[string]int64 `json:"timings"`
 }
 
 type loadAnalyzersFunc func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error)
@@ -596,42 +605,69 @@ func toURNs(ss []string) []resource.URN {
 }
 
 // scanStackResources converts the recorded registrations into what policies see in a preview: the inputs the
-// program declared, with unknowns where a value depends on something only a deployment gives.
-func scanStackResources(g *scanGraph) ([]plugin.AnalyzerStackResource, error) {
+// program declared, with unknowns where a value depends on something only a deployment gives, and identifiable
+// unknowns where that value is another resource's output (see policy_scan_unknowns.go). It returns what stack
+// policies see, and what resource policies see of each resource (its inputs only).
+func scanStackResources(
+	g *scanGraph, u *scanUnknowns,
+) ([]plugin.AnalyzerStackResource, []plugin.AnalyzerResource, error) {
 	out := make([]plugin.AnalyzerStackResource, 0, len(g.Resources))
-	for _, r := range g.Resources {
-		obj, err := structpb.NewStruct(r.Object)
+	views := make([]plugin.AnalyzerResource, 0, len(g.Resources))
+	unmarshal := func(urn string, m map[string]any) (resource.PropertyMap, error) {
+		obj, err := structpb.NewStruct(m)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", r.URN, err)
+			return nil, fmt.Errorf("%s: %w", urn, err)
 		}
 		props, err := plugin.UnmarshalProperties(obj, plugin.MarshalOptions{
-			Label:         "scan." + r.URN,
+			Label:         "scan." + urn,
 			KeepUnknowns:  true,
 			KeepSecrets:   true,
 			KeepResources: true,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", r.URN, err)
+			return nil, fmt.Errorf("%s: %w", urn, err)
+		}
+		return props, nil
+	}
+	for i := range g.Resources {
+		r := &g.Resources[i]
+		inputs, _ := u.rewrite(r.Object).(map[string]any)
+		if inputs == nil {
+			inputs = map[string]any{}
+		}
+		withOutputs := make(map[string]any, len(inputs)+2)
+		maps.Copy(withOutputs, inputs)
+		maps.Copy(withOutputs, u.stackOutputs(r, inputs))
+		props, err := unmarshal(r.URN, inputs)
+		if err != nil {
+			return nil, nil, err
+		}
+		stackProps, err := unmarshal(r.URN, withOutputs)
+		if err != nil {
+			return nil, nil, err
 		}
 		pdeps := map[resource.PropertyKey][]resource.URN{}
 		for k, v := range r.PropertyDependencies {
 			pdeps[resource.PropertyKey(k)] = toURNs(v)
 		}
 		urn := resource.URN(r.URN)
+		view := plugin.AnalyzerResource{
+			URN:        urn,
+			Type:       urn.Type(),
+			Name:       r.Name,
+			Properties: resource.FromResourcePropertyMap(props),
+			Options:    plugin.AnalyzerResourceOptions{Parent: resource.URN(r.Parent)},
+		}
+		views = append(views, view)
+		view.Properties = resource.FromResourcePropertyMap(stackProps)
 		out = append(out, plugin.AnalyzerStackResource{
-			AnalyzerResource: plugin.AnalyzerResource{
-				URN:        urn,
-				Type:       urn.Type(),
-				Name:       r.Name,
-				Properties: resource.FromResourcePropertyMap(props),
-				Options:    plugin.AnalyzerResourceOptions{Parent: resource.URN(r.Parent)},
-			},
+			AnalyzerResource:     view,
 			Parent:               resource.URN(r.Parent),
 			Dependencies:         toURNs(r.Dependencies),
 			PropertyDependencies: pdeps,
 		})
 	}
-	return out, nil
+	return out, views, nil
 }
 
 // undecidedPrefix starts the message a policy SDK reports when a policy reads a value that's unknown before
@@ -639,7 +675,8 @@ func scanStackResources(g *scanGraph) ([]plugin.AnalyzerStackResource, error) {
 const undecidedPrefix = "can't run policy"
 
 func analyzeScanGraph(ctx context.Context, g *scanGraph, analyzers []plugin.Analyzer) (*scanReport, error) {
-	resources, err := scanStackResources(g)
+	unknowns := newScanUnknowns(g)
+	resources, views, err := scanStackResources(g, unknowns)
 	if err != nil {
 		return nil, err
 	}
@@ -668,6 +705,10 @@ func analyzeScanGraph(ctx context.Context, g *scanGraph, analyzers []plugin.Anal
 		Blocked:    g.Blocked,
 		Fixtures:   g.Fixtures,
 		Unmocked:   g.Unmocked,
+		Probed:     g.Probed,
+		Fallbacks:  g.Fallbacks,
+		Linked:     unknowns.linked,
+		Unlinked:   unknowns.unlinked,
 	}
 	for _, e := range g.Errors {
 		report.Errors = append(report.Errors, e.Message)
@@ -688,7 +729,7 @@ func analyzeScanGraph(ctx context.Context, g *scanGraph, analyzers []plugin.Anal
 			Description:      d.Description,
 			Severity:         string(d.Severity),
 			EnforcementLevel: string(d.EnforcementLevel),
-			Message:          strings.TrimSpace(d.Message),
+			Message:          unknowns.describe(strings.TrimSpace(d.Message)),
 		}
 		// Only positions in the program's own code are useful; the SDK registers the Stack, for one.
 		if p := r.SourcePosition; p != nil {
@@ -715,11 +756,11 @@ func analyzeScanGraph(ctx context.Context, g *scanGraph, analyzers []plugin.Anal
 			add(d, string(d.URN))
 		}
 		// Resource policies see each resource's inputs, as in a preview.
-		for _, r := range resources {
+		for _, r := range views {
 			if r.Type == resource.RootStackType {
 				continue
 			}
-			resp, err := a.Analyze(ctx, r.AnalyzerResource)
+			resp, err := a.Analyze(ctx, r)
 			if err != nil {
 				return nil, err
 			}
@@ -782,6 +823,10 @@ func printScanReport(w io.Writer, r *scanReport) {
 	list("Unknown without a fixture (add them to "+scanFixturesFile+" to make them known)", r.Unmocked)
 	list("Build outputs not present, assumed built", r.Assumed)
 	list("Config not set, placeholders used", r.Missing)
+	if r.Probed > 0 || r.Fallbacks > 0 {
+		fmt.Fprintf(w, "\napply callbacks run on unknown values with probes: %d (%d fell back to unknown)\n",
+			r.Probed, r.Fallbacks)
+	}
 	for _, e := range r.Errors {
 		fmt.Fprintf(w, "\nerror: %s\n", e)
 	}

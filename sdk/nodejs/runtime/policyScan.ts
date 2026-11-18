@@ -43,6 +43,10 @@ export interface PolicyScanState {
     usedFixtures: Set<string>;
     /** Data sources the program called that have no fixture. */
     unknownInvokes: Set<string>;
+    /** `apply` callbacks on unknown values that ran with probes. */
+    probedApplies?: number;
+    /** Probed callbacks that threw, so their result stayed unknown. */
+    failedApplies?: number;
 }
 
 /**
