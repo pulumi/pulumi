@@ -16,6 +16,7 @@ import { RunError } from "./errors";
 import { getProject as metadataGetProject } from "./metadata";
 import { Output } from "./output";
 import { allConfig, getConfig as runtimeGetConfig } from "./runtime/config";
+import { isPolicyScan, scanMissingConfig } from "./runtime/policyScan";
 
 function makeSecret<T>(value: T): Output<T> {
     const output = require("./output");
@@ -298,6 +299,9 @@ export class Config {
     ): K {
         const v: K | undefined = this.getImpl(key, opts, use, insteadOf);
         if (v === undefined) {
+            if (isPolicyScan()) {
+                return scanMissingConfig(this.fullKey(key), `[missing config ${this.fullKey(key)}]` as K);
+            }
             throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
@@ -332,6 +336,9 @@ export class Config {
     ): boolean {
         const v: boolean | undefined = this.getBooleanImpl(key, use, insteadOf);
         if (v === undefined) {
+            if (isPolicyScan()) {
+                return scanMissingConfig(this.fullKey(key), false);
+            }
             throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
@@ -366,6 +373,9 @@ export class Config {
     ): number {
         const v: number | undefined = this.getNumberImpl(key, opts, use, insteadOf);
         if (v === undefined) {
+            if (isPolicyScan()) {
+                return scanMissingConfig(this.fullKey(key), 0);
+            }
             throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
@@ -401,6 +411,9 @@ export class Config {
     ): T {
         const v: T | undefined = this.getObjectImpl<T>(key, use, insteadOf);
         if (v === undefined) {
+            if (isPolicyScan()) {
+                return scanMissingConfig(this.fullKey(key), {} as T);
+            }
             throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;

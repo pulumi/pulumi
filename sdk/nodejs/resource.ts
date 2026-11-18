@@ -25,6 +25,7 @@ import {
     registerResourceOutputs,
     SourcePosition,
 } from "./runtime/resource";
+import { isPolicyScan } from "./runtime/policyScan";
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { ensureNotInStateMigration } from "./runtime/stateMigration";
@@ -355,7 +356,9 @@ export abstract class Resource {
         // We process this by splitting it into lines and parsing the position information out of each line.
         const stackTraceLimit = Error.stackTraceLimit;
         try {
-            Error.stackTraceLimit = Number.POSITIVE_INFINITY;
+            // During a policy scan, the program's frame is near the top, and a bounded stack keeps source-mapping
+            // cheap.
+            Error.stackTraceLimit = isPolicyScan() ? 64 : Number.POSITIVE_INFINITY;
 
             const stackTrace = new Error().stack;
             return (

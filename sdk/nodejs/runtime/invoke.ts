@@ -18,6 +18,7 @@ import { InvokeOptions, InvokeOutputOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
+import { isPolicyScan, scanInvokeResult, scanUnknown } from "./policyScan";
 import {
     deserializeProperties,
     isRpcSecret,
@@ -196,6 +197,13 @@ async function invokeAsync(
     containsSecrets: boolean;
     dependencies: Resource[];
 }> {
+    // During a policy scan no provider runs: an invoke returns its fixture, or else an unknown the program can
+    // keep using.
+    if (isPolicyScan() && tok !== "pulumi:pulumi:getResource") {
+        const { result, isKnown } = scanInvokeResult(tok);
+        return { result, isKnown, containsSecrets: false, dependencies: [] };
+    }
+
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -442,6 +450,10 @@ function callAsync<T>(
 }> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+    if (isPolicyScan()) {
+        // No provider constructs components during a policy scan, so their methods return unknowns.
+        return Promise.resolve({ result: scanUnknown(), isKnown: false, containsSecrets: false, dependencies: [] });
+    }
 
     return debuggablePromise(
         Promise.resolve().then(async () => {

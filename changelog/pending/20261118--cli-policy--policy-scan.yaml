@@ -1,0 +1,4 @@
+component: cli/policy
+kind: feat
+body: Add an experimental `pulumi policy scan` command that checks a Node.js program's code against policy packs without a preview, stack or cloud credentials
+time: 2026-11-18T00:00:00Z

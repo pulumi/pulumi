@@ -14,6 +14,7 @@
 
 import { all, Input, Output, output } from "./output";
 import { CustomResource, CustomResourceOptions } from "./resource";
+import { isPolicyScan, scanUnknown } from "./runtime/policyScan";
 
 /**
  * Manages a reference to a Pulumi stack. The referenced stack's outputs are
@@ -175,6 +176,13 @@ export class StackReference extends CustomResource {
     }
 
     private async readOutputValue(callerName: string, outputName: string, required: boolean): Promise<[any, boolean]> {
+        if (isPolicyScan()) {
+            // During a policy scan, another stack's outputs come from a fixture; any other output is an unknown the
+            // program can still use.
+            const o = this.getOutput(outputName);
+            const [v, secret] = await Promise.all([o.promise(), o.isSecret]);
+            return [v === undefined ? scanUnknown() : v, secret];
+        }
         const out = required ? this.requireOutput(outputName) : this.getOutput(outputName);
         return Promise.all([out.promise(), out.isSecret]);
     }

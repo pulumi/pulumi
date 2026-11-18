@@ -1,0 +1,5 @@
+name: scan-test
+runtime: nodejs
+config:
+  region:
+    default: us-west-2
