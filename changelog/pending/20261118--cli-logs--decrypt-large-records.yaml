@@ -1,0 +1,3 @@
+component: cli/logs
+kind: bug
+body: Fix `pulumi logs decrypt` and `pulumi logs share` failing with "bufio.Scanner: token too long" on log records larger than 64 KiB
