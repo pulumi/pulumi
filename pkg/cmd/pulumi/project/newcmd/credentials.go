@@ -119,11 +119,13 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 	_, err := pf.check(ctx, desc)
 	problem, ok := errors.AsType[*credentialcheck.Problem](err)
 	if !ok {
-		pf.logSkipped(ctx, desc, err)
+		if err != nil {
+			slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
+		}
 		return
 	}
 	pf.printWarning(problem)
-	if !pf.offerRemediation(ctx, problem) || ctx.Err() != nil {
+	if !pf.offerAndRunRemediation(ctx, problem) || ctx.Err() != nil {
 		return
 	}
 
@@ -132,16 +134,9 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 	if problem, ok := errors.AsType[*credentialcheck.Problem](err); ok {
 		pf.printWarning(problem)
 	} else if err != nil {
-		pf.logSkipped(ctx, desc, err)
+		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
 	} else {
 		fmt.Fprintf(pf.stdout, "%s credentials verified.%s\n\n", info.DisplayName, cmdutil.EmojiOr(" ✅", ""))
-	}
-}
-
-// logSkipped logs why the credentials check of desc could not run, if it could not.
-func (pf credentialsPreflight) logSkipped(ctx context.Context, desc workspace.PackageDescriptor, err error) {
-	if err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
 	}
 }
 

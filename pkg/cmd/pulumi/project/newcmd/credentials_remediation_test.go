@@ -67,7 +67,7 @@ func problemWith(t *testing.T, remediations ...plugin.CommandRemediation) *crede
 	return problem
 }
 
-func TestOfferRemediation(t *testing.T) {
+func TestOfferAndRunRemediation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -100,7 +100,7 @@ func TestOfferRemediation(t *testing.T) {
 			remediations: []plugin.CommandRemediation{awsSignIn},
 			decline:      true,
 			prompt:       "Sign in to AWS: run `aws login --profile 'my proj'` now?",
-			output:       "\n",
+			output:       "Skipped running `aws login --profile 'my proj'`.\n\n",
 		},
 		{
 			name:         "command fails",
@@ -134,7 +134,7 @@ func TestOfferRemediation(t *testing.T) {
 				}
 			}
 
-			ok := pf.offerRemediation(t.Context(), problemWith(t, tt.remediations...))
+			ok := pf.offerAndRunRemediation(t.Context(), problemWith(t, tt.remediations...))
 			assert.Equal(t, tt.ok, ok)
 			assert.Equal(t, tt.prompt, prompted)
 			assert.Equal(t, tt.output, buf.String())
@@ -215,4 +215,17 @@ func TestCheckPackageRemediation(t *testing.T) {
 			assert.Equal(t, tt.verified, strings.Contains(out, "AWS credentials verified."), out)
 		})
 	}
+}
+
+func TestRemediationEnv(t *testing.T) {
+	t.Parallel()
+
+	env := remediationEnv(t.Context(), []string{"HOME=/home/me"}, map[string]string{
+		"AWS_CLI_AGENT_TOOLKIT_HINT_DISABLED": "true",
+		"PATH":                                "/tmp/evil",
+		"Path":                                "/tmp/evil",
+		"LD_PRELOAD":                          "/tmp/evil.so",
+		"DYLD_INSERT_LIBRARIES":               "/tmp/evil.dylib",
+	})
+	assert.ElementsMatch(t, []string{"HOME=/home/me", "AWS_CLI_AGENT_TOOLKIT_HINT_DISABLED=true"}, env)
 }

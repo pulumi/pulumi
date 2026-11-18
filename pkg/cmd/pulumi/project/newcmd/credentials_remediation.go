@@ -17,17 +17,20 @@ package newcmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
+	"slices"
+	"strings"
 
 	"github.com/kballard/go-shellquote"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/credentialcheck"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 )
 
-// offerRemediation asks the user whether to run the command the provider suggested to fix
+// offerAndRunRemediation asks the user whether to run the command the provider suggested to fix
 // problem, runs it if they agree, and reports whether it succeeded.
-func (pf credentialsPreflight) offerRemediation(ctx context.Context, problem *credentialcheck.Problem) bool {
+func (pf credentialsPreflight) offerAndRunRemediation(ctx context.Context, problem *credentialcheck.Problem) bool {
 	r := problem.Remediation()
 	if r == nil || pf.confirm == nil {
 		return false
@@ -38,7 +41,7 @@ func (pf credentialsPreflight) offerRemediation(ctx context.Context, problem *cr
 		prompt = fmt.Sprintf("%s: run `%s` now?", r.Description, command)
 	}
 	if !pf.confirm(prompt) {
-		fmt.Fprintln(pf.stdout)
+		fmt.Fprintf(pf.stdout, "Skipped running `%s`.\n\n", command)
 		return false
 	}
 	if err := pf.run(ctx, *r); err != nil {
@@ -51,15 +54,30 @@ func (pf credentialsPreflight) offerRemediation(ctx context.Context, problem *cr
 }
 
 // runRemediation runs r attached to the terminal, since sign-in commands prompt and wait for the
-// user. The preflight only offers a remediation when stdin and stdout are terminals.
+// user. The preflight only runs in interactive mode (see [credentialsCheckEnabled]), which
+// requires stdin and stdout to be terminals.
 func runRemediation(ctx context.Context, r plugin.CommandRemediation) error {
 	cmd := exec.CommandContext(ctx, r.Command[0], r.Command[1:]...)
-	cmd.Env = os.Environ()
-	for k, v := range r.Env {
-		cmd.Env = append(cmd.Env, k+"="+v)
-	}
+	cmd.Env = remediationEnv(ctx, os.Environ(), r.Env)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout //nolint:forbidigo
 	cmd.Stderr = os.Stderr //nolint:forbidigo
 	return cmd.Run()
+}
+
+// remediationEnv returns base with the variables a provider asked to set added to it. Variables that
+// change which programs or libraries the command loads are dropped, since the user is shown the
+// command but not its environment.
+func remediationEnv(ctx context.Context, base []string, env map[string]string) []string {
+	result := slices.Clone(base)
+	for k, v := range env {
+		// Windows environment variable names are case-insensitive.
+		name := strings.ToUpper(k)
+		if name == "PATH" || strings.HasPrefix(name, "LD_") || strings.HasPrefix(name, "DYLD_") {
+			slog.DebugContext(ctx, "ignoring remediation environment variable", "name", k)
+			continue
+		}
+		result = append(result, k+"="+v)
+	}
+	return result
 }
