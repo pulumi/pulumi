@@ -1459,8 +1459,8 @@ func (ctx *Context) readPackageResource(
 
 	// Get the stack trace and source position for the resource read. Note that this assumes that there are two
 	// intermediate frames between this function and user code: the public entry point and the generated getter.
-	stackTrace := ctx.getStackTrace(4)
-	sourcePosition := ctx.getSourcePosition(4)
+	stackTrace := ctx.getStackTrace(3)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -1960,8 +1960,8 @@ func (ctx *Context) registerResource(
 
 	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
 	// intermediate frames between this function and user code.
-	stackTrace := ctx.getStackTrace(4)
-	sourcePosition := ctx.getSourcePosition(4)
+	stackTrace := ctx.getStackTrace(3)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -3296,12 +3296,11 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 	}
 }
 
-// getStackTrace returns an RPC stack trace that corresponds to the set of Go frames on the stack at the time of the
-// call. The number of frames to skip is parameterized in order to account for differing call stacks for different
-// operations.
+// getStackTrace captures its caller's stack, omitting skip additional caller frames.
+// runtime.Callers and getStackTrace itself are always omitted.
 func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
-	// Skip this frame as well.
-	skip = max(skip+1, 2)
+	// Always skip runtime.Callers and getStackTrace itself.
+	skip += 2
 
 	trace := &pulumirpc.StackTrace{}
 
@@ -3324,13 +3323,11 @@ func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
 	}
 }
 
-// Returns the source position of the Nth stack frame, where N is skip+1.
-//
-// This is used to compute the source position of the user code that instantiated a resource. The number of frames to
-// skip is parameterized in order to account for differing call stacks for different operations.
+// getSourcePosition returns its caller's source position, omitting skip additional caller frames.
+// runtime.Callers and getSourcePosition itself are always omitted.
 func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	var pcs [1]uintptr
-	if callers := runtime.Callers(skip+1, pcs[:]); callers != 1 {
+	if callers := runtime.Callers(skip+2, pcs[:]); callers != 1 {
 		return nil
 	}
 	frames := runtime.CallersFrames(pcs[:])

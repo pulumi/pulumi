@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -600,6 +601,62 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 		}, nil
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
+}
+
+func TestGetStackTraceAndSourcePosition(t *testing.T) {
+	t.Parallel()
+
+	// Stack captured from a run of this test before applying skip
+	//   runtime.Callers                                    always skipped
+	//   (*Context).getStackTrace                           always skipped
+	//   TestGetStackTraceAndSourcePosition.func1 (capture) skip=0 starts here
+	//   TestGetStackTraceAndSourcePosition.func2 (middle)  skip=1 starts here
+	//   TestGetStackTraceAndSourcePosition.func3 (outer)   skip=2 starts here
+	//   TestGetStackTraceAndSourcePosition
+	//   testing.tRunner
+	//   runtime.goexit
+	ctx := &Context{}
+	var stackCaptureLine, positionCaptureLine, middleLine, outerLine int
+	capture := func(skip int) (*pulumirpc.StackTrace, *pulumirpc.SourcePosition) {
+		_, _, line, _ := runtime.Caller(0)
+		stackCaptureLine, positionCaptureLine = line+2, line+3 // 2 and 3 lines below the call to runtime.Caller(0)
+		stack := ctx.getStackTrace(skip)
+		position := ctx.getSourcePosition(skip)
+		return stack, position
+	}
+	middle := func(skip int) (*pulumirpc.StackTrace, *pulumirpc.SourcePosition) {
+		_, _, line, _ := runtime.Caller(0)
+		middleLine = line + 2
+		return capture(skip)
+	}
+	outer := func(skip int) (*pulumirpc.StackTrace, *pulumirpc.SourcePosition) {
+		_, _, line, _ := runtime.Caller(0)
+		outerLine = line + 2
+		return middle(skip)
+	}
+
+	noSkip, positionNoSkip := outer(0)
+	require.GreaterOrEqual(t, len(noSkip.Frames), 3)
+	assert.True(t, strings.HasSuffix(noSkip.Frames[0].GetPc().GetUri(), "/context_test.go"))
+	assert.Equal(t, int32(stackCaptureLine), noSkip.Frames[0].GetPc().GetLine())
+	assert.Equal(t, int32(middleLine), noSkip.Frames[1].GetPc().GetLine())
+	assert.Equal(t, int32(outerLine), noSkip.Frames[2].GetPc().GetLine())
+	require.NotNil(t, positionNoSkip)
+	assert.Equal(t, noSkip.Frames[0].GetPc().GetUri(), positionNoSkip.Uri)
+	assert.Equal(t, int32(positionCaptureLine), positionNoSkip.Line)
+
+	skipOne, positionSkipOne := outer(1)
+	require.NotEmpty(t, skipOne.Frames)
+	assert.Equal(t, int32(middleLine), skipOne.Frames[0].GetPc().GetLine())
+	assert.Equal(t, skipOne.Frames[0].GetPc(), positionSkipOne)
+
+	skipTwo, positionSkipTwo := outer(2)
+	require.NotEmpty(t, skipTwo.Frames)
+	assert.Equal(t, int32(outerLine), skipTwo.Frames[0].GetPc().GetLine())
+	assert.Equal(t, skipTwo.Frames[0].GetPc(), positionSkipTwo)
+
+	assert.Empty(t, ctx.getStackTrace(1000).Frames)
+	assert.Nil(t, ctx.getSourcePosition(1000))
 }
 
 func TestSourcePosition(t *testing.T) {
