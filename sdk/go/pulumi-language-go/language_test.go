@@ -101,6 +101,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l2-resource-any":               "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
 	"l2-config-default-from-invoke": "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
+	"l2-invoke-result-as-input":     "pulumi#25746 the result of a function is passed as is where an input is required; does not compile",                //nolint:lll
 	"l1-config-types-object":        "fails to compile",
 	"l1-operator-precedence":        "exporting a conditional expression of type string passes a string, not a pulumi.Input; does not compile", //nolint:lll
 	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)",                     //nolint:lll
