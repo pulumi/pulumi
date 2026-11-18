@@ -3,14 +3,14 @@
 
 import argparse
 import asyncio
-from typing import Optional
 import inspect
 import logging
 import os
+import runpy
 import sys
 import traceback
-import runpy
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 # The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
@@ -70,6 +70,18 @@ def _set_default_executor(loop, parallelism: Optional[int]):
 
 
 if __name__ == "__main__":
+    original_excepthook = sys.excepthook
+
+    def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+        # The language host sends SIGINT when an update stops, including after a resource failure that the engine has
+        # already reported. If SIGINT interrupts the SDK's error handling or the launcher's cleanup, and the resulting
+        # KeyboardInterrupt is unhandled, Python's default exception hook prints the entire exception chain, obscuring
+        # the original resource error. We override sys.excepthook to suppress that traceback report.
+        if not issubclass(exc_type, KeyboardInterrupt):
+            original_excepthook(exc_type, exc_value, exc_traceback)
+
+    sys.excepthook = handle_unhandled_exception
+
     # Parse the arguments, program name, and optional arguments.
     ap = argparse.ArgumentParser(description="Execute a Pulumi Python program")
     ap.add_argument("--project", help="Set the project name")
