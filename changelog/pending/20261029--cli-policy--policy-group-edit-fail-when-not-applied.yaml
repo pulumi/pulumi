@@ -1,0 +1,4 @@
+component: cli/policy
+kind: fix
+body: Make `pulumi policy group edit` fail when a stack or Insights account change is not applied to the Policy Group, instead of exiting successfully
+time: 2026-10-29T00:00:00Z
