@@ -124,5 +124,5 @@ Error: rebase is only supported for environment drafts
 Approved change request test-request-id-12345
 > esc env approvals apply test-request-id-12345 --yes
 Applied change request test-request-id-12345
-Run `esc env open test-user/default/test` to open the environment.
+Open request approved. The requester can now open the environment.
 > esc env approvals log test-request-id-12345

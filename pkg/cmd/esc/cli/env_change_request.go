@@ -599,9 +599,7 @@ func newEnvChangeRequestApplyCmd(cr *changeRequestCommand) *cobra.Command {
 				fmt.Fprintln(cr.env.esc.stderr, result.Message)
 			}
 			if c.Action == "open" {
-				ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
-				fmt.Fprintf(cr.env.esc.stderr, "Run `%v env open %v` to open the environment.\n",
-					cr.env.esc.command, ref.String())
+				fmt.Fprintln(cr.env.esc.stderr, "Open request approved. The requester can now open the environment.")
 			}
 			return nil
 		},
