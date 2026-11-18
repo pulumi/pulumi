@@ -107,6 +107,9 @@ func (d *typeDetails) markMap(input, output bool) {
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
 // It also removes $-prefix if any.
+// Hyphens and dots are treated as word separators (e.g. "fs.aio-max-nr" becomes
+// "FsAioMaxNr"), and any other character that is not legal in a Go identifier is
+// replaced with "_".
 // If the result doesn't start with a legal Go identifier character, it is
 // prefixed with "_" to produce a valid Go identifier.
 func Title(s string) string {
@@ -118,6 +121,13 @@ func Title(s string) string {
 	}
 	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unhyphenate(s)
+	s = cgstrings.ModifyStringAroundDelimeter(s, ".", cgstrings.UppercaseFirst)
+	s = strings.Map(func(c rune) rune {
+		if isLegalIdentifierPart(c) {
+			return c
+		}
+		return '_'
+	}, s)
 	if len(s) > 0 && !isLegalIdentifierStart(rune(s[0])) {
 		s = "_" + s
 	}
