@@ -1,0 +1,4 @@
+component: java
+kind: chore
+body: Upgrade java to v1.40.2
+time: 2026-11-18T10:08:40.538645+01:00
