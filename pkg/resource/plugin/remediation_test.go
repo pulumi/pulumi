@@ -31,14 +31,9 @@ func TestCheckConfigFailureRemediationsRoundTrip(t *testing.T) {
 		Env:         map[string]string{"AWS_CLI_AGENT_TOOLKIT_HINT_DISABLED": "true"},
 	}
 	rpc := &pulumirpc.CheckConfigFailure{
-		Property: "region",
-		Reason:   "No valid credential sources found.",
-		Remediations: []*pulumirpc.CommandRemediation{
-			signIn,
-			// Remediations without a command are dropped.
-			{Description: "Do nothing"},
-			{Command: []string{""}},
-		},
+		Property:     "region",
+		Reason:       "No valid credential sources found.",
+		Remediations: []*pulumirpc.CommandRemediation{signIn},
 	}
 	failure := checkConfigFailureFromRPC(rpc)
 	assert.Equal(t, CheckConfigFailure{

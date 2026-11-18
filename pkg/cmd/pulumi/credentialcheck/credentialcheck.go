@@ -108,8 +108,10 @@ func probe(ctx context.Context, info Info, prov plugin.Provider, news property.M
 			reason = string(f.Property) + ": " + reason
 		}
 		p.details = append(p.details, reason)
-		if p.remediation == nil && len(f.Remediations) > 0 {
-			p.remediation = &f.Remediations[0]
+		for i, r := range f.Remediations {
+			if p.remediation == nil && len(r.Command) > 0 && r.Command[0] != "" {
+				p.remediation = &f.Remediations[i]
+			}
 		}
 	}
 	return p
@@ -124,7 +126,8 @@ type Problem struct {
 	remediation *plugin.CommandRemediation
 }
 
-// Remediation returns the first command the provider suggests to resolve the problem, or nil.
+// Remediation returns the first command the provider suggests to resolve the problem, or nil. A
+// remediation it returns always names a program to run.
 func (p *Problem) Remediation() *plugin.CommandRemediation {
 	return p.remediation
 }

@@ -125,7 +125,7 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 		return
 	}
 	pf.printWarning(problem)
-	if !pf.offerAndRunRemediation(ctx, problem) || ctx.Err() != nil {
+	if !pf.offerAndRunRemediation(ctx, problem) {
 		return
 	}
 

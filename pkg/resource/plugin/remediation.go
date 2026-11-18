@@ -30,14 +30,13 @@ type CommandRemediation struct {
 	Env map[string]string
 }
 
-// remediationsFromRPC converts the remediations of a CheckConfig2 failure received from a provider. Remediations
-// without a command to run are dropped here, so the rest of the engine can assume every remediation has one.
+// remediationsFromRPC converts the remediations of a CheckConfig2 failure received from a provider.
 func remediationsFromRPC(rpcRemediations []*pulumirpc.CommandRemediation) []CommandRemediation {
-	var remediations []CommandRemediation
+	if len(rpcRemediations) == 0 {
+		return nil
+	}
+	remediations := make([]CommandRemediation, 0, len(rpcRemediations))
 	for _, r := range rpcRemediations {
-		if len(r.GetCommand()) == 0 || r.GetCommand()[0] == "" {
-			continue
-		}
 		remediations = append(remediations, CommandRemediation{
 			Description: r.GetDescription(),
 			Command:     r.GetCommand(),

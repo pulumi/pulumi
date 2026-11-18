@@ -29,7 +29,8 @@ import (
 )
 
 // offerAndRunRemediation asks the user whether to run the command the provider suggested to fix
-// problem, runs it if they agree, and reports whether it succeeded.
+// problem, runs it if they agree, and reports whether it succeeded. It reports false if the user
+// interrupted pulumi meanwhile.
 func (pf credentialsPreflight) offerAndRunRemediation(ctx context.Context, problem *credentialcheck.Problem) bool {
 	r := problem.Remediation()
 	if r == nil || pf.confirm == nil {
@@ -44,10 +45,12 @@ func (pf credentialsPreflight) offerAndRunRemediation(ctx context.Context, probl
 		fmt.Fprintf(pf.stdout, "Skipped running `%s`.\n\n", command)
 		return false
 	}
-	if err := pf.run(ctx, *r); err != nil {
-		if ctx.Err() == nil {
-			fmt.Fprintf(pf.stdout, "`%s` did not complete; run it yourself, then `pulumi up`.\n\n", command)
-		}
+	err := pf.run(ctx, *r)
+	if ctx.Err() != nil {
+		return false
+	}
+	if err != nil {
+		fmt.Fprintf(pf.stdout, "`%s` did not complete; run it yourself, then `pulumi up`.\n\n", command)
 		return false
 	}
 	return true
