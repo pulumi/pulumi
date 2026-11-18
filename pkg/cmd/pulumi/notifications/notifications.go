@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,9 +48,12 @@ const (
 	staticSource  = "static"
 	cacheFile     = "notifications.json"
 	dismissedFile = "dismissed-notifications.json"
+	shownFile     = "shown-notifications.json"
 	cacheTTL      = 24 * time.Hour
 	fetchTimeout  = 3 * time.Second
 	minPrefix     = 3
+	// warningInterval is how long to wait before showing a warning again.
+	warningInterval = 24 * time.Hour
 )
 
 // Notification is a single message, along with the conditions under which it should be shown.
@@ -276,8 +280,18 @@ func readDismissed() map[string][]string {
 	return dismissed
 }
 
-// Print writes the notifications that apply to the given CLI version, and haven't been dismissed,
-// to the sink's stderr.
+// readShown returns when each notification was last shown, keyed by ID.
+func readShown() map[string]time.Time {
+	var shown map[string]time.Time
+	if !readJSON(shownFile, &shown) || shown == nil {
+		return map[string]time.Time{}
+	}
+	return shown
+}
+
+// Print writes the notifications that apply to the given CLI version, are due, and haven't been
+// dismissed, to the sink's stderr. Errors are due every time, warnings once a day, and anything else
+// only once.
 func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	dismissed := map[string]bool{}
 	for _, ids := range readDismissed() {
@@ -285,15 +299,48 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 			dismissed[id] = true
 		}
 	}
+	shown := readShown()
+	changed := false
 
 	// Builds without a version stamped in at link time have an empty version, which won't parse.
 	cli, err := semver.ParseTolerant(cliVersion)
 	prefixes := shortPrefixes(ns)
 	for _, n := range ns {
-		if !dismissed[n.ID] && applies(n, cli, err == nil) {
-			sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		if dismissed[n.ID] || !applies(n, cli, err == nil) || !due(n, shown) {
+			continue
+		}
+		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		if n.Severity != diag.Error {
+			shown[n.ID] = time.Now()
+			changed = true
 		}
 	}
+	if !changed {
+		return
+	}
+
+	// Forget notifications that are no longer cached, which a source drops only once it has been
+	// fetched without them.
+	cached := map[string]bool{}
+	for _, entry := range readCache() {
+		for _, n := range entry.Notifications {
+			cached[n.ID] = true
+		}
+	}
+	if len(cached) > 0 {
+		maps.DeleteFunc(shown, func(id string, _ time.Time) bool { return !cached[id] })
+	}
+	if err := writeJSON(shownFile, shown); err != nil {
+		slog.Info("error recording shown notifications", "err", err)
+	}
+}
+
+func due(n Notification, shown map[string]time.Time) bool {
+	last, ok := shown[n.ID]
+	if n.Severity == diag.Error || !ok {
+		return true
+	}
+	return n.Severity == diag.Warning && time.Since(last) >= warningInterval
 }
 
 // Dismiss stops the notification whose ID starts with prefix from being shown again, and returns it.
@@ -415,7 +462,11 @@ func render(n Notification, cliVersion, idPrefix string) string {
 
 	resolve := strings.NewReplacer("{cli}", cliVersion)
 	overview := strings.ReplaceAll(resolve.Replace(n.Overview), "\n", "\n  ")
-	dismiss := colors.SpecCommand + "pulumi notifications dismiss " + idPrefix + colors.Reset
-	return fmt.Sprintf("\n%s %s\n\n  %s\n\n  To hide this, run %s.\n",
-		prefix, resolve.Replace(n.Title), overview, dismiss)
+	msg := fmt.Sprintf("\n%s %s\n\n  %s\n", prefix, resolve.Replace(n.Title), overview)
+	// Infos are only shown once, so there is nothing to dismiss.
+	if ok {
+		msg += "\n  To hide this, run " +
+			colors.SpecCommand + "pulumi notifications dismiss " + idPrefix + colors.Reset + ".\n"
+	}
+	return msg
 }
