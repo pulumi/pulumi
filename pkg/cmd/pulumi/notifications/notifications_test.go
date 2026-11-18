@@ -260,7 +260,9 @@ func TestPrint_Frequency(t *testing.T) {
 	outage := Notification{Title: "Outage", ID: "e", Severity: diag.Error, SchemaVersion: 1}
 	upgrade := Notification{Title: "Upgrade", ID: "w", Severity: diag.Warning, SchemaVersion: 1}
 	ns := []Notification{survey, outage, upgrade}
-	require.NoError(t, writeJSON(cacheFile, map[string]cacheEntry{staticSource: {FetchedAt: time.Now(), Notifications: ns}}))
+	require.NoError(t, writeJSON(cacheFile, map[string]cacheEntry{
+		staticSource: {FetchedAt: time.Now(), Notifications: ns},
+	}))
 	require.NoError(t, writeJSON(shownFile, map[string]time.Time{"no-longer-sent": time.Now()}))
 
 	show := func() string {
