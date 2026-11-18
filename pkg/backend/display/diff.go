@@ -172,7 +172,11 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 		payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
-	return opts.Color.Colorize(payload.Prefix + payload.Message)
+	message := payload.Prefix + payload.Message
+	if payload.Severity == diag.Error {
+		message = appendDiagnosticSourceContext(message, payload.SourceContext)
+	}
+	return opts.Color.Colorize(message)
 }
 
 // resourceText returns the full URN string when ShowURNs is set, or the short

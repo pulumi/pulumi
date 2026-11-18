@@ -812,6 +812,9 @@ func (display *ProgressDisplay) printDiagnostics() {
 				}
 
 				msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
+				if v.Severity == diag.Error {
+					msg = appendDiagnosticSourceContext(msg, v.SourceContext)
+				}
 
 				lines := splitIntoDisplayableLines(msg)
 				if len(lines) == 0 {
@@ -1141,13 +1144,14 @@ func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 	firstPayload := payloads[0]
 	msg := buf.String()
 	return engine.DiagEventPayload{
-		URN:       firstPayload.URN,
-		Message:   msg,
-		Prefix:    firstPayload.Prefix,
-		Color:     firstPayload.Color,
-		Severity:  firstPayload.Severity,
-		StreamID:  firstPayload.StreamID,
-		Ephemeral: firstPayload.Ephemeral,
+		URN:           firstPayload.URN,
+		Message:       msg,
+		Prefix:        firstPayload.Prefix,
+		Color:         firstPayload.Color,
+		Severity:      firstPayload.Severity,
+		StreamID:      firstPayload.StreamID,
+		Ephemeral:     firstPayload.Ephemeral,
+		SourceContext: firstPayload.SourceContext,
 	}
 }
 

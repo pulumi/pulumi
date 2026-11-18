@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Show application registration locations and source context with resource failures
+time: 2026-11-18T14:17:22Z

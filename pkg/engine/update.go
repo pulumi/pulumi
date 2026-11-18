@@ -1428,7 +1428,11 @@ func (acts *updateActions) OnResourceStepPost(
 		// status and the summary already report it as awaiting.
 		_, awaited := errors.AsType[*plugin.AwaitError](err)
 		if !awaited {
-			acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+			diagnostic := diag.GetResourceOperationFailedError(errorURN)
+			if !isInternalStep {
+				diagnostic.SourceContext = deploy.ResourceSourceContext(step.Deployment(), step.Res())
+			}
+			acts.Opts.Diag.Errorf(diagnostic, err)
 		}
 		steps := atomic.LoadInt32(&acts.Steps)
 		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, awaited, acts.Opts.Debug, acts.Opts.ShowSecrets)
@@ -1658,7 +1662,11 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 			reportedURN = step.URN()
 		}
 
-		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
+		diagnostic := diag.GetPreviewFailedError(reportedURN)
+		if !isInternalStep {
+			diagnostic.SourceContext = deploy.ResourceSourceContext(step.Deployment(), step.Res())
+		}
+		acts.Opts.Diag.Errorf(diagnostic, err)
 	} else {
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {

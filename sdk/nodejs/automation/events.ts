@@ -32,11 +32,25 @@ export interface StdoutEngineEvent {
     color: string;
 }
 
+/** A source location in a diagnostic's captured call stack. */
+export interface DiagnosticStackFrame {
+    sourcePosition?: string;
+}
+
+/** Source locations and their human-readable presentation for a diagnostic. */
+export interface DiagnosticSourceContext {
+    sourcePosition?: string;
+    stackTrace?: DiagnosticStackFrame[];
+    /** The complete context section, using Pulumi color markup. */
+    rendered?: string;
+}
+
 /**
  * An event emitted whenever a diagnostic message is provided, for example errors from
  * a cloud resource provider while trying to create or update a resource.
  */
 export interface DiagnosticEvent {
+    sourceContext?: DiagnosticSourceContext;
     urn?: string;
     prefix?: string;
     message: string;

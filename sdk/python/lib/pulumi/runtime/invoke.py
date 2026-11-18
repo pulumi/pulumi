@@ -54,13 +54,10 @@ if TYPE_CHECKING:
 
 
 def _get_invoke_stack_trace() -> source_pb2.StackTrace:
-    from .resource import _get_source_position_for_frame
+    from .resource import _get_stack_trace_and_source_position
 
-    frames = [
-        source_pb2.StackFrame(pc=_get_source_position_for_frame(frame))
-        for frame in reversed(traceback.extract_stack())
-    ]
-    return source_pb2.StackTrace(frames=frames)
+    stack, _ = _get_stack_trace_and_source_position()
+    return stack
 
 
 def _get_invoke_source_position(
@@ -70,7 +67,7 @@ def _get_invoke_source_position(
     # then skip the SDK wrapper to select its caller in the user's program.
     invoke_uri = Path(__file__).as_uri()
     for index, frame in enumerate(stack.frames):
-        if frame.pc.uri == invoke_uri:
+        if frame.origin == "pulumi" or frame.pc.uri == invoke_uri:
             continue
         caller_index = index + 1  # skip the wrapper in the SDK
         if caller_index < len(stack.frames) and stack.frames[caller_index].HasField(

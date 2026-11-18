@@ -668,6 +668,8 @@ describe("invoke source context", () => {
                     assert.strictEqual(source.getLine(), callSite.line + 1);
                     const frames = req.getStacktrace().getFramesList();
                     assert.ok(frames[0].getPc().getUri().endsWith("/runtime/invoke.ts"));
+                    assert.strictEqual(frames[0].getModule(), "@pulumi/pulumi");
+                    assert.strictEqual(frames[0].getOrigin(), "pulumi");
                     assert.ok(
                         frames.some(
                             (frame: any) =>

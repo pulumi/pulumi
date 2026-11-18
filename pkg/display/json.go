@@ -77,8 +77,9 @@ type PreviewStep struct {
 
 // PreviewDiagnostic is a warning or error emitted during the execution of the preview.
 type PreviewDiagnostic struct {
-	URN      resource.URN  `json:"urn,omitempty"`
-	Prefix   string        `json:"prefix,omitempty"`
-	Message  string        `json:"message,omitempty"`
-	Severity diag.Severity `json:"severity,omitempty"`
+	SourceContext *diag.SourceContext `json:"sourceContext,omitempty"`
+	URN           resource.URN        `json:"urn,omitempty"`
+	Prefix        string              `json:"prefix,omitempty"`
+	Message       string              `json:"message,omitempty"`
+	Severity      diag.Severity       `json:"severity,omitempty"`
 }

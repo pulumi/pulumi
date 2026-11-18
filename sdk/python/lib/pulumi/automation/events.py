@@ -86,6 +86,61 @@ class StdoutEngineEvent(BaseEvent):
         return cls(**data)
 
 
+class DiagnosticStackFrame(BaseEvent):
+    """A captured frame, including its optional origin and capture boundary.
+
+    module is a language-level identity, such as a Python or Go module or a Node.js
+    package, not a module in a Pulumi resource token.
+    """
+
+    def __init__(
+        self,
+        source_position: Optional[str] = None,
+        module: Optional[str] = None,
+        origin: Optional[str] = None,
+        boundary: Optional[dict] = None,
+    ) -> None:
+        self.source_position = source_position
+        self.module = module
+        self.origin = origin
+        self.boundary = boundary
+
+    @classmethod
+    def from_json(cls, data: dict) -> "DiagnosticStackFrame":
+        return cls(
+            source_position=data.get("sourcePosition"),
+            module=data.get("module"),
+            origin=data.get("origin"),
+            boundary=data.get("boundary"),
+        )
+
+
+class DiagnosticSourceContext(BaseEvent):
+    """Source locations and their human-readable presentation for a diagnostic."""
+
+    def __init__(
+        self,
+        source_position: Optional[str] = None,
+        stack_trace: Optional[list[DiagnosticStackFrame]] = None,
+        rendered: Optional[str] = None,
+    ) -> None:
+        self.source_position = source_position
+        self.stack_trace = stack_trace
+        self.rendered = rendered
+
+    @classmethod
+    def from_json(cls, data: dict) -> "DiagnosticSourceContext":
+        return cls(
+            source_position=data.get("sourcePosition"),
+            stack_trace=[
+                DiagnosticStackFrame.from_json(frame) for frame in data["stackTrace"]
+            ]
+            if data.get("stackTrace") is not None
+            else None,
+            rendered=data.get("rendered"),
+        )
+
+
 class DiagnosticEvent(BaseEvent):
     """
     DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
@@ -107,6 +162,8 @@ class DiagnosticEvent(BaseEvent):
         The urn of the resource
     prefix: Optional[str]
         An optional prefix
+    source_context: Optional[DiagnosticSourceContext]
+        Source locations and their human-readable presentation
     """
 
     def __init__(
@@ -118,6 +175,7 @@ class DiagnosticEvent(BaseEvent):
         ephemeral: Optional[bool] = None,
         urn: Optional[str] = None,
         prefix: Optional[str] = None,
+        source_context: Optional[DiagnosticSourceContext] = None,
     ) -> None:
         self.message = message
         self.color = color
@@ -126,6 +184,7 @@ class DiagnosticEvent(BaseEvent):
         self.ephemeral = ephemeral
         self.urn = urn
         self.prefix = prefix
+        self.source_context = source_context
 
     @classmethod
     def from_json(cls, data: dict) -> "DiagnosticEvent":
@@ -137,6 +196,9 @@ class DiagnosticEvent(BaseEvent):
             ephemeral=data.get("ephemeral"),
             urn=data.get("urn"),
             prefix=data.get("prefix"),
+            source_context=DiagnosticSourceContext.from_json(data["sourceContext"])
+            if data.get("sourceContext") is not None
+            else None,
         )
 
 

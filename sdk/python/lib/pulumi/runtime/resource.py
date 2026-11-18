@@ -14,6 +14,8 @@
 import asyncio
 import os
 import pathlib
+import sys
+from types import FrameType
 import traceback
 from typing import (
     TYPE_CHECKING,
@@ -719,77 +721,49 @@ def _translate_replace_on_changes(
 
 
 def _get_source_position_for_frame(
-    frame: traceback.FrameSummary,
+    frame: FrameType,
 ) -> Optional[source_pb2.SourcePosition]:
-    """
-    Returns the source position for a stack frame. Returns None if the frame summary does not contain valid position
-    information.
-    """
-
-    if frame.filename == "" or frame.lineno is None:
-        return None
-
-    # Convert the frame info to a source position URI by converting the filename to a URI and appending
-    # the line and column fragment.
     try:
-        uri = pathlib.Path(frame.filename).as_uri()
-    except BaseException:  # noqa: BLE001 catch blind exception
+        uri = pathlib.Path(frame.f_code.co_filename).as_uri()
+    except ValueError:
+        # Synthetic or relative filenames have no file URI.
         return None
-
-    return source_pb2.SourcePosition(uri=uri, line=frame.lineno)
-
-
-def _get_stack_trace() -> source_pb2.StackTrace:
-    """
-    Returns an RPC stack trace that corresponds to the frames on the stack at the time of the call. The top of the stack
-    is the first frame that is not in runtime or SDK code.
-    """
-
-    # This is somewhat brittle in that it expects a call stack of the form:
-    # - runtime frames...
-    # - Resource class constructor
-    # - abstract Resource subclass constructor (CustomResource or ComponentResource)
-    # - concrete Resource subclass constructor (this maybe split into __internal_init__)
-    # - user code
-    #
-    # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
-
-    stack = traceback.extract_stack()
-
-    # Look up the stack to find the third __init__ frame (the first is Resource, the second is
-    # CustomResource/ComponentResource, the third should be the concrete resource, including skipping any __internal_init__ function)
-    n = 0  # how many __inits__ we've seen
-    for i in range(len(stack) - 1, -1, -1):
-        f = stack[i]
-        if f.name == "__init__":
-            n += 1
-            if n == 3:
-                break
-
-    # If we didn't find the third init frame before the end then just return None
-    if i < 1:
-        return source_pb2.StackTrace()
-
-    def rpc_frame(frame: traceback.FrameSummary) -> source_pb2.StackFrame:
-        pos = _get_source_position_for_frame(frame)
-        return source_pb2.StackFrame(pc=pos)
-
-    # Reverse the stack before returning it. RPC stack traces put the topmost frame at index 0.
-    frames = list(map(rpc_frame, reversed(stack[:i])))
-    return source_pb2.StackTrace(frames=frames)
+    return source_pb2.SourcePosition(uri=uri, line=frame.f_lineno)
 
 
-def _get_source_position(
-    stack: source_pb2.StackTrace,
-) -> Optional[source_pb2.SourcePosition]:
-    """
-    Returns the source position of the first stack frame in user code. This should look up to find what called into the
-    core sdk (i.e. Resource.__init__) and then skip that caller type if it is a Resource or ComponentResource.
-
-    This is used to compute the source position of the user code that instantiated a resource.
-    """
-
-    return None if len(stack.frames) < 1 else stack.frames[0].pc
+def _get_stack_trace_and_source_position() -> tuple[
+    source_pb2.StackTrace, Optional[source_pb2.SourcePosition]
+]:
+    """Capture the full stack and find the caller of the concrete resource constructor."""
+    constructors = 0
+    source_position = None
+    frames = []
+    # Skip this capture helper's own frame
+    frame: Optional[FrameType] = sys._getframe(1)
+    try:
+        while frame is not None:
+            module = frame.f_globals.get("__name__", "")
+            origin = ""
+            if (
+                module == "pulumi"
+                or module.startswith("pulumi.")
+                or frame.f_globals.get("__pulumi_runtime__", False)
+            ):
+                origin = "pulumi"
+            elif module.partition(".")[0] in getattr(sys, "stdlib_module_names", ()):
+                origin = "runtime"
+            position = _get_source_position_for_frame(frame)
+            frames.append(
+                source_pb2.StackFrame(pc=position, module=module, origin=origin)
+            )
+            if frame.f_code.co_name == "__init__":
+                constructors += 1
+                if constructors == 3 and frame.f_back is not None:
+                    source_position = _get_source_position_for_frame(frame.f_back)
+            frame = frame.f_back
+    finally:
+        del frame
+    return source_pb2.StackTrace(frames=frames), source_position
 
 
 def read_resource(
@@ -831,12 +805,8 @@ def read_resource(
     resolvers = rpc.transfer_properties(res, props, custom)
 
     # Get the stack trace and source position.
-    stack_trace = _get_stack_trace()
-    source_position = _get_source_position(stack_trace)
+    stack_trace, source_position = _get_stack_trace_and_source_position()
     parent_stack_trace_handle = _get_parent_stack_trace_handle()
-
-    # Get the stack trace.
-    stack_trace = _get_stack_trace()
 
     async def do_read():
         try:
@@ -1166,8 +1136,7 @@ def register_resource(
     resolvers = rpc.transfer_properties(res, props, custom)
 
     # Get the stack trace and source position.
-    stack_trace = _get_stack_trace()
-    source_position = _get_source_position(stack_trace)
+    stack_trace, source_position = _get_stack_trace_and_source_position()
     parent_stack_trace_handle = _get_parent_stack_trace_handle()
 
     async def do_register() -> None:

@@ -78,5 +78,8 @@ async def test_invoke_captures_initiation_context(variant, parent_handle):
     assert request.sourcePosition.uri == Path(__file__).as_uri()
     assert request.sourcePosition.line == line
     assert request.sourcePosition in [frame.pc for frame in request.stackTrace.frames]
-    assert request.stackTrace.frames[0].pc.uri.endswith("/pulumi/runtime/invoke.py")
+    assert request.stackTrace.frames[0].origin == "pulumi"
+    assert any(
+        frame.module == "pulumi.runtime.invoke" for frame in request.stackTrace.frames
+    )
     assert request.parentStackTraceHandle == parent_handle

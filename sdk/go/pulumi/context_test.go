@@ -679,10 +679,14 @@ func TestSourcePosition(t *testing.T) {
 
 			require.NotNil(t, stackTrace)
 			require.True(t, len(stackTrace.Frames) > 1)
-			require.Equal(t, stackTrace.Frames[0].Pc, sourcePosition)
+			assert.Equal(t, pulumiSDKModule, stackTrace.Frames[0].Module)
+			assert.Equal(t, "pulumi", stackTrace.Frames[0].Origin)
+			assert.Contains(t, slice.Map(stackTrace.Frames, func(f *pulumirpc.StackFrame) *pulumirpc.SourcePosition {
+				return f.Pc
+			}), sourcePosition)
 
 			t.Log(strings.Join(slice.Map(stackTrace.Frames, func(f *pulumirpc.StackFrame) string {
-				return fmt.Sprintf("%v:%v", f.Pc.Uri, f.Pc.Line)
+				return fmt.Sprintf("%v:%v", f.GetPc().GetUri(), f.GetPc().GetLine())
 			}), "\n"))
 
 			return "myID", resource.PropertyMap{"foo": resource.NewProperty("qux")}, nil
@@ -1407,7 +1411,10 @@ func TestInvokeSourceContext(t *testing.T) {
 				assert.Equal(t, int32(sourceLine), req.SourcePosition.Line)
 				require.NotEmpty(t, req.GetStackTrace().GetFrames())
 				assert.True(t, strings.HasSuffix(req.StackTrace.Frames[0].GetPc().GetUri(), "/context.go"))
-				assert.Contains(t, req.StackTrace.Frames, &pulumirpc.StackFrame{Pc: req.SourcePosition})
+				assert.Equal(t, "pulumi", req.StackTrace.Frames[0].Origin)
+				assert.Contains(t, slice.Map(req.StackTrace.Frames, func(f *pulumirpc.StackFrame) *pulumirpc.SourcePosition {
+					return f.Pc
+				}), req.SourcePosition)
 				assert.Equal(t, handle, req.ParentStackTraceHandle)
 			})
 		}

@@ -3083,7 +3083,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 					rpcError = err
 				}
 				message := errorToMessage(rpcError, props, rm.opts.ShowSecrets)
-				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
+				diagnostic := diag.GetResourceInvalidError(constructResult.URN)
+				if rm.sourcePositions != nil {
+					sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
+					diagnostic.SourceContext = newSourceContext(rm.sourcePositions.projectRoot, sourcePosition, stackTrace)
+				}
+				rm.diagnostics.Errorf(diagnostic, t, name, message)
 
 				rm.abortChan <- true
 				constructDone <- monitorShutdownError(ctx, codes.Unknown, "resource monitor shut down")

@@ -191,10 +191,17 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			// Skip any ephemeral or debug messages, and elide all colorization.
 			p := e.Payload().(engine.DiagEventPayload)
 			if !p.Ephemeral && p.Severity != diag.Debug {
+				sourceContext := p.SourceContext
+				if sourceContext != nil {
+					copy := *sourceContext
+					copy.Rendered = colors.Never.Colorize(copy.Rendered)
+					sourceContext = &copy
+				}
 				digest.Diagnostics = append(digest.Diagnostics, display.PreviewDiagnostic{
-					URN:      p.URN,
-					Message:  colors.Never.Colorize(p.Prefix + p.Message),
-					Severity: p.Severity,
+					SourceContext: sourceContext,
+					URN:           p.URN,
+					Message:       colors.Never.Colorize(p.Prefix + p.Message),
+					Severity:      p.Severity,
 				})
 			}
 		case engine.StartDebuggingEvent:
