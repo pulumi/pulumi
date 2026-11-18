@@ -319,6 +319,12 @@ export interface ResOpFailedEvent {
     status: number;
 
     steps: number;
+
+    /**
+     * True if the provider had to await the operation, rather than the
+     * operation failing.
+     */
+    awaited?: boolean;
 }
 
 /**
