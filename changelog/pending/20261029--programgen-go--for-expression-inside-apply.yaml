@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Generate `for` expressions over outputs inside the apply callback instead of before it
+time: 2026-10-29T00:00:00Z
