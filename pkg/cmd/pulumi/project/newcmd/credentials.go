@@ -134,7 +134,7 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 	} else if err != nil {
 		pf.logSkipped(ctx, desc, err)
 	} else {
-		fmt.Fprintf(pf.stdout, "%s credentials verified. %s\n\n", info.DisplayName, cmdutil.EmojiOr("✅", ""))
+		fmt.Fprintf(pf.stdout, "%s credentials verified.%s\n\n", info.DisplayName, cmdutil.EmojiOr(" ✅", ""))
 	}
 }
 
