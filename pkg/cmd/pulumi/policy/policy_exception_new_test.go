@@ -700,6 +700,7 @@ func TestParsePolicyExceptionExpiresIn(t *testing.T) {
 
 	for s, want := range map[string]time.Duration{
 		"": 0, "7d": 7 * 24 * time.Hour, "12h": 12 * time.Hour, "2D": 48 * time.Hour, "3650d": 3650 * 24 * time.Hour,
+		"87600h": 87600 * time.Hour,
 	} {
 		got, err := parsePolicyExceptionExpiresIn(s)
 		require.NoError(t, err, s)
@@ -713,7 +714,7 @@ func TestParsePolicyExceptionExpiresIn(t *testing.T) {
 		_, err := parsePolicyExceptionExpiresIn(s)
 		assert.EqualError(t, err, "--expires-in must be at least 1h", s)
 	}
-	for _, s := range []string{"3651d", "87601h"} {
+	for _, s := range []string{"3651d", "87601h", "106752d", "2562048h", "213504d", "9999999999d"} {
 		_, err := parsePolicyExceptionExpiresIn(s)
 		assert.EqualError(t, err, fmt.Sprintf("--expires-in %s is too long; the maximum is 3650d", s))
 	}

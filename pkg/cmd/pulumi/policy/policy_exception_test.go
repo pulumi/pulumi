@@ -64,6 +64,8 @@ type mockPolicyExceptionClient struct {
 	// noStack makes GetStack return a 404, as for a stack that doesn't exist; noCR does the same for change requests.
 	noStack bool
 	noCR    bool
+	// stackErr fails GetStack with another error.
+	stackErr error
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
 	gotOrgFlag   string
@@ -73,6 +75,7 @@ type mockPolicyExceptionClient struct {
 	gotDrafts    []cloudapitype.CreatePolicyExceptionRequest
 	gotSubmitted []string
 	gotReads     []string
+	gotStacks    []string
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
@@ -136,11 +139,12 @@ func (m *mockPolicyExceptionClient) GetLatestStackPreviews(
 	return m.previews, nil
 }
 
-func (m *mockPolicyExceptionClient) GetStack(context.Context, client.StackIdentifier) (apitype.Stack, error) {
+func (m *mockPolicyExceptionClient) GetStack(_ context.Context, stack client.StackIdentifier) (apitype.Stack, error) {
+	m.gotStacks = append(m.gotStacks, stack.String())
 	if m.noStack {
 		return apitype.Stack{}, &apitype.ErrorResponse{Code: http.StatusNotFound}
 	}
-	return apitype.Stack{}, nil
+	return apitype.Stack{}, m.stackErr
 }
 
 func (m *mockPolicyExceptionClient) GetUpdateEngineEvents(
@@ -227,6 +231,7 @@ func TestPolicyExceptionList(t *testing.T) {
 
 	assert.Equal(t, "acme", c.gotOrg)
 	assert.Empty(t, c.gotOrgFlag, "the organization defaults to the backend's")
+	assert.Equal(t, []string{"acme/web/prod"}, c.gotStacks)
 	query := client.ListPolicyExceptionsOptions{
 		PolicyPack: "aws-security",
 		Policy:     "required-tags",
@@ -345,6 +350,12 @@ func TestPolicyExceptionList_Errors(t *testing.T) {
 	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
 		policyExceptionListArgs{stack: "nope/nope", outputFormat: defaultPolicyExceptionListOutputFormat()})
 	assert.EqualError(t, err, "no stack named 'acme/nope/nope' found")
+	assert.Empty(t, c.gotListOpts)
+
+	c = &mockPolicyExceptionClient{stackErr: &apitype.ErrorResponse{Code: http.StatusForbidden, Message: "forbidden"}}
+	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
+		policyExceptionListArgs{stack: "web/prod", outputFormat: defaultPolicyExceptionListOutputFormat()})
+	assert.ErrorIs(t, err, c.stackErr)
 	assert.Empty(t, c.gotListOpts)
 }
 

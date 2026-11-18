@@ -928,8 +928,10 @@ func parsePolicyExceptionExpiresIn(s string) (time.Duration, error) {
 		}
 	case n <= 0:
 		return 0, cmdCmd.ConfigurationError{Message: "--expires-in must be at least 1h"}
-	case time.Duration(n)*unit > policyExceptionMaxExpiry:
-		return 0, cmdCmd.ConfigurationError{Message: fmt.Sprintf("--expires-in %s is too long; the maximum is 3650d", s)}
+	// Compare before multiplying: a large n overflows the duration.
+	case n > int(policyExceptionMaxExpiry/unit):
+		return 0, cmdCmd.ConfigurationError{Message: fmt.Sprintf(
+			"--expires-in %s is too long; the maximum is %dd", s, policyExceptionMaxExpiry/(24*time.Hour))}
 	}
 	return time.Duration(n) * unit, nil
 }
