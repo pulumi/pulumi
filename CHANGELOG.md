@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.277.0 (2026-11-18)
+
+### Features
+
+- [cli] Add a preview `pulumi delivery register` command that registers the Pulumi Delivery pipeline a program declares [#25729](https://github.com/pulumi/pulumi/pull/25729)
+- [auto] Add `preview` to the generated automation APIs for NodeJS, Python and Go [#25054](https://github.com/pulumi/pulumi/pull/25054)
+- [engine] Add a `CheckConfig2` method to the provider protocol, with request and response types of its own [#25670](https://github.com/pulumi/pulumi/pull/25670)
+- [cli/state] Add `--parent` to `pulumi state move` to parent moved resources under a resource in the destination stack [#25697](https://github.com/pulumi/pulumi/pull/25697)
+- [sdk/go] Add `Keys()` method to `property.Map` [#25712](https://github.com/pulumi/pulumi/pull/25712)
+
+### Bug Fixes
+
+- [cli/convert] Fix missing blank line in `pulumi convert --help` output between the target languages list and the example usage section [#22559](https://github.com/pulumi/pulumi/pull/22559)
+- [engine] Report plan violations found while finalizing stack outputs instead of failing the update silently [#25629](https://github.com/pulumi/pulumi/pull/25629)
+- [sdk/nodejs] Fix `up --plan` failing when a stack output is a whole resource [#25629](https://github.com/pulumi/pulumi/pull/25629)
+- [cli/display] Fix tree renderer when installing plugins [#25655](https://github.com/pulumi/pulumi/pull/25655)
+- [cli/package] Fix formatting of the `pulumi package publish` reference docs [#25695](https://github.com/pulumi/pulumi/pull/25695)
+- [sdkgen/python] Emit the license as an SPDX string in generated pyproject.toml files [#25735](https://github.com/pulumi/pulumi/pull/25735)
+
+### Improvements
+
+- [cli/new] Make the project confirmation in the guided `pulumi new` flow easier to read [#25663](https://github.com/pulumi/pulumi/pull/25663)
+
+### Miscellaneous
+
+- [sdk/dotnet] Upgrade dotnet to v3.120.0 [#25751](https://github.com/pulumi/pulumi/pull/25751)
+- [yaml] Upgrade yaml to v1.39.2 [#25751](https://github.com/pulumi/pulumi/pull/25751)
+- [hcl] Upgrade hcl to v0.20.1 [#25751](https://github.com/pulumi/pulumi/pull/25751)
+- [java] Upgrade java to v1.40.2 [#25751](https://github.com/pulumi/pulumi/pull/25751)
 ## 3.276.0 (2026-11-12)
 
 ### Features

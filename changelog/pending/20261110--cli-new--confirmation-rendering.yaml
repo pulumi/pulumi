@@ -1,3 +1,0 @@
-component: cli/new
-kind: improvement
-body: Make the project confirmation in the guided `pulumi new` flow easier to read

@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Report plan violations found while finalizing stack outputs instead of failing the update silently
-time: 2026-11-09T12:00:00.000000+00:00
