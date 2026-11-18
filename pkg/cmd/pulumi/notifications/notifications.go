@@ -213,6 +213,23 @@ func readShown() map[string]time.Time {
 	return shown
 }
 
+// commands are those whose output people read rather than capture.
+var commands = map[string]bool{
+	"pulumi up":         true,
+	"pulumi preview":    true,
+	"pulumi refresh":    true,
+	"pulumi destroy":    true,
+	"pulumi login":      true,
+	"pulumi whoami":     true,
+	"pulumi stack list": true,
+}
+
+// ShownAfter reports whether notifications are shown after the command with the given path, such as
+// "pulumi up".
+func ShownAfter(commandPath string) bool {
+	return commands[commandPath]
+}
+
 // Print writes the notifications that apply to the given CLI version, are due, and haven't been
 // dismissed, to the sink's stderr. Errors are due every time, warnings once a day, and anything else
 // only once.
