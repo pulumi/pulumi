@@ -752,7 +752,7 @@ func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOptio
 // existence-gated.
 func (ctx *Context) invokePackageRaw(
 	tok string, args any, marshalOpts *marshalOptions, checkDependencies bool, packageRef string,
-	options invokeOptions,
+	options invokeOptions, stackTrace *pulumirpc.StackTrace,
 ) (outProps resource.PropertyMap, deps []Resource, known, secret bool, err error) {
 	if tok == "" {
 		return nil, nil, false, false, errors.New("invoke token must not be empty")
@@ -881,18 +881,23 @@ func (ctx *Context) invokePackageRaw(
 		return nil, nil, false, false, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
+	invokeSourcePosition := ctx.getInvokeSourcePosition(stackTrace)
+
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:               tok,
-		Args:              rpcArgs,
-		Provider:          providerRef,
-		Version:           options.Version,
-		PluginDownloadURL: options.PluginDownloadURL,
-		AcceptResources:   !disableResourceReferences,
-		AcceptsByteString: true,
-		PackageRef:        packageRef,
-		DependsOn:         invokeDependsOn,
+		Tok:                    tok,
+		Args:                   rpcArgs,
+		Provider:               providerRef,
+		Version:                options.Version,
+		PluginDownloadURL:      options.PluginDownloadURL,
+		AcceptResources:        !disableResourceReferences,
+		AcceptsByteString:      true,
+		PackageRef:             packageRef,
+		DependsOn:              invokeDependsOn,
+		SourcePosition:         invokeSourcePosition,
+		StackTrace:             stackTrace,
+		ParentStackTraceHandle: ctx.state.parentStackTraceHandle,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -951,7 +956,7 @@ func (ctx *Context) InvokePackage(
 	invokeOpts.DependsOn = nil // Ignore the DependsOn option for direct invokes.
 
 	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
-		false /* checkDependencies */, packageRef, *invokeOpts)
+		false /* checkDependencies */, packageRef, *invokeOpts, ctx.getStackTrace(0))
 	if err != nil {
 		return err
 	}
@@ -977,7 +982,7 @@ func (ctx *Context) InvokePackageRaw(
 
 	options := mergeInvokeOptions(opts...)
 	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
-		false /* checkDependencies */, packageRef, *options)
+		false /* checkDependencies */, packageRef, *options, ctx.getStackTrace(0))
 	if err != nil {
 		return false, err
 	}
@@ -1014,6 +1019,7 @@ type InvokeOutputOptions struct {
 func (ctx *Context) InvokeOutput(
 	tok string, args any, output Output, options InvokeOutputOptions,
 ) Output {
+	stackTrace := ctx.getStackTrace(0)
 	output = ctx.newOutput(reflect.TypeOf(output))
 
 	go func() {
@@ -1029,7 +1035,7 @@ func (ctx *Context) InvokeOutput(
 
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
 		outProps, deps, known, secret, err := ctx.invokePackageRaw(tok, args, nil, /* marshalOpts */
-			true /* checkDependencies */, packageRef, *invokeOpts)
+			true /* checkDependencies */, packageRef, *invokeOpts, stackTrace)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
@@ -3294,6 +3300,28 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
 		Line: line,
 	}
+}
+
+func (ctx *Context) getInvokeSourcePosition(stack *pulumirpc.StackTrace) *pulumirpc.SourcePosition {
+	if len(stack.GetFrames()) == 0 {
+		return nil
+	}
+	// Generated SDK functions call the runtime's Invoke helpers. Walk past our internal frames (the ones in this file),
+	// then skip the SDK wrapper to select its caller in the user's program. The stack is captured in context.go, so its
+	// first frame identifies this file. If the core Invoke implementation spans multiple files, we need to update this
+	// boundary detection.
+	invokeURI := stack.Frames[0].GetPc().GetUri()
+	for index, frame := range stack.Frames {
+		if frame.GetPc().GetUri() == invokeURI {
+			continue
+		}
+		callerIndex := index + 1 // skip the wrapper in the SDK
+		if callerIndex < len(stack.Frames) && stack.Frames[callerIndex].GetPc() != nil {
+			return stack.Frames[callerIndex].GetPc()
+		}
+		return frame.GetPc()
+	}
+	return nil
 }
 
 // getStackTrace captures its caller's stack, omitting skip additional caller frames.

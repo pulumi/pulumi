@@ -81,38 +81,12 @@ import * as aliasproto from "../proto/alias_pb";
 import { Callback } from "../proto/callback_pb";
 import * as provproto from "../proto/provider_pb";
 import * as resproto from "../proto/resource_pb";
-import * as sourceproto from "../proto/source_pb";
+import { marshalSourcePosition, marshalStackTrace } from "./stackTrace";
 
 export interface SourcePosition {
     uri: string;
     line: number;
     column: number;
-}
-
-function marshalSourcePosition(sourcePosition?: SourcePosition) {
-    if (sourcePosition === undefined) {
-        return undefined;
-    }
-    const pos = new sourceproto.SourcePosition();
-    pos.setUri(sourcePosition.uri);
-    pos.setLine(sourcePosition.line);
-    pos.setColumn(sourcePosition.column);
-    return pos;
-}
-
-function marshalStackTrace(stackTrace?: (SourcePosition | undefined)[]) {
-    if (stackTrace === undefined) {
-        return undefined;
-    }
-    const trace = new sourceproto.StackTrace();
-    trace.setFramesList(
-        stackTrace.map((pos) => {
-            const frame = new sourceproto.StackFrame();
-            frame.setPc(marshalSourcePosition(pos)!);
-            return frame;
-        }),
-    );
-    return trace;
 }
 
 interface ResourceResolverOperation {

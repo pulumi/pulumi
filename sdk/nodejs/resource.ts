@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as url from "url";
 import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
@@ -29,6 +28,7 @@ import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { ensureNotInStateMigration } from "./runtime/stateMigration";
 import { getStackResource } from "./runtime/state";
+import { getStackTrace } from "./runtime/stackTrace";
 import * as utils from "./utils";
 
 export type ID = string; // a provider-assigned ID.
@@ -152,22 +152,12 @@ export function allAliases(
 /**
  * {@link CallSite} describes a single stack frame, including optional position information.
  */
-interface CallSite {
-    file?: string;
-    line?: number;
-    column?: number;
-}
 
 /**
  * {@link Resource} represents a class whose CRUD operations are implemented by
  * a provider plugin.
  */
 export abstract class Resource {
-    /**
-     * A regexp for use with {@link sourcePosition}.
-     */
-    private static framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
-
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *
@@ -333,72 +323,6 @@ export abstract class Resource {
 
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
-    }
-
-    /**
-     * Returns the list of callsites for the current stack. The top of the stack is at index 0.
-     *
-     * Some callsites may not contain position information. It is up to the caller to detect this situation.
-     */
-    private static callsites(): CallSite[] {
-        // NOTE: it would be lovely to implement this using prepareStackTrace and actual V8 callsite information.
-        // Unfortunately, the V8 source locations are not mapped from transpiled locations to user locations, and
-        // Node 20.x does not expose an easy way to access source map information. Furthermore, ts-node may inject
-        // hooks that perform this mapping as part of prepareStackTrace. Instead of using prepareStackTrace, then,
-        // we parse its output as returned via `new Error().stack`. The stack trace will look like:
-        //
-        //     Error
-        //         at foo (file:line:column)
-        //         at bar (file:line:column)
-        //         at baz (file:line:column)
-        //
-        // We process this by splitting it into lines and parsing the position information out of each line.
-        const stackTraceLimit = Error.stackTraceLimit;
-        try {
-            Error.stackTraceLimit = Number.POSITIVE_INFINITY;
-
-            const stackTrace = new Error().stack;
-            return (
-                stackTrace
-                    ?.split("\n")
-                    ?.slice(1)
-                    ?.map((frame) => {
-                        const { file, line, column } = Resource.framePositionRegExp.exec(frame)?.groups || {};
-                        if (!file || !line || !column || file.startsWith("node:")) {
-                            return {};
-                        }
-                        const lineNum = parseInt(line, 10);
-                        const colNum = parseInt(column, 10);
-                        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
-                            return {};
-                        }
-                        return { file, line: lineNum, column: colNum };
-                    }) || []
-            );
-        } finally {
-            Error.stackTraceLimit = stackTraceLimit;
-        }
-    }
-
-    private static stackTrace(skip: number): (SourcePosition | undefined)[] {
-        let stack = Resource.callsites();
-        if (stack.length < skip + 1) {
-            return [];
-        }
-        stack = stack.slice(skip + 1);
-
-        return stack.map((frame) => {
-            const { file, line, column } = frame;
-            if (!file || !line || !column) {
-                return undefined;
-            }
-
-            return {
-                uri: url.pathToFileURL(file).toString(),
-                line,
-                column,
-            };
-        });
     }
 
     /**
@@ -582,7 +506,7 @@ export abstract class Resource {
         //     new CustomResource (/path/to/resource.ts:678:90)
         //     new Bucket (/path/to/bucket.ts:987:65)
         //     <user code> (/path/to/index.ts:4:3)
-        const stackTrace = Resource.stackTrace(4);
+        const stackTrace = getStackTrace(4);
         const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
 
         if (opts.urn) {
