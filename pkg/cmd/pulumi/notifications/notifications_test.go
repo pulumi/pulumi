@@ -15,9 +15,13 @@
 package notifications
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -145,4 +149,37 @@ func TestRefresh_FailureKeepsCache(t *testing.T) {
 	_, err := refresh(t.Context(), url, readCache())
 	require.ErrorContains(t, err, "500 Internal Server Error")
 	assert.Equal(t, stale, readCache())
+}
+
+func TestPrint_Frequency(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	outage := Notification{Title: "Outage", ID: "e", Severity: diag.Error, SchemaVersion: 1}
+	upgrade := Notification{Title: "Upgrade", ID: "w", Severity: diag.Warning, SchemaVersion: 1}
+	ns := []Notification{survey, outage, upgrade}
+	require.NoError(t, writeCache(map[string]cacheEntry{staticSource: {FetchedAt: time.Now(), Notifications: ns}}))
+	require.NoError(t, writeShown(map[string]time.Time{"no-longer-sent": time.Now()}))
+
+	show := func() string {
+		var stderr bytes.Buffer
+		Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}), ns, "v3.200.0")
+		return stderr.String()
+	}
+
+	first := show()
+	assert.Contains(t, first, survey.Title)
+	assert.Contains(t, first, outage.Title)
+	assert.Contains(t, first, upgrade.Title)
+	assert.Equal(t, []string{survey.ID, upgrade.ID}, slices.Sorted(maps.Keys(readShown())))
+
+	second := show()
+	assert.NotContains(t, second, survey.Title)
+	assert.Contains(t, second, outage.Title)
+	assert.NotContains(t, second, upgrade.Title)
+
+	shown := readShown()
+	shown[upgrade.ID] = time.Now().Add(-25 * time.Hour)
+	require.NoError(t, writeShown(shown))
+	third := show()
+	assert.NotContains(t, third, survey.Title)
+	assert.Contains(t, third, upgrade.Title)
 }
