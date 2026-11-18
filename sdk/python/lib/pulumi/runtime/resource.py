@@ -37,6 +37,7 @@ from ..output import Input, Output, _OutputData, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
+from ._registration_context import _get_parent_stack_trace_handle
 from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
@@ -832,6 +833,7 @@ def read_resource(
     # Get the stack trace and source position.
     stack_trace = _get_stack_trace()
     source_position = _get_source_position(stack_trace)
+    parent_stack_trace_handle = _get_parent_stack_trace_handle()
 
     # Get the stack trace.
     stack_trace = _get_stack_trace()
@@ -883,6 +885,7 @@ def read_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
+                parentStackTraceHandle=parent_stack_trace_handle,
                 packageRef=package_ref_str or "",
             )
 
@@ -1165,6 +1168,7 @@ def register_resource(
     # Get the stack trace and source position.
     stack_trace = _get_stack_trace()
     source_position = _get_source_position(stack_trace)
+    parent_stack_trace_handle = _get_parent_stack_trace_handle()
 
     async def do_register() -> None:
         try:
@@ -1321,6 +1325,7 @@ def register_resource(
                 replace_with=resolver.replace_with_urns or [],
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
+                parentStackTraceHandle=parent_stack_trace_handle,
                 transforms=callbacks,
                 state_migrations=state_migration_callbacks,
                 supportsResultReporting=True,

@@ -42,6 +42,7 @@ import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } 
 import { invoke } from "./invoke";
 import {
     failPendingRegistration,
+    getParentStackTraceHandle,
     getPendingResourceRegistrations,
     getStore,
     PendingResourceRegistration,
@@ -346,6 +347,7 @@ export function readResource(
     if (!opts.id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
     }
+    const parentStackTraceHandle = getParentStackTraceHandle();
     const id: Promise<Input<ID>> = output(opts.id).promise(true);
 
     const label = `resource:${name}[${t}]#...`;
@@ -391,6 +393,7 @@ export function readResource(
                 req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setStacktrace(marshalStackTrace(stackTrace));
+                req.setParentstacktracehandle(parentStackTraceHandle || "");
                 req.setPackageref(packageRefStr || "");
 
                 // Now run the operation, serializing the invocation if necessary.
@@ -676,6 +679,7 @@ export function registerResource(
     stackTrace?: (SourcePosition | undefined)[],
     packageRef?: Promise<string | undefined>,
 ): void {
+    const parentStackTraceHandle = getParentStackTraceHandle();
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
 
@@ -826,6 +830,7 @@ export function registerResource(
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setStacktrace(marshalStackTrace(stackTrace));
+                req.setParentstacktracehandle(parentStackTraceHandle || "");
                 req.setTransformsList(callbacks);
                 req.setStateMigrationsList(stateMigrations);
                 req.setSupportsresultreporting(true);

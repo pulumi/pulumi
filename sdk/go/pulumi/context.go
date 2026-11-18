@@ -60,15 +60,16 @@ var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOU
 type workGroup = internal.WorkGroup
 
 type contextState struct {
-	info          RunInfo
-	stack         Resource
-	exports       map[string]Input
-	monitor       pulumirpc.ResourceMonitorClient
-	monitorConn   *grpc.ClientConn
-	engine        pulumirpc.EngineClient
-	engineConn    *grpc.ClientConn
-	callbacksLock sync.Mutex
-	callbacks     *callbackServer
+	parentStackTraceHandle string
+	info                   RunInfo
+	stack                  Resource
+	exports                map[string]Input
+	monitor                pulumirpc.ResourceMonitorClient
+	monitorConn            *grpc.ClientConn
+	engine                 pulumirpc.EngineClient
+	engineConn             *grpc.ClientConn
+	callbacksLock          sync.Mutex
+	callbacks              *callbackServer
 
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
@@ -1500,6 +1501,7 @@ func (ctx *Context) readPackageResource(
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
+			ParentStackTraceHandle:  ctx.state.parentStackTraceHandle,
 			PackageRef:              packageRef,
 		})
 		if err != nil {
@@ -2081,6 +2083,7 @@ func (ctx *Context) registerResource(
 				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
+				ParentStackTraceHandle:     ctx.state.parentStackTraceHandle,
 				Transforms:                 transforms,
 				StateMigrations:            stateMigrations,
 				SupportsResultReporting:    true,
