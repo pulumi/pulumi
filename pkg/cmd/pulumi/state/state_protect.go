@@ -49,8 +49,8 @@ func newStateProtectCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "protect",
-		Short: "protect resource in a stack's state",
-		Long: `Protect resource in a stack's state
+		Short: "Protect resources in a stack's state",
+		Long: `Protect resources in a stack's state
 
 This command sets the 'protect' bit on one or more resources, preventing those resources from being deleted.
 
@@ -62,7 +62,7 @@ unprotect the resource the next time your program runs (e.g. as part of a ` + "`
 See https://www.pulumi.com/docs/iac/concepts/resources/options/protect/ for more information on
 the 'protect' resource option and how it can be used to protect resources in your program.
 
-To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
+To unprotect a resource, use ` + "`pulumi state unprotect`" + ` on the resource URN.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
