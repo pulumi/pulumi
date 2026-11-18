@@ -423,7 +423,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}()
 			}
 
-			if !env.HideNotifications.Value() {
+			if !env.HideNotifications.Value() && !cmdutil.DisableInteractive {
 				pendingNotifications = notifications.Start(ctx, notifications.StaticURL)
 			}
 
