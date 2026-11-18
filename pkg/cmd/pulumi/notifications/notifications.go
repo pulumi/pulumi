@@ -222,6 +222,23 @@ func writeCache(cache map[string]cacheEntry) error {
 	return os.WriteFile(path, b, 0o600)
 }
 
+// commands are those whose output people read rather than capture.
+var commands = map[string]bool{
+	"pulumi up":         true,
+	"pulumi preview":    true,
+	"pulumi refresh":    true,
+	"pulumi destroy":    true,
+	"pulumi login":      true,
+	"pulumi whoami":     true,
+	"pulumi stack list": true,
+}
+
+// ShownAfter reports whether notifications are shown after the command with the given path, such as
+// "pulumi up".
+func ShownAfter(commandPath string) bool {
+	return commands[commandPath]
+}
+
 // Print writes the notifications that apply to the given CLI version, and are due, to the sink's
 // stderr. Errors are due every time, warnings once a day, and anything else only once.
 func Print(sink diag.Sink, ns []Notification, cliVersion string) {
