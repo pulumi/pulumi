@@ -684,7 +684,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		contract.IgnoreClose(provider)
 		var failures []plugin.CheckFailure
 		for _, f := range resp.Failures {
-			failures = append(failures, plugin.CheckFailure(f))
+			failures = append(failures, plugin.CheckFailure{Property: f.Property, Reason: f.Reason})
 		}
 		return plugin.CheckResponse{Failures: failures}, err
 	}

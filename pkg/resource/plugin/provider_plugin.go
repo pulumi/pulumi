@@ -705,8 +705,9 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 // checkConfigFailureFromRPC converts a CheckConfig2 failure received from a provider.
 func checkConfigFailureFromRPC(failure *pulumirpc.CheckConfigFailure) CheckConfigFailure {
 	return CheckConfigFailure{
-		Property: resource.PropertyKey(failure.GetProperty()),
-		Reason:   failure.GetReason(),
+		Property:     resource.PropertyKey(failure.GetProperty()),
+		Reason:       failure.GetReason(),
+		Remediations: remediationsFromRPC(failure.GetRemediations()),
 	}
 }
 

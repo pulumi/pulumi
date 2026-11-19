@@ -207,3 +207,39 @@ func TestProviderServer_CheckConfig2_unimplementedByProvider(t *testing.T) {
 	_, err = srv.CheckConfig(t.Context(), &pulumirpc.CheckRequest{Urn: urn})
 	assert.Equal(t, codes.Unimplemented, status.Code(err))
 }
+
+func TestCheckConfig2_carriesRemediations(t *testing.T) {
+	t.Parallel()
+
+	failures := []CheckConfigFailure{{
+		Reason:       "credentials expired",
+		Remediations: []CommandRemediation{{Description: "Sign in", Command: []string{"cloud", "login"}}},
+	}}
+	srv := NewProviderServer(&MockProvider{
+		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
+			return CheckConfigResponse{Failures: failures}, nil
+		},
+	})
+	client := &checkConfigClient{
+		checkConfig: func(*pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+			t.Error("CheckConfig should not be called when CheckConfig2 is implemented")
+			return nil, status.Error(codes.Internal, "unexpected")
+		},
+		checkConfig2: func(req *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
+			return srv.CheckConfig2(t.Context(), req)
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	resp, err := p.CheckConfig(t.Context(), checkConfigTestRequest())
+	require.NoError(t, err)
+	assert.Equal(t, failures, resp.Failures)
+
+	// The CheckConfig RPC reports the same failure, but cannot carry the remediation.
+	old, err := srv.CheckConfig(t.Context(), &pulumirpc.CheckRequest{
+		Urn: "urn:pulumi:org/proj/dev::foo::pulumi:providers:pkg::default",
+	})
+	require.NoError(t, err)
+	require.Len(t, old.GetFailures(), 1)
+	assert.Equal(t, "credentials expired", old.GetFailures()[0].GetReason())
+}
