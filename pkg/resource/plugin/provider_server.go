@@ -352,6 +352,8 @@ func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigF
 		Property:     string(failure.Property),
 		Reason:       failure.Reason,
 		Remediations: remediationsToRPC(failure.Remediations),
+		Hint:         failure.Hint.rpc(),
+		HintMessage:  failure.HintMessage,
 	}
 }
 
