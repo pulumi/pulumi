@@ -37,7 +37,6 @@ type testManager struct {
 	now      time.Time
 	disabled bool
 	skip     []string
-	ci       bool
 	path     string
 }
 
@@ -56,7 +55,6 @@ func newTestManager(t *testing.T) *testManager {
 			}
 			return s
 		},
-		isCI: func() bool { return tm.ci },
 	}
 	return tm
 }
@@ -135,7 +133,7 @@ func TestFlushResetsSuppress(t *testing.T) {
 	assert.Contains(t, tm.run(hintA), "hint a")
 }
 
-func TestSuppressedDisabledAndCI(t *testing.T) {
+func TestSuppressedAndDisabled(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -144,7 +142,6 @@ func TestSuppressedDisabledAndCI(t *testing.T) {
 	}{
 		{"suppressed", func(tm *testManager) { tm.suppress() }},
 		{"disabled", func(tm *testManager) { tm.disabled = true }},
-		{"ci", func(tm *testManager) { tm.ci = true }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
