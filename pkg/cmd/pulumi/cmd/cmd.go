@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -54,9 +53,6 @@ import (
 func DisplayErrorMessage(ctx context.Context, err error, stderr io.Writer) {
 	err = processCmdErrors(ctx, err, stderr)
 	cmdutil.DisplayErrorMessage(err)
-	// cobra doesn't run PersistentPostRun when a command fails, so hints offered by a failing command are
-	// shown here, after the error.
-	hints.Flush(stderr)
 }
 
 // Processes errors that may be returned from commands, providing a central
