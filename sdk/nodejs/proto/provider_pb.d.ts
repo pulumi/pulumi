@@ -857,6 +857,10 @@ export class CheckConfigFailure extends jspb.Message {
     getRemediationsList(): Array<CommandRemediation>;
     setRemediationsList(value: Array<CommandRemediation>): CheckConfigFailure;
     addRemediations(value?: CommandRemediation, index?: number): CommandRemediation;
+    getHint(): Hint;
+    setHint(value: Hint): CheckConfigFailure;
+    getHintMessage(): string;
+    setHintMessage(value: string): CheckConfigFailure;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckConfigFailure.AsObject;
@@ -873,6 +877,8 @@ export namespace CheckConfigFailure {
         property: string,
         reason: string,
         remediationsList: Array<CommandRemediation.AsObject>,
+        hint: Hint,
+        hintMessage: string,
     }
 }
 
@@ -1990,4 +1996,9 @@ export namespace View {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         outputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
+}
+
+export enum Hint {
+    HINT_UNSPECIFIED = 0,
+    HINT_DYNAMIC_CREDENTIALS = 1,
 }
