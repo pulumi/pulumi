@@ -16,8 +16,10 @@ package hints
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -169,13 +171,63 @@ func TestFlushClearsQueue(t *testing.T) {
 	assert.Equal(t, 1, bytes.Count(buf.Bytes(), []byte("hint a")))
 }
 
-func TestCorruptStateFile(t *testing.T) {
+func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	require.NoError(t, os.WriteFile(tm.path, []byte("{not json"), 0o600))
 
-	// A corrupt file is treated as empty state and replaced.
 	assert.Contains(t, tm.run(hintA), "hint a")
+
+	st, _, err := tm.load()
+	require.NoError(t, err)
+	assert.True(t, tm.now.Equal(st.LastShown["a"]), "the showing is recorded")
+}
+
+func TestRecoversFromCorruptStateFile(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{"not json", "{not json"},
+		{"empty", ""},
+		// What a reader sees if another CLI process is partway through writing the file.
+		{"truncated", `{"lastShown": {"a": "2026-11-06T12:`},
+		{"wrong type", `{"lastShown": 5}`},
+		{"null", "null"},
+		{"null map", `{"lastShown": null}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			require.NoError(t, os.WriteFile(tm.path, []byte(tt.content), 0o600))
+
+			// A corrupt file is treated as empty state, so the hint is shown...
+			assert.Contains(t, tm.run(hintA), "hint a")
+
+			// ...and the file is replaced with valid state, so the cooldown holds from then on rather than
+			// resetting on every command.
+			raw, err := os.ReadFile(tm.path)
+			require.NoError(t, err)
+			var st state
+			require.NoError(t, json.Unmarshal(raw, &st))
+			assert.Contains(t, st.LastShown, "a")
+			assert.Empty(t, tm.run(hintA))
+		})
+	}
+}
+
+func TestUnwritableStateShowsNothing(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("file permissions don't stop writes here")
+	}
+	tm := newTestManager(t)
+	require.NoError(t, os.WriteFile(tm.path, []byte("{}"), 0o400))
+
+	// A hint that can't be recorded isn't shown, so it can't be shown on every command.
+	assert.Empty(t, tm.run(hintA))
 }
 
 func TestUnreadableStateShowsNothing(t *testing.T) {
