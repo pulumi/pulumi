@@ -507,10 +507,18 @@ class ResOpFailedEvent(BaseEvent):
     emitted before this event, indicating the root cause of the error.
     """
 
-    def __init__(self, metadata: StepEventMetadata, status: int, steps: int):
+    def __init__(
+        self,
+        metadata: StepEventMetadata,
+        status: int,
+        steps: int,
+        awaited: bool = False,
+    ):
         self.metadata = metadata
         self.status = status
         self.steps = steps
+        self.awaited = awaited
+        """True if the provider had to await the operation, rather than the operation failing."""
 
     @classmethod
     def from_json(cls, data: dict) -> "ResOpFailedEvent":
@@ -519,6 +527,7 @@ class ResOpFailedEvent(BaseEvent):
             metadata=StepEventMetadata.from_json(metadata),
             status=data.get("status", 0),
             steps=data.get("steps", 0),
+            awaited=data.get("awaited", False),
         )
 
 

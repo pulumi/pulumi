@@ -6,6 +6,7 @@ from pulumi.automation.events import (
     DiffKind,
     PolicyEvent,
     PropertyDiff,
+    ResOpFailedEvent,
     StepEventMetadata,
 )
 
@@ -52,3 +53,10 @@ class TestPolicyEventFromJson(unittest.TestCase):
         }
         event = PolicyEvent.from_json(data)
         assert event.resource_urn == "urn:pulumi:stack::project::type::name"
+
+
+class TestResOpFailedEventFromJson(unittest.TestCase):
+    def test_awaited_deserialized(self):
+        data = {"metadata": {"op": "create"}}
+        assert ResOpFailedEvent.from_json({**data, "awaited": True}).awaited is True
+        assert ResOpFailedEvent.from_json(data).awaited is False
