@@ -48,9 +48,8 @@ class _HintEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeW
     """
 
 class Hint(_Hint, metaclass=_HintEnumTypeWrapper):
-    """`Hint` names a product hint that is relevant to a [](pulumirpc.CheckConfigFailure) a provider reports. A product hint points
-    the user to a Pulumi feature that helps with this kind of failure. The provider says which hint is relevant and what it says, and
-    the engine decides whether to show it.
+    """`Hint` names a product hint, which points the user to a Pulumi feature that helps with a failure. A provider sets it,
+    with its text, on a [](pulumirpc.CheckConfigFailure), and the engine decides whether to show it.
     """
 
 HINT_UNSPECIFIED: Hint.ValueType  # 0
@@ -1170,10 +1169,10 @@ class CheckConfigFailure(google.protobuf.message.Message):
     reason: builtins.str
     """The reason that the named property failed validation."""
     hint: global___Hint.ValueType
-    """A product hint that is relevant to this failure, if any. The engine may show it to the user."""
+    """A product hint relevant to this failure, if any."""
     hint_message: builtins.str
-    """The text of the product hint in `hint`. The engine shows it if it decides to show the hint. It may span several
-    lines, for example to put a "Learn more" link on a line of its own.
+    """The text of `hint`, which the engine shows if it decides to show the hint. It may span several lines, for
+    example to put a "Learn more" link on a line of its own.
     """
     @property
     def remediations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CommandRemediation]:
