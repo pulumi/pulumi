@@ -71,36 +71,9 @@ func (tm *testManager) run(hs ...Hint) string {
 	return buf.String()
 }
 
-func TestNoHintBeforeSuccessfulUpdate(t *testing.T) {
-	t.Parallel()
-	tm := newTestManager(t)
-
-	assert.Empty(t, tm.run(hintA))
-	_, err := os.Stat(tm.path)
-	assert.True(t, os.IsNotExist(err), "no state should be written for a hint that wasn't shown")
-
-	tm.recordSuccessfulUpdate()
-	assert.Contains(t, tm.run(hintA), "hint a")
-}
-
-func TestHintBeforeFirstUpdate(t *testing.T) {
-	t.Parallel()
-	tm := newTestManager(t)
-	early := Hint{ID: "early", Cooldown: 7 * 24 * time.Hour, Message: "early hint", BeforeFirstUpdate: true}
-
-	// Hints that wait for the first update are skipped, and an early hint can still be shown.
-	out := tm.run(hintA, early)
-	assert.Contains(t, out, "early hint")
-	assert.NotContains(t, out, "hint a")
-
-	// Its cooldown still applies.
-	assert.Empty(t, tm.run(early))
-}
-
 func TestMultiLineHint(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.recordSuccessfulUpdate()
 
 	// Later lines line up with the first line, after the "Hint: " label.
 	out := tm.run(Hint{ID: "multi", Message: "first line\nLearn more: https://example.com"})
@@ -110,7 +83,6 @@ func TestMultiLineHint(t *testing.T) {
 func TestOneHintPerCommand(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.recordSuccessfulUpdate()
 
 	out := tm.run(hintA, hintB)
 	assert.Contains(t, out, "hint a")
@@ -123,7 +95,6 @@ func TestOneHintPerCommand(t *testing.T) {
 func TestPerHintCooldown(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.recordSuccessfulUpdate()
 
 	assert.Contains(t, tm.run(hintA), "hint a")
 
@@ -143,7 +114,6 @@ func TestPerHintCooldown(t *testing.T) {
 func TestSkippedHint(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.recordSuccessfulUpdate()
 	tm.skip = []string{"a"}
 
 	out := tm.run(hintA, hintB)
@@ -169,7 +139,6 @@ func TestSuppressedDisabledAndCI(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tm := newTestManager(t)
-			tm.recordSuccessfulUpdate()
 			tt.setup(tm)
 			assert.Empty(t, tm.run(hintA))
 
@@ -184,7 +153,6 @@ func TestSuppressedDisabledAndCI(t *testing.T) {
 func TestFlushClearsQueue(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.recordSuccessfulUpdate()
 	tm.offer(hintA)
 
 	var buf bytes.Buffer
@@ -199,14 +167,12 @@ func TestCorruptStateFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(tm.path, []byte("{not json"), 0o600))
 
 	// A corrupt file is treated as empty state and replaced.
-	tm.recordSuccessfulUpdate()
 	assert.Contains(t, tm.run(hintA), "hint a")
 }
 
 func TestUnreadableStateShowsNothing(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.recordSuccessfulUpdate()
 	// Make the state path a directory, so it can neither be read nor replaced.
 	tm.path = t.TempDir()
 	assert.Empty(t, tm.run(hintA))
