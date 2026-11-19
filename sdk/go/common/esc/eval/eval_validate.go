@@ -179,15 +179,17 @@ func (e *validator) validateSchemaType(x, accept *schema.Schema, loc validationL
 	if e.isAny(accept) {
 		return true
 	}
+	// Never is the bottom type: it is a subtype of every schema, including Never itself. This matches the
+	// `!x.Items.Never` and `!x.AdditionalProperties.Never` guards in validateSchemaArray and validateSchemaObject.
+	if x.Never {
+		return true
+	}
 	if accept.Never {
-		return false
+		return e.errorf(loc, "value is never valid")
 	}
 
 	if e.isAny(x) {
 		return true
-	}
-	if x.Never {
-		return false
 	}
 
 	refOK := accept.GetRef() == nil || e.validateSchemaType(x, accept.GetRef(), loc)
@@ -426,7 +428,7 @@ func (e *validator) validateElement(v *value, accept *schema.Schema, loc validat
 		return true
 	}
 	if accept.Never {
-		return false
+		return e.errorf(loc, "value is never valid")
 	}
 	if v.unknown {
 		return e.validateSchemaType(v.schema, accept, loc)
