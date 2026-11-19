@@ -24,6 +24,8 @@ import (
 
 	"github.com/muesli/cancelreader"
 	"golang.org/x/term"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type Terminal interface {
@@ -41,6 +43,10 @@ type Terminal interface {
 	ShowCursor()
 
 	ReadKey() (string, error)
+
+	// Suspend frees the terminal for a prompt until Resume. A blocked ReadKey returns io.EOF.
+	Suspend() error
+	Resume() error
 }
 
 var ErrNotATerminal = errors.New("not a terminal")
@@ -53,6 +59,7 @@ type terminal struct {
 
 	out io.Writer
 	in  cancelreader.CancelReader
+	src io.Reader
 }
 
 var _ Terminal = &terminal{}
@@ -103,6 +110,7 @@ func Open(in io.Reader, out io.Writer, raw bool) (Terminal, error) {
 		save: save,
 		out:  out,
 		in:   inFile,
+		src:  in,
 	}, nil
 }
 
@@ -115,6 +123,26 @@ func (t *terminal) Close() error {
 	if t.save != nil {
 		return term.Restore(t.fd, t.save)
 	}
+	return nil
+}
+
+func (t *terminal) Suspend() error {
+	t.in.Cancel()
+	return term.Restore(t.fd, t.save)
+}
+
+func (t *terminal) Resume() error {
+	// A canceled reader can't be reused.
+	contract.IgnoreClose(t.in)
+	if _, err := term.MakeRaw(t.fd); err != nil {
+		return fmt.Errorf("enabling raw mode: %w", err)
+	}
+
+	in, err := cancelreader.NewReader(t.src)
+	if err != nil {
+		return fmt.Errorf("opening input: %w", err)
+	}
+	t.in = in
 	return nil
 }
 
