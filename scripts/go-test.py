@@ -23,6 +23,7 @@ cover_packages = [
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/...",
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/...",
     "github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl/...",
+    "github.com/pulumi/pulumi/sdk/purejs/cmd/pulumi-language-purejs/v3/...",
 ]
 
 dryrun = os.environ.get("PULUMI_TEST_DRYRUN", None) == "true"
