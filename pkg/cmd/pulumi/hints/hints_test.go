@@ -124,6 +124,17 @@ func TestSkippedHint(t *testing.T) {
 	assert.Empty(t, tm.run(hintA))
 }
 
+func TestFlushResetsSuppress(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+
+	tm.suppress()
+	assert.Empty(t, tm.run(hintA))
+
+	// The next command in the same process isn't suppressed.
+	assert.Contains(t, tm.run(hintA), "hint a")
+}
+
 func TestSuppressedDisabledAndCI(t *testing.T) {
 	t.Parallel()
 
