@@ -45,6 +45,17 @@ var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and com
 
 var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi.")
 
+var Telemetry = env.Bool("TELEMETRY",
+	"Enable (true) or disable (false) CLI telemetry, overriding `pulumi telemetry` and DO_NOT_TRACK.")
+
+var TelemetryLog = env.Bool("TELEMETRY_LOG",
+	"Enable (true) or disable (false) local logging of CLI telemetry events to "+
+		"$PULUMI_HOME/telemetry/log/events.jsonl, overriding `pulumi telemetry log`. "+
+		"This setting does not control whether events are sent.")
+
+var DoNotTrack = env.Bool("DO_NOT_TRACK",
+	"Disable CLI telemetry, unless it is enabled with PULUMI_TELEMETRY or `pulumi telemetry enable`.", env.NoPrefix)
+
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
 var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
