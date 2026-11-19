@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import os
+from pathlib import Path
 import traceback
 from typing import (
     TYPE_CHECKING,
@@ -25,6 +26,7 @@ from collections.abc import Awaitable
 import grpc
 
 from ._context import wrap_with_context
+from ._registration_context import _get_parent_stack_trace_handle
 from ._state_migration_context import _ensure_not_in_state_migration
 from google.protobuf import struct_pb2
 
@@ -33,7 +35,7 @@ from semver import VersionInfo
 from .. import _types, log
 from ..invoke import InvokeOptions, InvokeOutputOptions
 from ..output import _OutputData
-from ..runtime.proto import resource_pb2
+from ..runtime.proto import resource_pb2, source_pb2
 from ..resource import CustomResource
 from . import rpc
 from ._depends_on import _resolve_depends_on_urns, _resolve_depends_on
@@ -49,6 +51,34 @@ from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .. import Inputs, Output, Resource
+
+
+def _get_invoke_stack_trace() -> source_pb2.StackTrace:
+    from .resource import _get_source_position_for_frame
+
+    frames = [
+        source_pb2.StackFrame(pc=_get_source_position_for_frame(frame))
+        for frame in reversed(traceback.extract_stack())
+    ]
+    return source_pb2.StackTrace(frames=frames)
+
+
+def _get_invoke_source_position(
+    stack: source_pb2.StackTrace,
+) -> Optional[source_pb2.SourcePosition]:
+    # Generated SDK functions call the runtime's Invoke helpers. Walk past our internal frames (the ones in this file),
+    # then skip the SDK wrapper to select its caller in the user's program.
+    invoke_uri = Path(__file__).as_uri()
+    for index, frame in enumerate(stack.frames):
+        if frame.pc.uri == invoke_uri:
+            continue
+        caller_index = index + 1  # skip the wrapper in the SDK
+        if caller_index < len(stack.frames) and stack.frames[caller_index].HasField(
+            "pc"
+        ):
+            return stack.frames[caller_index].pc
+        return frame.pc if frame.HasField("pc") else None
+    return None
 
 
 def _requires_legacy_none_return_for_empty_struct(
@@ -169,11 +199,20 @@ def invoke_output(
     from .. import Output
 
     out = Output._from_data(resolve_data)
+    stack_trace = _get_invoke_stack_trace()
+    parent_stack_trace_handle = _get_parent_stack_trace_handle()
 
     async def do_invoke_output() -> None:
         try:
             invoke_result = await _invoke(
-                tok, props, opts, typ, package_ref=package_ref, check_dependencies=True
+                tok,
+                props,
+                opts,
+                typ,
+                package_ref=package_ref,
+                check_dependencies=True,
+                stack_trace=stack_trace,
+                parent_stack_trace_handle=parent_stack_trace_handle,
             )
 
             resolve_data.set_result(
@@ -230,8 +269,15 @@ def _invoke(
     typ: Optional[type],
     package_ref: Optional[Awaitable[Optional[str]]],
     check_dependencies: Optional[bool] = False,
+    stack_trace: Optional[source_pb2.StackTrace] = None,
+    parent_stack_trace_handle: Optional[str] = None,
 ) -> Awaitable[InvokeResult]:
     _ensure_not_in_state_migration("invoke")
+    if stack_trace is None:
+        stack_trace = _get_invoke_stack_trace()
+    if parent_stack_trace_handle is None:
+        parent_stack_trace_handle = _get_parent_stack_trace_handle()
+    source_position = _get_invoke_source_position(stack_trace)
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -333,6 +379,9 @@ def _invoke(
             acceptResources=accept_resources,
             pluginDownloadURL=plugin_download_url,
             packageRef=package_ref_str or "",
+            sourcePosition=source_position,
+            stackTrace=stack_trace,
+            parentStackTraceHandle=parent_stack_trace_handle,
         )
         if invoke_depends_on is not None:
             req.dependsOn.extend(invoke_depends_on)

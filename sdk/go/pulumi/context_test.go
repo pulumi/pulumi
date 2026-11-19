@@ -1349,3 +1349,65 @@ func TestExistsResource(t *testing.T) {
 	}, WithMocks("project", "stack", &testMonitor{}))
 	require.NoError(t, err)
 }
+
+type invokeSourceMonitor struct {
+	pulumirpc.ResourceMonitorClient
+	requests chan *pulumirpc.ResourceInvokeRequest
+}
+
+func (m *invokeSourceMonitor) Invoke(_ context.Context, req *pulumirpc.ResourceInvokeRequest,
+	_ ...grpc.CallOption,
+) (*pulumirpc.ResourceInvokeResponse, error) {
+	m.requests <- req
+	return &pulumirpc.ResourceInvokeResponse{}, nil
+}
+
+func TestInvokeSourceContext(t *testing.T) {
+	t.Parallel()
+	variants := map[string]func(*Context) error{
+		"Invoke": func(ctx *Context) error {
+			var result map[string]any
+			return ctx.Invoke("test:index:lookup", nil, &result)
+		},
+		"InvokePackage": func(ctx *Context) error {
+			var result map[string]any
+			return ctx.InvokePackage("test:index:lookup", nil, &result, "")
+		},
+		"InvokePackageRaw": func(ctx *Context) error {
+			var result map[string]any
+			_, err := ctx.InvokePackageRaw("test:index:lookup", nil, &result, "")
+			return err
+		},
+		"InvokeOutput": func(ctx *Context) error {
+			output := ctx.InvokeOutput("test:index:lookup", nil, AnyOutput{}, InvokeOutputOptions{})
+			_, _, _, _, err := await(output)
+			return err
+		},
+	}
+	for name, invoke := range variants {
+		for _, handle := range []string{"", "caller-stack"} {
+			t.Run(name+"/"+handle, func(t *testing.T) {
+				t.Parallel()
+				requests := make(chan *pulumirpc.ResourceInvokeRequest, 1)
+				var sourceLine int
+				err := RunErr(func(ctx *Context) error {
+					ctx.state.monitor = &invokeSourceMonitor{ctx.state.monitor, requests}
+					ctx.state.parentStackTraceHandle = handle
+					_, _, line, _ := runtime.Caller(0)
+					sourceLine = line + 2 // The invoke call below is two lines below runtime.Caller
+					return invoke(ctx)
+				}, WithMocks("project", "stack", &testMonitor{}))
+				require.NoError(t, err)
+				require.Len(t, requests, 1)
+				req := <-requests
+				require.NotNil(t, req.SourcePosition)
+				assert.True(t, strings.HasSuffix(req.SourcePosition.Uri, "/context_test.go"), req.SourcePosition.Uri)
+				assert.Equal(t, int32(sourceLine), req.SourcePosition.Line)
+				require.NotEmpty(t, req.GetStackTrace().GetFrames())
+				assert.True(t, strings.HasSuffix(req.StackTrace.Frames[0].GetPc().GetUri(), "/context.go"))
+				assert.Contains(t, req.StackTrace.Frames, &pulumirpc.StackFrame{Pc: req.SourcePosition})
+				assert.Equal(t, handle, req.ParentStackTraceHandle)
+			})
+		}
+	}
+}
