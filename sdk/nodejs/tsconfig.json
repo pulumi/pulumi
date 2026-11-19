@@ -117,6 +117,7 @@
         "tests/runtime/props.spec.ts",
         "tests/runtime/readResource.spec.ts",
         "tests/runtime/settings.spec.ts",
+        "tests/runtime/stackTrace.spec.ts",
         "tests/runtime/stateMigrations.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
         "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",

@@ -69,13 +69,19 @@ function callsites(): CallSite[] {
     }
 }
 
-/** @internal */
+/**
+ * Captures its caller's stack, omitting skip additional caller frames.
+ * The callsites and getStackTrace helpers are always omitted.
+ *
+ * @internal
+ */
 export function getStackTrace(skip: number): (SourcePosition | undefined)[] {
+    skip += 2;
     let stack = callsites();
-    if (stack.length < skip + 1) {
+    if (stack.length < skip) {
         return [];
     }
-    stack = stack.slice(skip + 1);
+    stack = stack.slice(skip);
 
     return stack.map((frame) => {
         const { file, line, column } = frame;

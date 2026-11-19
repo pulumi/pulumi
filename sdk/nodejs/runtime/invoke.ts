@@ -198,7 +198,7 @@ async function invokeAsync(
     containsSecrets: boolean;
     dependencies: Resource[];
 }> {
-    const stackTrace = getStackTrace(1);
+    const stackTrace = getStackTrace(0);
     const sourcePosition = getInvokeSourcePosition(stackTrace);
     const parentStackTraceHandle = getParentStackTraceHandle();
     const label = `Invoking function: tok=${tok} asynchronously`;
