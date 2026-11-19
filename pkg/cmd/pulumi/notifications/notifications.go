@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -38,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -260,7 +262,7 @@ func writeJSON(name string, v any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, b, 0o600)
+	return writeAtomic(path, b)
 }
 
 func readCache() map[string]cacheEntry {
@@ -486,4 +488,24 @@ func render(n Notification, cliVersion, idPrefix string) string {
 			colors.SpecCommand + "pulumi notifications dismiss " + idPrefix + colors.Reset + ".\n"
 	}
 	return msg
+}
+
+// writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written
+// file. They can still overwrite each other's writes, which at worst shows a notification again.
+func writeAtomic(path string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+"-*")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(b)
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(f.Name(), path) //nolint:forbidigo // same directory, as in workspace credentials
+	}
+	if err != nil {
+		contract.IgnoreError(os.Remove(f.Name()))
+	}
+	return err
 }
