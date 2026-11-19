@@ -225,6 +225,10 @@ type LanguageTest struct {
 	// A list of provider names that should be loaded from the languages providers directory.
 	LanguageProviders []string
 
+	// AssertRuntimeErrors receives Engine.Log errors and runner stderr for the entire test case, including teardown.
+	// Tests that set it run exclusively so unattributed log messages can be captured.
+	AssertRuntimeErrors func(l *L, logs []string, stderr string)
+
 	// stackReferences specifies other stack data that this test depends on.
 	StackReferences map[string]property.Map
 
