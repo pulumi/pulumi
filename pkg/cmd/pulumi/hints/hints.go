@@ -16,8 +16,7 @@
 //
 // Commands [Offer] hints while they run, and the root command calls [Flush] when it exits. Flush shows
 // at most one hint per command. A hint is shown only if hints are enabled, the user hasn't turned that
-// hint off, the user has completed at least one successful update (unless [Hint.BeforeFirstUpdate] is set),
-// and the hint's own [Hint.Cooldown] has passed.
+// hint off, and the hint's own [Hint.Cooldown] has passed.
 //
 // Users turn all hints off with PULUMI_DISABLE_HINTS or `hints.disabled` in the Pulumi config file, and
 // turn individual hints off by [Hint.ID] with PULUMI_SKIP_HINTS or `hints.skip`.
@@ -54,15 +53,10 @@ type Hint struct {
 	// Message is the text of the hint. It may contain color directives, and newlines to start a new line, for example
 	// before a "Learn more" link.
 	Message string
-	// BeforeFirstUpdate is true for hints that may be shown before the user has completed a successful update,
-	// because they are meant for users who are just starting out.
-	BeforeFirstUpdate bool
 }
 
 // state is the content of the hints state file.
 type state struct {
-	// SuccessfulUpdate is true once the user has completed a `pulumi up`. Most hints are not shown before that.
-	SuccessfulUpdate bool `json:"successfulUpdate,omitempty"`
 	// LastShown records when each hint was last shown, by hint ID.
 	LastShown map[string]time.Time `json:"lastShown,omitempty"`
 }
@@ -97,9 +91,6 @@ func Offer(h Hint) { defaultManager.offer(h) }
 // Suppress prevents any hint from being shown by this process, for example because the command writes
 // machine-readable output.
 func Suppress() { defaultManager.suppress() }
-
-// RecordSuccessfulUpdate notes that the user has completed a successful update, which enables hints.
-func RecordSuccessfulUpdate() { defaultManager.recordSuccessfulUpdate() }
 
 // Flush shows at most one of the offered hints on w and clears the queue. It never fails the command:
 // errors reading or writing the state file are logged, and no hint is shown.
@@ -148,23 +139,6 @@ func (m *manager) suppress() {
 	m.suppressed = true
 }
 
-func (m *manager) recordSuccessfulUpdate() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	st, path, err := m.load()
-	if err != nil {
-		slog.Info("could not read hints state", "err", err)
-		return
-	}
-	if st.SuccessfulUpdate {
-		return
-	}
-	st.SuccessfulUpdate = true
-	if err := save(path, st); err != nil {
-		slog.Info("could not write hints state", "err", err)
-	}
-}
-
 func (m *manager) flush(w io.Writer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -186,9 +160,6 @@ func (m *manager) flush(w io.Writer) {
 	now := m.now()
 	for _, h := range pending {
 		if settings.skip[h.ID] {
-			continue
-		}
-		if !st.SuccessfulUpdate && !h.BeforeFirstUpdate {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
