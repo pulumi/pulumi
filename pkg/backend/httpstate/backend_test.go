@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -60,6 +61,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
@@ -2373,4 +2375,29 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		assert.Equal(t, wantOutputs, outputs)
 		assert.Equal(t, "readingUpdateID="+updateID, gotQuery)
 	})
+}
+
+func TestCompletionStatus(t *testing.T) {
+	t.Parallel()
+
+	awaitErr := result.BailError(&plugin.AwaitError{})
+	tests := []struct {
+		name     string
+		err      error
+		awaiting bool
+		want     apitype.UpdateStatus
+	}{
+		{"no error", nil, true, apitype.UpdateStatusSucceeded},
+		{"plain error", errors.New("boom"), true, apitype.UpdateStatusFailed},
+		{"await error with capability", awaitErr, true, apitype.UpdateStatusAwaiting},
+		{"await error without capability", awaitErr, false, apitype.UpdateStatusFailed},
+		{"non-await bail with capability", result.BailError(errors.New("boom")), true, apitype.UpdateStatusFailed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := completionStatus(tt.err, apitype.Capabilities{AwaitingUpdateStatus: tt.awaiting})
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

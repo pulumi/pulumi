@@ -39,6 +39,8 @@ const (
 	SucceededResult UpdateResult = "succeeded"
 	// FailedResult is for updates that have failed.
 	FailedResult UpdateResult = "failed"
+	// AwaitingResult is for updates that ended with only awaiting resources.
+	AwaitingResult UpdateResult = "awaiting"
 )
 
 // Keys we use for values put into UpdateInfo.Environment.

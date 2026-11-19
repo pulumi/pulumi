@@ -193,6 +193,23 @@ func TestCapabilities(t *testing.T) {
 		}, actual)
 	})
 
+	t.Run("parse awaiting update status", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability: UpdateStatusAwaitingCapability,
+					Version:    1,
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			AwaitingUpdateStatus: true,
+		}, actual)
+	})
+
 	t.Run("parse coherence windows", func(t *testing.T) {
 		t.Parallel()
 		for _, version := range []int{1, 2} {

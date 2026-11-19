@@ -55,6 +55,8 @@ const (
 	SucceededResult UpdateResult = "succeeded"
 	// FailedResult is for updates that have failed.
 	FailedResult UpdateResult = "failed"
+	// AwaitingResult is for updates that ended with only awaiting resources.
+	AwaitingResult UpdateResult = "awaiting"
 )
 
 // OpType describes the type of operation performed to a resource managed by Pulumi.

@@ -1641,7 +1641,7 @@ export type UpdateKind = "update" | "preview" | "refresh" | "rename" | "destroy"
 /**
  * Represents the current status of a given update.
  */
-export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed";
+export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed" | "awaiting";
 
 /**
  * The granular CRUD operation performed on a particular resource during an update.

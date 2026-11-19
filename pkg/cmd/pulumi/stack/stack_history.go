@@ -245,11 +245,15 @@ func displayUpdatesConsole(
 	for _, update := range updates {
 		fmt.Fprintf(w, "Version: %d\n", update.Version)
 		fmt.Fprintf(w, "UpdateKind: %v\n", update.Kind)
-		if update.Result == "succeeded" {
-			fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
-		} else {
-			fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Red, update.Result, colors.Reset)))
+		statusColor := colors.Red
+		switch update.Result {
+		case backend.SucceededResult:
+			statusColor = colors.Green
+		case backend.AwaitingResult:
+			statusColor = colors.Yellow
+		case backend.InProgressResult, backend.FailedResult:
 		}
+		fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", statusColor, update.Result, colors.Reset)))
 		fmt.Fprintf(w, "Message: %v\n", update.Message)
 
 		printResourceChanges(colors.GreenBackground, colors.Black, "+", colors.Reset, update.ResourceChanges["create"])

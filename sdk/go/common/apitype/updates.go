@@ -259,6 +259,9 @@ const (
 	UpdateStatusFailed UpdateStatus = "failed"
 	// UpdateStatusCancelled indicates that an update completed due to cancellation.
 	UpdateStatusCancelled UpdateStatus = "cancelled"
+	// UpdateStatusAwaiting indicates that an update ended with only awaiting resources. Only sent when the backend
+	// advertises the UpdateStatusAwaitingCapability capability.
+	UpdateStatusAwaiting UpdateStatus = "awaiting"
 )
 
 // CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
