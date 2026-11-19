@@ -1,0 +1,4 @@
+component: backend/service
+kind: feat
+body: Complete updates that end with only awaiting resources with status `awaiting` when the backend advertises the `update-status-awaiting` capability
+time: 2026-11-19T00:00:00Z

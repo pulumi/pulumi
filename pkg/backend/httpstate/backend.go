@@ -52,6 +52,7 @@ import (
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
@@ -2405,10 +2406,8 @@ func (b *cloudBackend) runEngineAction(
 	close(displayEvents)
 
 	// Mark the update as complete.
-	status := apitype.UpdateStatusSucceeded
-	if updateErr != nil {
-		status = apitype.UpdateStatusFailed
-	}
+	caps := b.Capabilities(ctx)
+	status := completionStatus(updateErr, caps)
 	var outputs *apitype.StackOutputsResponse
 	if status == apitype.UpdateStatusSucceeded {
 		var err error
@@ -2424,6 +2423,16 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	return plan, changes, snap, updateErr
+}
+
+func completionStatus(updateErr error, caps apitype.Capabilities) apitype.UpdateStatus {
+	if updateErr == nil {
+		return apitype.UpdateStatusSucceeded
+	}
+	if _, ok := errors.AsType[*plugin.AwaitError](result.UnwrapBail(updateErr)); ok && caps.AwaitingUpdateStatus {
+		return apitype.UpdateStatusAwaiting
+	}
+	return apitype.UpdateStatusFailed
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

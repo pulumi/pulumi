@@ -65,6 +65,9 @@ const (
 
 	// Indicates that the service supports stack update coherence windows.
 	CoherenceWindows APICapability = "coherence-windows"
+
+	// Indicates that the service accepts the "awaiting" update status.
+	UpdateStatusAwaitingCapability APICapability = "update-status-awaiting"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -168,6 +171,9 @@ type Capabilities struct {
 	// Indicates whether the service supports reading a stack's outputs directly.
 	StackOutputs bool
 
+	// Indicates whether the service accepts the "awaiting" update status.
+	AwaitingUpdateStatus bool
+
 	// The version of stack update coherence windows the service supports, or 0 when it has none.
 	CoherenceWindowsVersion int
 }
@@ -239,6 +245,10 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 		case StackOutputs:
 			if entry.Version == 1 {
 				parsed.StackOutputs = true
+			}
+		case UpdateStatusAwaitingCapability:
+			if entry.Version == 1 {
+				parsed.AwaitingUpdateStatus = true
 			}
 		case CoherenceWindows:
 			parsed.CoherenceWindowsVersion = entry.Version
