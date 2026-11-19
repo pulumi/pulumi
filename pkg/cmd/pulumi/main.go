@@ -15,12 +15,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/telemetry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"go.uber.org/automaxprocs/maxprocs"
@@ -64,7 +66,13 @@ func main() {
 
 	pulumiCmd, cleanup := NewPulumiCmd()
 
-	if err := pulumiCmd.Execute(); err != nil {
+	executed, err := pulumiCmd.ExecuteC()
+	ctx := context.Background()
+	if executed != nil && executed.Context() != nil {
+		ctx = executed.Context()
+	}
+	telemetry.Emit(ctx, exitTelemetry(ctx, err)...)
+	if err != nil {
 		cmd.DisplayErrorMessage(pulumiCmd.Context(), err, pulumiCmd.ErrOrStderr())
 		cleanup()
 		os.Exit(cmd.ExitCodeFor(err))
