@@ -632,3 +632,116 @@ func TestOptOutSkipsConfigWarnings(t *testing.T) {
 		})
 	}
 }
+
+func TestStatus(t *testing.T) {
+	t.Parallel()
+
+	const installation = "0b3b5a4e-6c1f-4c55-9d0a-2a7f6f0d8c11"
+	cases := map[string]struct {
+		vars      map[string]string
+		config    string
+		enabled   bool
+		source    Source
+		log       bool
+		logSource Source
+		err       string
+	}{
+		"no config": {enabled: true, source: SourceDefault, logSource: SourceDefault},
+		"config without setting": {
+			config:    `{"version": 1, "installation": "` + installation + `", "notified": true}`,
+			enabled:   true,
+			source:    SourceDefault,
+			logSource: SourceDefault,
+		},
+		"config disabled with log": {
+			config:    `{"version": 1, "installation": "` + installation + `", "telemetry": false, "log": true}`,
+			source:    SourceConfig,
+			log:       true,
+			logSource: SourceConfig,
+		},
+		"DO_NOT_TRACK": {
+			vars:      map[string]string{"DO_NOT_TRACK": "1"},
+			source:    SourceDoNotTrack,
+			logSource: SourceDefault,
+		},
+		"config enabled beats DO_NOT_TRACK": {
+			vars:      map[string]string{"DO_NOT_TRACK": "1"},
+			config:    `{"version": 1, "installation": "` + installation + `", "telemetry": true}`,
+			enabled:   true,
+			source:    SourceConfig,
+			logSource: SourceDefault,
+		},
+		"env overrides config": {
+			vars:      map[string]string{"PULUMI_TELEMETRY": "1", "PULUMI_TELEMETRY_LOG": "0"},
+			config:    `{"version": 1, "installation": "` + installation + `", "telemetry": false, "log": true}`,
+			enabled:   true,
+			source:    SourceEnv,
+			logSource: SourceEnv,
+		},
+		"unsupported version": {
+			config: `{"version": 2}`,
+			err:    "unsupported version 2",
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newFixture(t, c.vars)
+			if c.config != "" {
+				f.writeConfig(t, c.config)
+			}
+
+			s, err := Status(f.args.HomeDir, f.args.Env)
+
+			if c.err != "" {
+				require.ErrorContains(t, err, c.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, c.enabled, s.Enabled)
+			require.Equal(t, c.source, s.EnabledSource)
+			require.Equal(t, c.logSource, s.LogSource)
+			if c.log {
+				require.Equal(t, filepath.Join(f.args.HomeDir, "telemetry", "log", "events.jsonl"), s.LogPath)
+			} else {
+				require.Empty(t, s.LogPath)
+			}
+			if c.config == "" {
+				require.NoFileExists(t, f.configPath())
+			}
+		})
+	}
+}
+
+func TestSetEnabled(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t, nil)
+
+	require.NoError(t, SetEnabled(f.args.HomeDir, false))
+	cfg := f.readConfig(t)
+	require.NotNil(t, cfg.Telemetry)
+	require.False(t, *cfg.Telemetry)
+	require.True(t, cfg.Notified)
+	require.Nil(t, fromContext(Init(t.Context(), f.args)))
+	require.Empty(t, f.diags.String())
+
+	require.NoError(t, SetLog(f.args.HomeDir, true))
+	require.Equal(t, cfg.Installation, f.readConfig(t).Installation)
+	require.True(t, f.readConfig(t).Log)
+	tel := fromContext(Init(t.Context(), f.args))
+	require.NotNil(t, tel)
+	require.False(t, tel.send)
+	require.NotEmpty(t, tel.logPath)
+
+	require.NoError(t, SetLog(f.args.HomeDir, false))
+	require.False(t, f.readConfig(t).Log)
+
+	f.writeConfig(t, `{"version": 2}`)
+	require.ErrorContains(t, SetEnabled(f.args.HomeDir, true), "unsupported version 2")
+	data, err := os.ReadFile(f.configPath())
+	require.NoError(t, err)
+	require.Equal(t, `{"version": 2}`, string(data))
+}
