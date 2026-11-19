@@ -1,0 +1,11 @@
+<{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::plainRes: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pulumi:providers:pkgA::bridged: (same)
+<{%reset%}>    [id=4]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::bridgedRes: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::bridged::4]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

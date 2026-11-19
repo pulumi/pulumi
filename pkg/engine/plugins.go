@@ -736,8 +736,8 @@ func describePluginSource(p workspace.PackageDescriptor) string {
 	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
 }
 
-// ambigiousPluginSourceError is returned when two distinct plugins both claim
-// to provide the same default provider package name.
+// ambigiousPluginSourceError is returned when two distinct parameterized
+// packages, and no plain plugin, provide the same default provider package name.
 type ambigiousPluginSourceError struct {
 	pkg  tokens.Package
 	a, b workspace.PackageDescriptor
@@ -809,6 +809,17 @@ func computeDefaultProviderPackages(
 	// sort is not functioning properly.
 	sourcePackages := sourceSet.Values()
 	slices.SortFunc(sourcePackages, workspace.SortPackageDescriptors)
+	// A plain plugin and a parameterized package can share a name, e.g. pulumi-aws and the terraform-provider
+	// plugin parameterized as "aws". That is not ambiguous: SDKs of parameterized packages register through
+	// package refs, so only requests from the plain plugin's SDK fall back to this map, and the plain plugin is
+	// the default. Collected up front, so that the result does not depend on the order of the packages.
+	plainPackages := make(map[tokens.Package]bool)
+	for _, p := range sourcePackages {
+		if p.Kind == apitype.ResourcePlugin && p.ExtensionParameterization == nil && p.Parameterization == nil {
+			plainPackages[tokens.Package(p.PackageName())] = true
+		}
+	}
+
 	for _, p := range sourcePackages {
 		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if p.Kind != apitype.ResourcePlugin {
@@ -830,6 +841,13 @@ func computeDefaultProviderPackages(
 		}
 
 		name := tokens.Package(p.PackageName())
+
+		if p.Parameterization != nil && plainPackages[name] {
+			logging.V(preparePluginLog).Infof(
+				"computeDefaultProviderPlugins(): skipping %s, a plain plugin provides package %s", p, name,
+			)
+			continue
+		}
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
 			if !samePackage(seenPlugin, p) {

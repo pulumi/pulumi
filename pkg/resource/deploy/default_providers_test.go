@@ -54,6 +54,54 @@ func TestDefaultProviders(t *testing.T) {
 			assert.Equal(t, "github://owner/repo", req.PluginDownloadURL())
 			assert.Equal(t, map[string][]byte{"key": []byte("expected-checksum-value")}, req.PluginChecksums())
 		})
+		t.Run("ignore defaultProvider of a plain plugin for a parameterized package", func(t *testing.T) {
+			t.Parallel()
+			// A plain plugin and a parameterized package share the name "pkg"; the default provider
+			// info describes the plain plugin (https://github.com/pulumi/pulumi/issues/24167).
+			plainVersion := semver.MustParse("7.43.0")
+			d := &defaultProviders{
+				defaultProviderInfo: map[tokens.Package]workspace.PackageDescriptor{
+					tokens.Package("pkg"): {
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name:              "pkg",
+							Version:           &plainVersion,
+							PluginDownloadURL: "github://owner/plain",
+							Checksums:         map[string][]byte{"key": []byte("plain-checksum")},
+						},
+					},
+				},
+				config: &configSourceMock{},
+			}
+			parameterization := &workspace.Parameterization{Name: "pkg", Version: semver.MustParse("6.72.0")}
+			req := d.normalizeProviderRequest(
+				providers.NewProviderRequest(tokens.Package("bridge"), nil, "", nil, parameterization))
+			assert.Nil(t, req.Version())
+			assert.Empty(t, req.PluginDownloadURL())
+			assert.Nil(t, req.PluginChecksums())
+			assert.Equal(t, parameterization, req.Parameterization())
+		})
+		t.Run("use defaultProvider of the same parameterized package", func(t *testing.T) {
+			t.Parallel()
+			bridgeVersion := semver.MustParse("1.5.1")
+			parameterization := &workspace.Parameterization{Name: "pkg", Version: semver.MustParse("6.72.0")}
+			d := &defaultProviders{
+				defaultProviderInfo: map[tokens.Package]workspace.PackageDescriptor{
+					tokens.Package("pkg"): {
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name:              "bridge",
+							Version:           &bridgeVersion,
+							PluginDownloadURL: "github://owner/bridge",
+						},
+						Parameterization: parameterization,
+					},
+				},
+				config: &configSourceMock{},
+			}
+			req := d.normalizeProviderRequest(
+				providers.NewProviderRequest(tokens.Package("bridge"), nil, "", nil, parameterization))
+			assert.Equal(t, &bridgeVersion, req.Version())
+			assert.Equal(t, "github://owner/bridge", req.PluginDownloadURL())
+		})
 	})
 	t.Run("newRegisterDefaultProviderEvent", func(t *testing.T) {
 		t.Parallel()

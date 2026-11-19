@@ -61,7 +61,25 @@ type defaultProviderRequest struct {
 	response chan<- defaultProviderResponse
 }
 
+// describesRequest reports whether the default provider info desc describes the package that req asks for. A plain
+// plugin and a parameterized package can share a name, and the default provider info of that name then describes the
+// plain plugin, so it must not complete a request for the parameterized package.
+func describesRequest(desc workspace.PackageDescriptor, req providers.ProviderRequest) bool {
+	if req.Parameterization() == nil {
+		return true
+	}
+	return desc.Parameterization != nil &&
+		desc.Name == string(req.Name()) &&
+		desc.Parameterization.Name == req.Parameterization().Name
+}
+
 func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderRequest) providers.ProviderRequest {
+	defaultInfo := d.defaultProviderInfo[req.Package()]
+	if !describesRequest(defaultInfo, req) {
+		logging.V(5).Infof("normalizeProviderRequest(%s): default provider info is for another plugin, ignoring it", req)
+		defaultInfo = workspace.PackageDescriptor{}
+	}
+
 	// Request that the engine instantiate a specific version of this provider, if one was requested. We'll figure out
 	// what version to request by:
 	//   1. Providing the Version field of the ProviderRequest verbatim, if it was provided, otherwise
@@ -75,7 +93,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 	if req.Version() != nil {
 		logging.V(5).Infof("normalizeProviderRequest(%s): using version %s from request", req, req.Version())
 	} else {
-		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
+		if version := defaultInfo.Version; version != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default version hit on version %s", req, version)
 			req = providers.NewProviderRequest(
 				req.Package(), version, req.PluginDownloadURL(), req.PluginChecksums(), req.Parameterization())
@@ -89,7 +107,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		logging.V(5).Infof("normalizeProviderRequest(%s): using pluginDownloadURL %s from request",
 			req, req.PluginDownloadURL())
 	} else {
-		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
+		if pluginDownloadURL := defaultInfo.PluginDownloadURL; pluginDownloadURL != "" {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginDownloadURL hit on %s",
 				req, pluginDownloadURL)
 			req = providers.NewProviderRequest(
@@ -104,7 +122,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		logging.V(5).Infof("normalizeProviderRequest(%s): using pluginChecksums %v from request",
 			req, req.PluginChecksums())
 	} else {
-		if pluginChecksums := d.defaultProviderInfo[req.Package()].Checksums; pluginChecksums != nil {
+		if pluginChecksums := defaultInfo.Checksums; pluginChecksums != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default pluginChecksums hit on %v",
 				req, pluginChecksums)
 			req = providers.NewProviderRequest(
@@ -119,7 +137,7 @@ func (d *defaultProviders) normalizeProviderRequest(req providers.ProviderReques
 		logging.V(5).Infof("normalizeProviderRequest(%s): using parameterization %v from request",
 			req, req.Parameterization())
 	} else {
-		if parameterization := d.defaultProviderInfo[req.Package()].Parameterization; parameterization != nil {
+		if parameterization := defaultInfo.Parameterization; parameterization != nil {
 			logging.V(5).Infof("normalizeProviderRequest(%s): default parameterization hit on %v",
 				req, parameterization)
 

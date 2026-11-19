@@ -369,33 +369,8 @@ func newDeployment(
 			}
 
 			if imp.Provider == "" && (!imp.Component || imp.Remote) {
-				if imp.Version == nil {
-					dpi := defaultProviderInfo[imp.Type.Package()]
-					imp.Version = dpi.Version
-					if dpi.Parameterization != nil {
-						imp.Version = &dpi.Parameterization.Version
-					}
-				}
-				if imp.PluginDownloadURL == "" {
-					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
-				}
-				if imp.PluginChecksums == nil {
-					imp.PluginChecksums = defaultProviderInfo[imp.Type.Package()].Checksums
-				}
-				if imp.Parameterization == nil {
-					dpi := defaultProviderInfo[imp.Type.Package()]
-
-					if dpi.Parameterization != nil {
-						if dpi.Version == nil {
-							return nil, fmt.Errorf("no version specified for provider %q", dpi.Name)
-						}
-
-						imp.Parameterization = &deploy.Parameterization{
-							PluginName:    tokens.Package(dpi.Name),
-							PluginVersion: *dpi.Version,
-							Value:         dpi.Parameterization.Value,
-						}
-					}
+				if err := completeImportFromDefaultProvider(imp, defaultProviderInfo[imp.Type.Package()]); err != nil {
+					return nil, err
 				}
 			}
 		}
@@ -551,6 +526,40 @@ func checkTargets(targetUrns deploy.UrnTargets, excludeUrns deploy.UrnTargets, s
 	for _, target := range excludeUrns.Literals() {
 		if _, ok := urns[target]; !ok {
 			return fmt.Errorf("no resource named '%s' found", target)
+		}
+	}
+	return nil
+}
+
+// completeImportFromDefaultProvider fills the plugin fields an import without an explicit provider leaves unset from
+// the default provider info dpi of its package.
+func completeImportFromDefaultProvider(imp *deploy.Import, dpi workspace.PackageDescriptor) error {
+	// A plain plugin and a parameterized package can share a name, and dpi then describes the plain plugin, so it
+	// must not complete an import of the parameterized package.
+	if imp.Parameterization != nil &&
+		(dpi.Parameterization == nil || dpi.Name != string(imp.Parameterization.PluginName)) {
+		return nil
+	}
+	if imp.Version == nil {
+		imp.Version = dpi.Version
+		if dpi.Parameterization != nil {
+			imp.Version = &dpi.Parameterization.Version
+		}
+	}
+	if imp.PluginDownloadURL == "" {
+		imp.PluginDownloadURL = dpi.PluginDownloadURL
+	}
+	if imp.PluginChecksums == nil {
+		imp.PluginChecksums = dpi.Checksums
+	}
+	if imp.Parameterization == nil && dpi.Parameterization != nil {
+		if dpi.Version == nil {
+			return fmt.Errorf("no version specified for provider %q", dpi.Name)
+		}
+		imp.Parameterization = &deploy.Parameterization{
+			PluginName:    tokens.Package(dpi.Name),
+			PluginVersion: *dpi.Version,
+			Value:         dpi.Parameterization.Value,
 		}
 	}
 	return nil
