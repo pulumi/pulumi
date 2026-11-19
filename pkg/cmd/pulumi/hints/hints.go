@@ -92,8 +92,8 @@ func Offer(h Hint) { defaultManager.offer(h) }
 // machine-readable output.
 func Suppress() { defaultManager.suppress() }
 
-// Flush shows at most one of the offered hints on w and clears the queue. It never fails the command:
-// errors reading or writing the state file are logged, and no hint is shown.
+// Flush shows at most one of the offered hints on w and resets the hints for the next command, including any
+// [Suppress]. It never fails the command: errors reading or writing the state file are logged, and no hint is shown.
 func Flush(w io.Writer) { defaultManager.flush(w) }
 
 // settings are the user's choices about which hints to show.
@@ -142,9 +142,9 @@ func (m *manager) suppress() {
 func (m *manager) flush(w io.Writer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	pending := m.pending
-	m.pending = nil
-	if len(pending) == 0 || m.suppressed || m.isCI() {
+	pending, suppressed := m.pending, m.suppressed
+	m.pending, m.suppressed = nil, false
+	if len(pending) == 0 || suppressed || m.isCI() {
 		return
 	}
 	settings := m.settings()
