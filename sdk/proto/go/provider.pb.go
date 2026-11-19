@@ -37,9 +37,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// `Hint` names a product hint that is relevant to a [](pulumirpc.CheckConfigFailure) a provider reports. A product hint points
-// the user to a Pulumi feature that helps with this kind of failure. The provider says which hint is relevant and what it says, and
-// the engine decides whether to show it.
+// `Hint` names a product hint, which points the user to a Pulumi feature that helps with a failure. A provider sets it,
+// with its text, on a [](pulumirpc.CheckConfigFailure), and the engine decides whether to show it.
 type Hint int32
 
 const (
@@ -1894,10 +1893,10 @@ type CheckConfigFailure struct {
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	// Commands the user can run to resolve the failure.
 	Remediations []*CommandRemediation `protobuf:"bytes,3,rep,name=remediations,proto3" json:"remediations,omitempty"`
-	// A product hint that is relevant to this failure, if any. The engine may show it to the user.
+	// A product hint relevant to this failure, if any.
 	Hint Hint `protobuf:"varint,4,opt,name=hint,proto3,enum=pulumirpc.Hint" json:"hint,omitempty"`
-	// The text of the product hint in `hint`. The engine shows it if it decides to show the hint. It may span several
-	// lines, for example to put a "Learn more" link on a line of its own.
+	// The text of `hint`, which the engine shows if it decides to show the hint. It may span several lines, for
+	// example to put a "Learn more" link on a line of its own.
 	HintMessage   string `protobuf:"bytes,5,opt,name=hint_message,json=hintMessage,proto3" json:"hint_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

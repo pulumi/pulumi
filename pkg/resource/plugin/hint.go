@@ -18,8 +18,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Hint names a product hint that is relevant to a failure a provider reports. The provider says which hint is
-// relevant and what it says, and the engine decides whether to show it.
+// Hint names a product hint, which points the user to a Pulumi feature that helps with a failure a provider reports.
 type Hint int
 
 const (
