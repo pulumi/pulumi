@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -108,7 +110,7 @@ func TestUsingAI(t *testing.T) {
 		emitted(t, UsingAI(getenv(map[string]string{"AI_AGENT": "claude-code_2-1-285_agent"})))["using-ai"])
 	require.Equal(t, "codex", emitted(t, UsingAI(getenv(map[string]string{"AI_AGENT": "codex_1-0_agent"})))["using-ai"])
 	require.Equal(t, "other", emitted(t, UsingAI(getenv(map[string]string{"AI_AGENT": "my-agent"})))["using-ai"])
-	require.Equal(t, "no", emitted(t, UsingAI(getenv(nil)))["using-ai"])
+	require.Equal(t, "none", emitted(t, UsingAI(getenv(nil)))["using-ai"])
 }
 
 func TestBackend(t *testing.T) {
@@ -130,15 +132,105 @@ func TestResult(t *testing.T) {
 	t.Parallel()
 
 	facts := emitted(t, ExitCode(255), Duration(1500*time.Millisecond), Interactive(true), AutomationAPI(false),
-		CI(true), OS(), Arch())
+		OS(), Arch())
 
 	require.Equal(t, map[string]any{
 		"exit-code":      float64(255),
 		"duration-ms":    float64(1500),
 		"interactive":    true,
 		"automation-api": false,
-		"ci":             true,
 		"os":             runtime.GOOS,
 		"arch":           runtime.GOARCH,
 	}, facts)
+}
+
+func TestValidateFact(t *testing.T) {
+	t.Parallel()
+
+	for name, value := range map[string]any{
+		"interactive": true,
+		"exit-code":   float64(255),
+		"duration-ms": float64(0),
+		"command":     "pulumi:stack:new",
+		"backend":     "other",
+		"flags":       []string{"yes", "skip-preview"},
+		"env-vars":    []string{"PULUMI_HOME"},
+	} {
+		require.NoError(t, ValidateFact(name, value), name)
+	}
+
+	for _, c := range []struct {
+		name  string
+		value any
+		err   string
+	}{
+		{"stack", "dev", `unknown fact "stack"`},
+		{"interactive", "yes", "expected a bool"},
+		{"exit-code", 1.5, "expected an integer"},
+		{"command", "pulumi:stack:select my-org/dev", "expected one of the allowed values"},
+		{"using-ai", "my-agent", "expected one of the allowed values"},
+		{"flags", []string{"stack=prod"}, "does not match"},
+		{"flags", []string{strings.Repeat("a", maxNameLength+1)}, "does not match"},
+		{"flags", slices.Repeat([]string{"yes"}, maxNames+1), "at most"},
+		{"env-vars", []string{"AWS_SECRET_ACCESS_KEY"}, "does not match"},
+	} {
+		require.ErrorContains(t, ValidateFact(c.name, c.value), c.err, c.name)
+	}
+}
+
+func TestEmitDropsInvalidFacts(t *testing.T) {
+	t.Parallel()
+
+	facts := emitted(t, boolFact("interactive", true), enumFact("command", "my-secret-command"), enumFact("stack", "dev"))
+
+	require.Equal(t, map[string]any{"interactive": true}, facts)
+}
+
+func TestSchemaSenderDropsInvalidFacts(t *testing.T) {
+	t.Parallel()
+
+	line := func(facts string) json.RawMessage {
+		return json.RawMessage(`{"installation":"i","invocation":"v","timestamp":"2026-11-17T10:00:00Z","facts":` +
+			facts + `}`)
+	}
+	s := &fakeSender{}
+	send := schemaSender(s.send)
+
+	require.NoError(t, send(t.Context(), []json.RawMessage{
+		line(`{"ci":true,"interactive":true,"using-ai":"no","env-vars":["PULUMI_HOME"]}`),
+		line(`{"ci":true}`),
+		json.RawMessage(`not json`),
+	}))
+
+	sent := s.sent()
+	require.Len(t, sent, 1)
+	require.Len(t, sent[0], 1)
+	var e event
+	require.NoError(t, json.Unmarshal(sent[0][0], &e))
+	require.Equal(t, "v", e.Invocation)
+	require.Equal(t, map[string]any{"interactive": true, "env-vars": []any{"PULUMI_HOME"}}, e.Facts)
+}
+
+func TestQueueSendsWithinSchema(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t, map[string]string{"PULUMI_TELEMETRY": "1"})
+	ctx := Init(t.Context(), f.args)
+	defer Shutdown(ctx)
+
+	require.NoError(t, fromContext(ctx).queue.send(ctx, []json.RawMessage{
+		json.RawMessage(`{"installation":"i","invocation":"v","facts":{"ci":true,"interactive":true}}`),
+	}))
+
+	received := f.service.received()
+	require.Len(t, received, 1)
+	require.Equal(t, map[string]any{"interactive": true}, received[0].Events[0].Facts)
+}
+
+func TestSchemaSenderSkipsEmptyBatches(t *testing.T) {
+	t.Parallel()
+
+	s := &fakeSender{}
+	require.NoError(t, schemaSender(s.send)(t.Context(), []json.RawMessage{json.RawMessage(`{"facts":{"ci":true}}`)}))
+	require.Empty(t, s.sent())
 }

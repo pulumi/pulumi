@@ -336,13 +336,13 @@ func TestLogging(t *testing.T) {
 		f.args.CI = true
 
 		ctx := Init(t.Context(), f.args)
-		Emit(ctx, boolFact("ci", true))
+		Emit(ctx, boolFact("interactive", true))
 		Shutdown(ctx)
 
 		entries := f.readLog(t)
 		require.Len(t, entries, 1)
 		require.True(t, entries[0].Sending)
-		require.Contains(t, string(entries[0].Event), `"facts":{"ci":true}`)
+		require.Contains(t, string(entries[0].Event), `"facts":{"interactive":true}`)
 		require.Len(t, f.service.received(), 1)
 	})
 
@@ -353,13 +353,13 @@ func TestLogging(t *testing.T) {
 		f.args.CI = true
 
 		ctx := Init(t.Context(), f.args)
-		Emit(ctx, boolFact("ci", true), enumFact("backend", "pulumi"))
+		Emit(ctx, boolFact("interactive", true), enumFact("backend", "pulumi"))
 		Shutdown(ctx)
 
 		entries := f.readLog(t)
 		require.Len(t, entries, 1)
 		require.False(t, entries[0].Sending)
-		require.Contains(t, string(entries[0].Event), `"facts":{"backend":"pulumi","ci":true}`)
+		require.Contains(t, string(entries[0].Event), `"facts":{"backend":"pulumi","interactive":true}`)
 		require.Empty(t, Headers(ctx))
 		require.Empty(t, f.service.received())
 		require.NoFileExists(t, filepath.Join(f.walDir(), fromContext(ctx).invocation+walExtension))
@@ -372,7 +372,7 @@ func TestLogging(t *testing.T) {
 		f.writeConfig(t, `{"version": 1, "installation": "0b3b5a4e-6c1f-4c55-9d0a-2a7f6f0d8c11", "log": true}`)
 
 		ctx := Init(t.Context(), f.args)
-		Emit(ctx, boolFact("ci", true))
+		Emit(ctx, boolFact("interactive", true))
 		Shutdown(ctx)
 
 		entries := f.readLog(t)
@@ -387,7 +387,7 @@ func TestLogging(t *testing.T) {
 		f := newFixture(t, map[string]string{"PULUMI_TELEMETRY": "1", "PULUMI_TELEMETRY_LOG": "1"})
 
 		ctx := Init(t.Context(), f.args)
-		Emit(ctx, boolFact("ci", false))
+		Emit(ctx, boolFact("interactive", false))
 		UseBackend(ctx, "https://app.pulumi.example.com")
 		Shutdown(ctx)
 
@@ -406,7 +406,7 @@ func TestSendOnShutdownInCI(t *testing.T) {
 	ctx := Init(t.Context(), f.args)
 	tel := fromContext(ctx)
 	Emit(ctx, enumFact("command", "pulumi:stack:new"), numberFact("exit-code", 0), setFact("flags", "yes", "stack"))
-	Emit(ctx, boolFact("ci", true))
+	Emit(ctx, boolFact("interactive", true))
 	Emit(ctx)
 	Shutdown(ctx)
 
@@ -424,7 +424,7 @@ func TestSendOnShutdownInCI(t *testing.T) {
 		"exit-code": float64(0),
 		"flags":     []any{"yes", "stack"},
 	}, received[0].Events[0].Facts)
-	require.Equal(t, map[string]any{"ci": true}, received[0].Events[1].Facts)
+	require.Equal(t, map[string]any{"interactive": true}, received[0].Events[1].Facts)
 	require.NoDirExists(t, f.walDir())
 }
 
@@ -452,7 +452,7 @@ func TestPulseSendsAndClearsLog(t *testing.T) {
 	ctx := Init(t.Context(), f.args)
 	tel := fromContext(ctx)
 	wal := filepath.Join(f.walDir(), tel.invocation+walExtension)
-	Emit(ctx, boolFact("ci", false))
+	Emit(ctx, boolFact("interactive", false))
 	UseBackend(ctx, "https://app.pulumi.com")
 
 	require.Eventually(t, func() bool { return len(f.service.received()) == 1 }, 10*time.Second, 10*time.Millisecond)
@@ -472,8 +472,8 @@ func TestUnsentEventsAreSentByAnotherProcess(t *testing.T) {
 
 	ctx := Init(t.Context(), f.args)
 	tel := fromContext(ctx)
-	Emit(ctx, boolFact("ci", false))
-	Emit(ctx, boolFact("ci", true))
+	Emit(ctx, boolFact("interactive", false))
+	Emit(ctx, boolFact("interactive", true))
 	Shutdown(ctx)
 
 	require.Empty(t, f.service.received())
@@ -498,7 +498,7 @@ func TestLiveLogIsNotClaimed(t *testing.T) {
 	ctx := Init(t.Context(), f.args)
 	defer Shutdown(ctx)
 	tel := fromContext(ctx)
-	Emit(ctx, boolFact("ci", false))
+	Emit(ctx, boolFact("interactive", false))
 	UseBackend(ctx, "file:///tmp/state")
 
 	other := newTestQueue(t, f.walDir(), "other", httpSender(f.args.URL, f.args.UserAgent))
@@ -541,7 +541,7 @@ func TestEventsHeldUntilBackend(t *testing.T) {
 	defer Shutdown(ctx)
 	tel := fromContext(ctx)
 	wal := filepath.Join(f.walDir(), tel.invocation+walExtension)
-	Emit(ctx, boolFact("ci", false))
+	Emit(ctx, boolFact("interactive", false))
 
 	time.Sleep(100 * time.Millisecond)
 	require.Empty(t, f.service.received())
@@ -568,7 +568,7 @@ func TestIneligibleBackendDiscards(t *testing.T) {
 			f.args.CI = ci
 
 			ctx := Init(t.Context(), f.args)
-			Emit(ctx, boolFact("ci", ci))
+			Emit(ctx, boolFact("interactive", ci))
 			UseBackend(ctx, "https://app.pulumi.example.com")
 			Emit(ctx, numberFact("exit-code", 0))
 			UseBackend(ctx, "https://app.pulumi.com")
@@ -594,7 +594,7 @@ func TestShutdownDoesNotWaitForInFlightSend(t *testing.T) {
 
 	ctx := Init(t.Context(), f.args)
 	fromContext(ctx).queue.shutdownTimeout = 100 * time.Millisecond
-	Emit(ctx, boolFact("ci", true))
+	Emit(ctx, boolFact("interactive", true))
 	UseBackend(ctx, "https://app.pulumi.com")
 	require.Eventually(t, func() bool { return len(f.service.received()) == 1 }, 10*time.Second, 10*time.Millisecond)
 

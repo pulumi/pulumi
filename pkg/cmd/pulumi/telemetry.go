@@ -33,7 +33,6 @@ func invocationTelemetry(c *cobra.Command) []telemetry.KV {
 		telemetry.Command(c),
 		telemetry.Flags(c),
 		telemetry.EnvVars(env.Global),
-		telemetry.CI(ciutil.IsCI()),
 		telemetry.CISystem(ciutil.DetectVars().Name),
 		telemetry.Interactive(cmdutil.Interactive()),
 		telemetry.AutomationAPI(cmdutil.IsTruthy(os.Getenv("PULUMI_AUTOMATION_API"))),

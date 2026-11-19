@@ -70,6 +70,21 @@ check_proto: .make/proto
 		exit 1; \
 	fi
 
+.PHONY: build_telemetry_schema check_telemetry_schema
+TELEMETRY_SCHEMA_SOURCES := $(sort $(shell find pkg/cmd pkg/telemetry -name '*.go' -not -name '*_test.go')) pkg/go.mod
+TELEMETRY_SCHEMA_OUTPUTS := pkg/telemetry/schema.json
+build_telemetry_schema: .make/telemetry_schema
+.make/telemetry_schema: $(TELEMETRY_SCHEMA_SOURCES)
+	cd pkg && PULUMI_ACCEPT=true go test -count=1 -run '^TestTelemetrySchema$$' ./cmd/pulumi
+	@mkdir -p .make && touch $@
+
+check_telemetry_schema: .make/telemetry_schema
+	@if ! git diff --quiet -- $(TELEMETRY_SCHEMA_OUTPUTS); then \
+		echo "The telemetry schema is out of date. Run 'make build_telemetry_schema' and commit."; \
+		git diff -- $(TELEMETRY_SCHEMA_OUTPUTS); \
+		exit 1; \
+	fi
+
 .PHONY: generate
 generate::
 	$(call STEP_MESSAGE)
@@ -125,7 +140,7 @@ bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display
 
 .PHONY: build
 build:: export GOBIN=$(shell realpath ./bin)
-build:: build_proto .make/ensure/go bin/pulumi bin/pulumi-display.wasm
+build:: build_proto build_telemetry_schema .make/ensure/go bin/pulumi bin/pulumi-display.wasm
 
 install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
