@@ -182,11 +182,12 @@ func (m *manager) flush(w io.Writer) {
 }
 
 func show(w io.Writer, h Hint) {
-	label := cmdutil.EmojiOr("💡 ", "") + "Hint:"
-	// Line up the later lines of the message with its first line. The emoji is two columns wide.
-	indent := cmdutil.EmojiOr("   ", "") + "      "
+	const label = "Hint:"
+	// Line up the later lines of the message with its first line, after the label, its space and the emoji, which
+	// is two columns wide.
+	indent := strings.Repeat(" ", len(label)+1) + cmdutil.EmojiOr("   ", "")
 	message := strings.ReplaceAll(h.Message, "\n", "\n"+indent)
-	msg := fmt.Sprintf("\n%s%s%s %s\n", colors.SpecInfo, label, colors.Reset, message)
+	msg := fmt.Sprintf("\n%s%s%s%s %s\n", colors.SpecInfo, cmdutil.EmojiOr("💡 ", ""), label, colors.Reset, message)
 	_, err := fmt.Fprint(w, cmdutil.GetGlobalColorization().Colorize(msg))
 	contract.IgnoreError(err)
 }
@@ -211,7 +212,8 @@ func (m *manager) load() (state, string, error) {
 	return st, path, nil
 }
 
-// save atomically replaces the state file, so that concurrent CLI processes never see a partial file.
+// save writes the state file. Concurrent CLI processes may read a partly written file, which load treats as
+// empty, so at worst a hint is shown again before its cooldown ends.
 func save(path string, st state) error {
 	raw, err := json.MarshalIndent(st, "", "    ")
 	if err != nil {
@@ -220,22 +222,5 @@ func save(path string, st state) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), "hints-*.json")
-	if err != nil {
-		return err
-	}
-	if _, err := tmp.Write(raw); err != nil {
-		contract.IgnoreClose(tmp)
-		contract.IgnoreError(os.Remove(tmp.Name()))
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		contract.IgnoreError(os.Remove(tmp.Name()))
-		return err
-	}
-	if err := os.Rename(tmp.Name(), path); err != nil { //nolint:forbidigo // atomic replace of a state file
-		contract.IgnoreError(os.Remove(tmp.Name()))
-		return err
-	}
-	return nil
+	return os.WriteFile(path, raw, 0o600)
 }

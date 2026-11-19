@@ -302,8 +302,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
-			// Hints are human-facing, so don't mix them into machine-readable output.
-			if isMachineReadableOutput(cmd, args) {
+			// Hints are human-facing, so don't mix them into machine-readable output. Commands that parse their own
+			// flags, like `pulumi do`, may write JSON without cobra knowing, so they show no hints either.
+			if cmd.DisableFlagParsing || isJSONOutput(cmd) {
 				hints.Suppress()
 			}
 
@@ -451,8 +452,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					// The version didn't make it in time, so don't block the user
 				}
 			}
-
-			hints.Flush(cmd.ErrOrStderr())
 		},
 	}
 
@@ -655,22 +654,12 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 	return devCommits > curCommits
 }
 
-// isMachineReadableOutput reports whether cmd was asked to write JSON, through `--json` or `--output json`.
-func isMachineReadableOutput(cmd *cobra.Command, args []string) bool {
-	flags := cmd.Flags()
-	if cmd.DisableFlagParsing {
-		// cobra hasn't parsed this command's flags, so read the output flags from the raw arguments.
-		flags = pflag.NewFlagSet("", pflag.ContinueOnError)
-		flags.ParseErrorsAllowlist.UnknownFlags = true
-		flags.Bool("json", false, "")
-		flags.StringP("output", "o", "", "")
-		flags.BoolP("help", "h", false, "")
-		_ = flags.Parse(args)
-	}
-	if f := flags.Lookup("json"); f != nil && f.Value.String() == "true" {
+// isJSONOutput reports whether cmd was asked to write JSON, through `--json` or `--output json`.
+func isJSONOutput(cmd *cobra.Command) bool {
+	if f := cmd.Flags().Lookup("json"); f != nil && f.Value.String() == "true" {
 		return true
 	}
-	f := flags.Lookup("output")
+	f := cmd.Flags().Lookup("output")
 	return f != nil && f.Value.String() == "json"
 }
 
