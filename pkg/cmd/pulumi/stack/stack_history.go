@@ -246,10 +246,9 @@ func displayUpdatesConsole(
 		fmt.Fprintf(w, "Version: %d\n", update.Version)
 		fmt.Fprintf(w, "UpdateKind: %v\n", update.Kind)
 		statusColor := colors.Red
-		switch update.Result {
-		case backend.SucceededResult:
+		if update.Result == backend.SucceededResult {
 			statusColor = colors.Green
-		case backend.AwaitingResult:
+		} else if update.Result == backend.AwaitingResult {
 			statusColor = colors.Yellow
 		}
 		fmt.Fprint(w, opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", statusColor, update.Result, colors.Reset)))
