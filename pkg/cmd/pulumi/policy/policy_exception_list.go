@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // policyExceptionListRenderFunc writes the exceptions to stdout, and status messages to stderr.
@@ -110,16 +111,30 @@ func runPolicyExceptionList(
 	ctx context.Context, w, stderr io.Writer,
 	factory policyExceptionClientFactory, args policyExceptionListArgs,
 ) error {
-	if args.stack != "" {
-		project, stack, ok := strings.Cut(args.stack, "/")
-		if !ok || project == "" || stack == "" || strings.Contains(stack, "/") {
-			return cmdCmd.ConfigurationError{Message: fmt.Sprintf("--stack must be <project>/<stack>, got %q", args.stack)}
+	project, stack, _ := strings.Cut(args.stack, "/")
+	stackName, err := tokens.ParseStackName(stack)
+	if args.stack != "" && (project == "" || err != nil || strings.Contains(stack, "/")) {
+		return cmdCmd.ConfigurationError{Message: fmt.Sprintf("--stack must be <project>/<stack>, got %q", args.stack)}
+	}
+	for _, s := range args.statuses {
+		if s != "active" && s != "removed" {
+			return cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid --status %q: expected active or removed", s)}
 		}
 	}
 
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
+	}
+	// The stack filter matches targets, so a stack that doesn't exist would list nothing rather than fail.
+	if args.stack != "" {
+		id := client.StackIdentifier{Owner: org, Project: project, Stack: stackName}
+		_, err := c.GetStack(ctx, id)
+		if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
+			return fmt.Errorf("no stack named '%s' found", id)
+		} else if err != nil {
+			return err
+		}
 	}
 
 	var exceptions []cloudapitype.PolicyException
@@ -174,7 +189,7 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []cloudapity
 		row := table.Row{
 			e.ID,
 			e.PolicyPack,
-			e.Status,
+			policyExceptionStatus(e),
 			strings.Join(slices.Compact(policies), ", "),
 			len(slices.Compact(targets)),
 			truncateMessage(e.Reason, policyIssueMessageMax),
