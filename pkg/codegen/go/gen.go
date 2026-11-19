@@ -1137,6 +1137,9 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 // selfRef is set, refs within the same scope are returned unqualified.
 func (pkg *pkgContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
 	return func(ref schema.DocRef) (string, bool) {
+		if ref.Type == nil && ref.Function == nil {
+			return "", false
+		}
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -1189,9 +1192,9 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.
 	}
 	comment = codegen.FilterExamples(comment, "go")
 
-	comment, err := pkg.pkg.InterpretPulumiRefs(comment, pkg.docRefResolver(selfRef))
-	if err != nil {
-		return 0, fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
+	comment, diags := pkg.pkg.InterpretPulumiRefsWithDiagnostics(comment, pkg.docRefResolver(selfRef))
+	if diags.HasErrors() {
+		return 0, fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, diags)
 	}
 
 	lines := strings.Split(comment, "\n")

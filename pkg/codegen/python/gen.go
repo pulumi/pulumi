@@ -2705,6 +2705,9 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 // selfRef is set, refs within the same scope are returned unqualified.
 func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
 	return func(ref schema.DocRef) (string, bool) {
+		if ref.Type == nil && ref.Function == nil {
+			return "", false
+		}
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -2763,9 +2766,9 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 	if filterExamples {
 		comment = codegen.FilterExamples(comment, "python")
 	}
-	comment, err := mod.pkg.InterpretPulumiRefs(comment, mod.docRefResolver(selfRef))
-	if err != nil {
-		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
+	comment, diags := mod.pkg.InterpretPulumiRefsWithDiagnostics(comment, mod.docRefResolver(selfRef))
+	if diags.HasErrors() {
+		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, diags)
 	}
 
 	return comment, nil

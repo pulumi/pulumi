@@ -712,7 +712,7 @@ type Package struct {
 
 	importedLanguages map[string]struct{}
 
-	interpretPulumiRefs func(string, PulumiRefResolver) (string, error)
+	interpretPulumiRefs func(string, PulumiRefResolver, interpretRefsOptions) (string, hcl.Diagnostics)
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -933,9 +933,19 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	return nil
 }
 
+// Deprecated: use [Package.InterpretPulumiRefsWithDiagnostics].
 func (pkg *Package) InterpretPulumiRefs(tok string, resolver PulumiRefResolver) (string, error) {
+	return interpretPulumiRefsViaDiagnostics(pkg, tok, resolver)
+}
+
+// InterpretPulumiRefsWithDiagnostics interprets the refs in the given string and returns the rendered text
+// alongside any diagnostics. The resolver is also called for refs that failed to bind, with Type and Function nil;
+// returning false falls back to the default rendering, and returning true substitutes the resolver's own name.
+func (pkg *Package) InterpretPulumiRefsWithDiagnostics(
+	tok string, resolver PulumiRefResolver,
+) (string, hcl.Diagnostics) {
 	contract.Assertf(pkg.interpretPulumiRefs != nil, "interpretPulumiRefs function is not initialized")
-	return pkg.interpretPulumiRefs(tok, resolver)
+	return pkg.interpretPulumiRefs(tok, resolver, interpretRefsOptions{resolveUnbound: true})
 }
 
 func packageIdentity(name string, version *semver.Version) string {
