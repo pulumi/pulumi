@@ -2,4 +2,4 @@ component: protobuf
 kind: feat
 body: Let providers send a product hint for a failure, starting with dynamic credentials
 custom:
-  PR: "25605"
+  PR: "25783"
