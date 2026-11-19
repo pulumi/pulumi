@@ -3085,6 +3085,9 @@ func TestPolicyExceptionRequests(t *testing.T) {
 	draft, err := client.CreatePolicyExceptionDraft(ctx, "org", createReq)
 	require.NoError(t, err)
 	assert.Equal(t, "cr-1", draft.ChangeRequestID)
+	draft, err = client.GetPolicyExceptionDraft(ctx, "org", "cr-1")
+	require.NoError(t, err)
+	assert.Equal(t, "cr-1", draft.ChangeRequestID)
 
 	assert.Equal(t, []string{
 		"GET /api/orgs/org/policy/exceptions",
@@ -3094,5 +3097,6 @@ func TestPolicyExceptionRequests(t *testing.T) {
 		"GET /api/orgs/org/policy/exceptions/EXC-1",
 		"DELETE /api/orgs/org/policy/exceptions/EXC-1",
 		`POST /api/orgs/org/policy/exceptions/drafts {"policyPack":"aws","match":null,"reason":""}`,
+		"GET /api/orgs/org/policy/exceptions/drafts/cr-1",
 	}, gotRequests)
 }

@@ -653,7 +653,7 @@ func TestPolicyExceptionNew_Draft(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "Requested policy exception: http://localhost:3000/acme/web/prod?exception=cr-1\n"+
-		"Apply the request to create the exception.\n", stderr)
+		"The request is approved and pending to be applied.\n", stderr)
 
 	c = twoBuckets()
 	c.submitErr = &apitype.ErrorResponse{Code: http.StatusBadRequest, Message: "bad"}

@@ -66,6 +66,16 @@ type mockPolicyExceptionClient struct {
 	noCR    bool
 	// stackErr fails GetStack with another error.
 	stackErr error
+	// For reviewing change requests: crCurrent overrides the status GetChangeRequest returns, crEntityType its entity
+	// type (policy_exceptions by default), and approveStatus is the status an approval moves it to. crs are the listed
+	// change requests, in one page, and draft is the exception each one creates.
+	crCurrent     string
+	crEntityType  string
+	approveStatus string
+	gates         esc_client.ChangeRequestGateEvaluation
+	crs           []esc_client.ChangeRequest
+	draft         cloudapitype.CreatePolicyExceptionRequest
+	crEvents      []esc_client.ChangeRequestEvent
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
 	gotOrgFlag   string
@@ -76,6 +86,8 @@ type mockPolicyExceptionClient struct {
 	gotSubmitted []string
 	gotReads     []string
 	gotStacks    []string
+	gotListedCRs []string
+	gotReviews   []string
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
@@ -120,7 +132,65 @@ func (m *mockPolicyExceptionClient) GetChangeRequest(
 	if len(m.gotSubmitted) > 0 {
 		status = m.crStatus
 	}
-	return &esc_client.GetChangeRequestResponse{ChangeRequest: esc_client.ChangeRequest{ID: id, Status: status}}, m.err
+	cr := esc_client.ChangeRequest{
+		ID:                   id,
+		Status:               cmp.Or(m.crCurrent, status),
+		Action:               "create",
+		CreatedAt:            time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC),
+		CreatedBy:            esc_client.ChangeRequestUser{GithubLogin: "alice"},
+		LatestRevisionNumber: 2,
+		Entity:               esc_client.ChangeRequestEntity{EntityType: cmp.Or(m.crEntityType, policyExceptionsEntityType)},
+	}
+	return &esc_client.GetChangeRequestResponse{ChangeRequest: cr, GateEvaluation: m.gates}, m.err
+}
+
+func (m *mockPolicyExceptionClient) GetPolicyExceptionDraft(
+	_ context.Context, org, id string,
+) (client.PolicyExceptionDraft, error) {
+	m.gotOrg = org
+	return client.PolicyExceptionDraft{CreatePolicyExceptionRequest: m.draft, ChangeRequestID: id}, m.err
+}
+
+func (m *mockPolicyExceptionClient) ListChangeRequestsForEntity(
+	_ context.Context, org, entityType, token string,
+) ([]esc_client.ChangeRequest, string, error) {
+	m.gotOrg = org
+	m.gotListedCRs = append(m.gotListedCRs, entityType+" "+token)
+	return m.crs, "", m.err
+}
+
+func (m *mockPolicyExceptionClient) ApproveChangeRequest(
+	_ context.Context, org, id string, rev int, comment string,
+) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, fmt.Sprintf("approve %s@%d %s", id, rev, comment))
+	m.crCurrent = cmp.Or(m.approveStatus, m.crCurrent)
+	return m.err
+}
+
+func (m *mockPolicyExceptionClient) UnapproveChangeRequest(_ context.Context, org, id string) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, "unapprove "+id)
+	return m.err
+}
+
+func (m *mockPolicyExceptionClient) CloseChangeRequest(_ context.Context, org, id, comment string) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, fmt.Sprintf("close %s %s", id, comment))
+	return m.err
+}
+
+func (m *mockPolicyExceptionClient) AddChangeRequestComment(_ context.Context, org, id, comment string) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, fmt.Sprintf("comment %s %s", id, comment))
+	return m.err
+}
+
+func (m *mockPolicyExceptionClient) ListChangeRequestEvents(
+	_ context.Context, org, _, _ string,
+) ([]esc_client.ChangeRequestEvent, string, error) {
+	m.gotOrg = org
+	return m.crEvents, "", m.err
 }
 
 func (m *mockPolicyExceptionClient) URL() string {
@@ -497,13 +567,19 @@ func TestPolicyExceptionGet_Errors(t *testing.T) {
 	factory := func(context.Context, string) (policyExceptionClients, string, error) {
 		return policyExceptionClients{&notFoundExceptions{notFound}, notFound}, "acme", nil
 	}
+	isRequest := crID + " is a request for a policy exception (status: pending), not an exception; " +
+		"see it with `pulumi policy exception approval get " + crID + "`"
 	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
-	assert.EqualError(t, err, crID+" is a change request (status: pending), not a policy exception; "+
-		"it creates the exception once it's approved and applied")
+	assert.EqualError(t, err, isRequest)
 	err = runPolicyExceptionRemove(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, factory, crID,
 		policyExceptionRemoveArgs{yes: true, outputFormat: defaultPolicyExceptionRemoveOutputFormat()})
-	assert.EqualError(t, err, crID+" is a change request (status: pending), not a policy exception; "+
-		"it creates the exception once it's approved and applied")
+	assert.EqualError(t, err, isRequest)
+
+	// A change request for something else, like an environment, isn't described as one.
+	notFound.crEntityType = "environment"
+	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
+	assert.EqualError(t, err, "policy exception "+crID+" not found in acme")
+	notFound.crEntityType = ""
 
 	notFound.noCR = true
 	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)

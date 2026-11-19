@@ -859,6 +859,15 @@ func (c *testPulumiClient) ListChangeRequests(
 	return crs, "", nil
 }
 
+func (c *testPulumiClient) ListChangeRequestsForEntity(
+	ctx context.Context,
+	orgName string,
+	entityType string,
+	continuationToken string,
+) ([]client.ChangeRequest, string, error) {
+	return nil, "", errors.New("not implemented")
+}
+
 func (c *testPulumiClient) GetChangeRequest(
 	ctx context.Context,
 	orgName string,

@@ -839,7 +839,7 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		case r.ChangeRequestStatus == changeRequestApplied:
 			fmt.Fprintln(stderr, "Policy exception created.")
 		case r.ChangeRequestStatus == changeRequestReady:
-			fmt.Fprintln(stderr, "Apply the request to create the exception.")
+			fmt.Fprintln(stderr, "The request is approved and pending to be applied.")
 		default:
 			fmt.Fprintln(stderr, "Exception will be applied after the request is approved.")
 		}
@@ -900,7 +900,11 @@ func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
 	if r.Exception.ExpiresInSeconds == nil {
 		return
 	}
-	seconds := *r.Exception.ExpiresInSeconds
+	fmt.Fprintf(w, "Expires: %s after it's created\n", policyExceptionExpiresIn(*r.Exception.ExpiresInSeconds))
+}
+
+// policyExceptionExpiresIn says how long after it's created an exception expires, in days or hours.
+func policyExceptionExpiresIn(seconds int64) string {
 	n, unit := seconds/(24*3600), "day"
 	if seconds%(24*3600) != 0 {
 		n, unit = seconds/3600, "hour"
@@ -908,7 +912,7 @@ func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
 	if n != 1 {
 		unit += "s"
 	}
-	fmt.Fprintf(w, "Expires: %d %s after it's created\n", n, unit)
+	return fmt.Sprintf("%d %s", n, unit)
 }
 
 // policyExceptionMaxExpiry is the longest expiry that Pulumi Cloud accepts.

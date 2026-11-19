@@ -2216,6 +2216,21 @@ func (pc *Client) CreatePolicyExceptionDraft(
 	return resp, nil
 }
 
+// GetPolicyExceptionDraft returns the policy exception a change request creates, at its latest revision
+// (GET /api/orgs/{orgName}/policy/exceptions/drafts/{changeRequestID}).
+func (pc *Client) GetPolicyExceptionDraft(
+	ctx context.Context, orgName, changeRequestID string,
+) (PolicyExceptionDraft, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/drafts/%s",
+		url.PathEscape(orgName), url.PathEscape(changeRequestID))
+
+	var resp PolicyExceptionDraft
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return PolicyExceptionDraft{}, err
+	}
+	return resp, nil
+}
+
 // GetPolicyException returns a policy exception, wrapping the `GetPolicyException` Pulumi Cloud REST endpoint
 // (GET /api/orgs/{orgName}/policy/exceptions/{exceptionId}).
 func (pc *Client) GetPolicyException(
