@@ -2551,7 +2551,7 @@ func TestEnvChangeRequestRejectsUnknownAction(t *testing.T) {
 	testcase.exec.client.changeRequests[id].Action = "delete"
 
 	for _, cmd := range []string{"get", "approve --yes", "apply --yes"} {
-		stderr, err := run("esc env approvals " + cmd + " " + id + "\n")
+		stderr, err := run("esc env approval " + cmd + " " + id + "\n")
 		assert.ErrorContains(t, err, "exit status 1", cmd)
 		assert.Contains(t, stderr, `unsupported action "delete"`, cmd)
 	}
@@ -2587,7 +2587,7 @@ func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
 		"diff":   "diff is only supported for environment drafts",
 		"rebase": "rebase is only supported for environment drafts",
 	} {
-		stderr, err := run("esc env approvals " + cmd + " " + id + "\n")
+		stderr, err := run("esc env approval " + cmd + " " + id + "\n")
 		assert.Error(t, err, cmd) //nolint:forbidigo // pre-existing
 		assert.Contains(t, stderr, msg, cmd)
 	}
@@ -2597,7 +2597,7 @@ func TestEnvChangeRequestAliasIsDeprecated(t *testing.T) {
 	t.Parallel()
 
 	root := New(nil)
-	approvals, _, err := root.Find([]string{"env", "approvals"})
+	approvals, _, err := root.Find([]string{"env", "approval"})
 	require.NoError(t, err)
 	alias, _, err := root.Find([]string{"env", "change-request"})
 	require.NoError(t, err)
@@ -2609,6 +2609,6 @@ func TestEnvChangeRequestAliasIsDeprecated(t *testing.T) {
 		sub, _, err := alias.Find([]string{c.Name()})
 		require.NoError(t, err, c.Name())
 		assert.Equal(t, c.Name(), sub.Name())
-		assert.Equal(t, "use `env approvals "+c.Name()+"` instead", sub.Deprecated)
+		assert.Equal(t, "use `env approval "+c.Name()+"` instead", sub.Deprecated)
 	}
 }
