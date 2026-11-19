@@ -117,13 +117,28 @@ func TestPolicyExceptionNew(t *testing.T) {
 	assert.Equal(t, []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
 		c.gotCreated[0].Match, "only the pairs that occurred in the run")
 
-	// Pulumi Cloud returns the existing exception for a repeated request.
+	// An active exception that covers the request is returned instead of a new one.
 	c = twoBuckets()
 	c.existed = true
 	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31"})
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
-	assert.Equal(t, "Updated policy exception EXC-7: http://localhost:3000/acme/web/prod?exception=EXC-7\n", stderr)
+	assert.Equal(t, "Policy exception EXC-7 already covers these violations: "+
+		"http://localhost:3000/acme/web/prod?exception=EXC-7\n", stderr)
+
+	// So is one that covers a request for a change request, as a 409 that names it.
+	c = twoBuckets()
+	c.draftErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "already excepted by EXC-115"}
+	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", draft: true})
+	require.NoError(t, err)
+	assert.Empty(t, stdout)
+	assert.Equal(t, "Policy exception EXC-115 already covers these violations: "+
+		"http://localhost:3000/acme/web/prod?exception=EXC-115\n", stderr)
+	assert.Empty(t, c.gotSubmitted)
+	c = twoBuckets()
+	c.draftErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "something else"}
+	_, _, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", draft: true})
+	assert.ErrorContains(t, err, "something else")
 }
 
 func TestPolicyExceptionNew_Levels(t *testing.T) {
@@ -592,7 +607,8 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	stdout, stderr, err = runNew(t, c, "", args)
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
-	assert.Equal(t, "Updated policy exception request: http://localhost:3000/acme/web/prod?exception=cr-1\n"+
+	assert.Equal(t, "Policy exception request cr-1 already covers these violations: "+
+		"http://localhost:3000/acme/web/prod?exception=cr-1\n"+
 		"Exception will be applied after the request is approved.\n", stderr)
 	assert.Empty(t, c.gotSubmitted)
 

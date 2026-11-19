@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -432,6 +433,9 @@ func runPolicyExceptionNew(
 	return render(result)
 }
 
+// alreadyExceptedPattern finds the exception named by the 409 that requesting a covered exception returns.
+var alreadyExceptedPattern = regexp.MustCompile(`already excepted by (EXC-[0-9]+)`)
+
 // createPolicyException creates the result's exception, or requests it in a change request with --draft or when the
 // organization requires approval.
 func createPolicyException(
@@ -452,6 +456,14 @@ func createPolicyException(
 	}
 
 	created, err := c.CreatePolicyExceptionDraft(ctx, org, result.Exception)
+	// An active exception that covers the request is returned as a 409 that names it.
+	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusConflict {
+		if m := alreadyExceptedPattern.FindStringSubmatch(apiErr.Message); m != nil {
+			result.ID, result.Updated = m[1], true
+			result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, m[1])
+			return nil
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -826,11 +838,11 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		}
 		switch {
 		case r.ID != "" && r.Updated:
-			fmt.Fprintf(stderr, "Updated policy exception %s%s\n", r.ID, link)
+			fmt.Fprintf(stderr, "Policy exception %s already covers these violations%s\n", r.ID, link)
 		case r.ID != "":
 			fmt.Fprintf(stderr, "Created policy exception %s%s\n", r.ID, link)
 		case r.Updated:
-			fmt.Fprintf(stderr, "Updated policy exception request%s\n", link)
+			fmt.Fprintf(stderr, "Policy exception request %s already covers these violations%s\n", r.ChangeRequestID, link)
 		default:
 			fmt.Fprintf(stderr, "Requested policy exception%s\n", link)
 		}

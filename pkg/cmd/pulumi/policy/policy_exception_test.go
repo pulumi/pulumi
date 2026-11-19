@@ -57,6 +57,8 @@ type mockPolicyExceptionClient struct {
 	// existed makes creates return an existing exception, as for a repeated request.
 	existed   bool
 	submitErr error
+	// draftErr fails requesting an exception in a change request.
+	draftErr error
 	// crStatus is the status of the change request a draft creates, after it's submitted. crOpen is its status
 	// before, when the draft returned an open change request; it's a draft otherwise.
 	crStatus string
@@ -112,7 +114,8 @@ func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(
 ) (client.PolicyExceptionDraft, error) {
 	m.gotOrg = org
 	m.gotDrafts = append(m.gotDrafts, req)
-	return client.PolicyExceptionDraft{CreatePolicyExceptionRequest: req, ChangeRequestID: "cr-1"}, m.err
+	draft := client.PolicyExceptionDraft{CreatePolicyExceptionRequest: req, ChangeRequestID: "cr-1"}
+	return draft, cmp.Or(m.draftErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) SubmitChangeRequest(_ context.Context, org, id string, description *string) error {
