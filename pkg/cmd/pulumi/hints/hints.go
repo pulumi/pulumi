@@ -35,7 +35,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -70,7 +69,6 @@ type manager struct {
 	now       func() time.Time
 	statePath func() (string, error)
 	settings  func() settings
-	isCI      func() bool
 }
 
 func newManager() *manager {
@@ -78,7 +76,6 @@ func newManager() *manager {
 		now:       time.Now,
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
 		settings:  loadSettings,
-		isCI:      ciutil.IsCI,
 	}
 }
 
@@ -88,8 +85,8 @@ var defaultManager = newManager()
 // documentation. Offering a hint does not guarantee that it is shown.
 func Offer(h Hint) { defaultManager.offer(h) }
 
-// Suppress prevents any hint from being shown by this process, for example because the command writes
-// machine-readable output.
+// Suppress prevents any hint from being shown for the current command, for example because it writes
+// machine-readable output or runs in CI.
 func Suppress() { defaultManager.suppress() }
 
 // Flush shows at most one of the offered hints on w and resets the hints for the next command, including any
@@ -144,7 +141,7 @@ func (m *manager) flush(w io.Writer) {
 	defer m.mu.Unlock()
 	pending, suppressed := m.pending, m.suppressed
 	m.pending, m.suppressed = nil, false
-	if len(pending) == 0 || suppressed || m.isCI() {
+	if len(pending) == 0 || suppressed {
 		return
 	}
 	settings := m.settings()
