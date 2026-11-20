@@ -2962,10 +2962,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// Forward these properties to the rest of the engine as-is. Remote components consume `OutputValue`s
-	// directly; for non-remote resources the step generator downgrades `OutputValue`s with no dependencies
-	// to `Computed`, `Secret`, or plain values before handing them to providers and storing them in state.
-
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
