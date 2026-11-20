@@ -23,6 +23,7 @@ import (
 
 	"github.com/blang/semver"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
@@ -238,22 +240,32 @@ func TestRemoteTransformSecretOutput(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
-		callback, err := callbacks.Allocate(
-			TransformFunction(func(name, typ string, custom bool, parent string,
-				props property.Map, opts *pulumirpc.TransformResourceOptions,
-			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
-				// Some SDKs, like .NET, expect secret inputs in transforms to be Output values.
-				// At the property.Map level the Output envelope is indistinguishable from a bare
-				// secret, so we assert the observable properties the peer cares about: secret,
-				// known, and no dependencies.
-				value := props.Get("value")
-				assert.False(t, value.IsComputed())
-				assert.True(t, value.Secret())
-				assert.Empty(t, value.Dependencies())
-				assert.Equal(t, 21.0, value.AsNumber())
+		// Some SDKs, like .NET, expect secret inputs in transforms to be Output values. This is a
+		// wire-format contract, so we inspect the raw request rather than going through
+		// TransformFunction (which unmarshals the Output envelope and a bare Secret envelope into
+		// the same property.Value).
+		callback, err := callbacks.Allocate(func(request []byte) (proto.Message, error) {
+			var req pulumirpc.TransformRequest
+			require.NoError(t, proto.Unmarshal(request, &req))
 
-				return props, opts, nil
-			}))
+			value := req.Properties.Fields["value"]
+			obj, ok := value.GetKind().(*structpb.Value_StructValue)
+			require.True(t, ok, "value should be a struct envelope, got %v", value)
+			sigField := obj.StructValue.Fields[sig.Key]
+			require.NotNil(t, sigField, "value envelope missing signature key")
+			assert.Equal(t, sig.OutputValue, sigField.GetStringValue(),
+				"secret input should be wrapped in an OutputValue envelope")
+
+			assert.Equal(t, true, obj.StructValue.Fields["secret"].GetBoolValue())
+			assert.Equal(t, 21.0, obj.StructValue.Fields["value"].GetNumberValue())
+			deps := obj.StructValue.Fields["dependencies"].GetListValue()
+			assert.Empty(t, deps.GetValues())
+
+			return &pulumirpc.TransformResponse{
+				Properties: req.Properties,
+				Options:    req.Options,
+			}, nil
+		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:Resource", "resource", true, deploytest.ResourceOptions{
