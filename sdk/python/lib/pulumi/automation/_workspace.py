@@ -64,6 +64,8 @@ class TokenInformation:
     name: str
     organization: Optional[str]
     team: Optional[str]
+    service_principal: Optional[str] = None
+    """For a service principal token, the name of the service principal."""
 
 
 class WhoAmIResult:

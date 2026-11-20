@@ -616,9 +616,10 @@ type serviceUser struct {
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L39-L43
 type serviceTokenInfo struct {
-	Name         string `json:"name"`
-	Organization string `json:"organization,omitempty"`
-	Team         string `json:"team,omitempty"`
+	Name             string `json:"name"`
+	Organization     string `json:"organization,omitempty"`
+	Team             string `json:"team,omitempty"`
+	ServicePrincipal string `json:"servicePrincipal,omitempty"`
 }
 
 //nolint:gosec
@@ -756,9 +757,10 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 		}
 		if resp.TokenInfo != nil {
 			pc.tokenInfo = &workspace.TokenInformation{
-				Name:         resp.TokenInfo.Name,
-				Organization: resp.TokenInfo.Organization,
-				Team:         resp.TokenInfo.Team,
+				Name:             resp.TokenInfo.Name,
+				Organization:     resp.TokenInfo.Organization,
+				Team:             resp.TokenInfo.Team,
+				ServicePrincipal: resp.TokenInfo.ServicePrincipal,
 			}
 		}
 	}

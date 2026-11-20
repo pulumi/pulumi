@@ -65,7 +65,9 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			"When the current token is a Pulumi Cloud organization token, " +
 			"the command returns the name of the organization with which the token is associated. " +
 			"When it is a team token, the command returns the login of the team's service principal, " +
-			"in the form team-account:<team-id>.",
+			"in the form team-account:<team-id>. " +
+			"When it is a service principal token, the command returns the login of the service principal, " +
+			"in the form service-principal:<id>. Use --verbose to show the token type and its organization.",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -159,7 +161,12 @@ func renderWhoAmIText(
 		return nil
 	}
 	tokenType := "unknown"
-	if tokenInfo.Team != "" {
+	if tokenInfo.ServicePrincipal != "" {
+		tokenType = "service principal: " + tokenInfo.ServicePrincipal
+		if tokenInfo.Organization != "" {
+			tokenType += " (organization: " + tokenInfo.Organization + ")"
+		}
+	} else if tokenInfo.Team != "" {
 		tokenType = "team: " + tokenInfo.Team
 	} else if tokenInfo.Organization != "" {
 		tokenType = "organization: " + tokenInfo.Organization

@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"os"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -47,7 +48,7 @@ func getBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
 	return "", nil
 }
 
-// GetLegacyDefaultOrgFallback returns the current user name as an org, if the user does not have
+// GetLegacyDefaultOrgFallback returns the current user's org (see GetCurrentUserOrg), if the user does not have
 // a default org locally configured. Returns empty string otherwise, or if the backend does not support
 // organizations.
 //
@@ -80,14 +81,31 @@ func getLegacyDefaultOrgFallback(
 
 	// If the user does not have a default org configured, then return their username as their org, without
 	// looking up the backend opinion. This was the legacy fallback behavior we are preserving for smooth
-	// migrations between CLI versions.
+	// migrations between CLI versions. Team and service principal tokens use their organization instead.
 	if userConfiguredDefaultOrg == "" {
-		user, _, _, err := b.CurrentUser()
-		if err != nil {
-			return "", err
-		}
-		return user, nil
+		return GetCurrentUserOrg(context.TODO(), b)
 	}
 
 	return "", nil
+}
+
+// GetCurrentUserOrg returns the organization to use where the CLI falls back to the current user's login as the
+// organization. Team and service principal tokens have logins that are not organization names, so for those it
+// returns the token's organization or, if that is unknown, the backend's default organization. Otherwise, or if
+// neither is known, it returns the login.
+func GetCurrentUserOrg(ctx context.Context, b Backend) (string, error) {
+	user, _, tokenInfo, err := b.CurrentUser()
+	if err != nil {
+		return "", err
+	}
+	if tokenInfo == nil || (tokenInfo.Team == "" && tokenInfo.ServicePrincipal == "") {
+		return user, nil
+	}
+	if tokenInfo.Organization != "" {
+		return tokenInfo.Organization, nil
+	}
+	if org, err := b.GetDefaultOrg(ctx); err == nil && org != "" {
+		return org, nil
+	}
+	return user, nil
 }

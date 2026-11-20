@@ -455,6 +455,10 @@ export interface TokenInfomation {
     name: string;
     organization?: string;
     team?: string;
+    /**
+     * For a service principal token, the name of the service principal.
+     */
+    servicePrincipal?: string;
 }
 
 /**

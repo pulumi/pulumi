@@ -74,8 +74,8 @@ func (c cloudBackendReference) String() string {
 				return c.name.String()
 			}
 		} else {
-			currentUser, _, _, userErr := c.b.CurrentUser()
-			if userErr == nil && c.owner == currentUser {
+			currentUserOrg, userErr := backend.GetCurrentUserOrg(context.TODO(), c.b)
+			if userErr == nil && c.owner == currentUserOrg {
 				return c.name.String()
 			}
 		}

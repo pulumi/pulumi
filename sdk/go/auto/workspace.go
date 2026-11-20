@@ -207,12 +207,14 @@ type StackSummary struct {
 	URL              string `json:"url,omitempty"`
 }
 
-// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
-// will be set, but not both.
+// Information about the token that was used to authenticate the current user. At most one of Team or
+// ServicePrincipal is set. Organization is set for organization and service principal tokens, and may be set for
+// team tokens.
 type TokenInformation struct {
-	Name         string `json:"name"`                   // The name of the token.
-	Organization string `json:"organization,omitempty"` // If this was an organization token, the organization it was for.
-	Team         string `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	Name             string `json:"name"`                       // The name of the token.
+	Organization     string `json:"organization,omitempty"`     // The organization the token belongs to, if any.
+	Team             string `json:"team,omitempty"`             // If this was a team token, the team it was for.
+	ServicePrincipal string `json:"servicePrincipal,omitempty"` // For a service principal token, its name.
 }
 
 // WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
