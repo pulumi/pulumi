@@ -30,9 +30,9 @@ type recorder struct {
 }
 
 // RecordHint implements plugin.HintRecorder. It offers the hint a provider sent, with the provider's message.
-func (r *recorder) RecordHint(hint plugin.Hint, message string) {
-	if hint != plugin.HintDynamicCredentials || message == "" {
+func (r *recorder) RecordHint(hint plugin.Hint) {
+	if hint.Kind != plugin.HintDynamicCredentials || hint.Message == "" {
 		return
 	}
-	r.m.offerFor(ESCCredentials(message), r.stack)
+	r.m.offerFor(ESCCredentials(hint.Message), r.stack)
 }

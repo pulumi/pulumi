@@ -339,7 +339,7 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 	stack := &backend.MockStack{}
 	tests := []struct {
 		name         string
-		hint         plugin.Hint
+		kind         plugin.HintKind
 		message      string
 		isCloud      bool
 		stack        backend.Stack
@@ -361,7 +361,7 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 			tm := newTestManager(t)
 			tm.local = !tt.isCloud
 			tm.resources, tm.resourcesErr = tt.resources, tt.resourcesErr
-			(&recorder{m: tm.manager, stack: tt.stack}).RecordHint(tt.hint, tt.message)
+			(&recorder{m: tm.manager, stack: tt.stack}).RecordHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
 			out := tm.run()
 			if tt.want {
 				assert.Contains(t, out, message)
