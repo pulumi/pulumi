@@ -22,11 +22,9 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 )
 
-// agentSkills suggests Pulumi's agent skills to AI coding agents that create a new project and don't have them yet.
+// agentSkills suggests Pulumi's agent skills to users who create a new project and don't have them yet.
 var agentSkills = Hint{
 	ID:       "agent-skills",
 	Cooldown: 30 * 24 * time.Hour,
@@ -36,12 +34,9 @@ var agentSkills = Hint{
 		"Learn more: https://github.com/pulumi/agent-skills?utm_source=cli",
 }
 
-// OfferAgentSkills offers the agent skills hint if an AI coding agent is creating a project in dir and doesn't
-// appear to have Pulumi's agent skills installed.
+// OfferAgentSkills offers the agent skills hint for a project created in dir, unless Pulumi's agent skills appear
+// to be installed.
 func OfferAgentSkills(dir string) {
-	if agentdetect.Detect(os.Getenv) == "" {
-		return
-	}
 	// Without a home directory there's nowhere to look, so assume the skills aren't installed.
 	if home, err := os.UserHomeDir(); err != nil || !agentSkillsInstalled(os.Getenv, home, dir) {
 		Offer(agentSkills)
