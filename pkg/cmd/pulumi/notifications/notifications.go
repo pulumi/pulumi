@@ -1,0 +1,334 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package notifications fetches, caches and prints the messages Pulumi publishes to CLI users.
+package notifications
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"maps"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+// StaticURL is where the notifications sent to every CLI user are published.
+const StaticURL = "https://www.pulumi.com/cli-notifications.json"
+
+const (
+	staticSource = "static"
+	cacheFile    = "notifications.json"
+	shownFile    = "shown-notifications.json"
+	cacheTTL     = 24 * time.Hour
+	fetchTimeout = 3 * time.Second
+	// warningInterval is how long to wait before showing a warning again.
+	warningInterval = 24 * time.Hour
+)
+
+// Notification is a single message, along with the conditions under which it should be shown.
+type Notification struct {
+	Title string `json:"title"`
+	// ID is a UUID, so that IDs from the static file and from Pulumi Cloud never collide.
+	ID       string        `json:"identifier"`
+	Overview string        `json:"overview"`
+	Severity diag.Severity `json:"severity"`
+	Where    Where         `json:"where"`
+	// SchemaVersion is the version of this Notification format. Entries with any version other
+	// than 1 are skipped, so that the format can change without older CLIs misreading it.
+	SchemaVersion uint `json:"schemaVersion"`
+}
+
+// Where holds the version ranges a user's environment must match for a notification to apply. Each
+// range uses github.com/blang/semver range syntax, such as ">=3.100.0 <3.200.0".
+type Where struct {
+	// Providers maps provider names to the range of versions the notification applies to.
+	Providers map[string]string `json:"providers,omitempty"`
+	CLI       string            `json:"cli,omitempty"`
+}
+
+// UnmarshalJSON rejects conditions this CLI doesn't know, so that it skips a notification rather than
+// showing it to users the condition would have excluded.
+func (w *Where) UnmarshalJSON(b []byte) error {
+	type where Where
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.DisallowUnknownFields()
+	return d.Decode((*where)(w))
+}
+
+type cacheEntry struct {
+	FetchedAt     time.Time      `json:"fetchedAt"`
+	Notifications []Notification `json:"notifications"`
+}
+
+// Start returns cached notifications if they are fresh, and otherwise fetches them in the background.
+// The returned function yields the notifications if they have arrived by the time it is called, and
+// nil otherwise, so it never delays the command.
+func Start(ctx context.Context, url string) func() []Notification {
+	cache := readCache()
+	if entry, ok := cache[staticSource]; ok && time.Since(entry.FetchedAt) < cacheTTL {
+		return func() []Notification { return entry.Notifications }
+	}
+
+	result := make(chan []Notification, 1)
+	go func() {
+		ns, err := refresh(ctx, url, cache)
+		if err != nil {
+			slog.InfoContext(ctx, "error fetching notifications", "err", err)
+		}
+		result <- ns
+	}()
+	return func() []Notification {
+		select {
+		case ns := <-result:
+			return ns
+		default:
+			return nil
+		}
+	}
+}
+
+// refresh fetches the notifications and, if that succeeds, caches them. Concurrent CLI processes
+// may overwrite each other's cache; the losing process's entries are simply fetched again later.
+func refresh(ctx context.Context, url string, cache map[string]cacheEntry) ([]Notification, error) {
+	ns, err := fetch(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	if cache == nil {
+		cache = map[string]cacheEntry{}
+	}
+	cache[staticSource] = cacheEntry{FetchedAt: time.Now(), Notifications: ns}
+	if err := writeCache(cache); err != nil {
+		slog.InfoContext(ctx, "error caching notifications", "err", err)
+	}
+	return ns, nil
+}
+
+func fetch(ctx context.Context, url string) ([]Notification, error) {
+	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetching %s: %s", url, resp.Status)
+	}
+
+	var raw []json.RawMessage
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decode(raw), nil
+}
+
+// decode skips entries it can't understand, so that one malformed or newer-format entry doesn't
+// hide the others.
+func decode(raw []json.RawMessage) []Notification {
+	ns := []Notification{}
+	for _, r := range raw {
+		var n Notification
+		if err := json.Unmarshal(r, &n); err != nil || n.SchemaVersion != 1 {
+			continue
+		}
+		ns = append(ns, n)
+	}
+	return ns
+}
+
+func cachePath() (string, error) {
+	return workspace.GetPulumiPath(cacheFile)
+}
+
+func readCache() map[string]cacheEntry {
+	path, err := cachePath()
+	if err != nil {
+		return nil
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var cache map[string]cacheEntry
+	if err := json.Unmarshal(b, &cache); err != nil {
+		return nil
+	}
+	return cache
+}
+
+// readShown returns when each notification was last shown, keyed by ID.
+func readShown() map[string]time.Time {
+	shown := map[string]time.Time{}
+	path, err := workspace.GetPulumiPath(shownFile)
+	if err != nil {
+		return shown
+	}
+	if b, err := os.ReadFile(path); err == nil {
+		_ = json.Unmarshal(b, &shown)
+	}
+	return shown
+}
+
+func writeShown(shown map[string]time.Time) error {
+	path, err := workspace.GetPulumiPath(shownFile)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(shown)
+	if err != nil {
+		return err
+	}
+	return writeAtomic(path, b)
+}
+
+func writeCache(cache map[string]cacheEntry) error {
+	path, err := cachePath()
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(cache)
+	if err != nil {
+		return err
+	}
+	return writeAtomic(path, b)
+}
+
+// commands are those whose output people read rather than capture.
+var commands = map[string]bool{
+	"pulumi up":         true,
+	"pulumi preview":    true,
+	"pulumi refresh":    true,
+	"pulumi destroy":    true,
+	"pulumi login":      true,
+	"pulumi whoami":     true,
+	"pulumi stack list": true,
+}
+
+// ShownAfter reports whether notifications are shown after the command with the given path, such as
+// "pulumi up".
+func ShownAfter(commandPath string) bool {
+	return commands[commandPath]
+}
+
+// Print writes the notifications that apply to the given CLI version, and are due, to the sink's
+// stderr. Errors are due every time, warnings once a day, and anything else only once.
+func Print(sink diag.Sink, ns []Notification, cliVersion string) {
+	shown := readShown()
+	changed := false
+
+	// Builds without a version stamped in at link time have an empty version, which won't parse.
+	cli, err := semver.ParseTolerant(cliVersion)
+	for _, n := range ns {
+		if !applies(n, cli, err == nil) || !due(n, shown) {
+			continue
+		}
+		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion)))
+		if n.Severity != diag.Error {
+			shown[n.ID] = time.Now()
+			changed = true
+		}
+	}
+	if !changed {
+		return
+	}
+
+	// Forget notifications that are no longer cached, which a source drops only once it has been
+	// fetched without them.
+	cached := map[string]bool{}
+	for _, entry := range readCache() {
+		for _, n := range entry.Notifications {
+			cached[n.ID] = true
+		}
+	}
+	if len(cached) > 0 {
+		maps.DeleteFunc(shown, func(id string, _ time.Time) bool { return !cached[id] })
+	}
+	if err := writeShown(shown); err != nil {
+		slog.Info("error recording shown notifications", "err", err)
+	}
+}
+
+func due(n Notification, shown map[string]time.Time) bool {
+	last, ok := shown[n.ID]
+	if n.Severity == diag.Error || !ok {
+		return true
+	}
+	return n.Severity == diag.Warning && time.Since(last) >= warningInterval
+}
+
+func applies(n Notification, cli semver.Version, cliKnown bool) bool {
+	// We don't know the versions of the project's providers, so provider conditions never match.
+	if len(n.Where.Providers) > 0 {
+		return false
+	}
+	if n.Where.CLI == "" {
+		return true
+	}
+	inRange, err := semver.ParseRange(n.Where.CLI)
+	return err == nil && cliKnown && inRange(cli)
+}
+
+func render(n Notification, cliVersion string) string {
+	prefix, ok := map[diag.Severity]string{
+		diag.Warning: colors.SpecWarning + "WARNING:" + colors.Reset,
+		diag.Error:   colors.SpecError + "ERROR:" + colors.Reset,
+	}[n.Severity]
+	if !ok {
+		prefix = "INFO:"
+	}
+
+	resolve := strings.NewReplacer("{cli}", cliVersion)
+	overview := strings.ReplaceAll(resolve.Replace(n.Overview), "\n", "\n  ")
+	return fmt.Sprintf("\n%s %s\n\n  %s\n", prefix, resolve.Replace(n.Title), overview)
+}
+
+// writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written
+// file. They can still overwrite each other's writes, which at worst shows a notification again.
+func writeAtomic(path string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+"-*")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(b)
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(f.Name(), path) //nolint:forbidigo // same directory, as in workspace credentials
+	}
+	if err != nil {
+		contract.IgnoreError(os.Remove(f.Name()))
+	}
+	return err
+}
