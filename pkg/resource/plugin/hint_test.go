@@ -67,3 +67,17 @@ func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {
 	assert.Equal(t, pulumirpc.Hint_DYNAMIC_CREDENTIALS, resp.GetFailures()[0].GetHint().GetKind())
 	assert.Equal(t, "use ESC", resp.GetFailures()[0].GetHint().GetMessage())
 }
+
+func TestHintFromRPCIgnoresUnknownKinds(t *testing.T) {
+	t.Parallel()
+
+	// A provider built against a newer protocol may send a kind this engine doesn't know.
+	h := hintFromRPC(&pulumirpc.Hint{Kind: pulumirpc.Hint_Kind(99), Message: "something new"})
+	assert.Equal(t, &Hint{Kind: HintUnspecified, Message: "something new"}, h)
+}
+
+func TestHintRPCFailsOnUnknownKind(t *testing.T) {
+	t.Parallel()
+
+	assert.Panics(t, func() { (&Hint{Kind: HintKind(99)}).rpc() })
+}

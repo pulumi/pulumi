@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -66,7 +67,9 @@ func (h *Hint) rpc() *pulumirpc.Hint {
 	case HintUnspecified:
 		kind = pulumirpc.Hint_UNSPECIFIED
 	default:
-		kind = pulumirpc.Hint_UNSPECIFIED
+		// Unlike the kinds a provider sends, which may come from a newer protocol version, a HintKind is defined in this
+		// package, so an unknown one is a bug.
+		contract.Failf("unknown hint kind %d", h.Kind)
 	}
 	return &pulumirpc.Hint{Kind: kind, Message: h.Message}
 }
