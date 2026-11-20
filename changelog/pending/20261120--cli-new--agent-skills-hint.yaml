@@ -1,5 +1,5 @@
 component: cli/new
 kind: feat
-body: Suggest Pulumi agent skills when an AI agent runs `pulumi new` without them installed
+body: Suggest Pulumi agent skills after `pulumi new` when they aren't installed
 custom:
   PR: "25805"
