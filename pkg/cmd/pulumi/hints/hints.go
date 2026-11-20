@@ -36,6 +36,8 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -55,6 +57,9 @@ type Hint struct {
 	// Message is the text of the hint. It may contain color directives, and newlines to start a new line, for example
 	// before a "Learn more" link.
 	Message string
+	// CloudOnly is true for hints about Pulumi Cloud features, which are shown only to users of a Pulumi Cloud
+	// backend.
+	CloudOnly bool
 }
 
 // state is the content of the hints state file.
@@ -81,6 +86,7 @@ type Manager struct {
 	statePath   func() (string, error)
 	settings    func() settings
 	interactive func(w io.Writer) bool
+	isCloud     func() bool
 }
 
 // New returns a Manager that reads the user's hint settings and records shown hints under the Pulumi home directory.
@@ -92,6 +98,7 @@ func New() *Manager {
 		// Hints are for people at a terminal, so don't show them in CI or non-interactive runs, or when they'd be
 		// written somewhere else, as with `pulumi refresh 2>errors.log`.
 		interactive: func(w io.Writer) bool { return cmdutil.Interactive() && isTerminal(w) },
+		isCloud:     isCloudBackend,
 	}
 }
 
@@ -175,12 +182,16 @@ func (m *Manager) Flush(w io.Writer) {
 		return
 	}
 	now := m.now()
+	isCloud := sync.OnceValue(m.isCloud)
 	for _, o := range m.pending {
 		h := o.hint
 		if settings.skip[h.ID] {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
+			continue
+		}
+		if h.CloudOnly && !isCloud() {
 			continue
 		}
 		if o.applies != nil && !o.applies() {
@@ -200,6 +211,24 @@ func (m *Manager) Flush(w io.Writer) {
 		show(w, h)
 		return
 	}
+}
+
+// isCloudBackend reports whether the current project uses a Pulumi Cloud backend, without contacting it.
+func isCloudBackend() bool {
+	ws := pkgWorkspace.Instance
+	// A project may configure its own backend. Without one, the user's current login applies.
+	var proj *workspace.Project
+	if cwd, err := os.Getwd(); err == nil {
+		if p, _, err := ws.ReadProject(cwd); err == nil {
+			proj = p
+		}
+	}
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), proj)
+	if err != nil {
+		slog.Info("could not determine backend for hints", "err", err)
+		return false
+	}
+	return url != "" && !diy.IsDIYBackendURL(url)
 }
 
 // isTerminal reports whether w is a terminal.

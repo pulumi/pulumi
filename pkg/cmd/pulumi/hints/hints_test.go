@@ -43,6 +43,7 @@ type testManager struct {
 	noTerminal bool
 	skip       []string
 	path       string
+	local      bool
 }
 
 func newTestManager(t *testing.T) *testManager {
@@ -67,6 +68,7 @@ func (tm *testManager) newManager() *Manager {
 			}
 			return s
 		},
+		isCloud: func() bool { return !tm.local },
 	}
 }
 
@@ -133,6 +135,20 @@ func TestSkippedHint(t *testing.T) {
 
 	tm.now = tm.now.Add(30 * 24 * time.Hour)
 	assert.Empty(t, tm.run(hintA))
+}
+
+func TestCloudOnlyHint(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	cloudHint := Hint{ID: "cloud", Cooldown: time.Hour, Message: "cloud hint", CloudOnly: true}
+
+	tm.local = true
+	out := tm.run(cloudHint, hintA)
+	assert.NotContains(t, out, "cloud hint")
+	assert.Contains(t, out, "hint a")
+
+	tm.local = false
+	assert.Contains(t, tm.run(cloudHint), "cloud hint")
 }
 
 func TestSuppressedAndDisabled(t *testing.T) {

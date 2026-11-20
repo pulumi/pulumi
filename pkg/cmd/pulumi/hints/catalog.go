@@ -25,3 +25,12 @@ var AgentSkills = Hint{
 		"`/plugin marketplace add pulumi/agent-skills` and `/plugin install pulumi@pulumi-agent-skills`.\n" +
 		"Learn more: https://github.com/pulumi/agent-skills?utm_source=cli",
 }
+
+// DriftDetection suggests Pulumi Cloud's scheduled drift detection after a refresh finds drift.
+var DriftDetection = Hint{
+	ID:       "drift-detection",
+	Cooldown: 7 * 24 * time.Hour,
+	Message: "This refresh found drift. Pulumi Deployments can detect drift on a schedule and alert you, " +
+		"or fix it automatically.\nLearn more: https://www.pulumi.com/docs/deployments/concepts/drift/",
+	CloudOnly: true,
+}
