@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Fix Go program generation for a splat of optional primitive fields
+time: 2026-10-27T15:30:00Z

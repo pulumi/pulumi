@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Narrow a splat of optional primitives when assigning it to a plain list input
+time: 2026-10-27T15:45:00Z
