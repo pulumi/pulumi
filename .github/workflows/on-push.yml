@@ -98,7 +98,9 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=$(git show HEAD^:sdk/.version | tr -d '[:space:]')
-          if [ "$VERSION" != "$(tr -d '[:space:]' < sdk/.version)" ]; then
+          CURRENT=$(tr -d '[:space:]' < sdk/.version)
+          if [ "$VERSION" != "$CURRENT" ] &&
+              [ "$(printf '%s\n' "$VERSION" "$CURRENT" | sort -V | head -n1)" = "$VERSION" ]; then
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           fi
       - name: Authenticate with Pulumi Cloud
@@ -136,11 +138,11 @@ jobs:
         if: steps.freeze.outputs.version != ''
         env:
           GH_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
-          VERSION: ${{ needs.info.outputs.version }}
+          FREEZE_COMMIT_VERSION: ${{ needs.info.outputs.version }}
           SHORT_SHA: ${{ steps.ghd.outputs.short-sha }}
         run: |
           set -euo pipefail
-          DEV_VERSION="${VERSION#v}-alpha.x${SHORT_SHA}"
+          DEV_VERSION="${FREEZE_COMMIT_VERSION#v}-alpha.x${SHORT_SHA}"
           URL=$(gh workflow run test-templates.yml --repo pulumi/templates \
             -f pulumi-version="${DEV_VERSION}" | grep -oE 'https://\S+/actions/runs/[0-9]+')
           RUN="${URL##*/}"
