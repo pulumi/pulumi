@@ -249,7 +249,7 @@ func (a Account) Save(key string, current bool) error {
 // team tokens.
 type TokenInformation struct {
 	Name             string     `json:"name"`                       // The name of the token.
-	Organization     string     `json:"organization,omitempty"`     // The organization the token belongs to, if any.
+	Organization     string     `json:"organization,omitempty"`     // The display name of the token's organization.
 	Team             string     `json:"team,omitempty"`             // If this was a team token, the team it was for.
 	ServicePrincipal string     `json:"servicePrincipal,omitempty"` // For a service principal token, its name.
 	ExpiresAt        *time.Time `json:"expiresAt,omitempty"`        // The time when this token expires.

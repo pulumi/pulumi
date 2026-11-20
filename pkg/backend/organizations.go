@@ -81,7 +81,7 @@ func getLegacyDefaultOrgFallback(
 
 	// If the user does not have a default org configured, then return their username as their org, without
 	// looking up the backend opinion. This was the legacy fallback behavior we are preserving for smooth
-	// migrations between CLI versions. Team and service principal tokens use their organization instead.
+	// migrations between CLI versions. Team and service principal tokens use the default organization instead.
 	if userConfiguredDefaultOrg == "" {
 		return GetCurrentUserOrg(context.TODO(), b)
 	}
@@ -91,8 +91,8 @@ func getLegacyDefaultOrgFallback(
 
 // GetCurrentUserOrg returns the organization to use where the CLI falls back to the current user's login as the
 // organization. Team and service principal tokens have logins that are not organization names, so for those it
-// returns the token's organization or, if that is unknown, the backend's default organization. Otherwise, or if
-// neither is known, it returns the login.
+// returns the backend's default organization. Otherwise, or if the default organization is unknown, it returns the
+// login.
 func GetCurrentUserOrg(ctx context.Context, b Backend) (string, error) {
 	user, _, tokenInfo, err := b.CurrentUser()
 	if err != nil {
@@ -101,9 +101,7 @@ func GetCurrentUserOrg(ctx context.Context, b Backend) (string, error) {
 	if tokenInfo == nil || (tokenInfo.Team == "" && tokenInfo.ServicePrincipal == "") {
 		return user, nil
 	}
-	if tokenInfo.Organization != "" {
-		return tokenInfo.Organization, nil
-	}
+	// tokenInfo.Organization is the organization's display name, not its login, so it cannot be used here.
 	if org, err := b.GetDefaultOrg(ctx); err == nil && org != "" {
 		return org, nil
 	}

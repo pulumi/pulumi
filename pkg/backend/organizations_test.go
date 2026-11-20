@@ -105,7 +105,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 		assert.Equal(t, user, org)
 	})
 
-	t.Run("returns the token's organization for service principal tokens", func(t *testing.T) {
+	t.Run("returns the default org for service principal tokens", func(t *testing.T) {
 		t.Parallel()
 		testBackend := &MockBackend{
 			SupportsOrganizationsF: func() bool {
@@ -114,9 +114,12 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
 				return "service-principal:abc123", nil, &workspace.TokenInformation{
 					Name:             "token",
-					Organization:     "sp-org",
+					Organization:     "SP Org Display Name",
 					ServicePrincipal: "ci-bot",
 				}, nil
+			},
+			GetDefaultOrgF: func(context.Context) (string, error) {
+				return "sp-org", nil
 			},
 		}
 		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
@@ -150,42 +153,35 @@ func TestGetCurrentUserOrg(t *testing.T) {
 		},
 		{
 			name:       "organization token returns the login",
-			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "token-org"},
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org"},
 			defaultOrg: "default-org",
 			expected:   "login",
 		},
 		{
-			name:       "service principal token returns the token's organization",
-			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "token-org", ServicePrincipal: "ci-bot"},
-			defaultOrg: "default-org",
-			expected:   "token-org",
-		},
-		{
-			name:       "service principal token without organization returns the default org",
-			tokenInfo:  &workspace.TokenInformation{Name: "t", ServicePrincipal: "ci-bot"},
+			name:       "service principal token returns the default org, not the organization display name",
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org", ServicePrincipal: "ci-bot"},
 			defaultOrg: "default-org",
 			expected:   "default-org",
 		},
 		{
-			name:       "team token returns the token's organization",
-			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "token-org", Team: "my-team"},
-			defaultOrg: "default-org",
-			expected:   "token-org",
+			name:      "service principal token without a default org returns the login",
+			tokenInfo: &workspace.TokenInformation{Name: "t", Organization: "Default Org", ServicePrincipal: "ci-bot"},
+			expected:  "login",
 		},
 		{
-			name:       "team token without organization returns the default org",
-			tokenInfo:  &workspace.TokenInformation{Name: "t", Team: "my-team"},
+			name:       "team token returns the default org, not the organization display name",
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org", Team: "my-team"},
 			defaultOrg: "default-org",
 			expected:   "default-org",
 		},
 		{
-			name:      "team token without any organization returns the login",
+			name:      "team token without a default org returns the login",
 			tokenInfo: &workspace.TokenInformation{Name: "t", Team: "my-team"},
 			expected:  "login",
 		},
 		{
 			name:       "team token returns the login when the default org lookup fails",
-			tokenInfo:  &workspace.TokenInformation{Name: "t", Team: "my-team"},
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org", Team: "my-team"},
 			defaultErr: errors.New("lookup failed"),
 			expected:   "login",
 		},

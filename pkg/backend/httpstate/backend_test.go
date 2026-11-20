@@ -184,33 +184,6 @@ func TestURLIsConsoleRoot(t *testing.T) {
 	assert.Equal(t, "https://app.pulumi.com", b.URL())
 }
 
-func TestParseStackReferenceServicePrincipalTokenOrg(t *testing.T) {
-	t.Parallel()
-
-	user := &promise.CompletionSource[userInfo]{}
-	user.MustFulfill(userInfo{
-		username:      "service-principal:abc123",
-		organizations: []string{"sp-org"},
-		tokenInfo: &workspace.TokenInformation{
-			Name:             "token",
-			Organization:     "sp-org",
-			ServicePrincipal: "ci-bot",
-		},
-	})
-	defaultOrg := &promise.CompletionSource[string]{}
-	defaultOrg.MustFulfill("")
-	b := &cloudBackend{
-		userInfo:       user.Promise(),
-		defaultOrg:     defaultOrg.Promise(),
-		currentProject: &workspace.Project{Name: "proj"},
-	}
-
-	ref, err := b.ParseStackReference("dev")
-	require.NoError(t, err)
-	assert.Equal(t, tokens.QName("sp-org/proj/dev"), ref.FullyQualifiedName())
-	assert.Equal(t, "dev", ref.String())
-}
-
 func TestValueOrDefaultURL(t *testing.T) {
 	t.Run("TestValueOrDefault", func(t *testing.T) {
 		current := ""

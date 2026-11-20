@@ -1195,11 +1195,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
-			currentUserOrg, userErr := backend.GetCurrentUserOrg(context.TODO(), b)
+			currentUser, _, _, userErr := b.CurrentUser()
 			if userErr != nil {
 				return nil, userErr
 			}
-			qualifiedName.Owner = currentUserOrg
+			qualifiedName.Owner = currentUser
 		}
 	}
 
@@ -1333,7 +1333,8 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 		return b.defaultOrg.Result(ctx)
 	}
 	getUserOrg := func() (string, error) {
-		return backend.GetCurrentUserOrg(ctx, b)
+		orgName, _, _, err := b.currentUser(ctx)
+		return orgName, err
 	}
 	orgName, err := inferOrg(ctx, getDefaultOrg, getUserOrg)
 	if err != nil {
@@ -1474,7 +1475,7 @@ func (b *cloudBackend) ListStacks(
 		return nil, nil, err
 	}
 	if defaultOrg == "" {
-		defaultOrg, err = backend.GetCurrentUserOrg(ctx, b)
+		defaultOrg, _, _, err = b.CurrentUser()
 		if err != nil {
 			return nil, nil, err
 		}
