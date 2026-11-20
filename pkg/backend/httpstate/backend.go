@@ -551,7 +551,7 @@ func validateStoredAccount(
 			return workspace.Account{}, false, err
 		} else {
 			username, organizations = fetchedUser, fetchedOrgs
-			// /api/user reports Name/Organization/Team only; preserve the locally
+			// /api/user reports Name/Organization/Team/ServicePrincipal only; preserve the locally
 			// cached ExpiresAt set by grant responses.
 			if fetchedTokenInfo != nil {
 				if account.TokenInformation == nil {
@@ -560,6 +560,7 @@ func validateStoredAccount(
 				account.TokenInformation.Name = fetchedTokenInfo.Name
 				account.TokenInformation.Organization = fetchedTokenInfo.Organization
 				account.TokenInformation.Team = fetchedTokenInfo.Team
+				account.TokenInformation.ServicePrincipal = fetchedTokenInfo.ServicePrincipal
 			}
 			tokenInfo = account.TokenInformation
 		}
@@ -1039,11 +1040,11 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 	}
 
 	if orgName == "" {
-		currentUser, _, _, userErr := b.CurrentUser()
+		currentUserOrg, userErr := backend.GetCurrentUserOrg(context.TODO(), b)
 		if userErr != nil {
 			return nil, userErr
 		}
-		orgName = currentUser
+		orgName = currentUserOrg
 	}
 
 	return newCloudBackendPolicyPackReference(b.CloudConsoleURL(), orgName, tokens.QName(policyPackName)), nil

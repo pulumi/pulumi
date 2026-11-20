@@ -244,13 +244,15 @@ func (a Account) Save(key string, current bool) error {
 	return storeAccountAt(a.sourcePath, key, a, current)
 }
 
-// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
-// will be set, but not both.
+// Information about the token that was used to authenticate the current user. At most one of Team or
+// ServicePrincipal is set. Organization is set for organization and service principal tokens, and may be set for
+// team tokens.
 type TokenInformation struct {
-	Name         string     `json:"name"`                   // The name of the token.
-	Organization string     `json:"organization,omitempty"` //nolint:lll // If this was an organization token, the organization it was for.
-	Team         string     `json:"team,omitempty"`         // If this was a team token, the team it was for.
-	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
+	Name             string     `json:"name"`                       // The name of the token.
+	Organization     string     `json:"organization,omitempty"`     // The display name of the token's organization.
+	Team             string     `json:"team,omitempty"`             // If this was a team token, the team it was for.
+	ServicePrincipal string     `json:"servicePrincipal,omitempty"` // For a service principal token, its name.
+	ExpiresAt        *time.Time `json:"expiresAt,omitempty"`        // The time when this token expires.
 }
 
 // CredentialHelper configures a local command that supplies backend credentials.

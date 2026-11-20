@@ -15,6 +15,8 @@
 package backend
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -102,4 +104,104 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, user, org)
 	})
+
+	t.Run("returns the default org for service principal tokens", func(t *testing.T) {
+		t.Parallel()
+		testBackend := &MockBackend{
+			SupportsOrganizationsF: func() bool {
+				return true
+			},
+			CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+				return "service-principal:abc123", nil, &workspace.TokenInformation{
+					Name:             "token",
+					Organization:     "SP Org Display Name",
+					ServicePrincipal: "ci-bot",
+				}, nil
+			},
+			GetDefaultOrgF: func(context.Context) (string, error) {
+				return "sp-org", nil
+			},
+		}
+		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
+			return "", nil
+		}
+
+		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		require.NoError(t, err)
+		assert.Equal(t, "sp-org", org)
+	})
+}
+
+func TestGetCurrentUserOrg(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		tokenInfo  *workspace.TokenInformation
+		defaultOrg string
+		defaultErr error
+		expected   string
+	}{
+		{
+			name:     "personal token returns the login",
+			expected: "login",
+		},
+		{
+			name:       "personal token ignores the default org",
+			defaultOrg: "default-org",
+			expected:   "login",
+		},
+		{
+			name:       "organization token returns the login",
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org"},
+			defaultOrg: "default-org",
+			expected:   "login",
+		},
+		{
+			name:       "service principal token returns the default org, not the organization display name",
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org", ServicePrincipal: "ci-bot"},
+			defaultOrg: "default-org",
+			expected:   "default-org",
+		},
+		{
+			name:      "service principal token without a default org returns the login",
+			tokenInfo: &workspace.TokenInformation{Name: "t", Organization: "Default Org", ServicePrincipal: "ci-bot"},
+			expected:  "login",
+		},
+		{
+			name:       "team token returns the default org, not the organization display name",
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org", Team: "my-team"},
+			defaultOrg: "default-org",
+			expected:   "default-org",
+		},
+		{
+			name:      "team token without a default org returns the login",
+			tokenInfo: &workspace.TokenInformation{Name: "t", Team: "my-team"},
+			expected:  "login",
+		},
+		{
+			name:       "team token returns the login when the default org lookup fails",
+			tokenInfo:  &workspace.TokenInformation{Name: "t", Organization: "Default Org", Team: "my-team"},
+			defaultErr: errors.New("lookup failed"),
+			expected:   "login",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			testBackend := &MockBackend{
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "login", nil, c.tokenInfo, nil
+				},
+				GetDefaultOrgF: func(context.Context) (string, error) {
+					return c.defaultOrg, c.defaultErr
+				},
+			}
+
+			org, err := GetCurrentUserOrg(t.Context(), testBackend)
+			require.NoError(t, err)
+			assert.Equal(t, c.expected, org)
+		})
+	}
 }

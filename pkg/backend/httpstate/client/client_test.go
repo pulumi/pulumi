@@ -2149,6 +2149,24 @@ func TestGetPulumiAccountDetailsConcurrent(t *testing.T) {
 	assert.Equal(t, int32(1), requests.Load())
 }
 
+func TestGetPulumiAccountDetailsServicePrincipalToken(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/user", r.URL.Path)
+		_, _ = w.Write([]byte(`{"githubLogin":"service-principal:abc123","organizations":[{"githubLogin":"org"}],` +
+			`"tokenInfo":{"name":"token","organization":"org","servicePrincipal":"ci-bot"}}`))
+	}))
+	t.Cleanup(server.Close)
+	c := NewClient(server.URL, "token", false, nil)
+
+	user, orgs, info, err := c.GetPulumiAccountDetails(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, "service-principal:abc123", user)
+	assert.Equal(t, []string{"org"}, orgs)
+	assert.Equal(t, &workspace.TokenInformation{Name: "token", Organization: "org", ServicePrincipal: "ci-bot"}, info)
+}
+
 func TestClient_WithRefresh(t *testing.T) {
 	t.Parallel()
 

@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Add support for Pulumi Cloud service principal access tokens to `pulumi whoami`, `pulumi about` and default organization resolution
+time: 2026-11-20T12:00:00Z
