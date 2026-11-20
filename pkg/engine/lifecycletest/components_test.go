@@ -320,11 +320,11 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					// Assert that "foo" is secret and "bar" is unknown
 					foo := req.Inputs.Get("foo")
 					assert.False(t, foo.IsComputed())
-					assert.True(t, foo.Secret())
+					assert.True(t, foo.IsSecret())
 
 					bar := req.Inputs.Get("bar")
 					assert.True(t, bar.IsComputed())
-					assert.False(t, bar.Secret())
+					assert.False(t, bar.IsSecret())
 
 					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
 					require.NoError(t, err)
@@ -341,11 +341,11 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					// Assert that "foo" is secret and "bar" is unknown
 					foo := req.Args.Get("foo")
 					assert.False(t, foo.IsComputed())
-					assert.True(t, foo.Secret())
+					assert.True(t, foo.IsSecret())
 
 					bar := req.Args.Get("bar")
 					assert.True(t, bar.IsComputed())
-					assert.False(t, bar.Secret())
+					assert.False(t, bar.IsSecret())
 
 					return plugin.CallResponse{}, nil
 				},

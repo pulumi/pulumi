@@ -139,14 +139,13 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 
 	got := annotateSecrets(to, from)
 
-	got.All(func(key string, val property.Value) bool {
+	for key, val := range got.All() {
 		fromVal, fromHas := from.GetOk(key)
 		if !fromHas {
-			return true
+			continue
 		}
 		assert.Truef(t, fromVal.Equals(val), "expected properties %s to be equal", key)
-		return true
-	})
+	}
 
 	_, has := got.GetOk("extraFromValue")
 	assert.Falsef(t, has, "to should not have a key named extraFromValue, it was not present before annotating secrets")

@@ -134,10 +134,10 @@ func TestCheckPassesOnlyTheProvidersConfig(t *testing.T) {
 	prov.ConfigureF = func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 		assert.Equal(t, 2, req.Inputs.Len())
 		assert.Equal(t, "us-east-1", req.Inputs.Get("region").AsString())
-		assert.False(t, req.Inputs.Get("region").Secret())
+		assert.False(t, req.Inputs.Get("region").IsSecret())
 		// Secrets reach the provider marked as secret, the same as during a deployment.
 		assert.Equal(t, "ciphertext", req.Inputs.Get("secretKey").AsString())
-		assert.True(t, req.Inputs.Get("secretKey").Secret())
+		assert.True(t, req.Inputs.Get("secretKey").IsSecret())
 		return plugin.ConfigureResponse{}, nil
 	}
 

@@ -3853,7 +3853,7 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 
 	if value.IsArray() {
 		arr := []property.Value{}
-		for _, e := range value.AsArray().All {
+		for _, e := range value.AsArray().All() {
 			arr = append(arr, unwrapSecretsAndOutputs(e))
 		}
 		return property.New(arr)
@@ -3861,7 +3861,7 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 
 	if value.IsMap() {
 		obj := map[string]property.Value{}
-		for key, e := range value.AsMap().All {
+		for key, e := range value.AsMap().All() {
 			obj[key] = unwrapSecretsAndOutputs(e)
 		}
 		return property.New(obj)
@@ -3873,7 +3873,7 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 // downgradeOutputValues recursively strips dependency information from a [property.Map].
 func downgradeOutputValues(m property.Map) property.Map {
 	result := map[string]property.Value{}
-	for k, v := range m.All {
+	for k, v := range m.All() {
 		result[k] = downgradeOutputPropertyValue(v)
 	}
 	return property.NewMap(result)

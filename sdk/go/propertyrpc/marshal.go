@@ -42,7 +42,7 @@ func Marshal(m property.Map) *structpb.Struct {
 
 func MarshalWithOptions(m property.Map, opts MarshalOptions) *structpb.Struct {
 	fields := make(map[string]*structpb.Value, m.Len())
-	for k, v := range m.All {
+	for k, v := range m.All() {
 		fields[k] = MarshalValueWithOptions(v, opts)
 	}
 	return &structpb.Struct{Fields: fields}
@@ -56,14 +56,14 @@ func MarshalValueWithOptions(v property.Value, opts MarshalOptions) *structpb.Va
 	// If we have dependencies, this must be an output. When PreferOutputValues is set, also wrap
 	// bare secrets and computed values as OutputValue envelopes so the peer sees them as outputs.
 	if deps := v.Dependencies(); len(deps) > 0 ||
-		(opts.PreferOutputValues && (v.Secret() || v.IsComputed())) {
+		(opts.PreferOutputValues && (v.IsSecret() || v.IsComputed())) {
 		fields := map[string]*structpb.Value{
 			sig.Key: structpb.NewStringValue(sig.OutputValue),
 		}
 		if !v.IsComputed() {
 			fields["value"] = marshalPlainValue(v, opts)
 		}
-		if v.Secret() {
+		if v.IsSecret() {
 			fields["secret"] = trueValue
 		}
 
@@ -76,7 +76,7 @@ func MarshalValueWithOptions(v property.Value, opts MarshalOptions) *structpb.Va
 		return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 	}
 
-	if v.Secret() {
+	if v.IsSecret() {
 		return structpb.NewStructValue(&structpb.Struct{Fields: map[string]*structpb.Value{
 			sig.Key: structpb.NewStringValue(sig.Secret),
 			"value": marshalPlainValue(v, opts),
@@ -162,7 +162,7 @@ var trueValue = structpb.NewBoolValue(true)
 
 func marshalArray(array property.Array, opts MarshalOptions) *structpb.ListValue {
 	values := make([]*structpb.Value, array.Len())
-	for i, v := range array.All {
+	for i, v := range array.All() {
 		values[i] = MarshalValueWithOptions(v, opts)
 	}
 	return &structpb.ListValue{Values: values}

@@ -14,7 +14,10 @@
 
 package property
 
-import "slices"
+import (
+	"iter"
+	"slices"
+)
 
 // An immutable Array of [Value]s.
 //
@@ -43,22 +46,11 @@ func (a Array) AsSlice() []Value {
 //		property.New(3),
 //	})
 //
-//	arr.All(func(i int, v Value) bool {
-//		fmt.Printf("Index: %d, value: %s\n", i, v)
-//		return true
-//	})
-//
-// With Go 1.23, you can use iterator syntax to access each element:
-//
-//	for i, v := range arr.All {
+//	for i, v := range arr.All() {
 //		fmt.Printf("Index: %d, value: %s\n", i, v)
 //	}
-func (a Array) All(yield func(int, Value) bool) {
-	for k, v := range a.arr {
-		if !yield(k, v) {
-			return
-		}
-	}
+func (a Array) All() iter.Seq2[int, Value] {
+	return slices.All(a.arr)
 }
 
 // Get the value from an [Array] at an index.

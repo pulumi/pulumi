@@ -56,26 +56,24 @@ func (m Map) AsMap() map[string]Value {
 //	for k, v := range arr.All {
 //		fmt.Printf("Index: %s, value: %s\n", k, v)
 //	}
-func (m Map) All(yield func(string, Value) bool) {
-	for k, v := range m.m {
-		if !yield(k, v) {
-			return
-		}
-	}
+func (m Map) All() iter.Seq2[string, Value] {
+	return maps.All(m.m)
 }
 
 // AllStable calls yield for each key value pair in the Map in sorted key order.
 //
 // For usage, see [Map.All].
-func (m Map) AllStable(yield func(string, Value) bool) {
+func (m Map) AllStable() iter.Seq2[string, Value] {
 	keys := make([]string, 0, len(m.m))
 	for k := range m.m {
 		keys = append(keys, k)
 	}
 	slices.Sort(keys)
-	for _, k := range keys {
-		if !yield(k, m.m[k]) {
-			return
+	return func(yield func(string, Value) bool) {
+		for _, k := range keys {
+			if !yield(k, m.m[k]) {
+				return
+			}
 		}
 	}
 }

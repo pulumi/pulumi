@@ -80,10 +80,10 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		r = NewProperty(Output{
 			Element:      r,
 			Known:        !v.IsComputed(),
-			Secret:       v.Secret(),
+			Secret:       v.IsSecret(),
 			Dependencies: v.Dependencies(),
 		})
-	case v.Secret():
+	case v.IsSecret():
 		r = MakeSecret(r)
 	}
 

@@ -864,20 +864,20 @@ func filterResourceProperties(m property.Map, debug bool, showSecrets bool) prop
 	// "no properties recorded" (zero-value Map) from "properties were present but
 	// have all been filtered out".
 	out := property.NewMap(map[string]property.Value{})
-	for k, v := range m.All {
+	for k, v := range m.All() {
 		out = out.Set(k, filterPropertyValue(v, debug, showSecrets))
 	}
 	return out
 }
 
 func filterPropertyValue(v property.Value, debug bool, showSecrets bool) property.Value {
-	if v.Secret() && !showSecrets {
+	if v.IsSecret() && !showSecrets {
 		return property.New("[secret]").WithSecret(true)
 	}
 	// When showSecrets is true, pass secret values through unchanged (including any
 	// nested content); this mirrors the previous behavior which did not recurse into
 	// the element of a secret.
-	if v.Secret() {
+	if v.IsSecret() {
 		return v
 	}
 	switch {
@@ -892,7 +892,7 @@ func filterPropertyValue(v property.Value, debug bool, showSecrets bool) propert
 	case v.IsArray():
 		src := v.AsArray()
 		arr := make([]property.Value, src.Len())
-		for i, elem := range src.All {
+		for i, elem := range src.All() {
 			arr[i] = filterPropertyValue(elem, debug, showSecrets)
 		}
 		return property.New(arr)

@@ -962,14 +962,14 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 // but that's better than accidentally leaking a value which just moved to a different location.
 func annotateSecrets(outs, ins property.Map) property.Map {
 	result := outs.AsMap()
-	for key, inValue := range ins.All {
+	for key, inValue := range ins.All() {
 		outValue, has := result[key]
 		if !has {
 			continue
 		}
-		if outValue.IsMap() && inValue.IsMap() && !inValue.Secret() {
+		if outValue.IsMap() && inValue.IsMap() && !inValue.IsSecret() {
 			result[key] = property.New(annotateSecrets(outValue.AsMap(), inValue.AsMap()))
-		} else if !outValue.Secret() && inValue.HasSecrets() {
+		} else if !outValue.IsSecret() && inValue.HasSecrets() {
 			result[key] = outValue.WithSecret(true)
 		}
 	}
@@ -988,7 +988,7 @@ func removeSecrets(v property.Value) any {
 		return v.AsString()
 	case v.IsArray():
 		arr := []any{}
-		for _, v := range v.AsArray().All {
+		for _, v := range v.AsArray().All() {
 			arr = append(arr, removeSecrets(v))
 		}
 		return arr
@@ -1001,7 +1001,7 @@ func removeSecrets(v property.Value) any {
 	default:
 		contract.Assertf(v.IsMap(), "v is not Object '%v' instead", v)
 		obj := map[string]any{}
-		for k, v := range v.AsMap().All {
+		for k, v := range v.AsMap().All() {
 			obj[k] = removeSecrets(v)
 		}
 		return obj
@@ -1035,16 +1035,16 @@ func restoreElidedAssetContents(original property.Map, transformed property.Map)
 			a := v.AsArchive()
 			originalArchives[a.Hash] = a
 		case v.IsArray():
-			for _, e := range v.AsArray().All {
+			for _, e := range v.AsArray().All() {
 				collect(e)
 			}
 		case v.IsMap():
-			for _, e := range v.AsMap().All {
+			for _, e := range v.AsMap().All() {
 				collect(e)
 			}
 		}
 	}
-	for _, v := range original.All {
+	for _, v := range original.All() {
 		collect(v)
 	}
 
@@ -1073,7 +1073,7 @@ func restoreElidedAssetContents(original property.Map, transformed property.Map)
 		case v.IsMap():
 			inner := v.AsMap()
 			out := make(map[string]property.Value, inner.Len())
-			for k, e := range inner.All {
+			for k, e := range inner.All() {
 				out[k] = rebuild(e)
 			}
 			return property.WithGoValue(v, property.NewMap(out))
@@ -1083,7 +1083,7 @@ func restoreElidedAssetContents(original property.Map, transformed property.Map)
 	}
 
 	out := make(map[string]property.Value, transformed.Len())
-	for k, v := range transformed.All {
+	for k, v := range transformed.All() {
 		out[k] = rebuild(v)
 	}
 	return property.NewMap(out)
@@ -1103,7 +1103,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	// Convert the inputs to a variables map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
 	variables := make(map[string]string)
-	for k, v := range req.Inputs.All {
+	for k, v := range req.Inputs.All() {
 		if k == "version" {
 			continue
 		}
@@ -2263,17 +2263,17 @@ func collectArgDependencies(args property.Map) []resource.URN {
 	walk = func(v property.Value) {
 		switch {
 		case v.IsMap():
-			for _, e := range v.AsMap().All {
+			for _, e := range v.AsMap().All() {
 				walk(e)
 			}
 		case v.IsArray():
-			for _, e := range v.AsArray().All {
+			for _, e := range v.AsArray().All() {
 				walk(e)
 			}
 		}
 		out = append(out, v.Dependencies()...)
 	}
-	for _, v := range args.All {
+	for _, v := range args.All() {
 		walk(v)
 	}
 	return out

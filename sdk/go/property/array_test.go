@@ -156,7 +156,7 @@ func TestArrayAll(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 		arr := NewArray(nil)
-		arr.All(func(int, Value) bool {
+		arr.All()(func(int, Value) bool {
 			assert.Fail(t, "An empty array should never call it's iterator")
 			return true
 		})
@@ -166,7 +166,7 @@ func TestArrayAll(t *testing.T) {
 		t.Parallel()
 		arr := NewArray([]Value{New("e1")})
 		var wasCalled bool
-		arr.All(func(i int, v Value) bool {
+		arr.All()(func(i int, v Value) bool {
 			if wasCalled {
 				assert.Fail(t, "An array with only 1 element should only be called once")
 			}
@@ -181,7 +181,7 @@ func TestArrayAll(t *testing.T) {
 		t.Parallel()
 		arr := NewArray([]Value{New("e1"), New("e2"), New("e3")})
 		var callCount int
-		arr.All(func(i int, v Value) bool {
+		arr.All()(func(i int, v Value) bool {
 			callCount++
 			switch callCount {
 			case 1:
@@ -205,7 +205,7 @@ func TestArrayAll(t *testing.T) {
 		t.Parallel()
 		arr := NewArray([]Value{New("e1"), New("e2")})
 		var wasCalled bool
-		arr.All(func(i int, v Value) bool {
+		arr.All()(func(i int, v Value) bool {
 			if wasCalled {
 				assert.Fail(t, "An array with only 1 element should only be called once")
 			}
