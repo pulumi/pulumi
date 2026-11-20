@@ -70,3 +70,17 @@ func (h *Hint) rpc() *pulumirpc.Hint {
 	}
 	return &pulumirpc.Hint{Kind: kind, Message: h.Message}
 }
+
+// HintRecorder is told about each hint that a provider reports for a failure. Set it on [Context.HintRecorder].
+type HintRecorder interface {
+	// RecordHint is told about a hint the provider sent.
+	RecordHint(hint Hint)
+}
+
+// recordHint reports hint to the hint recorder of the provider's plugin context, if there is one.
+func (p *provider) recordHint(hint *Hint) {
+	if hint == nil || hint.Kind == HintUnspecified || p.ctx == nil || p.ctx.HintRecorder == nil {
+		return
+	}
+	p.ctx.HintRecorder.RecordHint(*hint)
+}
