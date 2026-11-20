@@ -51,14 +51,61 @@ func newReplacer(secrets []string) aho_corasick.Replacer {
 	return aho_corasick.NewReplacer(builder.Build(secrets))
 }
 
-type redactor struct {
-	w        io.Writer
-	replacer aho_corasick.Replacer
-	line     bytes.Buffer
+// multilineSecrets returns the secrets that the replacer matches and that span more than one line.
+func multilineSecrets(secrets []string) []string {
+	var multiline []string
+	for _, s := range secrets {
+		if len(s) >= 3 && strings.Contains(s, "\n") {
+			multiline = append(multiline, s)
+		}
+	}
+	return multiline
 }
 
-func newRedactor(w io.Writer, replacer aho_corasick.Replacer) *redactor {
-	return &redactor{w: w, replacer: replacer}
+type redactor struct {
+	w         io.Writer
+	replacer  aho_corasick.Replacer
+	multiline []string
+	prefixes  []string
+	line      bytes.Buffer
+}
+
+func newRedactor(w io.Writer, replacer aho_corasick.Replacer, multiline []string) *redactor {
+	// Output is redacted a line at a time, so record where each multi-line secret could be cut off by the end of a
+	// line. Lines that end in one of these prefixes are held back until the rest of the secret has been written.
+	var prefixes []string
+	for _, s := range multiline {
+		for i := range len(s) - 1 {
+			if s[i] == '\n' {
+				prefixes = append(prefixes, s[:i+1])
+			}
+		}
+	}
+	return &redactor{w: w, replacer: replacer, multiline: multiline, prefixes: prefixes}
+}
+
+// flushable returns the length of the leading lines of pending that can be redacted and written without splitting a
+// multi-line secret: lines on which a partially written secret starts are held back, as is any complete secret that
+// overlaps them.
+func (w *redactor) flushable(pending string) int {
+	lineStart := func(i int) int { return strings.LastIndexByte(pending[:i], '\n') + 1 }
+
+	flush := len(pending)
+	for _, p := range w.prefixes {
+		if strings.HasSuffix(pending, p) {
+			flush = min(flush, lineStart(len(pending)-len(p)))
+		}
+	}
+	for moved := flush < len(pending); moved; {
+		moved = false
+		for _, s := range w.multiline {
+			lo := max(0, flush-len(s)+1)
+			if i := strings.Index(pending[lo:], s); i != -1 && lo+i < flush {
+				flush, moved = lineStart(lo+i), true
+			}
+		}
+	}
+	return flush
 }
 
 func (w *redactor) Write(b []byte) (int, error) {
@@ -76,12 +123,14 @@ func (w *redactor) Write(b []byte) (int, error) {
 		_, err := w.line.Write(b[:newline+1])
 		contract.IgnoreError(err)
 
-		redacted := w.replacer.ReplaceAllWith(w.line.String(), "[secret]")
+		pending := w.line.String()
+		flush := w.flushable(pending)
+		redacted := w.replacer.ReplaceAllWith(pending[:flush], "[secret]")
 		if _, err = w.w.Write([]byte(redacted)); err != nil {
 			w.line.Truncate(n)
 			return written, err
 		}
-		w.line.Reset()
+		w.line.Next(flush)
 
 		b, written = b[newline+1:], written+newline+1
 	}
@@ -211,8 +260,10 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 
 			stdout, stderr := envcmd.esc.stdout, envcmd.esc.stderr
 			if !interactive {
+				multiline := multilineSecrets(secrets)
 				replacer := newReplacer(secrets)
-				redactedStdout, redactedStderr := newRedactor(stdout, replacer), newRedactor(stderr, replacer)
+				redactedStdout := newRedactor(stdout, replacer, multiline)
+				redactedStderr := newRedactor(stderr, replacer, multiline)
 				defer contract.IgnoreClose(redactedStdout)
 				defer contract.IgnoreClose(redactedStderr)
 				stdout, stderr = redactedStdout, redactedStderr
