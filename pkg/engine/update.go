@@ -374,6 +374,10 @@ type HostFactory func(
 type UpdateOptions struct {
 	// CloudCredentialEnv overrides the Pulumi backend credentials passed to plugins.
 	CloudCredentialEnv map[string]string
+
+	// HintRecorder, if non-nil, is told about the product hints that providers report for their failures.
+	HintRecorder plugin.HintRecorder
+
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 

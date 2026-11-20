@@ -16,7 +16,8 @@
 //
 // Commands [Offer] hints while they run, and the root command calls [Flush] when it exits. Flush shows
 // at most one hint per command. A hint is shown only if hints are enabled, the user hasn't turned that
-// hint off, and the hint's own [Hint.Cooldown] has passed.
+// hint off, the hint's own [Hint.Cooldown] has passed, and, for a hint with [Hint.EstablishedStackOnly], the
+// command's stack has a few resources.
 //
 // Users turn all hints off with PULUMI_DISABLE_HINTS or `hints.disabled` in the Pulumi config file, and
 // turn individual hints off by [Hint.ID] with PULUMI_SKIP_HINTS or `hints.skip`.
@@ -33,6 +34,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,6 +56,18 @@ type Hint struct {
 	// Message is the text of the hint. It may contain color directives, and newlines to start a new line, for example
 	// before a "Learn more" link.
 	Message string
+	// CloudOnly is true for hints about Pulumi Cloud features, which are shown only to users of a Pulumi Cloud
+	// backend.
+	CloudOnly bool
+	// EstablishedStackOnly is true for hints that are shown only when the stack the hint was offered for has at
+	// least minStackResources resources besides the stack itself and providers, so that new users aren't shown them.
+	EstablishedStackOnly bool
+}
+
+// offered is a hint offered during this process, with the stack it was offered for, if any.
+type offered struct {
+	hint  Hint
+	stack backend.Stack
 }
 
 // state is the content of the hints state file.
@@ -63,12 +79,15 @@ type state struct {
 // manager holds the hints offered during this CLI process.
 type manager struct {
 	mu         sync.Mutex
-	pending    []Hint
+	pending    []offered
 	suppressed bool
 
 	now       func() time.Time
 	statePath func() (string, error)
 	settings  func() settings
+	isCloud   func() bool
+	// stackResources counts the resources of s that count towards Hint.EstablishedStackOnly.
+	stackResources func(s backend.Stack) (int, error)
 }
 
 func newManager() *manager {
@@ -76,6 +95,9 @@ func newManager() *manager {
 		now:       time.Now,
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
 		settings:  loadSettings,
+		isCloud:   isCloudBackend,
+
+		stackResources: countStackResources,
 	}
 }
 
@@ -127,7 +149,13 @@ func loadSettings() settings {
 func (m *manager) offer(h Hint) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.pending = append(m.pending, h)
+	m.pending = append(m.pending, offered{hint: h})
+}
+
+func (m *manager) offerFor(h Hint, s backend.Stack) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pending = append(m.pending, offered{hint: h, stack: s})
 }
 
 func (m *manager) suppress() {
@@ -155,8 +183,16 @@ func (m *manager) flush(w io.Writer) {
 		return
 	}
 	now := m.now()
-	for _, h := range pending {
+	isCloud := sync.OnceValue(m.isCloud)
+	for _, o := range pending {
+		h := o.hint
 		if settings.skip[h.ID] {
+			continue
+		}
+		if h.CloudOnly && !isCloud() {
+			continue
+		}
+		if h.EstablishedStackOnly && !m.isEstablished(o.stack) {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
@@ -176,6 +212,24 @@ func (m *manager) flush(w io.Writer) {
 		show(w, h)
 		return
 	}
+}
+
+// isCloudBackend reports whether the current project uses a Pulumi Cloud backend, without contacting it.
+func isCloudBackend() bool {
+	ws := pkgWorkspace.Instance
+	// A project may configure its own backend. Without one, the user's current login applies.
+	var proj *workspace.Project
+	if cwd, err := os.Getwd(); err == nil {
+		if p, _, err := ws.ReadProject(cwd); err == nil {
+			proj = p
+		}
+	}
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), proj)
+	if err != nil {
+		slog.Info("could not determine backend for hints", "err", err)
+		return false
+	}
+	return url != "" && !diy.IsDIYBackendURL(url)
 }
 
 func show(w io.Writer, h Hint) {
