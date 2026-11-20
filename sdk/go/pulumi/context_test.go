@@ -1391,6 +1391,8 @@ func TestInvokeSourceContext(t *testing.T) {
 				requests := make(chan *pulumirpc.ResourceInvokeRequest, 1)
 				var sourceLine int
 				err := RunErr(func(ctx *Context) error {
+					_, _, _, _, err := await(ctx.state.stack.URN())
+					require.NoError(t, err)
 					ctx.state.monitor = &invokeSourceMonitor{ctx.state.monitor, requests}
 					ctx.state.parentStackTraceHandle = handle
 					_, _, line, _ := runtime.Caller(0)
