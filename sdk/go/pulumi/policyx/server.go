@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -100,15 +101,9 @@ func convertProtoAnalyzerResourceOptions(options *pulumirpc.AnalyzerResourceOpti
 		}
 	}
 
-	additionalSecretOutputs := make([]resource.PropertyKey, len(options.GetAdditionalSecretOutputs()))
-	for i, output := range options.GetAdditionalSecretOutputs() {
-		additionalSecretOutputs[i] = resource.PropertyKey(output)
-	}
+	additionalSecretOutputs := slice.Cast[resource.PropertyKey](options.GetAdditionalSecretOutputs())
 
-	aliasURNs := make([]resource.URN, len(options.GetAliases()))
-	for i, alias := range options.GetAliases() {
-		aliasURNs[i] = resource.URN(alias)
-	}
+	aliasURNs := slice.Cast[resource.URN](options.GetAliases())
 
 	return plugin.AnalyzerResourceOptions{
 		Protect:                 options.GetProtect(),
@@ -152,10 +147,7 @@ func convertAnalyzerResourceOptions(options plugin.AnalyzerResourceOptions) pulu
 		aliases = append(aliases, pulumi.Alias{URN: pulumi.URN(alias)})
 	}
 
-	additionalSecretOutputs := make([]string, len(options.AdditionalSecretOutputs))
-	for i, output := range options.AdditionalSecretOutputs {
-		additionalSecretOutputs[i] = string(output)
-	}
+	additionalSecretOutputs := slice.Cast[string](options.AdditionalSecretOutputs)
 
 	return pulumi.ResourceOptions{
 		AdditionalSecretOutputs: additionalSecretOutputs,

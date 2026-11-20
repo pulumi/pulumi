@@ -57,6 +57,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if err != nil {
 		return nil, fmt.Errorf("constructing run context: %w", err)
 	}
+	pulumiCtx.state.parentStackTraceHandle = req.GetStackTraceHandle()
 
 	// Deserialize the inputs and apply appropriate dependencies.
 	inputDependencies := req.GetInputDependencies()

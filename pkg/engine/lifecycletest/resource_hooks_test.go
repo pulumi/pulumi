@@ -1272,8 +1272,8 @@ func TestResourceHookTransform(t *testing.T) {
 		// Setup a transform that adds a `BeforeCreate` hook to the resource.
 		transform, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				opts.Hooks = &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{
 					BeforeCreate: []string{"myHook"},
 				}

@@ -10,15 +10,15 @@ environments:
 ---
 > esc env open-request test-org/test-project/test-env
 Created environment open request with ID: test-request-id-12345
-Change request URL: https://app.fake.pulumi.com/test-org/esc/test-project/test-env?version=test-request-id-12345
+Change request URL: https://app.fake.pulumi.com/test-org/esc/test-project/test-env/change-requests?requestId=test-request-id-12345
 Change request submitted
 > esc env open-request test-org/test-project/test-env --grant-expiration-seconds 3600s --access-duration-seconds 7200s
 Created environment open request with ID: test-request-id-12345
-Change request URL: https://app.fake.pulumi.com/test-org/esc/test-project/test-env?version=test-request-id-12345
+Change request URL: https://app.fake.pulumi.com/test-org/esc/test-project/test-env/change-requests?requestId=test-request-id-12345
 Change request submitted
 > esc env open-request test-org/test-project/test-env --reason Need prod access for incident 1234
 Created environment open request with ID: test-request-id-12345
-Change request URL: https://app.fake.pulumi.com/test-org/esc/test-project/test-env?version=test-request-id-12345
+Change request URL: https://app.fake.pulumi.com/test-org/esc/test-project/test-env/change-requests?requestId=test-request-id-12345
 Change request submitted
 
 ---

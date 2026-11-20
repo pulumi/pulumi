@@ -46,3 +46,16 @@ func MapError[T, U any](s []T, f func(T) (U, error)) ([]U, error) {
 	}
 	return r, nil
 }
+
+// Cast returns a new slice whose elements are the input slice's elements converted to
+// U. T and U must share an underlying string type; the typical use is to move between
+// plain `string` and a named string type like `resource.PropertyKey` or `tokens.Name`
+// without a hand-rolled loop. Specify U explicitly at the call site; T is inferred from
+// the argument, e.g. `slice.Cast[resource.PropertyKey](names)`.
+func Cast[U, T ~string](s []T) []U {
+	r := Prealloc[U](len(s))
+	for _, v := range s {
+		r = append(r, U(v))
+	}
+	return r
+}

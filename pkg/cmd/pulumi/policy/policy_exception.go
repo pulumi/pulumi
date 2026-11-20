@@ -22,6 +22,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -46,6 +47,26 @@ func policyExceptionsError(err error, org string) error {
 	return err
 }
 
+// policyExceptionNotFound says that an exception doesn't exist. `new` prints a change request's ID when the
+// organization requires approval, so an ID that's a change request gets its status instead.
+func policyExceptionNotFound(ctx context.Context, c policyExceptionClients, org, id string) error {
+	if _, err := uuid.Parse(id); err == nil {
+		if cr, err := c.changeRequests.GetChangeRequest(ctx, org, id); err == nil {
+			return fmt.Errorf("%s is a change request (status: %s), not a policy exception; "+
+				"it creates the exception once it's approved and applied", id, cr.Status)
+		}
+	}
+	return fmt.Errorf("policy exception %s not found in %s", id, org)
+}
+
+// policyExceptionStatus is an exception's status, saying when a removed exception expired rather than being removed.
+func policyExceptionStatus(e cloudapitype.PolicyException) string {
+	if e.RemovedAt != nil && e.RemovedBy == nil && e.ExpiresAt != nil && !e.RemovedAt.Before(*e.ExpiresAt) {
+		return string(e.Status) + " (expired)"
+	}
+	return string(e.Status)
+}
+
 type policyExceptionClient interface {
 	CreatePolicyException(
 		ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
@@ -64,6 +85,7 @@ type policyExceptionClient interface {
 		ctx context.Context, stack client.StackIdentifier, pageSize int, page int,
 	) ([]apitype.UpdateInfo, error)
 	GetLatestStackPreviews(ctx context.Context, stack client.StackIdentifier) ([]apitype.StackPreview, error)
+	GetStack(ctx context.Context, stack client.StackIdentifier) (apitype.Stack, error)
 	GetUpdateEngineEvents(
 		ctx context.Context, update client.UpdateIdentifier, opts client.GetUpdateEngineEventsOptions,
 	) (apitype.GetUpdateEventsResponse, error)

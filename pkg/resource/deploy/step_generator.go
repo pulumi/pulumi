@@ -781,6 +781,11 @@ func (sg *stepGenerator) getOldResource(
 func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 
+	// Downgrade any OutputValues carried on the goal to plain values so the rest of the step generator
+	// (including provider Check calls and state storage) sees the historical shape. Remote components do
+	// not reach the step generator, so their OutputValues continue to flow through Construct untouched.
+	goal.Properties = downgradeOutputValues(goal.Properties)
+
 	parent := sg.deployment.rewriteStateMigrationURN(goal.Parent)
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -3863,4 +3868,33 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 	}
 
 	return value
+}
+
+// downgradeOutputValues recursively strips dependency information from a [property.Map].
+func downgradeOutputValues(m property.Map) property.Map {
+	result := map[string]property.Value{}
+	for k, v := range m.All {
+		result[k] = downgradeOutputPropertyValue(v)
+	}
+	return property.NewMap(result)
+}
+
+func downgradeOutputPropertyValue(v property.Value) property.Value {
+	v = v.WithDependencies(nil)
+	switch {
+	case v.IsMap():
+		v = property.WithGoValue(v, downgradeOutputValues(v.AsMap()))
+	case v.IsArray():
+		arr := v.AsArray().AsSlice()
+		newArr := make([]property.Value, len(arr))
+		for i, elem := range arr {
+			newArr[i] = downgradeOutputPropertyValue(elem)
+		}
+		v = property.WithGoValue(v, property.NewArray(newArr))
+	case v.IsResourceReference():
+		ref := v.AsResourceReference()
+		ref.ID = downgradeOutputPropertyValue(ref.ID)
+		v = property.WithGoValue(v, ref)
+	}
+	return v
 }

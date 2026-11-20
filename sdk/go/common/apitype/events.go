@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -83,33 +84,11 @@ type StartDebuggingEvent struct {
 	Config map[string]any `json:"config,omitempty"`
 }
 
-// PolicyEvent is emitted whenever there is Policy violation.
-type PolicyEvent struct {
-	ResourceURN          string `json:"resourceUrn,omitempty"`
-	Message              string `json:"message"`
-	Color                string `json:"color"`
-	PolicyName           string `json:"policyName"`
-	PolicyPackName       string `json:"policyPackName"`
-	PolicyPackVersion    string `json:"policyPackVersion"`
-	PolicyPackVersionTag string `json:"policyPackVersionTag"`
+// PolicyEvent is the Cloud SDK's AppPolicyEvent.
+type PolicyEvent = cloudapitype.AppPolicyEvent
 
-	// EnforcementLevel is one of "warning", "mandatory", "remediate", or "none".
-	EnforcementLevel string `json:"enforcementLevel"`
-	// Severity is one of "low", "medium", "high", or "critical".
-	// An empty string is omitted and represents an unspecified severity.
-	Severity string `json:"severity,omitempty"`
-	// Exceptions lists the policy exceptions that matched this violation, lowest ID first. An excepted violation
-	// doesn't fail the operation, whatever its EnforcementLevel.
-	Exceptions []PolicyEventException `json:"exceptions,omitempty"`
-}
-
-// PolicyEventException identifies the policy exception that matched a policy violation.
-type PolicyEventException struct {
-	// ID is the exception's key in the policy pack's exceptions map (for example, "EXC-42").
-	ID string `json:"id"`
-	// Reason is the exception's justification.
-	Reason string `json:"reason"`
-}
+// PolicyEventException is the Cloud SDK's AppPolicyEventException.
+type PolicyEventException = cloudapitype.AppPolicyEventException
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.
 type PolicyRemediationEvent struct {

@@ -31,12 +31,12 @@ func renderWithResolver(
 	selfRef schema.DocRef, description string,
 ) string {
 	t.Helper()
-	rendered, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+	rendered, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, func(ref schema.DocRef) (string, bool) {
 		name, ok, err := d.ResolveDocRef(pkg, selfRef, ref)
 		require.NoError(t, err)
 		return name, ok
 	})
-	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags.Error())
 	return strings.TrimSuffix(rendered, "\n")
 }
 

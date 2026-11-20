@@ -140,7 +140,7 @@ type pluginInstallCmd struct {
 	installPluginSpec func(
 		ctx context.Context, label string,
 		install workspace.PluginDescriptor, file string,
-		sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
+		sink diag.Sink, out io.Writer, bars *progress.Group, color colors.Colorization, reinstall bool,
 	) error // == installPluginSpec
 }
 
@@ -326,7 +326,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 		group.Go(func() error {
 			cmd.diag.Infoerrf(diag.Message("", "%s installing"), label)
-			return cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, bars, cmd.color, cmd.reinstall)
+			return cmd.installPluginSpec(ctx, label, install, cmd.file, cmd.diag, cmd.stderr, bars, cmd.color, cmd.reinstall)
 		})
 	}
 
@@ -336,7 +336,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 func installPluginSpec(
 	ctx context.Context, label string,
 	install workspace.PluginDescriptor, file string,
-	sink diag.Sink, bars *progress.Group, color colors.Colorization, reinstall bool,
+	sink diag.Sink, out io.Writer, bars *progress.Group, color colors.Colorization, reinstall bool,
 ) error {
 	// If we got here, actually try to do the download.
 	var source string
@@ -380,7 +380,7 @@ func installPluginSpec(
 	}
 	slog.InfoContext(ctx, "installing tarball ...", "label", label)
 	if err = pkgWorkspace.InstallPluginContent(
-		ctx, install, payload, reinstall, schema.NewLoaderServerFromContext,
+		ctx, install, payload, reinstall, out, schema.NewLoaderServerFromContext,
 		cloudCredentialEnv); err != nil {
 		return fmt.Errorf("installing %s from %s: %w", label, source, err)
 	}

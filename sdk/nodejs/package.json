@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.276.0",
+    "version": "3.278.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -73,7 +73,7 @@
         "node": ">=22"
     },
     "mocha": {
-        "require": ["source-map-support/register"],
+        "require": ["source-map-support/register-hook-require"],
         "node-option": ["import=tsx"]
     },
     "//": ["NOTE: @types/node is pinned due to grpc/grpc-node#2002"]

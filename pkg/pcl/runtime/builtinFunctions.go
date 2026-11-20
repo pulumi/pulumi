@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -659,10 +660,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					if !ok {
 						continue
 					}
-					urns := make([]resource.URN, len(deps.GetUrns()))
-					for i, u := range deps.GetUrns() {
-						urns[i] = resource.URN(u)
-					}
+					urns := slice.Cast[resource.URN](deps.GetUrns())
 					resultPM = resultPM.Set(k, v.WithDependencies(append(v.Dependencies(), urns...)))
 				}
 			}

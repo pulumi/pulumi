@@ -380,7 +380,7 @@ func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
 			URN:    urn,
 			Type:   urn.Type(),
 			Parent: parent,
-			Inputs: resource.PropertyMap{},
+			Inputs: property.Map{},
 		}
 	}
 

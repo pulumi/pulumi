@@ -830,9 +830,8 @@ size = 2
 					return plugin.CheckResponse{Properties: req.NewInputs}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					properties := resource.ToResourcePropertyMap(req.Properties)
 					calls = append(calls, "create")
-					assert.Equal(t, "new", properties["name"].StringValue())
+					assert.Equal(t, "new", req.Properties.Get("name").AsString())
 					return plugin.CreateResponse{
 						ID: "res-2",
 						Properties: property.NewMap(map[string]property.Value{

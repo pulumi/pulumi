@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/iter"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -223,10 +225,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
 			}, nil
@@ -305,10 +304,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
 			}, nil
@@ -531,10 +527,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
 				ConfigureF: configurable.configure,
@@ -678,10 +671,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement.
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{ReplaceKeys: keys, DeleteBeforeReplace: true}, nil
 				},
 			}, nil
@@ -913,10 +903,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ReplaceKeys: keys,
@@ -1022,10 +1009,7 @@ func TestExplicitProviderDiffReplacement(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-					for k := range req.NewInputs.All {
-						keys = append(keys, resource.PropertyKey(k))
-					}
+					keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ReplaceKeys: keys,

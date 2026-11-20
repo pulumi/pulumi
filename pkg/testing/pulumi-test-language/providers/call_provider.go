@@ -227,26 +227,26 @@ func (p *CallProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 
 	if version.AsString() != "15.7.9" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 15.7.9"),
+			Failures: makeCheckConfigFailure("version", "version is not 15.7.9"),
 		}, nil
 	}
 
 	// version and value
 	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 

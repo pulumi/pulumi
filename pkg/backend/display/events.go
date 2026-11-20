@@ -277,15 +277,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 }
 
 func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) apitype.StepEventMetadata {
-	keys := make([]string, len(md.Keys))
-	for i, v := range md.Keys {
-		keys[i] = string(v)
-	}
-
-	diffs := slice.Prealloc[string](len(md.Diffs))
-	for _, v := range md.Diffs {
-		diffs = append(diffs, string(v))
-	}
+	keys := slice.Cast[string](md.Keys)
+	diffs := slice.Cast[string](md.Diffs)
 
 	var detailedDiff map[string]apitype.PropertyDiff
 	if md.DetailedDiff != nil {
@@ -345,10 +338,10 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 
 	ctx := context.TODO()
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(ctx, md.Inputs, encrypter, showSecrets)
+	inputs, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(md.Inputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
+	outputs, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(md.Outputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
@@ -547,14 +540,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 }
 
 func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEventMetadata {
-	keys := make([]resource.PropertyKey, len(md.Keys))
-	for i, v := range md.Keys {
-		keys[i] = resource.PropertyKey(v)
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(md.Diffs))
-	for _, v := range md.Diffs {
-		diffs = append(diffs, resource.PropertyKey(v))
-	}
+	keys := slice.Cast[resource.PropertyKey](md.Keys)
+	diffs := slice.Cast[resource.PropertyKey](md.Diffs)
 	var detailedDiff map[string]plugin.PropertyDiff
 	if md.DetailedDiff != nil {
 		detailedDiff = make(map[string]plugin.PropertyDiff)
@@ -637,8 +624,8 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Taint:          md.Taint,
 		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
-		Inputs:         inputs,
-		Outputs:        outputs,
+		Inputs:         resource.FromResourcePropertyMap(inputs),
+		Outputs:        resource.FromResourcePropertyMap(outputs),
 		InitErrors:     md.InitErrors,
 		HideDiffs:      md.HideDiffs,
 	}

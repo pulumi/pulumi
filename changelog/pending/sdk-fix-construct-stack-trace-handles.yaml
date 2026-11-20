@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Preserve caller registration stacks for child resources created or read by Python, Node.js, and Go component providers
+time: 2026-11-18T10:14:19Z

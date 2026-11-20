@@ -57,6 +57,10 @@ func init() {
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 
 					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")
+
+					require.NotEmpty(l, component.StackTrace, "expected a caller stack for the component")
+					assert.Contains(l, simple.StackTrace, component.StackTrace[0],
+						"expected the child resource's stack to include the component's caller")
 				},
 			},
 		},

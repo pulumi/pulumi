@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -219,11 +220,17 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				err = result.BailError(closeErr)
 			}
 		} else {
-			cancelled, cancel := context.WithCancel(callerCtx)
-			cancel()
+			shutdownCtx, cancel := context.WithTimeout(callerCtx, 5*time.Second)
+			defer cancel()
+			shutdownDone := make(chan struct{})
 			go func() {
-				contract.IgnoreError(src.Cancel(cancelled))
+				defer close(shutdownDone)
+				contract.IgnoreError(src.Cancel(shutdownCtx))
 			}()
+			select {
+			case <-shutdownDone:
+			case <-shutdownCtx.Done():
+			}
 		}
 	}()
 
@@ -419,6 +426,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			ex.deployment.PostStepError() != nil
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
+			if !result.IsBail(err) {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): error finalizing stack outputs: %v", err)
+				ex.reportError(e.URN(), err)
+			}
 			return nil, result.BailError(err)
 		}
 	}

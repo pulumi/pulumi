@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -97,6 +98,15 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	cmd.AddCommand(newEnvWebhookCmd(env))
 	cmd.AddCommand(newEnvScheduleCmd(env))
 	cmd.AddCommand(newEnvChangeRequestCmd(env))
+
+	changeRequest := newEnvChangeRequestCmd(env)
+	changeRequest.Use = "change-request"
+	changeRequest.Hidden = true
+	changeRequest.Deprecated = "use `env approval` instead"
+	for _, c := range changeRequest.Commands() {
+		c.Deprecated = fmt.Sprintf("use `env approval %v` instead", c.Name())
+	}
+	cmd.AddCommand(changeRequest)
 
 	return cmd
 }
@@ -449,6 +459,23 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 	return path + "?version=" + changeRequestID
 }
 
+// openRequestURL returns a URL to an open request in the Pulumi Cloud Console, rooted at cloudURL.
+// If there is an error, returns "".
+func (esc *escCommand) openRequestURL(ref environmentRef, changeRequestID string) string {
+	path := pulumiclient.CloudConsoleURL(
+		esc.client.URL(),
+		ref.orgName,
+		"esc",
+		ref.projectName,
+		ref.envName,
+		"change-requests",
+	)
+	if path == "" {
+		return path
+	}
+	return path + "?requestId=" + changeRequestID
+}
+
 // updateEnvironment updates an environment.
 // If draft is empty, the environment is directly updated.
 // If draft is "new", a change request is created and submitted.
@@ -481,7 +508,8 @@ func (esc *escCommand) updateEnvironment(
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
 			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
-			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
+			url := esc.changeRequestURL(ref, changeRequestID)
+			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.colors.Hyperlink(url, url))
 
 			var description *string
 			if reason != "" {
@@ -502,11 +530,16 @@ func (esc *escCommand) updateEnvironment(
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
 			fmt.Fprintln(esc.stdout, "Change request updated")
-			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
+			url := esc.changeRequestURL(ref, changeRequestID)
+			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.colors.Hyperlink(url, url))
 		}
 		return diags, nil
 	} else {
 		diags, revision, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
+		if isApprovalRequired(err) {
+			return nil, fmt.Errorf("updating environment definition: %w\n"+
+				"Re-run with --draft to submit your changes as a change request", err)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("updating environment definition: %w", err)
 		}
@@ -523,4 +556,11 @@ func checkReason(draft, reason string) error {
 		return errors.New("--reason requires --draft without a change request ID")
 	}
 	return nil
+}
+
+// isApprovalRequired reports whether err is the service rejecting a direct update because the
+// environment requires approvals.
+func isApprovalRequired(err error) bool {
+	errResp, ok := errors.AsType[*client.EnvironmentErrorResponse](err)
+	return ok && errResp.Code == http.StatusConflict && strings.Contains(errResp.Message, "change request")
 }
