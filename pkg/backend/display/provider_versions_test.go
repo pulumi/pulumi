@@ -21,8 +21,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestRecordProviderVersion(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRecordProviderVersion(t *testing.T) {
 		return engine.NewEvent(engine.ResourcePreEventPayload{Metadata: engine.StepEventMetadata{
 			Type: typ,
 			Res: &engine.StepEventStateMetadata{
-				Inputs: resource.PropertyMap{"version": resource.NewProperty(version)},
+				Inputs: property.NewMap(map[string]property.Value{"version": property.New(version)}),
 			},
 		}})
 	}

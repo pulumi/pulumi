@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	deployproviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 var (
@@ -44,7 +45,7 @@ func recordProviderVersion(e engine.Event) {
 	if !ok || p.Metadata.Res == nil || !providers.IsProviderType(p.Metadata.Type) {
 		return
 	}
-	inputs := p.Metadata.Res.Inputs
+	inputs := resource.ToResourcePropertyMap(p.Metadata.Res.Inputs)
 	name, err := deployproviders.GetProviderName(providers.GetProviderPackage(p.Metadata.Type), inputs)
 	if err != nil {
 		return
