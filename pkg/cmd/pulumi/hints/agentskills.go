@@ -93,7 +93,8 @@ func agentSkillsInstalled(getEnv func(string) string, home, dir string) bool {
 	}
 
 	// The Gemini CLI installs the skills as an extension rather than into a skills directory.
-	markers := []string{filepath.Join(home, ".gemini", "extensions", "pulumi")}
+	markers := make([]string, 0, 1+len(skillDirs)*len(pulumiSkills))
+	markers = append(markers, filepath.Join(home, ".gemini", "extensions", "pulumi"))
 	for _, sd := range skillDirs {
 		for _, skill := range pulumiSkills {
 			markers = append(markers, filepath.Join(sd, skill, "SKILL.md"))
