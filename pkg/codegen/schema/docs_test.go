@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
@@ -384,32 +385,32 @@ func TestPartialPackageInterpretPulumiRefs(t *testing.T) {
 	resolver := func(ref DocRef) (string, bool) { return "resolved " + ref.Property, true }
 	expected := "See resolved name."
 
-	interpret := map[string]func(t *testing.T) (string, error){
-		"before Definition": func(t *testing.T) (string, error) {
+	interpret := map[string]func(t *testing.T) (string, hcl.Diagnostics){
+		"before Definition": func(t *testing.T) (string, hcl.Diagnostics) {
 			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
 			require.NoError(t, err)
-			return pkg.InterpretPulumiRefs(description, resolver)
+			return pkg.InterpretPulumiRefsWithDiagnostics(description, resolver)
 		},
-		"after Definition": func(t *testing.T) (string, error) {
+		"after Definition": func(t *testing.T) (string, hcl.Diagnostics) {
 			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
 			require.NoError(t, err)
 			_, err = pkg.Definition()
 			require.NoError(t, err)
-			return pkg.InterpretPulumiRefs(description, resolver)
+			return pkg.InterpretPulumiRefsWithDiagnostics(description, resolver)
 		},
-		"on Definition": func(t *testing.T) (string, error) {
+		"on Definition": func(t *testing.T) (string, hcl.Diagnostics) {
 			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
 			require.NoError(t, err)
 			def, err := pkg.Definition()
 			require.NoError(t, err)
-			return def.InterpretPulumiRefs(description, resolver)
+			return def.InterpretPulumiRefsWithDiagnostics(description, resolver)
 		},
-		"on Snapshot": func(t *testing.T) (string, error) {
+		"on Snapshot": func(t *testing.T) (string, hcl.Diagnostics) {
 			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
 			require.NoError(t, err)
 			snapshot, err := pkg.Snapshot()
 			require.NoError(t, err)
-			return snapshot.InterpretPulumiRefs(description, resolver)
+			return snapshot.InterpretPulumiRefsWithDiagnostics(description, resolver)
 		},
 	}
 
@@ -417,8 +418,8 @@ func TestPartialPackageInterpretPulumiRefs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := run(t)
-			require.NoError(t, err)
+			actual, diags := run(t)
+			require.False(t, diags.HasErrors())
 			assert.Equal(t, expected, actual)
 		})
 	}
@@ -435,14 +436,14 @@ func TestPartialPackageInterpretPulumiRefs(t *testing.T) {
 			return resolver(ref)
 		}
 
-		actual, err := pkg.InterpretPulumiRefs(description, readingResolver)
-		require.NoError(t, err)
+		actual, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, readingResolver)
+		require.False(t, diags.HasErrors())
 		assert.Equal(t, expected, actual)
 
 		_, err = pkg.Definition()
 		require.NoError(t, err)
-		actual, err = pkg.InterpretPulumiRefs(description, readingResolver)
-		require.NoError(t, err)
+		actual, diags = pkg.InterpretPulumiRefsWithDiagnostics(description, readingResolver)
+		require.False(t, diags.HasErrors())
 		assert.Equal(t, expected, actual)
 	})
 
@@ -451,7 +452,7 @@ func TestPartialPackageInterpretPulumiRefs(t *testing.T) {
 
 		pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
 		require.NoError(t, err)
-		_, err = pkg.InterpretPulumiRefs("See {{% ref #/resources/test:index:Missing %}}.", resolver)
-		assert.ErrorContains(t, err, "reference to resource '/resources/test:index:Missing' not found")
+		_, diags := pkg.InterpretPulumiRefsWithDiagnostics("See {{% ref #/resources/test:index:Missing %}}.", resolver)
+		assert.Contains(t, diags.Error(), "reference to resource '/resources/test:index:Missing' not found")
 	})
 }

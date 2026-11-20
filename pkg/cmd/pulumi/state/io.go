@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -75,7 +76,7 @@ func runTotalStateEdit(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, nil)
+	return TotalStateEdit(ctx, s, cmdBackend.SecretsProvider(lm), showPrompt, opts, operation, nil)
 }
 
 // runTotalStateEditWithPrompt is the same as runTotalStateEdit, but allows the caller to
@@ -106,18 +107,19 @@ func runTotalStateEditWithPrompt(
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation, &overridePromptMessage)
+	return TotalStateEdit(ctx, s, cmdBackend.SecretsProvider(lm), showPrompt, opts, operation, &overridePromptMessage)
 }
 
 func TotalStateEdit(
 	ctx context.Context,
 	s backend.Stack,
+	secretsProvider secrets.Provider,
 	showPrompt bool,
 	opts display.Options,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 	overridePromptMessage *string,
 ) error {
-	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := s.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -335,7 +337,7 @@ func getURNFromState(
 		if err != nil {
 			return "", err
 		}
-		*snap, err = s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+		*snap, err = s.Snapshot(ctx, cmdBackend.SecretsProvider(lm))
 		if err != nil {
 			return "", err
 		}

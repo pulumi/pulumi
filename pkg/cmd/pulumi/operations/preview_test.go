@@ -79,7 +79,7 @@ func makeStateMetadata(
 		Custom:   custom,
 		Provider: provider,
 		Parent:   parent,
-		Inputs:   opts.Inputs,
+		Inputs:   resource.FromResourcePropertyMap(opts.Inputs),
 		State:    state,
 	}
 }

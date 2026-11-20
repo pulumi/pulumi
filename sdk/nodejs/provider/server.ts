@@ -384,6 +384,7 @@ class Server implements grpc.UntypedServiceImplementation {
             this._callbacks.set(callbackId, callback);
             try {
                 const req: provproto.ConstructRequest = call.request;
+                localState.setParentStackTraceHandle(req.getStackTraceHandle());
                 const type = req.getType();
                 const name = req.getName();
 

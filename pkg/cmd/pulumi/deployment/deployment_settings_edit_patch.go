@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -178,10 +179,7 @@ func parseVCSProvider(s string) (apitype.VCSProvider, error) {
 	if slices.Contains(known, apitype.VCSProvider(s)) {
 		return apitype.VCSProvider(s), nil
 	}
-	names := make([]string, len(known))
-	for i, p := range known {
-		names[i] = string(p)
-	}
+	names := slice.Cast[string](known)
 	return "", fmt.Errorf("--%s must be one of %s, got %q", flagVCSProvider, strings.Join(names, ", "), s)
 }
 

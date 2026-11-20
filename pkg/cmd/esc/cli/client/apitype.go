@@ -359,6 +359,11 @@ type EnvironmentOpenRequestChangeRequest struct {
 	ETag                 string `json:"etag"`
 }
 
+type EnvironmentOpenRequest struct {
+	GrantExpirationSeconds int `json:"grantExpirationSeconds"`
+	AccessDurationSeconds  int `json:"accessDurationSeconds"`
+}
+
 type RetractEnvironmentRevisionRequest struct {
 	Replacement *int   `json:"replacement,omitempty"`
 	Reason      string `json:"reason,omitempty"`
@@ -370,6 +375,17 @@ type GetDefaultOrganizationResponse struct {
 	// Returns the organization name.
 	// Can be an empty string, if the user is a member of no organizations
 	Organization string `json:"gitHubLogin"`
+}
+
+type EnvironmentMetadata struct {
+	ID           string   `json:"id"`
+	GatedActions []string `json:"gatedActions,omitempty"`
+	// ActiveChangeRequest is the caller's open draft, which blocks them from creating another.
+	ActiveChangeRequest *ChangeRequestRef `json:"activeChangeRequest,omitempty"`
+}
+
+type ChangeRequestRef struct {
+	ChangeRequestID string `json:"changeRequestId"`
 }
 
 type EnvironmentSettings struct {

@@ -222,14 +222,14 @@ func (src *source) Iterate(ctx context.Context, providers ProviderSource) (Sourc
 
 type iterator struct {
 	closed      bool
-	closeCtxErr chan error
+	onClose     func(context.Context) error
 	returnError bool
 }
 
 func (iter *iterator) Cancel(ctx context.Context) error {
 	iter.closed = true
-	if iter.closeCtxErr != nil {
-		iter.closeCtxErr <- ctx.Err()
+	if iter.onClose != nil {
+		return iter.onClose(ctx)
 	}
 	return nil
 }
@@ -439,10 +439,19 @@ func TestSourceIteratorClose(t *testing.T) {
 	require.True(t, iter.closed, "The source iterator should be closed after execution")
 }
 
-// If we run into an error, close the iterator but don't wait for the program to complete.
-func TestSourceIteratorCloseWithoutWaitOnError(t *testing.T) {
+func TestSourceIteratorCloseGetsGracePeriodOnError(t *testing.T) {
 	t.Parallel()
-	iter := &iterator{returnError: true, closeCtxErr: make(chan error, 1)}
+	closeErr := errors.New("source shutdown failed")
+	hasGracePeriod := make(chan bool, 1)
+	iter := &iterator{
+		returnError: true,
+		onClose: func(ctx context.Context) error {
+			deadline, hasDeadline := ctx.Deadline()
+			remaining := time.Until(deadline)
+			hasGracePeriod <- ctx.Err() == nil && hasDeadline && remaining > 0 && remaining <= 5*time.Second
+			return closeErr
+		},
+	}
 	ex := newDeploymentExecutor(&Deployment{
 		source: &source{iter},
 		opts:   &Options{},
@@ -456,10 +465,54 @@ func TestSourceIteratorCloseWithoutWaitOnError(t *testing.T) {
 
 	_, err := ex.Execute(t.Context())
 	require.ErrorContains(t, err, "BAIL")
+	require.NotErrorIs(t, err, closeErr)
 	select {
-	case closeCtxErr := <-iter.closeCtxErr:
-		require.ErrorIs(t, closeCtxErr, context.Canceled)
+	case bounded := <-hasGracePeriod:
+		require.True(t, bounded, "source shutdown should start with a live context and a deadline")
+	default:
+		t.Fatal("execution returned before closing the source iterator")
+	}
+}
+
+func TestSourceIteratorCloseOnErrorIsBounded(t *testing.T) {
+	t.Parallel()
+	release := make(chan struct{})
+	defer close(release)
+	cancelFinished := make(chan struct{})
+	iter := &iterator{
+		returnError: true,
+		onClose: func(shutdownCtx context.Context) error {
+			defer close(cancelFinished)
+			// We never write to release, so this will block during the test.
+			// An uncooperative source must not prevent the executor from returning.
+			<-release
+			return shutdownCtx.Err()
+		},
+	}
+	ex := newDeploymentExecutor(&Deployment{
+		source: &source{iter},
+		opts:   &Options{},
+		ctx: &plugin.Context{
+			Diag: &deploytest.NoopSink{},
+			Host: deploytest.NewPluginHost(nil, nil, nil),
+		},
+		newPlans: &resourcePlans{},
+	})
+	ex.stepGen = &stepGenerator{}
+	done := make(chan error, 1)
+	go func() {
+		_, err := ex.Execute(t.Context())
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		require.ErrorContains(t, err, "BAIL")
 	case <-time.After(10 * time.Second):
-		require.Fail(t, "source iterator was not closed")
+		t.Fatal("execution did not return while source cancellation was blocked")
+	}
+	select {
+	case <-cancelFinished:
+		t.Fatal("source cancellation unexpectedly finished")
+	default:
 	}
 }

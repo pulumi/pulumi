@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -250,27 +251,13 @@ type ResourcePlan struct {
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
-	stringsA := make([]string, len(a))
-	for i, urn := range a {
-		stringsA[i] = string(urn)
-	}
-	stringsB := make([]string, len(b))
-	for i, urn := range b {
-		stringsB[i] = string(urn)
-	}
+	stringsA := slice.Cast[string](a)
+	stringsB := slice.Cast[string](b)
 	return rp.diffStringSets(stringsA, stringsB)
 }
 
 func (rp *ResourcePlan) diffPropertyKeys(a, b []resource.PropertyKey) (message string, changed bool) {
-	stringsA := make([]string, len(a))
-	for i, key := range a {
-		stringsA[i] = string(key)
-	}
-	stringsB := make([]string, len(a))
-	for i, key := range b {
-		stringsB[i] = string(key)
-	}
-	return rp.diffStringSets(stringsA, stringsB)
+	return rp.diffStringSets(slice.Cast[string](a), slice.Cast[string](b))
 }
 
 func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed bool) {

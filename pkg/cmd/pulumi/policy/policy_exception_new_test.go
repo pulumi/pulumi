@@ -272,15 +272,34 @@ func TestPolicyExceptionNew_LatestRun(t *testing.T) {
 func TestPolicyExceptionNew_NoViolations(t *testing.T) {
 	t.Parallel()
 
-	stdout, stderr, err := runNew(t, twoBuckets(), "", policyExceptionNewArgs{policyPack: "gcp", reason: "x"})
-	require.NoError(t, err)
-	assert.Empty(t, stdout)
-	assert.Equal(t, "No violations of Policy Pack \"gcp\" to exempt.\n", stderr)
-
-	_, stderr, err = runNew(t, &mockPolicyExceptionClient{updates: []apitype.UpdateInfo{{Version: 1}}}, "",
+	_, stderr, err := runNew(t, &mockPolicyExceptionClient{updates: []apitype.UpdateInfo{{Version: 1}}}, "",
 		policyExceptionNewArgs{reason: "x"})
 	require.NoError(t, err)
 	assert.Equal(t, "No violations to exempt.\n", stderr)
+
+	stdout, stderr, err := runNew(t, twoBuckets(), "", policyExceptionNewArgs{levels: []string{"remediate"}, reason: "x"})
+	require.NoError(t, err, "a run without violations of the level isn't an error")
+	assert.Empty(t, stdout)
+	assert.Equal(t, "No violations to exempt.\n", stderr)
+
+	// A filter that matches none of the run's violations is likely a typo.
+	want := cmdCmd.ConfigurationError{Message: "no violations match the Policy Pack, --policy or --target; " +
+		"the run has violations of aws/unencrypted, aws/required-tags, aws/s3-no-public-read"}
+	for _, args := range []policyExceptionNewArgs{
+		{policyPack: "gcp"},
+		{policies: []string{"required-tag"}},
+		{targets: []string{logsURN + "-typo"}},
+		{policies: []string{"s3-no-public-read"}, targets: []string{logsURN}, dryRun: true},
+	} {
+		args.reason = "x"
+		_, _, err = runNew(t, twoBuckets(), "", args)
+		assert.Equal(t, want, err, "%+v", args)
+	}
+	_, _, err = runNew(t, twoBuckets(), "", policyExceptionNewArgs{
+		policyPack: "gcp", levels: []string{"mandatory"}, reason: "x",
+	})
+	assert.Equal(t, cmdCmd.ConfigurationError{Message: "no violations match the Policy Pack, --policy or --target; " +
+		"the run has violations of aws/required-tags, aws/s3-no-public-read"}, err, "only violations of the level")
 }
 
 func TestPolicyExceptionViolationTags(t *testing.T) {
@@ -680,14 +699,49 @@ func TestParsePolicyExceptionExpiresIn(t *testing.T) {
 	t.Parallel()
 
 	for s, want := range map[string]time.Duration{
-		"": 0, "7d": 7 * 24 * time.Hour, "12h": 12 * time.Hour, "2D": 48 * time.Hour,
+		"": 0, "7d": 7 * 24 * time.Hour, "12h": 12 * time.Hour, "2D": 48 * time.Hour, "3650d": 3650 * 24 * time.Hour,
+		"87600h": 87600 * time.Hour,
 	} {
 		got, err := parsePolicyExceptionExpiresIn(s)
 		require.NoError(t, err, s)
 		assert.Equal(t, want, got, s)
 	}
-	for _, s := range []string{"0d", "-1h", "7", "x", "d", "1.5d", "90m", "1h30m"} {
+	for _, s := range []string{"7", "x", "d", "1.5d", "90m", "1h30m"} {
 		_, err := parsePolicyExceptionExpiresIn(s)
 		assert.EqualError(t, err, fmt.Sprintf("invalid --expires-in %q: use days, like 7d, or hours, like 12h", s))
+	}
+	for _, s := range []string{"0d", "0h", "-1h"} {
+		_, err := parsePolicyExceptionExpiresIn(s)
+		assert.EqualError(t, err, "--expires-in must be at least 1h", s)
+	}
+	for _, s := range []string{"3651d", "87601h", "106752d", "2562048h", "213504d", "9999999999d"} {
+		_, err := parsePolicyExceptionExpiresIn(s)
+		assert.EqualError(t, err, fmt.Sprintf("--expires-in %s is too long; the maximum is 3650d", s))
+	}
+}
+
+func TestPolicyExceptionNew_RunValueAsArgument(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--update", "2"}, `unexpected argument "2": use --update=2`},
+		{[]string{"aws", "--update", "2"}, `unexpected argument "2": use --update=2`},
+		{
+			[]string{"--preview", "5c35418b-6a6b-4b8e-9b51-2f6a3c8b9d10"},
+			`unexpected argument "5c35418b-6a6b-4b8e-9b51-2f6a3c8b9d10": use --preview=5c35418b-6a6b-4b8e-9b51-2f6a3c8b9d10`,
+		},
+		{[]string{"aws", "extra"}, "accepts at most 1 arg(s), received 2"},
+	} {
+		cmd := newPolicyExceptionNewCmd(nil, nil)
+		require.NoError(t, cmd.ParseFlags(tc.args))
+		assert.ErrorContains(t, cmd.Args(cmd, cmd.Flags().Args()), tc.want, tc.args)
+	}
+	for _, args := range [][]string{{"aws", "--update=2"}, {"2"}, {"aws", "--update"}} {
+		cmd := newPolicyExceptionNewCmd(nil, nil)
+		require.NoError(t, cmd.ParseFlags(args))
+		require.NoError(t, cmd.Args(cmd, cmd.Flags().Args()), args)
 	}
 }

@@ -37,6 +37,7 @@ from pulumi.resource import (
     _parse_resource_reference,
 )
 from pulumi.runtime import known_types, proto, rpc
+from pulumi.runtime._registration_context import _registration_context
 from pulumi.runtime.proto import (
     provider_pb2_grpc,
     ResourceProviderServicer,
@@ -120,32 +121,35 @@ class ProviderServicer(ResourceProviderServicer):
     async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        try:
-            return await self._construct(request, context)
-        except Exception as e:  # noqa
-            if isinstance(e, RunError):
-                raise
-            if isinstance(e, InputPropertiesError):
-                status = self.create_grpc_invalid_properties_status(e.message, e.errors)
-                await context.abort_with_status(status)
-                # We already aborted at this point
-                raise
-            elif isinstance(e, InputPropertyError):
-                status = self.create_grpc_invalid_properties_status(
-                    "", [{"property_path": e.property_path, "reason": e.reason}]
-                )
-                await context.abort_with_status(status)
-                # We already aborted at this point
-                raise
-            else:
-                if isinstance(e, ComponentInitError):
-                    stack = traceback.extract_tb(e.inner.__traceback__)[:]
-                    # Drop the internal frame for `self._construct`.
-                    stack = stack[1:]
+        with _registration_context(request.stack_trace_handle):
+            try:
+                return await self._construct(request, context)
+            except Exception as e:  # noqa
+                if isinstance(e, RunError):
+                    raise
+                if isinstance(e, InputPropertiesError):
+                    status = self.create_grpc_invalid_properties_status(
+                        e.message, e.errors
+                    )
+                    await context.abort_with_status(status)
+                    # We already aborted at this point
+                    raise
+                elif isinstance(e, InputPropertyError):
+                    status = self.create_grpc_invalid_properties_status(
+                        "", [{"property_path": e.property_path, "reason": e.reason}]
+                    )
+                    await context.abort_with_status(status)
+                    # We already aborted at this point
+                    raise
                 else:
-                    stack = traceback.extract_tb(e.__traceback__)[:]
-                pretty_stack = "".join(traceback.format_list(stack))
-                raise Exception(f"{str(e)}:\n{pretty_stack}")
+                    if isinstance(e, ComponentInitError):
+                        stack = traceback.extract_tb(e.inner.__traceback__)[:]
+                        # Drop the internal frame for `self._construct`.
+                        stack = stack[1:]
+                    else:
+                        stack = traceback.extract_tb(e.__traceback__)[:]
+                    pretty_stack = "".join(traceback.format_list(stack))
+                    raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def _construct(
         self, request: proto.ConstructRequest, context

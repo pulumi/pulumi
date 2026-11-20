@@ -61,6 +61,11 @@ type mockPolicyExceptionClient struct {
 	// before, when the draft returned an open change request; it's a draft otherwise.
 	crStatus string
 	crOpen   string
+	// noStack makes GetStack return a 404, as for a stack that doesn't exist; noCR does the same for change requests.
+	noStack bool
+	noCR    bool
+	// stackErr fails GetStack with another error.
+	stackErr error
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
 	gotOrgFlag   string
@@ -70,6 +75,7 @@ type mockPolicyExceptionClient struct {
 	gotDrafts    []cloudapitype.CreatePolicyExceptionRequest
 	gotSubmitted []string
 	gotReads     []string
+	gotStacks    []string
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
@@ -107,6 +113,9 @@ func (m *mockPolicyExceptionClient) GetChangeRequest(
 	_ context.Context, org, id string,
 ) (*esc_client.GetChangeRequestResponse, error) {
 	m.gotOrg = org
+	if m.noCR {
+		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
+	}
 	status := cmp.Or(m.crOpen, changeRequestDraft)
 	if len(m.gotSubmitted) > 0 {
 		status = m.crStatus
@@ -128,6 +137,14 @@ func (m *mockPolicyExceptionClient) GetLatestStackPreviews(
 	context.Context, client.StackIdentifier,
 ) ([]apitype.StackPreview, error) {
 	return m.previews, nil
+}
+
+func (m *mockPolicyExceptionClient) GetStack(_ context.Context, stack client.StackIdentifier) (apitype.Stack, error) {
+	m.gotStacks = append(m.gotStacks, stack.String())
+	if m.noStack {
+		return apitype.Stack{}, &apitype.ErrorResponse{Code: http.StatusNotFound}
+	}
+	return apitype.Stack{}, m.stackErr
 }
 
 func (m *mockPolicyExceptionClient) GetUpdateEngineEvents(
@@ -214,6 +231,7 @@ func TestPolicyExceptionList(t *testing.T) {
 
 	assert.Equal(t, "acme", c.gotOrg)
 	assert.Empty(t, c.gotOrgFlag, "the organization defaults to the backend's")
+	assert.Equal(t, []string{"acme/web/prod"}, c.gotStacks)
 	query := client.ListPolicyExceptionsOptions{
 		PolicyPack: "aws-security",
 		Policy:     "required-tags",
@@ -319,6 +337,26 @@ func TestPolicyExceptionList_Errors(t *testing.T) {
 		}, err)
 		assert.Empty(t, c.gotListOpts, stack)
 	}
+
+	c = &mockPolicyExceptionClient{}
+	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
+		policyExceptionListArgs{
+			statuses: []string{"active", "pending"}, outputFormat: defaultPolicyExceptionListOutputFormat(),
+		})
+	assert.Equal(t, cmdCmd.ConfigurationError{Message: `invalid --status "pending": expected active or removed`}, err)
+	assert.Empty(t, c.gotListOpts)
+
+	c = &mockPolicyExceptionClient{noStack: true}
+	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
+		policyExceptionListArgs{stack: "nope/nope", outputFormat: defaultPolicyExceptionListOutputFormat()})
+	assert.EqualError(t, err, "no stack named 'acme/nope/nope' found")
+	assert.Empty(t, c.gotListOpts)
+
+	c = &mockPolicyExceptionClient{stackErr: &apitype.ErrorResponse{Code: http.StatusForbidden, Message: "forbidden"}}
+	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
+		policyExceptionListArgs{stack: "web/prod", outputFormat: defaultPolicyExceptionListOutputFormat()})
+	assert.ErrorIs(t, err, c.stackErr)
+	assert.Empty(t, c.gotListOpts)
 }
 
 func TestPolicyExceptionGet(t *testing.T) {
@@ -340,7 +378,7 @@ func TestPolicyExceptionGet(t *testing.T) {
 	assert.Equal(t, `ID:            EXC-3
 Policy pack:   aws-security
 Status:        removed
-Requested in:  change request cr-1
+Requested in:  change request cr-1: http://localhost:3000/other-org/web/prod?exception=cr-1
 Created:       2026-10-01T12:00:00Z by alice
 Removed:       2026-10-02T09:30:00Z by bob
 Expires:       2026-10-09T00:00:00Z
@@ -452,6 +490,56 @@ func TestPolicyExceptionGet_Errors(t *testing.T) {
 	}
 	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, failing, "EXC-9", args)
 	assert.EqualError(t, err, "not logged in")
+
+	// `new` prints a change request's ID when the organization requires approval.
+	const crID = "fa8258ae-1124-4cdc-98c8-6a6a2f6a2fc5"
+	notFound := &mockPolicyExceptionClient{crOpen: "pending"}
+	factory := func(context.Context, string) (policyExceptionClients, string, error) {
+		return policyExceptionClients{&notFoundExceptions{notFound}, notFound}, "acme", nil
+	}
+	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
+	assert.EqualError(t, err, crID+" is a change request (status: pending), not a policy exception; "+
+		"it creates the exception once it's approved and applied")
+	err = runPolicyExceptionRemove(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, factory, crID,
+		policyExceptionRemoveArgs{yes: true, outputFormat: defaultPolicyExceptionRemoveOutputFormat()})
+	assert.EqualError(t, err, crID+" is a change request (status: pending), not a policy exception; "+
+		"it creates the exception once it's approved and applied")
+
+	notFound.noCR = true
+	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
+	assert.EqualError(t, err, "policy exception "+crID+" not found in acme")
+}
+
+// notFoundExceptions returns a 404 for every exception.
+type notFoundExceptions struct{ *mockPolicyExceptionClient }
+
+func (notFoundExceptions) GetPolicyException(context.Context, string, string) (cloudapitype.PolicyException, error) {
+	return cloudapitype.PolicyException{}, &apitype.ErrorResponse{Code: http.StatusNotFound}
+}
+
+func (notFoundExceptions) RemovePolicyException(context.Context, string, string) error {
+	return &apitype.ErrorResponse{Code: http.StatusNotFound}
+}
+
+func TestPolicyExceptionStatus(t *testing.T) {
+	t.Parallel()
+
+	expiresAt := time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		e    cloudapitype.PolicyException
+		want string
+	}{
+		{cloudapitype.PolicyException{Status: "active", ExpiresAt: &expiresAt}, "active"},
+		{cloudapitype.PolicyException{Status: "removed", ExpiresAt: &expiresAt, RemovedAt: &expiresAt}, "removed (expired)"},
+		{cloudapitype.PolicyException{
+			Status: "removed", ExpiresAt: &expiresAt, RemovedAt: &expiresAt, RemovedBy: &apitype.UserInfo{GitHubLogin: "bob"},
+		}, "removed"},
+		{cloudapitype.PolicyException{
+			Status: "removed", ExpiresAt: &expiresAt, RemovedAt: new(expiresAt.Add(-time.Hour)),
+		}, "removed"},
+	} {
+		assert.Equal(t, tc.want, policyExceptionStatus(tc.e), "%+v", tc.e)
+	}
 }
 
 func TestPolicyExceptionRemove(t *testing.T) {

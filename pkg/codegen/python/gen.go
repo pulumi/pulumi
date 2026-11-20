@@ -2705,6 +2705,9 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 // selfRef is set, refs within the same scope are returned unqualified.
 func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
 	return func(ref schema.DocRef) (string, bool) {
+		if ref.Type == nil && ref.Function == nil {
+			return "", false
+		}
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -2763,9 +2766,9 @@ func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterE
 	if filterExamples {
 		comment = codegen.FilterExamples(comment, "python")
 	}
-	comment, err := mod.pkg.InterpretPulumiRefs(comment, mod.docRefResolver(selfRef))
-	if err != nil {
-		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
+	comment, diags := mod.pkg.InterpretPulumiRefsWithDiagnostics(comment, mod.docRefResolver(selfRef))
+	if diags.HasErrors() {
+		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, diags)
 	}
 
 	return comment, nil
@@ -3755,9 +3758,7 @@ func genPyprojectTOML(tool string,
 		schema.Project.Description = &description
 	}
 	if pkg.License != "" {
-		schema.Project.License = &License{
-			Text: pkg.License,
-		}
+		schema.Project.License = pkg.License
 	}
 
 	// • Next, we set the version field.
@@ -3782,7 +3783,7 @@ func genPyprojectTOML(tool string,
 	// Populate build extensions as follows:
 	//
 	// [build-system]
-	// requires = ["setuptools>=61.0"]
+	// requires = ["setuptools>=77.0"]
 	// build-backend = "setuptools.build_meta"
 	// [tool.setuptools.package-data]
 	// pulumi_kubernetes = ["py.typed", "pulumi-plugin.json"]
@@ -3791,7 +3792,7 @@ func genPyprojectTOML(tool string,
 	// including the required files `py.typed` and `pulumi-plugin.json` in the distro.
 
 	schema.BuildSystem = &BuildSystem{
-		Requires:     []string{"setuptools>=61.0"},
+		Requires:     []string{"setuptools>=77.0"},
 		BuildBackend: "setuptools.build_meta",
 	}
 

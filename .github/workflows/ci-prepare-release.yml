@@ -36,6 +36,10 @@ on:
         description: "Whether to create a draft release"
         type: boolean
 
+concurrency:
+  group: prepare-release-${{ inputs.version }}
+  cancel-in-progress: false
+
 env:
   PULUMI_VERSION: ${{ inputs.version }}
 

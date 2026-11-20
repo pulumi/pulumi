@@ -33,7 +33,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-type policyExceptionGetRenderFunc func(w io.Writer, exception cloudapitype.PolicyException) error
+// policyExceptionGetRenderFunc writes the exception, and the console link of the change request that requested it.
+type policyExceptionGetRenderFunc func(
+	w io.Writer, exception cloudapitype.PolicyException, changeRequestURL string,
+) error
 
 type policyExceptionGetArgs struct {
 	org          string
@@ -43,7 +46,7 @@ type policyExceptionGetArgs struct {
 func defaultPolicyExceptionGetOutputFormat() outputflag.OutputFlag[policyExceptionGetRenderFunc] {
 	return outputflag.OutputFlag[policyExceptionGetRenderFunc]{
 		RenderForTerminal: renderPolicyExceptionGetText,
-		RenderJSON: func(w io.Writer, exception cloudapitype.PolicyException) error {
+		RenderJSON: func(w io.Writer, exception cloudapitype.PolicyException, _ string) error {
 			return ui.FprintJSON(w, exception)
 		},
 	}
@@ -96,20 +99,28 @@ func runPolicyExceptionGet(
 	exception, err := c.GetPolicyException(ctx, org, exceptionID)
 	err = policyExceptionsError(err, org)
 	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
-		return fmt.Errorf("policy exception %s not found in %s", exceptionID, org)
+		return policyExceptionNotFound(ctx, c, org, exceptionID)
 	} else if err != nil {
 		return err
 	}
 
-	return args.outputFormat.Get()(w, exception)
+	changeRequestURL := ""
+	if exception.ChangeRequestID != nil {
+		changeRequestURL = policyExceptionConsoleURL(c.URL(), org, exception.Match, *exception.ChangeRequestID)
+	}
+	return args.outputFormat.Get()(w, exception, changeRequestURL)
 }
 
-func renderPolicyExceptionGetText(w io.Writer, e cloudapitype.PolicyException) error {
+func renderPolicyExceptionGetText(w io.Writer, e cloudapitype.PolicyException, changeRequestURL string) error {
 	fmt.Fprintf(w, "%-14s %s\n", "ID:", e.ID)
 	fmt.Fprintf(w, "%-14s %s\n", "Policy pack:", e.PolicyPack)
-	fmt.Fprintf(w, "%-14s %s\n", "Status:", e.Status)
+	fmt.Fprintf(w, "%-14s %s\n", "Status:", policyExceptionStatus(e))
 	if e.ChangeRequestID != nil {
-		fmt.Fprintf(w, "%-14s %s\n", "Requested in:", "change request "+*e.ChangeRequestID)
+		requested := "change request " + *e.ChangeRequestID
+		if changeRequestURL != "" {
+			requested += ": " + changeRequestURL
+		}
+		fmt.Fprintf(w, "%-14s %s\n", "Requested in:", requested)
 	}
 	for _, event := range []struct {
 		label string

@@ -15,6 +15,7 @@
 package property
 
 import (
+	"iter"
 	"maps"
 	"slices"
 )
@@ -77,6 +78,12 @@ func (m Map) AllStable(yield func(string, Value) bool) {
 			return
 		}
 	}
+}
+
+// Keys returns an iterator over the keys of the [Map] in unspecified order. Combine
+// with [slices.Sorted] for a stable []string, or [slices.Collect] for an unordered one.
+func (m Map) Keys() iter.Seq[string] {
+	return maps.Keys(m.m)
 }
 
 // Get retrieves the [Value] associated with key in the [Map]. If key is not in [Map],

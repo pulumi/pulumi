@@ -34,7 +34,7 @@ type Project struct {
 	GUIScripts   Entrypoints `toml:"gui-scripts,omitempty" json:"gui-scripts,omitempty"`
 	// These are keywords used in package search.
 	Keywords    []string  `toml:"keywords,omitempty" json:"keywords,omitempty"`
-	License     *License  `toml:"license,omitempty" json:"license,omitempty"`
+	License     string    `toml:"license,omitempty" json:"license,omitempty"`
 	Maintainers []Contact `toml:"maintainers,omitempty" json:"maintainers,omitempty"`
 	//nolint:lll
 	OptionalDependencies OptionalDependencies `toml:"optional-dependencies,omitempty" json:"optional-dependencies,omitempty"`
@@ -72,15 +72,6 @@ type Contact struct {
 // distributes libraries, we largely don't use this field, though we include it
 // for completeness and consistency with the spec.
 type Entrypoints map[string]string
-
-// The license instance must populate either
-// file or text, but not both. File is a path
-// to a license file, while text is either the
-// name of the license, or the text of the license.
-type License struct {
-	File string `toml:"file,omitempty" json:"file,omitempty"`
-	Text string `toml:"text,omitempty" json:"text,omitempty"`
-}
 
 // OptionalDependencies provides a map from "Extras" (parlance specific to Python)
 // to their dependencies. Each value in the array becomes a required dependency

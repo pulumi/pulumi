@@ -56,6 +56,25 @@ func (p *grpcCapturingProviderServer) CheckConfig(
 	return p.ResourceProviderServer.CheckConfig(ctx, req)
 }
 
+// CheckConfig2 requests are logged as the CheckConfig request that carries the same values, so that tests can inspect
+// the configuration the engine sent whichever of the two methods it used.
+func (p *grpcCapturingProviderServer) CheckConfig2(
+	ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	err := p.logMessage(CheckConfigMethod, &pulumirpc.CheckRequest{
+		Urn:  req.GetUrn(),
+		Name: req.GetName(),
+		Type: req.GetType(),
+		Olds: req.GetOldInputs(),
+		News: req.GetNewInputs(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return p.ResourceProviderServer.CheckConfig2(ctx, req)
+}
+
 func (p *grpcCapturingProviderServer) Configure(
 	ctx context.Context,
 	req *pulumirpc.ConfigureRequest,

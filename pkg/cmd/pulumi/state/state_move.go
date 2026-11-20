@@ -54,6 +54,11 @@ type stateMoveCmd struct {
 	Colorizer      colors.Colorization
 	Yes            bool
 	IncludeParents bool
+	// NewParent, when non-empty, is the URN of a resource already present in
+	// the destination stack to use as the parent of any moved resources whose
+	// source parent is not also being moved. If empty, such resources are
+	// reparented to the destination's root stack (the historical behaviour).
+	NewParent urn.URN
 
 	ws pkgWorkspace.Context
 }
@@ -63,6 +68,7 @@ func newStateMoveCommand() *cobra.Command {
 	var destStackName string
 	var yes bool
 	var includeParents bool
+	var newParent string
 	stateMove := &stateMoveCmd{
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
@@ -118,6 +124,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
+			stateMove.NewParent = urn.URN(newParent)
+
+			if includeParents && newParent != "" {
+				return errors.New("--include-parents and --parent cannot be used together")
+			}
+			if newParent != "" && !urn.URN(newParent).IsValid() {
+				return fmt.Errorf("--parent is not a valid URN: %q", newParent)
+			}
 
 			sourceSecretsProvider := backend_secrets.NewNamedStackProvider(
 				sourceStack.Ref().FullyQualifiedName().String(), cmdBackend.DefaultLoginManager.ClientSource().ClientForURL)
@@ -144,6 +158,9 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Automatically approve and perform the move")
 	cmd.Flags().BoolVarP(&includeParents, "include-parents", "", false,
 		"Include all the parents of the moved resources as well")
+	cmd.Flags().StringVarP(&newParent, "parent", "", "",
+		"URN of a resource in the destination stack to parent moved resources under. "+
+			"Mutually exclusive with --include-parents")
 
 	return cmd
 }
@@ -348,6 +365,19 @@ func (cmd *stateMoveCmd) Run(
 		destResMap[res.URN] = res
 	}
 
+	// Resolve the parent to use for moved resources whose source parent is not
+	// also being moved. Defaults to the destination's root stack; --parent lets
+	// the user pick a specific resource in the destination.
+	newParentURN := rootStack.URN
+	if cmd.NewParent != "" {
+		newParentURN = cmd.NewParent
+		_, ok := destResMap[newParentURN]
+		if !ok {
+			return fmt.Errorf("--parent %s not found in destination stack %s",
+				newParentURN, dest.Ref().FullyQualifiedName())
+		}
+	}
+
 	var brokenDestDependencies []brokenDependency
 	rewriteMap := make(map[string]string)
 	for _, res := range providers {
@@ -404,11 +434,7 @@ func (cmd *stateMoveCmd) Run(
 		// We need the original resources URNs later in case of errors, so make a copy here before modifying them.
 		r := res.Copy()
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
-			rootStack, err := stack.GetRootStackResource(destSnapshot)
-			if err != nil {
-				return err
-			}
-			r.Parent = rootStack.URN
+			r.Parent = newParentURN
 		}
 
 		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(r, remainingResources)...)

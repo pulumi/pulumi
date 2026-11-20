@@ -128,6 +128,9 @@ export interface Store {
     logErrorCount: number;
     terminated: boolean;
 
+    /** The caller's registration stack for the current Construct request. */
+    parentStackTraceHandle?: string;
+
     /**
      * Tells us if the resource monitor we are connected to is able to support
      * secrets across its RPC interface. When it does, we marshal outputs marked
@@ -332,6 +335,8 @@ export class LocalStore implements Store {
     /* Tracks whether the monitor was terminated while we were waiting for an operation to complete */
     terminated = false;
 
+    parentStackTraceHandle?: string;
+
     supportsSecrets = false;
     supportsResourceReferences = false;
     supportsOutputValues = false;
@@ -360,6 +365,24 @@ export class LocalStore implements Store {
 export function getStackResource(): Stack | undefined {
     const { stackResource } = getStore();
     return stackResource;
+}
+
+/**
+ * Get the caller's registration stack handle for the current Construct request.
+ *
+ * @internal
+ */
+export function getParentStackTraceHandle(): string | undefined {
+    return getStore().parentStackTraceHandle;
+}
+
+/**
+ * Set the caller's registration stack handle for the current Construct request.
+ *
+ * @internal
+ */
+export function setParentStackTraceHandle(handle?: string): void {
+    getStore().parentStackTraceHandle = handle;
 }
 
 /**

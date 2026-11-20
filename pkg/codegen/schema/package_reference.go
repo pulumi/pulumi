@@ -96,7 +96,15 @@ type PackageReference interface {
 	CanonicalizeToken(token string) string
 
 	// InterpretPulumiRefs returns the result of interpreting any references in the given string.
+	//
+	// Deprecated: use InterpretPulumiRefsWithDiagnostics, which returns the rendered text alongside
+	// the diagnostics instead of failing the whole string on one bad reference.
 	InterpretPulumiRefs(string, PulumiRefResolver) (string, error)
+
+	// InterpretPulumiRefsWithDiagnostics interprets the refs in the given string and returns the rendered text
+	// alongside any diagnostics. The resolver is also called for refs that failed to bind, with Type and Function nil;
+	// returning false falls back to the default rendering, and returning true substitutes the resolver's own name.
+	InterpretPulumiRefsWithDiagnostics(string, PulumiRefResolver) (string, hcl.Diagnostics)
 }
 
 // PackageTypes provides random and sequential access to a package's types.
@@ -265,7 +273,13 @@ func (p packageDefRef) Definition() (*Package, error) {
 }
 
 func (p packageDefRef) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
-	return p.pkg.InterpretPulumiRefs(description, resolver)
+	return interpretPulumiRefsViaDiagnostics(p, description, resolver)
+}
+
+func (p packageDefRef) InterpretPulumiRefsWithDiagnostics(
+	description string, resolver PulumiRefResolver,
+) (string, hcl.Diagnostics) {
+	return p.pkg.InterpretPulumiRefsWithDiagnostics(description, resolver)
 }
 
 type packageDefTypes struct {
@@ -882,7 +896,14 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	return pkg, nil
 }
 
+// Deprecated: use [PartialPackage.InterpretPulumiRefsWithDiagnostics].
 func (p *PartialPackage) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
+	return interpretPulumiRefsViaDiagnostics(p, description, resolver)
+}
+
+func (p *PartialPackage) InterpretPulumiRefsWithDiagnostics(
+	description string, resolver PulumiRefResolver,
+) (string, hcl.Diagnostics) {
 	p.m.Lock()
 	pkg := p.def
 	if pkg == nil {
@@ -890,7 +911,7 @@ func (p *PartialPackage) InterpretPulumiRefs(description string, resolver Pulumi
 	}
 	p.m.Unlock()
 
-	return pkg.InterpretPulumiRefs(description, resolver)
+	return pkg.InterpretPulumiRefsWithDiagnostics(description, resolver)
 }
 
 type partialPackageTypes struct {
@@ -1071,4 +1092,22 @@ func parseJSONPropertyValue(raw json.RawMessage, dest any) error {
 	}
 	_, err := json.Parse([]byte(raw), dest, json.ZeroCopy)
 	return err
+}
+
+func interpretPulumiRefsViaDiagnostics(
+	pkg interface {
+		InterpretPulumiRefsWithDiagnostics(string, PulumiRefResolver) (string, hcl.Diagnostics)
+	}, description string, resolver PulumiRefResolver,
+) (string, error) {
+	boundOnly := func(ref DocRef) (string, bool) {
+		if ref.Type == nil && ref.Function == nil {
+			return "", false
+		}
+		return resolver(ref)
+	}
+	rendered, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, boundOnly)
+	if len(diags) > 0 {
+		return rendered, diags
+	}
+	return rendered, nil
 }

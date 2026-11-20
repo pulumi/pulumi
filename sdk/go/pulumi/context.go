@@ -60,15 +60,16 @@ var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOU
 type workGroup = internal.WorkGroup
 
 type contextState struct {
-	info          RunInfo
-	stack         Resource
-	exports       map[string]Input
-	monitor       pulumirpc.ResourceMonitorClient
-	monitorConn   *grpc.ClientConn
-	engine        pulumirpc.EngineClient
-	engineConn    *grpc.ClientConn
-	callbacksLock sync.Mutex
-	callbacks     *callbackServer
+	parentStackTraceHandle string
+	info                   RunInfo
+	stack                  Resource
+	exports                map[string]Input
+	monitor                pulumirpc.ResourceMonitorClient
+	monitorConn            *grpc.ClientConn
+	engine                 pulumirpc.EngineClient
+	engineConn             *grpc.ClientConn
+	callbacksLock          sync.Mutex
+	callbacks              *callbackServer
 
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
@@ -610,7 +611,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 	return cb, nil
 }
 
-// registerTransform starts up a callback server if not already running and registers the given transform.
+// registerInvokeTransform starts up a callback server if not already running and registers the given invoke transform.
 func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callback, error) {
 	if !ctx.state.supportsInvokeTransforms {
 		return nil, errors.New("the Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI")
@@ -751,7 +752,7 @@ func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOptio
 // existence-gated.
 func (ctx *Context) invokePackageRaw(
 	tok string, args any, marshalOpts *marshalOptions, checkDependencies bool, packageRef string,
-	options invokeOptions,
+	options invokeOptions, stackTrace *pulumirpc.StackTrace,
 ) (outProps resource.PropertyMap, deps []Resource, known, secret bool, err error) {
 	if tok == "" {
 		return nil, nil, false, false, errors.New("invoke token must not be empty")
@@ -880,18 +881,23 @@ func (ctx *Context) invokePackageRaw(
 		return nil, nil, false, false, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
+	invokeSourcePosition := ctx.getInvokeSourcePosition(stackTrace)
+
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:               tok,
-		Args:              rpcArgs,
-		Provider:          providerRef,
-		Version:           options.Version,
-		PluginDownloadURL: options.PluginDownloadURL,
-		AcceptResources:   !disableResourceReferences,
-		AcceptsByteString: true,
-		PackageRef:        packageRef,
-		DependsOn:         invokeDependsOn,
+		Tok:                    tok,
+		Args:                   rpcArgs,
+		Provider:               providerRef,
+		Version:                options.Version,
+		PluginDownloadURL:      options.PluginDownloadURL,
+		AcceptResources:        !disableResourceReferences,
+		AcceptsByteString:      true,
+		PackageRef:             packageRef,
+		DependsOn:              invokeDependsOn,
+		SourcePosition:         invokeSourcePosition,
+		StackTrace:             stackTrace,
+		ParentStackTraceHandle: ctx.state.parentStackTraceHandle,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -950,7 +956,7 @@ func (ctx *Context) InvokePackage(
 	invokeOpts.DependsOn = nil // Ignore the DependsOn option for direct invokes.
 
 	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
-		false /* checkDependencies */, packageRef, *invokeOpts)
+		false /* checkDependencies */, packageRef, *invokeOpts, ctx.getStackTrace(0))
 	if err != nil {
 		return err
 	}
@@ -976,7 +982,7 @@ func (ctx *Context) InvokePackageRaw(
 
 	options := mergeInvokeOptions(opts...)
 	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
-		false /* checkDependencies */, packageRef, *options)
+		false /* checkDependencies */, packageRef, *options, ctx.getStackTrace(0))
 	if err != nil {
 		return false, err
 	}
@@ -1013,6 +1019,7 @@ type InvokeOutputOptions struct {
 func (ctx *Context) InvokeOutput(
 	tok string, args any, output Output, options InvokeOutputOptions,
 ) Output {
+	stackTrace := ctx.getStackTrace(0)
 	output = ctx.newOutput(reflect.TypeOf(output))
 
 	go func() {
@@ -1028,7 +1035,7 @@ func (ctx *Context) InvokeOutput(
 
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
 		outProps, deps, known, secret, err := ctx.invokePackageRaw(tok, args, nil, /* marshalOpts */
-			true /* checkDependencies */, packageRef, *invokeOpts)
+			true /* checkDependencies */, packageRef, *invokeOpts, stackTrace)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
@@ -1458,8 +1465,8 @@ func (ctx *Context) readPackageResource(
 
 	// Get the stack trace and source position for the resource read. Note that this assumes that there are two
 	// intermediate frames between this function and user code: the public entry point and the generated getter.
-	stackTrace := ctx.getStackTrace(4)
-	sourcePosition := ctx.getSourcePosition(4)
+	stackTrace := ctx.getStackTrace(3)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -1500,6 +1507,7 @@ func (ctx *Context) readPackageResource(
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
+			ParentStackTraceHandle:  ctx.state.parentStackTraceHandle,
 			PackageRef:              packageRef,
 		})
 		if err != nil {
@@ -1958,8 +1966,8 @@ func (ctx *Context) registerResource(
 
 	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
 	// intermediate frames between this function and user code.
-	stackTrace := ctx.getStackTrace(4)
-	sourcePosition := ctx.getSourcePosition(4)
+	stackTrace := ctx.getStackTrace(3)
+	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -2081,6 +2089,7 @@ func (ctx *Context) registerResource(
 				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
+				ParentStackTraceHandle:     ctx.state.parentStackTraceHandle,
 				Transforms:                 transforms,
 				StateMigrations:            stateMigrations,
 				SupportsResultReporting:    true,
@@ -2834,10 +2843,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
 	for k, deps := range propertyDeps {
-		urns := make([]string, len(deps))
-		for i, d := range deps {
-			urns[i] = string(d)
-		}
+		urns := slice.Cast[string](deps)
 		sort.Strings(urns)
 
 		rpcPropertyDeps[k] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
@@ -3296,12 +3302,33 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 	}
 }
 
-// getStackTrace returns an RPC stack trace that corresponds to the set of Go frames on the stack at the time of the
-// call. The number of frames to skip is parameterized in order to account for differing call stacks for different
-// operations.
+func (ctx *Context) getInvokeSourcePosition(stack *pulumirpc.StackTrace) *pulumirpc.SourcePosition {
+	if len(stack.GetFrames()) == 0 {
+		return nil
+	}
+	// Generated SDK functions call the runtime's Invoke helpers. Walk past our internal frames (the ones in this file),
+	// then skip the SDK wrapper to select its caller in the user's program. The stack is captured in context.go, so its
+	// first frame identifies this file. If the core Invoke implementation spans multiple files, we need to update this
+	// boundary detection.
+	invokeURI := stack.Frames[0].GetPc().GetUri()
+	for index, frame := range stack.Frames {
+		if frame.GetPc().GetUri() == invokeURI {
+			continue
+		}
+		callerIndex := index + 1 // skip the wrapper in the SDK
+		if callerIndex < len(stack.Frames) && stack.Frames[callerIndex].GetPc() != nil {
+			return stack.Frames[callerIndex].GetPc()
+		}
+		return frame.GetPc()
+	}
+	return nil
+}
+
+// getStackTrace captures its caller's stack, omitting skip additional caller frames.
+// runtime.Callers and getStackTrace itself are always omitted.
 func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
-	// Skip this frame as well.
-	skip = max(skip+1, 2)
+	// Always skip runtime.Callers and getStackTrace itself.
+	skip += 2
 
 	trace := &pulumirpc.StackTrace{}
 
@@ -3324,13 +3351,11 @@ func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
 	}
 }
 
-// Returns the source position of the Nth stack frame, where N is skip+1.
-//
-// This is used to compute the source position of the user code that instantiated a resource. The number of frames to
-// skip is parameterized in order to account for differing call stacks for different operations.
+// getSourcePosition returns its caller's source position, omitting skip additional caller frames.
+// runtime.Callers and getSourcePosition itself are always omitted.
 func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	var pcs [1]uintptr
-	if callers := runtime.Callers(skip+1, pcs[:]); callers != 1 {
+	if callers := runtime.Callers(skip+2, pcs[:]); callers != 1 {
 		return nil
 	}
 	frames := runtime.CallersFrames(pcs[:])

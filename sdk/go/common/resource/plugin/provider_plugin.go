@@ -869,18 +869,9 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
-	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
-	for _, diff := range resp.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	replaces := slice.Cast[resource.PropertyKey](resp.GetReplaces())
+	stables := slice.Cast[resource.PropertyKey](resp.GetStables())
+	diffs := slice.Cast[resource.PropertyKey](resp.GetDiffs())
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
@@ -1366,18 +1357,9 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	}
 
 	// nil is semantically important to a lot of the pulumi system so we only pre-allocate if we have non-zero length.
-	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
-	for _, diff := range resp.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	replaces := slice.Cast[resource.PropertyKey](resp.GetReplaces())
+	stables := slice.Cast[resource.PropertyKey](resp.GetStables())
+	diffs := slice.Cast[resource.PropertyKey](resp.GetDiffs())
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
@@ -2057,18 +2039,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the dependencies.
-	dependencies := make([]string, len(req.Options.Dependencies))
-	for i, dep := range req.Options.Dependencies {
-		dependencies[i] = string(dep)
-	}
+	dependencies := slice.Cast[string](req.Options.Dependencies)
 
 	// Marshal the property dependencies.
 	inputDependencies := map[string]*pulumirpc.ConstructRequest_PropertyDependencies{}
 	for name, dependencies := range req.Options.PropertyDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](dependencies)
 		inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
 	}
 
@@ -2083,10 +2059,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the replace with.
-	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
-	for i, urn := range req.Options.ReplaceWith {
-		replaceWithURNs[i] = string(urn)
-	}
+	replaceWithURNs := slice.Cast[string](req.Options.ReplaceWith)
 
 	// Marshal the replacement trigger.
 	var replacementTrigger *structpb.Value
@@ -2200,10 +2173,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	outputDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetStateDependencies() {
-		urns := make([]resource.URN, len(rpcDeps.Urns))
-		for i, d := range rpcDeps.Urns {
-			urns[i] = resource.URN(d)
-		}
+		urns := slice.Cast[resource.URN](rpcDeps.Urns)
 		outputDependencies[resource.PropertyKey(k)] = urns
 	}
 
@@ -2327,10 +2297,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	// Marshal the arg dependencies.
 	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
 	for name, dependencies := range req.Options.ArgDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](dependencies)
 		argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
 	}
 
@@ -2374,10 +2341,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 
 	returnDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetReturnDependencies() {
-		urns := make([]resource.URN, len(rpcDeps.Urns))
-		for i, d := range rpcDeps.Urns {
-			urns[i] = resource.URN(d)
-		}
+		urns := slice.Cast[resource.URN](rpcDeps.Urns)
 		returnDependencies[resource.PropertyKey(k)] = urns
 	}
 
