@@ -31,6 +31,6 @@ var DriftDetection = Hint{
 	ID:       "drift-detection",
 	Cooldown: 7 * 24 * time.Hour,
 	Message: "This refresh found drift. Pulumi Deployments can detect drift on a schedule and alert you, " +
-		"or fix it automatically.\nLearn more: https://www.pulumi.com/docs/deployments/concepts/drift/",
+		"or fix it automatically.\nLearn more: https://www.pulumi.com/docs/deployments/concepts/drift/?utm_source=cli",
 	CloudOnly: true,
 }
