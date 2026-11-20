@@ -857,10 +857,11 @@ export class CheckConfigFailure extends jspb.Message {
     getRemediationsList(): Array<CommandRemediation>;
     setRemediationsList(value: Array<CommandRemediation>): CheckConfigFailure;
     addRemediations(value?: CommandRemediation, index?: number): CommandRemediation;
-    getHint(): Hint;
-    setHint(value: Hint): CheckConfigFailure;
-    getHintMessage(): string;
-    setHintMessage(value: string): CheckConfigFailure;
+
+    hasHint(): boolean;
+    clearHint(): void;
+    getHint(): Hint | undefined;
+    setHint(value?: Hint): CheckConfigFailure;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckConfigFailure.AsObject;
@@ -877,8 +878,7 @@ export namespace CheckConfigFailure {
         property: string,
         reason: string,
         remediationsList: Array<CommandRemediation.AsObject>,
-        hint: Hint,
-        hintMessage: string,
+        hint?: Hint.AsObject,
     }
 }
 
@@ -910,6 +910,35 @@ export namespace CommandRemediation {
 
         envMap: Array<[string, string]>,
     }
+}
+
+export class Hint extends jspb.Message { 
+    getKind(): Hint.Kind;
+    setKind(value: Hint.Kind): Hint;
+    getMessage(): string;
+    setMessage(value: string): Hint;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Hint.AsObject;
+    static toObject(includeInstance: boolean, msg: Hint): Hint.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Hint, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Hint;
+    static deserializeBinaryFromReader(message: Hint, reader: jspb.BinaryReader): Hint;
+}
+
+export namespace Hint {
+    export type AsObject = {
+        kind: Hint.Kind,
+        message: string,
+    }
+
+    export enum Kind {
+    UNSPECIFIED = 0,
+    DYNAMIC_CREDENTIALS = 1,
+    }
+
 }
 
 export class DiffRequest extends jspb.Message { 
@@ -1996,9 +2025,4 @@ export namespace View {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         outputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
-}
-
-export enum Hint {
-    HINT_UNSPECIFIED = 0,
-    HINT_DYNAMIC_CREDENTIALS = 1,
 }

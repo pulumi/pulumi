@@ -18,36 +18,55 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Hint names a product hint, which points the user to a Pulumi feature that helps with a failure a provider reports.
-type Hint int
+// Hint is a product hint, which points the user to a Pulumi feature that helps with a failure a provider reports.
+// The provider writes its text, and the engine decides whether to show it.
+type Hint struct {
+	// Kind says which product hint this is.
+	Kind HintKind
+	// Message is the text that the engine shows if it decides to show the hint.
+	Message string
+}
+
+// HintKind names a product hint.
+type HintKind int
 
 const (
 	// HintUnspecified means that no product hint is relevant.
-	HintUnspecified Hint = 0
+	HintUnspecified HintKind = 0
 	// HintDynamicCredentials means that the failure comes from missing, rejected or expired credentials, so short-lived
 	// credentials from an identity provider, for example through OIDC, may help.
-	HintDynamicCredentials Hint = 1
+	HintDynamicCredentials HintKind = 1
 )
 
-func hintFromRPC(h pulumirpc.Hint) Hint {
-	switch h {
-	case pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS:
-		return HintDynamicCredentials
-	case pulumirpc.Hint_HINT_UNSPECIFIED:
-		return HintUnspecified
+func hintFromRPC(h *pulumirpc.Hint) *Hint {
+	if h == nil {
+		return nil
+	}
+	var kind HintKind
+	switch h.GetKind() {
+	case pulumirpc.Hint_DYNAMIC_CREDENTIALS:
+		kind = HintDynamicCredentials
+	case pulumirpc.Hint_UNSPECIFIED:
+		kind = HintUnspecified
 	default:
 		// A hint added in a newer protocol version than this engine knows.
-		return HintUnspecified
+		kind = HintUnspecified
 	}
+	return &Hint{Kind: kind, Message: h.GetMessage()}
 }
 
-func (h Hint) rpc() pulumirpc.Hint {
-	switch h {
-	case HintDynamicCredentials:
-		return pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS
-	case HintUnspecified:
-		return pulumirpc.Hint_HINT_UNSPECIFIED
-	default:
-		return pulumirpc.Hint_HINT_UNSPECIFIED
+func (h *Hint) rpc() *pulumirpc.Hint {
+	if h == nil {
+		return nil
 	}
+	var kind pulumirpc.Hint_Kind
+	switch h.Kind {
+	case HintDynamicCredentials:
+		kind = pulumirpc.Hint_DYNAMIC_CREDENTIALS
+	case HintUnspecified:
+		kind = pulumirpc.Hint_UNSPECIFIED
+	default:
+		kind = pulumirpc.Hint_UNSPECIFIED
+	}
+	return &pulumirpc.Hint{Kind: kind, Message: h.Message}
 }

@@ -231,10 +231,8 @@ type CheckConfigFailure struct {
 	// Remediations are commands that resolve the failure. Only CheckConfig2 carries them.
 	Remediations []CommandRemediation
 
-	// Hint is a product hint relevant to the failure, if any.
-	Hint Hint
-	// HintMessage is the text of Hint, which the engine shows if it decides to show the hint.
-	HintMessage string
+	// Hint is a product hint relevant to the failure, or nil if there is none. Only CheckConfig2 carries it.
+	Hint *Hint
 }
 
 type DiffConfigRequest struct {

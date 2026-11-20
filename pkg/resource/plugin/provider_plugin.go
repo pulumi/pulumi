@@ -709,7 +709,6 @@ func checkConfigFailureFromRPC(failure *pulumirpc.CheckConfigFailure) CheckConfi
 		Reason:       failure.GetReason(),
 		Remediations: remediationsFromRPC(failure.GetRemediations()),
 		Hint:         hintFromRPC(failure.GetHint()),
-		HintMessage:  failure.GetHintMessage(),
 	}
 }
 

@@ -33,7 +33,7 @@ func TestProviderReceivesCheckConfigFailureHint(t *testing.T) {
 		CheckConfig2F: func(*pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
 			return &pulumirpc.CheckConfigResponse{Failures: []*pulumirpc.CheckConfigFailure{
 				{Reason: "unrelated"},
-				{Reason: "no credentials", Hint: pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, HintMessage: "use ESC"},
+				{Reason: "no credentials", Hint: &pulumirpc.Hint{Kind: pulumirpc.Hint_DYNAMIC_CREDENTIALS, Message: "use ESC"}},
 			}}, nil
 		},
 	}
@@ -45,9 +45,8 @@ func TestProviderReceivesCheckConfigFailureHint(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.Failures, 2)
-	assert.Equal(t, HintUnspecified, resp.Failures[0].Hint)
-	assert.Equal(t, HintDynamicCredentials, resp.Failures[1].Hint)
-	assert.Equal(t, "use ESC", resp.Failures[1].HintMessage)
+	assert.Nil(t, resp.Failures[0].Hint)
+	assert.Equal(t, &Hint{Kind: HintDynamicCredentials, Message: "use ESC"}, resp.Failures[1].Hint)
 }
 
 func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {
@@ -56,7 +55,7 @@ func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {
 	server := NewProviderServer(&MockProvider{
 		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
 			return CheckConfigResponse{Failures: []CheckConfigFailure{
-				{Reason: "no credentials", Hint: HintDynamicCredentials, HintMessage: "use ESC"},
+				{Reason: "no credentials", Hint: &Hint{Kind: HintDynamicCredentials, Message: "use ESC"}},
 			}}, nil
 		},
 	})
@@ -65,6 +64,6 @@ func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.GetFailures(), 1)
-	assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, resp.GetFailures()[0].GetHint())
-	assert.Equal(t, "use ESC", resp.GetFailures()[0].GetHintMessage())
+	assert.Equal(t, pulumirpc.Hint_DYNAMIC_CREDENTIALS, resp.GetFailures()[0].GetHint().GetKind())
+	assert.Equal(t, "use ESC", resp.GetFailures()[0].GetHint().GetMessage())
 }
