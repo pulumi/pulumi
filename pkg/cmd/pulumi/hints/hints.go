@@ -36,6 +36,7 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -60,6 +61,9 @@ type Hint struct {
 	// CloudOnly is true for hints about Pulumi Cloud features, which are shown only to users of a Pulumi Cloud
 	// backend.
 	CloudOnly bool
+	// EstablishedStackOnly is true for hints that are shown only when the stack the hint was offered for has at
+	// least minStackResources resources besides the stack itself and providers, so that new users aren't shown them.
+	EstablishedStackOnly bool
 }
 
 // state is the content of the hints state file.
@@ -72,6 +76,8 @@ type state struct {
 type offer struct {
 	hint    Hint
 	applies func() bool
+	// stack is the stack the hint was offered for, if any.
+	stack backend.Stack
 }
 
 // Manager holds the hints offered while a CLI command runs. The root command creates one and passes it to the
@@ -87,6 +93,8 @@ type Manager struct {
 	settings    func() settings
 	interactive func(w io.Writer) bool
 	isCloud     func() bool
+	// stackResources counts the resources of s that count towards Hint.EstablishedStackOnly.
+	stackResources func(s backend.Stack) (int, error)
 }
 
 // New returns a Manager that reads the user's hint settings and records shown hints under the Pulumi home directory.
@@ -99,6 +107,8 @@ func New() *Manager {
 		// written somewhere else, as with `pulumi refresh 2>errors.log`.
 		interactive: func(w io.Writer) bool { return cmdutil.Interactive() && isTerminal(w) },
 		isCloud:     isCloudBackend,
+
+		stackResources: countStackResources,
 	}
 }
 
@@ -149,6 +159,12 @@ func (m *Manager) OfferIf(h Hint, applies func() bool) {
 	m.pending = append(m.pending, offer{hint: h, applies: applies})
 }
 
+func (m *manager) offerFor(h Hint, s backend.Stack) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pending = append(m.pending, offer{hint: h, stack: s})
+}
+
 // Suppress prevents any hint from being shown for the current command, for example because it writes
 // machine-readable output or runs in CI.
 func (m *Manager) Suppress() {
@@ -192,6 +208,9 @@ func (m *Manager) Flush(w io.Writer) {
 			continue
 		}
 		if h.CloudOnly && !isCloud() {
+			continue
+		}
+		if h.EstablishedStackOnly && !m.isEstablished(o.stack) {
 			continue
 		}
 		if o.applies != nil && !o.applies() {

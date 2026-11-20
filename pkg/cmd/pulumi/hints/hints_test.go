@@ -16,7 +16,9 @@ package hints
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -27,6 +29,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -44,6 +49,9 @@ type testManager struct {
 	skip       []string
 	path       string
 	local      bool
+	// resources is what stackResources returns for any stack, and resourcesErr the error it returns.
+	resources    int
+	resourcesErr error
 }
 
 func newTestManager(t *testing.T) *testManager {
@@ -69,6 +77,9 @@ func (tm *testManager) newManager() *Manager {
 			return s
 		},
 		isCloud: func() bool { return !tm.local },
+		stackResources: func(backend.Stack) (int, error) {
+			return tm.resources, tm.resourcesErr
+		},
 	}
 }
 
@@ -319,4 +330,74 @@ func TestIsTerminal(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 	assert.False(t, isTerminal(f))
+}
+
+func TestESCHintOnCredentialsFailure(t *testing.T) {
+	t.Parallel()
+
+	const message = "Run `pulumi env setup aws`."
+	stack := &backend.MockStack{}
+	tests := []struct {
+		name         string
+		hint         plugin.Hint
+		message      string
+		isCloud      bool
+		stack        backend.Stack
+		resources    int
+		resourcesErr error
+		want         bool
+	}{
+		{"established cloud stack", plugin.HintDynamicCredentials, message, true, stack, 2, nil, true},
+		{"diy backend", plugin.HintDynamicCredentials, message, false, stack, 2, nil, false},
+		{"no message", plugin.HintDynamicCredentials, "", true, stack, 2, nil, false},
+		{"unspecified hint", plugin.HintUnspecified, message, true, stack, 2, nil, false},
+		{"no stack", plugin.HintDynamicCredentials, message, true, nil, 2, nil, false},
+		{"too few resources", plugin.HintDynamicCredentials, message, true, stack, 1, nil, false},
+		{"resources unknown", plugin.HintDynamicCredentials, message, true, stack, 2, errors.New("offline"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tm.local = !tt.isCloud
+			tm.resources, tm.resourcesErr = tt.resources, tt.resourcesErr
+			(&recorder{m: tm.manager, stack: tt.stack}).RecordHint(tt.hint, tt.message)
+			out := tm.run()
+			if tt.want {
+				assert.Contains(t, out, message)
+			} else {
+				assert.Empty(t, out)
+			}
+		})
+	}
+}
+
+func TestHintWithoutStackGateIgnoresStack(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	tm.resourcesErr = errors.New("must not be called")
+
+	assert.Contains(t, tm.run(hintA), "hint a")
+}
+
+func TestCountStackResources(t *testing.T) {
+	t.Parallel()
+
+	deployment := `{"resources": [
+		{"type": "pulumi:pulumi:Stack"},
+		{"type": "pulumi:providers:aws"},
+		{"type": "aws:s3/bucket:Bucket"},
+		{"type": "aws:s3/bucket:Bucket", "delete": true},
+		{"type": "aws:iam/role:Role"}
+	]}`
+	s := &backend.MockStack{BackendF: func() backend.Backend {
+		return &backend.MockBackend{
+			ExportDeploymentF: func(context.Context, backend.Stack) (*apitype.UntypedDeployment, error) {
+				return &apitype.UntypedDeployment{Version: 3, Deployment: json.RawMessage(deployment)}, nil
+			},
+		}
+	}}
+	n, err := countStackResources(s)
+	require.NoError(t, err)
+	assert.Equal(t, 2, n)
 }
