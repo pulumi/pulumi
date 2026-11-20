@@ -3030,26 +3030,6 @@ func TestUpdatePolicyIssue_UnassignSendsEmptyString(t *testing.T) {
 	assert.JSONEq(t, `{"assignedTo":""}`, body)
 }
 
-func TestCreatePolicyExceptionExisted(t *testing.T) {
-	t.Parallel()
-
-	for _, tt := range []struct {
-		status  int
-		existed bool
-	}{{http.StatusCreated, false}, {http.StatusOK, true}} {
-		server := newMockServerRequestProcessor(tt.status, func(*http.Request) string {
-			return `{"id": "EXC-7", "policyPack": "aws"}`
-		})
-		client := NewClient(server.URL, "token", true, nil)
-
-		got, existed, err := client.CreatePolicyException(t.Context(), "org", cloudapitype.CreatePolicyExceptionRequest{})
-		server.Close()
-		require.NoError(t, err)
-		assert.Equal(t, "EXC-7", got.ID)
-		assert.Equal(t, tt.existed, existed, "status %d", tt.status)
-	}
-}
-
 func TestPolicyExceptionRequests(t *testing.T) {
 	t.Parallel()
 
@@ -3076,9 +3056,8 @@ func TestPolicyExceptionRequests(t *testing.T) {
 	})
 	require.NoError(t, err)
 	createReq := cloudapitype.CreatePolicyExceptionRequest{PolicyPack: "aws"}
-	_, existed, err := client.CreatePolicyException(ctx, "org", createReq)
+	_, err = client.CreatePolicyException(ctx, "org", createReq)
 	require.NoError(t, err)
-	assert.True(t, existed)
 	_, err = client.GetPolicyException(ctx, "org", "EXC-1")
 	require.NoError(t, err)
 	require.NoError(t, client.RemovePolicyException(ctx, "org", "EXC-1"))

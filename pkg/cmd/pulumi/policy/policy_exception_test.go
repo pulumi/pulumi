@@ -54,8 +54,6 @@ type mockPolicyExceptionClient struct {
 	// createErr fails creates, but not drafts; gated returns a 409 for them, as when the org requires approval.
 	createErr error
 	gated     bool
-	// existed makes creates return an existing exception, as for a repeated request.
-	existed   bool
 	submitErr error
 	// draftErr fails requesting an exception in a change request.
 	draftErr error
@@ -94,19 +92,18 @@ type mockPolicyExceptionClient struct {
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
 	_ context.Context, org string, req cloudapitype.CreatePolicyExceptionRequest,
-) (cloudapitype.PolicyException, bool, error) {
+) (cloudapitype.PolicyException, error) {
 	m.gotOrg = org
 	m.gotCreated = append(m.gotCreated, req)
 	if m.gated {
-		return cloudapitype.PolicyException{}, false,
-			&apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
+		return cloudapitype.PolicyException{}, &apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
 	}
 	created := cloudapitype.PolicyException{ID: "EXC-7"}
 	if req.ExpiresInSeconds != nil {
 		createdAt := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 		created.ExpiresAt = new(createdAt.Add(time.Duration(*req.ExpiresInSeconds) * time.Second))
 	}
-	return created, m.existed, cmp.Or(m.createErr, m.err)
+	return created, cmp.Or(m.createErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(

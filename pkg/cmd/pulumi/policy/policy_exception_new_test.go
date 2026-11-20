@@ -117,16 +117,17 @@ func TestPolicyExceptionNew(t *testing.T) {
 	assert.Equal(t, []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
 		c.gotCreated[0].Match, "only the pairs that occurred in the run")
 
-	// An active exception that covers the request is returned instead of a new one.
+	// An active exception that covers the request is returned as a 409 that names it.
 	c = twoBuckets()
-	c.existed = true
+	c.createErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "already excepted by EXC-7"}
 	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31"})
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
 	assert.Equal(t, "Policy exception EXC-7 already covers these violations: "+
 		"http://localhost:3000/acme/web/prod?exception=EXC-7\n", stderr)
+	assert.Empty(t, c.gotDrafts, "no request for a covered exception")
 
-	// So is one that covers a request for a change request, as a 409 that names it.
+	// So does requesting one in a change request.
 	c = twoBuckets()
 	c.draftErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "already excepted by EXC-115"}
 	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", draft: true})

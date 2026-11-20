@@ -122,7 +122,7 @@ type policyExceptionNewResult struct {
 	ChangeRequestID string `json:"changeRequestId,omitempty"`
 	// ChangeRequestStatus is the change request's status after it was submitted; `applied` once the exception exists.
 	ChangeRequestStatus string `json:"changeRequestStatus,omitempty"`
-	// Updated is set when Pulumi Cloud returned an existing exception or change request for the same request.
+	// Updated is set when an active exception or an open change request already covers the request.
 	Updated bool `json:"updated,omitempty"`
 	// ExpiresAt is when the created exception expires. It's nil when it never expires, or it's still requested.
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
@@ -433,20 +433,41 @@ func runPolicyExceptionNew(
 	return render(result)
 }
 
-// alreadyExceptedPattern finds the exception named by the 409 that requesting a covered exception returns.
+// alreadyExceptedPattern finds the exception named by the 409 that creating or requesting a covered exception returns.
 var alreadyExceptedPattern = regexp.MustCompile(`already excepted by (EXC-[0-9]+)`)
+
+// coveredBy returns the active exception that err says covers the request, if it's that 409.
+func coveredBy(err error) (string, bool) {
+	apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if !ok || apiErr.Code != http.StatusConflict {
+		return "", false
+	}
+	m := alreadyExceptedPattern.FindStringSubmatch(apiErr.Message)
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
 
 // createPolicyException creates the result's exception, or requests it in a change request with --draft or when the
 // organization requires approval.
 func createPolicyException(
 	ctx context.Context, c policyExceptionClients, org string, draft bool, result *policyExceptionNewResult,
 ) error {
+	covered := func(id string) error {
+		result.ID, result.Updated = id, true
+		result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, id)
+		return nil
+	}
 	if !draft {
-		created, existed, err := c.CreatePolicyException(ctx, org, result.Exception)
+		created, err := c.CreatePolicyException(ctx, org, result.Exception)
 		if err == nil {
-			result.ID, result.Updated, result.ExpiresAt = created.ID, existed, created.ExpiresAt
+			result.ID, result.ExpiresAt = created.ID, created.ExpiresAt
 			result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, created.ID)
 			return nil
+		}
+		if id, ok := coveredBy(err); ok {
+			return covered(id)
 		}
 		// An organization without the feature also returns a 409, which the message tells apart.
 		apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
@@ -456,13 +477,8 @@ func createPolicyException(
 	}
 
 	created, err := c.CreatePolicyExceptionDraft(ctx, org, result.Exception)
-	// An active exception that covers the request is returned as a 409 that names it.
-	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusConflict {
-		if m := alreadyExceptedPattern.FindStringSubmatch(apiErr.Message); m != nil {
-			result.ID, result.Updated = m[1], true
-			result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, m[1])
-			return nil
-		}
+	if id, ok := coveredBy(err); ok {
+		return covered(id)
 	}
 	if err != nil {
 		return err

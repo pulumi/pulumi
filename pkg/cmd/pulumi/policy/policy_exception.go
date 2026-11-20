@@ -71,7 +71,7 @@ func policyExceptionStatus(e cloudapitype.PolicyException) string {
 type policyExceptionClient interface {
 	CreatePolicyException(
 		ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
-	) (cloudapitype.PolicyException, bool, error)
+	) (cloudapitype.PolicyException, error)
 	ListPolicyExceptions(
 		ctx context.Context, orgName string, opts client.ListPolicyExceptionsOptions,
 	) (cloudapitype.ListPolicyExceptionsResponse, error)
