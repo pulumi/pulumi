@@ -50,10 +50,10 @@ func init() {
 
 					names := make([]string, 0, len(targets))
 					for _, target := range targets {
-						name, ok := target.Inputs["name"]
+						name, ok := target.Inputs.GetOk("name")
 						require.True(l, ok, "expected target to have 'name' input")
 						require.True(l, name.IsString(), "expected 'name' to be a string")
-						names = append(names, name.StringValue())
+						names = append(names, name.AsString())
 					}
 					assert.ElementsMatch(l, []string{"num-0", "num-1", "num-2"}, names)
 				},
@@ -79,10 +79,10 @@ func init() {
 
 					resources := make(map[string]string, len(targets))
 					for _, target := range targets {
-						input, ok := target.Inputs["name"]
+						input, ok := target.Inputs.GetOk("name")
 						require.True(l, ok, "expected target to have 'name' input")
 						require.True(l, input.IsString(), "expected 'name' to be a string")
-						resources[target.URN.Name()] = input.StringValue()
+						resources[target.URN.Name()] = input.AsString()
 					}
 
 					assert.Equal(l, map[string]string{

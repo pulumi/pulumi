@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,9 +47,10 @@ func init() {
 					}
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					require.Contains(l, stack.Outputs, resource.PropertyKey("componentValue"))
-					assert.True(l, stack.Outputs["componentValue"].IsComputed(),
-						"expected stack output 'componentValue' to be unknown, got %v", stack.Outputs["componentValue"])
+					componentValue, has := stack.Outputs.GetOk("componentValue")
+					require.True(l, has, "expected stack to have output 'componentValue'")
+					assert.True(l, componentValue.IsComputed(),
+						"expected stack output 'componentValue' to be unknown, got %v", componentValue)
 				},
 			},
 		},

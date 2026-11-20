@@ -86,7 +86,7 @@ func init() {
 						"expected provider-rewritten id surfaced after src is created")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					AssertPropertyMapMember(l, stackOutputs, "resourceId",
 						property.New("rewritten-existing-id"))
 					AssertPropertyMapMember(l, stackOutputs, "lookup",

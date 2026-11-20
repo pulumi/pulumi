@@ -39,7 +39,7 @@ func init() {
 
 					r := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					assert.Equal(l, resource.RootStackType, r.Type, "expected a stack resource")
-					outputs := resource.FromResourcePropertyMap(r.Outputs)
+					outputs := r.Outputs
 					require.Equal(l, 1, outputs.Len())
 
 					AssertPropertyMapMember(

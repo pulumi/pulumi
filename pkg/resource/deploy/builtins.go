@@ -485,6 +485,6 @@ func (p *builtinProvider) getResource(inputs property.Map) (property.Map, error)
 		"urn":      urnInput,
 		"id":       property.New(string(state.ID)),
 		"provider": property.New(state.Provider),
-		"state":    property.New(resource.FromResourcePropertyMap(state.Outputs)),
+		"state":    property.New(state.Outputs),
 	}), nil
 }

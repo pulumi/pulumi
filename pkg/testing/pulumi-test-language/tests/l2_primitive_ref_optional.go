@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,14 +61,14 @@ func init() {
 							"string": property.New("optional parent"),
 						}),
 					})
-					assert.Equal(l, setWant, resource.FromResourcePropertyMap(setRes.Inputs), "setRes inputs")
-					assert.Equal(l, setWant, resource.FromResourcePropertyMap(setRes.Outputs), "setRes outputs")
+					assert.Equal(l, setWant, setRes.Inputs, "setRes inputs")
+					assert.Equal(l, setWant, setRes.Outputs, "setRes outputs")
 
 					unsetWant := property.NewMap(map[string]property.Value{
 						"data": property.New(property.Map{}),
 					})
-					assert.Equal(l, unsetWant, resource.FromResourcePropertyMap(unsetRes.Inputs), "unsetRes inputs")
-					assert.Equal(l, unsetWant, resource.FromResourcePropertyMap(unsetRes.Outputs), "unsetRes outputs")
+					assert.Equal(l, unsetWant, unsetRes.Inputs, "unsetRes inputs")
+					assert.Equal(l, unsetWant, unsetRes.Outputs, "unsetRes outputs")
 
 					fromNestedOptionalWant := property.NewMap(map[string]property.Value{
 						"data": property.New(map[string]property.Value{
@@ -77,9 +76,9 @@ func init() {
 						}),
 					})
 					assert.Equal(l, fromNestedOptionalWant,
-						resource.FromResourcePropertyMap(fromNestedOptional.Inputs), "fromNestedOptional inputs")
+						fromNestedOptional.Inputs, "fromNestedOptional inputs")
 					assert.Equal(l, fromNestedOptionalWant,
-						resource.FromResourcePropertyMap(fromNestedOptional.Outputs), "fromNestedOptional outputs")
+						fromNestedOptional.Outputs, "fromNestedOptional outputs")
 
 					// A list of optional list outputs keeps the element type of each list.
 					fromOptionalLists := RequireSingleNamedResource(l, snap.Resources, "fromOptionalLists")
@@ -91,12 +90,12 @@ func init() {
 						}),
 					})
 					assert.Equal(l, fromOptionalListsWant,
-						resource.FromResourcePropertyMap(fromOptionalLists.Inputs), "fromOptionalLists inputs")
+						fromOptionalLists.Inputs, "fromOptionalLists inputs")
 					assert.Equal(l, fromOptionalListsWant,
-						resource.FromResourcePropertyMap(fromOptionalLists.Outputs), "fromOptionalLists outputs")
+						fromOptionalLists.Outputs, "fromOptionalLists outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 
 					// Traversal of populated output object -> optional scalar yields the value.
 					AssertPropertyMapMember(l, outputs, "setBoolean", property.New(true))

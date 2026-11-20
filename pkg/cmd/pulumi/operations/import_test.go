@@ -625,7 +625,7 @@ func TestParseImportFileUnknownValues(t *testing.T) {
 
 	// The marker the stack serialisation uses to stand in for an unknown value.
 	unknown, err := resourcestack.SerializePropertyValue(
-		t.Context(), resource.MakeComputed(resource.NewProperty("")), sdkconfig.NopEncrypter, false)
+		t.Context(), property.New(property.Computed), sdkconfig.NopEncrypter, false)
 	require.NoError(t, err)
 
 	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")

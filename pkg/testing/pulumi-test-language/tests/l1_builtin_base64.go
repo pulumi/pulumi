@@ -17,7 +17,6 @@ package tests
 import (
 	"encoding/base64"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -42,7 +41,7 @@ func init() {
 					"roundtrip": property.New(input),
 				})
 
-				assert.Equal(l, want, resource.FromResourcePropertyMap(stack.Outputs), "expected stack outputs to be %v", want)
+				assert.Equal(l, want, stack.Outputs, "expected stack outputs to be %v", want)
 			},
 		}
 	}

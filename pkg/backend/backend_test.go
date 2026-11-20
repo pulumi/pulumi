@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestGetStackResourceOutputs(t *testing.T) {
@@ -37,18 +38,18 @@ func TestGetStackResourceOutputs(t *testing.T) {
 
 	typ := "some:invalid:type1"
 
-	resc1 := liveState(typ, "resc1", resource.PropertyMap{
-		resource.PropertyKey("prop1"): resource.NewProperty("val1"),
-	})
-	resc2 := liveState(typ, "resc2", resource.PropertyMap{
-		resource.PropertyKey("prop2"): resource.NewProperty("val2"),
-	})
+	resc1 := liveState(typ, "resc1", property.NewMap(map[string]property.Value{
+		"prop1": property.New("val1"),
+	}))
+	resc2 := liveState(typ, "resc2", property.NewMap(map[string]property.Value{
+		"prop2": property.New("val2"),
+	}))
 
 	// `deleted` will be ignored by `GetStackResourceOutputs`.
 	deletedName := "resc3"
-	deleted := deleteState("deletedType", "resc3", resource.PropertyMap{
-		resource.PropertyKey("deleted"): resource.NewProperty("deleted"),
-	})
+	deleted := deleteState("deletedType", "resc3", property.NewMap(map[string]property.Value{
+		"deleted": property.New("deleted"),
+	}))
 
 	// Mock backend that implements just enough methods to service `GetStackResourceOutputs`.
 	// Returns a single stack snapshot.
@@ -113,13 +114,13 @@ func testURN(typ, name string) resource.URN {
 	return resource.NewURN("test", "test", "", tokens.Type(typ), name)
 }
 
-func deleteState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
+func deleteState(typ, name string, outs property.Map) *pkgresource.State {
 	return &pkgresource.State{
 		Delete: true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }
 
-func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
+func liveState(typ, name string, outs property.Map) *pkgresource.State {
 	return &pkgresource.State{
 		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}

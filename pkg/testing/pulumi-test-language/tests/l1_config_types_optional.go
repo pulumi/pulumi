@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
@@ -30,7 +29,7 @@ func init() {
 
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"namesLength": property.New(3.0),
-					}), resource.FromResourcePropertyMap(stack.Outputs))
+					}), stack.Outputs)
 				},
 			},
 		},

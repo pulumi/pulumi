@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,14 +78,14 @@ func init() {
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"intEnum":    property.New(1.0),
 						"stringEnum": property.New("one"),
-					}), resource.FromResourcePropertyMap(enumRes.Outputs))
+					}), enumRes.Outputs)
 					res := RequireSingleResource(l, snap.Resources, "docs:index:Resource")
 
 					want := property.NewMap(map[string]property.Value{
 						"in":           property.New(true),
 						"externalEnum": property.New("one"),
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(res.Inputs), "expected inputs to be %v", want)
+					assert.Equal(l, want, res.Inputs, "expected inputs to be %v", want)
 					want = property.NewMap(map[string]property.Value{
 						"in":           property.New(true),
 						"out":          property.New(false),
@@ -95,7 +94,7 @@ func init() {
 							"state": property.New("internal data"),
 						}),
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(res.Outputs), "expected outputs to be %v", want)
+					assert.Equal(l, want, res.Outputs, "expected outputs to be %v", want)
 				},
 			},
 		},

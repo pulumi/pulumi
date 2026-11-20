@@ -546,8 +546,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 				URN:     urn,
 				Custom:  true,
 				ID:      id,
-				Inputs:  inputs,
-				Outputs: inputs,
+				Inputs:  resource.FromResourcePropertyMap(inputs),
+				Outputs: resource.FromResourcePropertyMap(inputs),
 			}
 			defaultProviders = append(defaultProviders, provider)
 			defaultProviderRefs[pkg] = ref
@@ -588,16 +588,17 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, erro
 			// scenario where the CLI is being upgraded from a version that did not reflect provider inputs to
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
-			if sdkproviders.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
+			if sdkproviders.IsProviderType(res.URN.Type()) && res.Inputs.Len() != 0 && res.Outputs.Len() == 0 {
 				changed = true
 				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
-				res.Outputs = make(resource.PropertyMap)
-				for k, v := range res.Inputs {
+				outputs := property.Map{}
+				for k, v := range res.Inputs.All {
 					if k == "__internal" {
 						continue
 					}
-					res.Outputs[k] = v
+					outputs = outputs.Set(k, v)
 				}
+				res.Outputs = outputs
 			}
 		}
 	}
@@ -843,8 +844,8 @@ func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 		view := plugin.View{
 			Type:    res.URN.Type(),
 			Name:    res.URN.Name(),
-			Inputs:  resource.FromResourcePropertyMap(res.Inputs),
-			Outputs: resource.FromResourcePropertyMap(res.Outputs),
+			Inputs:  res.Inputs,
+			Outputs: res.Outputs,
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()
@@ -909,11 +910,11 @@ func (d *Deployment) Close() error {
 
 // toPropertyMapPtr converts a resource.PropertyMap to a *property.Map, preserving the
 // nil-vs-empty distinction (nil input yields a nil pointer).
-func toPropertyMapPtr(m resource.PropertyMap) *property.Map {
-	if m == nil {
+func toPropertyMapPtr(m property.Map) *property.Map {
+	if m.Len() == 0 {
 		return nil
 	}
-	return new(resource.FromResourcePropertyMap(m))
+	return &m
 }
 
 // RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
@@ -921,7 +922,7 @@ func toPropertyMapPtr(m resource.PropertyMap) *property.Map {
 func (d *Deployment) RunHooks(
 	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
 	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, newOutputs, oldOutputs property.Map,
 ) error {
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
@@ -967,7 +968,7 @@ func (d *Deployment) RunHooks(
 func (d *Deployment) RunErrorHooks(
 	hooks []string, id resource.ID, urn resource.URN,
 	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
-	newInputs, oldInputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, oldOutputs property.Map,
 	failedOperation string, errors []string,
 ) (bool, error) {
 	shouldRetry := false

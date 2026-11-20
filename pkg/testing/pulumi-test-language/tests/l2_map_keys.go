@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,10 +78,10 @@ func init() {
 							"myKey":  property.New(true),
 						}),
 					})
-					primInputs := resource.FromResourcePropertyMap(primResource.Inputs)
+					primInputs := primResource.Inputs
 					assert.Equal(l, want, primInputs, "expected inputs to be %v", want)
 					assert.Equal(l, primInputs,
-						resource.FromResourcePropertyMap(primResource.Outputs),
+						primResource.Outputs,
 						"expected inputs and outputs to match")
 
 					want = property.NewMap(map[string]property.Value{
@@ -95,10 +94,10 @@ func init() {
 							"stringMap": stringMapAlt(),
 						}),
 					})
-					refInputs := resource.FromResourcePropertyMap(refResource.Inputs)
+					refInputs := refResource.Inputs
 					assert.Equal(l, want, refInputs, "expected inputs to be %v", want)
 					assert.Equal(l, refInputs,
-						resource.FromResourcePropertyMap(refResource.Outputs),
+						refResource.Outputs,
 						"expected inputs and outputs to match")
 
 					want = property.NewMap(map[string]property.Value{
@@ -119,10 +118,10 @@ func init() {
 							"stringMap": stringMapAlt(),
 						}),
 					})
-					rrefInputs := resource.FromResourcePropertyMap(rrefResource.Inputs)
+					rrefInputs := rrefResource.Inputs
 					assert.Equal(l, want, rrefInputs, "expected inputs to be %v", want)
 					assert.Equal(l, rrefInputs,
-						resource.FromResourcePropertyMap(rrefResource.Outputs),
+						rrefResource.Outputs,
 						"expected inputs and outputs to match")
 
 					want = property.NewMap(map[string]property.Value{
@@ -159,10 +158,10 @@ func init() {
 							"stringMap": stringMapAlt(),
 						}),
 					})
-					plainInputs := resource.FromResourcePropertyMap(plainResource.Inputs)
+					plainInputs := plainResource.Inputs
 					assert.Equal(l, want, plainInputs, "expected inputs to be %v", want)
 					assert.Equal(l, plainInputs,
-						resource.FromResourcePropertyMap(plainResource.Outputs),
+						plainResource.Outputs,
 						"expected inputs and outputs to match")
 				},
 			},

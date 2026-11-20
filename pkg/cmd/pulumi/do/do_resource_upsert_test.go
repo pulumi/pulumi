@@ -126,7 +126,7 @@ func snapshotWithReferencedResource(t *testing.T, referencedURN resource.URN) *d
 				URN:    providerURN,
 				Custom: true,
 				ID:     providerID,
-				Inputs: providerInputs,
+				Inputs: resource.FromResourcePropertyMap(providerInputs),
 			},
 			{
 				Type:     referencedURN.Type(),
@@ -202,9 +202,11 @@ func TestDoCmdResourceUpsertBareProviderReference(t *testing.T) {
 	providerURN := "urn:pulumi:dev::proj::pulumi:providers:azure::existing"
 	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{
 		Resources: []*pkgresource.State{{
-			URN:    resource.URN(providerURN),
-			Type:   tokens.Type("pulumi:providers:azure"),
-			Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+			URN:  resource.URN(providerURN),
+			Type: tokens.Type("pulumi:providers:azure"),
+			Inputs: property.NewMap(map[string]property.Value{
+				"region": property.New("us-east-1"),
+			}),
 		}},
 	})
 
@@ -249,14 +251,14 @@ func TestDoCmdResourceUpsertMaterializesProviderSnippet(t *testing.T) {
 		Resources: []*pkgresource.State{{
 			URN:  resource.URN(providerURN),
 			Type: tokens.Type("pulumi:providers:azure"),
-			Inputs: resource.PropertyMap{
-				"__internal": resource.NewProperty(resource.PropertyMap{
-					"pluginDownloadURL": resource.NewProperty("https://example.com/plugins"),
-				}),
-				"region":  resource.NewProperty("eu-west-1"),
-				"token":   resource.MakeSecret(resource.NewProperty("base-secret")),
-				"version": resource.NewProperty("1.2.3"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"__internal": property.New(property.NewMap(map[string]property.Value{
+					"pluginDownloadURL": property.New("https://example.com/plugins"),
+				})),
+				"region":  property.New("eu-west-1"),
+				"token":   property.New("base-secret").WithSecret(true),
+				"version": property.New("1.2.3"),
+			}),
 		}},
 	})
 
@@ -449,7 +451,7 @@ func TestResourceReferenceInfosIncludesProviderParameterization(t *testing.T) {
 				URN:    providerURN,
 				Custom: true,
 				ID:     providerID,
-				Inputs: providerInputs,
+				Inputs: resource.FromResourcePropertyMap(providerInputs),
 			},
 			{
 				Type:     referencedURN.Type(),

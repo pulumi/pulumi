@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +55,7 @@ func init() {
 					thisRes := RequireSingleNamedResource(l, snap.Resources, "comp-this")
 					assert.Equal(l, "simple:index:Resource", thisRes.Type.String())
 					assert.Equal(l, component.URN, thisRes.Parent, "expected `this` resource to have the component as parent")
-					assert.Equal(l, want, resource.FromResourcePropertyMap(thisRes.Inputs),
+					assert.Equal(l, want, thisRes.Inputs,
 						"expected `this` resource inputs to be %v", want)
 
 					// `parent.value = this.value` exercises that the rename is applied to references as well
@@ -67,7 +66,7 @@ func init() {
 					assert.Equal(l, "simple:index:Resource", parent.Type.String())
 					assert.Equal(l, component.URN, parent.Parent,
 						"expected `parent` resource to have the component as parent")
-					assert.Equal(l, want, resource.FromResourcePropertyMap(parent.Inputs),
+					assert.Equal(l, want, parent.Inputs,
 						"expected `parent` resource inputs to be %v", want)
 				},
 			},

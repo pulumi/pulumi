@@ -39,7 +39,7 @@ func init() {
 					"parents":      property.New([]property.Value{ref}),
 					"namedParents": property.New(map[string]property.Value{"root": ref}),
 					"parentOrName": ref,
-				}), resource.FromResourcePropertyMap(child.Inputs))
+				}), child.Inputs)
 			},
 		}},
 	}

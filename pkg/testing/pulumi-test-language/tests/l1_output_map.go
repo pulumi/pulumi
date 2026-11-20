@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
@@ -62,7 +61,7 @@ func init() {
 							"dunder value": property.New("__dunder"),
 							escapeString:   property.New(escapeString),
 						}),
-					}), resource.FromResourcePropertyMap(stack.Outputs))
+					}), stack.Outputs)
 				},
 			},
 		},

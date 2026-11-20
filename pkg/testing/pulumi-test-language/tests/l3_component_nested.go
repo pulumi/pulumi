@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,20 +39,20 @@ func init() {
 					assert.Equal(l, "outerComponent", outer.URN.Name())
 					assert.Equal(l,
 						property.NewMap(map[string]property.Value{"input": property.New(true)}),
-						resource.FromResourcePropertyMap(outer.Inputs))
+						outer.Inputs)
 					assert.Equal(l,
 						property.NewMap(map[string]property.Value{"output": property.New(true)}),
-						resource.FromResourcePropertyMap(outer.Outputs))
+						outer.Outputs)
 
 					inner := RequireSingleResource(l, snap.Resources, "components:index:InnerComponent")
 					assert.Equal(l, "outerComponent-innerComponent", inner.URN.Name())
 					assert.Equal(l, outer.URN, inner.Parent)
 					assert.Equal(l,
 						property.NewMap(map[string]property.Value{"input": property.New(false)}),
-						resource.FromResourcePropertyMap(inner.Inputs))
+						inner.Inputs)
 					assert.Equal(l,
 						property.NewMap(map[string]property.Value{"output": property.New(true)}),
-						resource.FromResourcePropertyMap(inner.Outputs))
+						inner.Outputs)
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 
@@ -62,7 +61,7 @@ func init() {
 					assert.Equal(l, inner.URN, simple.Parent)
 					assert.Equal(l,
 						property.NewMap(map[string]property.Value{"value": property.New(true)}),
-						resource.FromResourcePropertyMap(simple.Inputs))
+						simple.Inputs)
 					assert.Equal(l, simple.Inputs, simple.Outputs)
 				},
 			},

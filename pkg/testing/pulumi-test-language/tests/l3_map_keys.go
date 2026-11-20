@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,7 +62,7 @@ func init() {
 					require.Len(l, res.Snap.Resources, 4, "expected 4 resources")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(stack.Outputs),
+					AssertPropertyMapMember(l, stack.Outputs,
 						"resourceBooleanMap", adversarialProp)
 
 					child := RequireSingleNamedResource(l, res.Snap.Resources, "cmp-res")
@@ -76,7 +75,7 @@ func init() {
 						"numberArray": property.New([]property.Value{property.New(0.0), property.New(1.0)}),
 						"booleanMap":  adversarialProp,
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(child.Inputs))
+					assert.Equal(l, want, child.Inputs)
 					assert.Equal(l, child.Inputs, child.Outputs)
 				},
 			},

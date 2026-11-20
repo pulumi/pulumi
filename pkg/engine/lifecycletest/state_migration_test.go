@@ -605,12 +605,12 @@ func TestStateMigrationNormalizesProgramReferences(t *testing.T) {
 	require.Contains(t, states, consumerURN)
 	require.Contains(t, states, holderURN)
 
-	assertReference(states[compURN].Inputs)
+	assertReference(resource.ToResourcePropertyMap(states[compURN].Inputs))
 	assert.Equal(t, predecessorID, states[childBURN].ID)
-	assertReference(states[consumerURN].Inputs)
+	assertReference(resource.ToResourcePropertyMap(states[consumerURN].Inputs))
 	assert.Equal(t, []resource.URN{childBURN}, states[consumerURN].Dependencies)
 	assert.Equal(t, []resource.URN{childBURN}, states[consumerURN].PropertyDependencies["ref"])
-	assertReference(states[holderURN].Outputs)
+	assertReference(resource.ToResourcePropertyMap(states[holderURN].Outputs))
 }
 
 // TestStateMigrationAfterRefresh exercises this refresh-and-migrate sequence:
@@ -881,8 +881,9 @@ func TestStateMigrationSecrets(t *testing.T) {
 		}
 	}
 	require.NotNil(t, child)
-	assert.True(t, child.Inputs["secret"].IsSecret(), "expected the secret input to stay secret")
-	assert.Equal(t, "shh", child.Inputs["secret"].SecretValue().Element.StringValue())
+	childInputs := resource.ToResourcePropertyMap(child.Inputs)
+	assert.True(t, childInputs["secret"].IsSecret(), "expected the secret input to stay secret")
+	assert.Equal(t, "shh", childInputs["secret"].SecretValue().Element.StringValue())
 }
 
 // TestStateMigrationSplit exercises this one-to-many migration:
@@ -1186,8 +1187,9 @@ func TestStateMigrationFold(t *testing.T) {
 	assert.Equal(t, []resource.URN{childCURN}, consumer.PropertyDependencies["ref"])
 	assert.Equal(t, childCURN, consumer.DeletedWith)
 	assert.Equal(t, []resource.URN{childCURN}, consumer.ReplaceWith)
-	require.True(t, consumer.Inputs["ref"].IsResourceReference())
-	ref := consumer.Inputs["ref"].ResourceReferenceValue()
+	consumerInputs := resource.ToResourcePropertyMap(consumer.Inputs)
+	require.True(t, consumerInputs["ref"].IsResourceReference())
+	ref := consumerInputs["ref"].ResourceReferenceValue()
 	assert.Equal(t, childCURN, ref.URN)
 	assert.Equal(t, canonicalID, resource.ID(ref.ID.StringValue()))
 }
@@ -1336,7 +1338,9 @@ func TestStateMigrationS3BucketFold(t *testing.T) {
 	}
 	require.NotNil(t, migratedBucket)
 	assert.Equal(t, resource.ID("bucket-name"), migratedBucket.ID)
-	for _, properties := range []resource.PropertyMap{migratedBucket.Inputs, migratedBucket.Outputs} {
+	migratedInputs := resource.ToResourcePropertyMap(migratedBucket.Inputs)
+	migratedOutputs := resource.ToResourcePropertyMap(migratedBucket.Outputs)
+	for _, properties := range []resource.PropertyMap{migratedInputs, migratedOutputs} {
 		versioning, ok := properties["versioning"]
 		require.True(t, ok)
 		assert.True(t, versioning.IsBool())

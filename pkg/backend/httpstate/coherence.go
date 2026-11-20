@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // awaitStackOutputs reads a stack's outputs on behalf of the running update, waiting while the
@@ -64,14 +65,14 @@ func (b *cloudBackend) awaitStackOutputs(
 }
 
 type stackOutputsRecorder struct {
-	outputs resource.PropertyMap
+	outputs property.Map
 	deleted bool
 }
 
 // newStackOutputsRecorder starts from the outputs the stack has, so that a preview that never
 // touches the stack resource still reports them.
 func newStackOutputsRecorder(snap *deploy.Snapshot) *stackOutputsRecorder {
-	r := &stackOutputsRecorder{outputs: resource.PropertyMap{}}
+	r := &stackOutputsRecorder{outputs: property.Map{}}
 	if snap == nil {
 		return r
 	}
@@ -93,7 +94,7 @@ func (r *stackOutputsRecorder) record(e engine.Event) {
 		return
 	}
 	if payload.Metadata.Op == deploy.OpDelete {
-		r.outputs, r.deleted = resource.PropertyMap{}, true
+		r.outputs, r.deleted = property.Map{}, true
 		return
 	}
 	if state := payload.Metadata.New; state != nil && state.State != nil {

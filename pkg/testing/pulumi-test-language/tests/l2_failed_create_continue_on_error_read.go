@@ -18,7 +18,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +65,7 @@ func init() {
 					// unknown/computed values: the SDK propagates failure as unknown rather than
 					// halting the program, so the outputs are registered but never resolve.
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					readValue, hasReadValue := stackOutputs.GetOk("readValue")
 					require.True(l, hasReadValue)
 					readPropDepValue, hasReadPropDepValue := stackOutputs.GetOk("readPropDepValue")

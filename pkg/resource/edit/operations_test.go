@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,8 +50,8 @@ func NewResource(name string, provider *pkgresource.State, deps ...resource.URN)
 	return &pkgresource.State{
 		Type:         t,
 		URN:          resource.NewURN("test", "test", "", t, name),
-		Inputs:       resource.PropertyMap{},
-		Outputs:      resource.PropertyMap{},
+		Inputs:       property.Map{},
+		Outputs:      property.Map{},
 		Dependencies: deps,
 		Provider:     prov,
 	}
@@ -62,8 +63,8 @@ func NewProviderResource(pkg, name, id string, deps ...resource.URN) *pkgresourc
 		Type:         t,
 		URN:          resource.NewURN("test", "test", "", t, name),
 		ID:           resource.ID(id),
-		Inputs:       resource.PropertyMap{},
-		Outputs:      resource.PropertyMap{},
+		Inputs:       property.Map{},
+		Outputs:      property.Map{},
 		Dependencies: deps,
 	}
 }

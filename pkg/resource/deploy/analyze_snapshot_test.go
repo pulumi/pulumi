@@ -82,10 +82,12 @@ func (r *recordingPolicyEvents) OnPolicyAnalyzeStackSummary(s plugin.PolicySumma
 // makeTestResource creates a simple pkgresource.State for use in tests.
 func makeTestResource(urn resource.URN) *pkgresource.State {
 	return &pkgresource.State{
-		Type:    tokens.Type("pkg:index:MyResource"),
-		URN:     urn,
-		Custom:  true,
-		Outputs: resource.PropertyMap{"key": resource.NewProperty("value")},
+		Type:   tokens.Type("pkg:index:MyResource"),
+		URN:    urn,
+		Custom: true,
+		Outputs: property.NewMap(map[string]property.Value{
+			"key": property.New("value"),
+		}),
 	}
 }
 
@@ -228,7 +230,7 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 	remediated := property.NewMap(map[string]property.Value{"key": property.New("good")})
 
 	res := makeTestResource(urn)
-	res.Inputs = resource.ToResourcePropertyMap(original)
+	res.Inputs = original
 
 	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res}}
 	events := &recordingPolicyEvents{}
