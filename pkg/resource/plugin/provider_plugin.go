@@ -702,7 +702,17 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	return GetSchemaResponse{schema}, nil
 }
 
+// checkConfigFailureFromRPC converts a CheckConfig2 failure received from a provider.
+func checkConfigFailureFromRPC(failure *pulumirpc.CheckConfigFailure) CheckConfigFailure {
+	return CheckConfigFailure{
+		Property:     resource.PropertyKey(failure.GetProperty()),
+		Reason:       failure.GetReason(),
+		Remediations: remediationsFromRPC(failure.GetRemediations()),
+	}
+}
+
 // CheckConfig validates the configuration for this resource provider.
+// It calls the provider's CheckConfig2 method, and falls back to CheckConfig for providers that predate it.
 func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
 	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
 	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
@@ -729,21 +739,52 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 	mnews := propertyrpc.Marshal(filteredNews)
 
-	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:  string(req.URN),
-		Name: req.URN.Name(),
-		Type: req.URN.Type().String(),
-		Olds: molds,
-		News: mnews,
+	var rpcInputs *structpb.Struct
+	var failures []CheckConfigFailure
+	resp2, err := p.clientRaw.CheckConfig2(p.requestContext(), &pulumirpc.CheckConfigRequest{
+		Urn:       string(req.URN),
+		Name:      req.URN.Name(),
+		Type:      req.URN.Type().String(),
+		OldInputs: molds,
+		NewInputs: mnews,
 	})
-	if err != nil {
-		rpcError := rpcerror.Convert(err)
-		code := rpcError.Code()
-		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, req.URN.Type()) {
-			// For backwards compatibility, just return the news as if the provider was okay with them.
-			logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
-			return CheckConfigResponse{Properties: req.News}, nil
+	switch {
+	case err == nil:
+		rpcInputs = resp2.GetInputs()
+		failures = slice.Prealloc[CheckConfigFailure](len(resp2.GetFailures()))
+		for _, failure := range resp2.GetFailures() {
+			failures = append(failures, checkConfigFailureFromRPC(failure))
 		}
+	case rpcerror.Convert(err).Code() == codes.Unimplemented:
+		logging.V(7).Infof("%s CheckConfig2 is unimplemented: falling back to CheckConfig", label)
+		resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
+			Urn:  string(req.URN),
+			Name: req.URN.Name(),
+			Type: req.URN.Type().String(),
+			Olds: molds,
+			News: mnews,
+		})
+		if err != nil {
+			rpcError := rpcerror.Convert(err)
+			code := rpcError.Code()
+			if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, req.URN.Type()) {
+				// For backwards compatibility, just return the news as if the provider was okay with them.
+				logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
+				return CheckConfigResponse{Properties: req.News}, nil
+			}
+			logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
+				rpcError.Message())
+			return CheckConfigResponse{}, err
+		}
+		rpcInputs = resp.GetInputs()
+		failures = slice.Prealloc[CheckConfigFailure](len(resp.GetFailures()))
+		for _, failure := range resp.GetFailures() {
+			failures = append(failures, CheckConfigFailure{
+				Property: resource.PropertyKey(failure.Property), Reason: failure.Reason,
+			})
+		}
+	default:
+		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
 		return CheckConfigResponse{}, err
@@ -751,7 +792,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 
 	// Unmarshal the provider inputs.
 	var inputs property.Map
-	if ins := resp.GetInputs(); ins != nil {
+	if ins := rpcInputs; ins != nil {
 		raw, err := propertyrpc.Unmarshal(ins)
 		if err != nil {
 			return CheckConfigResponse{}, err
@@ -765,12 +806,6 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		if err != nil {
 			return CheckConfigResponse{}, err
 		}
-	}
-
-	// And now any properties that failed verification.
-	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
-	for _, failure := range resp.GetFailures() {
-		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
@@ -893,18 +928,9 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
-	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
-	for _, diff := range resp.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	replaces := slice.Cast[resource.PropertyKey](resp.GetReplaces())
+	stables := slice.Cast[resource.PropertyKey](resp.GetStables())
+	diffs := slice.Cast[resource.PropertyKey](resp.GetDiffs())
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
@@ -1386,18 +1412,9 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	}
 
 	// nil is semantically important to a lot of the pulumi system so we only pre-allocate if we have non-zero length.
-	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
-	for _, diff := range resp.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	replaces := slice.Cast[resource.PropertyKey](resp.GetReplaces())
+	stables := slice.Cast[resource.PropertyKey](resp.GetStables())
+	diffs := slice.Cast[resource.PropertyKey](resp.GetDiffs())
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
@@ -2088,18 +2105,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the dependencies.
-	dependencies := make([]string, len(req.Options.Dependencies))
-	for i, dep := range req.Options.Dependencies {
-		dependencies[i] = string(dep)
-	}
+	dependencies := slice.Cast[string](req.Options.Dependencies)
 
 	// Marshal the property dependencies.
 	inputDependencies := map[string]*pulumirpc.ConstructRequest_PropertyDependencies{}
 	for name, dependencies := range req.Options.PropertyDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](dependencies)
 		inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
 	}
 
@@ -2114,10 +2125,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the replace with.
-	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
-	for i, urn := range req.Options.ReplaceWith {
-		replaceWithURNs[i] = string(urn)
-	}
+	replaceWithURNs := slice.Cast[string](req.Options.ReplaceWith)
 
 	// Marshal the replacement trigger.
 	var replacementTrigger *structpb.Value
@@ -2234,10 +2242,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	outputDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetStateDependencies() {
-		urns := make([]resource.URN, len(rpcDeps.Urns))
-		for i, d := range rpcDeps.Urns {
-			urns[i] = resource.URN(d)
-		}
+		urns := slice.Cast[resource.URN](rpcDeps.Urns)
 		outputDependencies[resource.PropertyKey(k)] = urns
 	}
 
@@ -2410,10 +2415,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	// Marshal the arg dependencies.
 	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
 	for name, dependencies := range req.Options.ArgDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](dependencies)
 		argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
 	}
 
@@ -2459,10 +2461,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 
 	returnDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetReturnDependencies() {
-		urns := make([]resource.URN, len(rpcDeps.Urns))
-		for i, d := range rpcDeps.Urns {
-			urns[i] = resource.URN(d)
-		}
+		urns := slice.Cast[resource.URN](rpcDeps.Urns)
 		returnDependencies[resource.PropertyKey(k)] = urns
 	}
 

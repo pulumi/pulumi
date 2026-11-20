@@ -244,6 +244,10 @@ the provider's schema, and may apply default values that are not statically comp
 The type of a computed default value for a property should agree with the property's
 schema.
 
+`CheckConfig2` is the successor to `CheckConfig`. It has the same semantics, but its own
+request and response types. The engine calls `CheckConfig2` first and falls back to
+`CheckConfig` if the provider does not implement it.
+
 (diffconfig)=
 #### DiffConfig
 

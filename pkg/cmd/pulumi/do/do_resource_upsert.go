@@ -216,7 +216,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -347,7 +347,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -458,7 +458,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}

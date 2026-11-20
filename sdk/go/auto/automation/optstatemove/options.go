@@ -48,6 +48,8 @@ type Options struct {
 	Memprofilerate int
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
+	// URN of a resource in the destination stack to parent moved resources under. Mutually exclusive with --include-parents
+	Parent string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
 	// The name of the stack to move resources from
@@ -137,6 +139,13 @@ func Memprofilerate(v int) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
+	}
+}
+
+// Parent returns an Option that sets Parent.
+func Parent(v string) Option {
+	return func(o *Options) {
+		o.Parent = v
 	}
 }
 

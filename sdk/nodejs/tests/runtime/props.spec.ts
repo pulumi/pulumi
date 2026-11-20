@@ -26,6 +26,7 @@ import {
 } from "../../index";
 import * as log from "../../log";
 import * as state from "../../runtime/state";
+import { getStackTrace } from "../../runtime/stackTrace";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 
@@ -630,4 +631,53 @@ describe("runtime", () => {
             );
         });
     });
+});
+
+describe("invoke source context", () => {
+    for (const variant of ["invoke", "invokeSingle", "invokeOutput", "invokeSingleOutput"] as const) {
+        for (const parentHandle of ["", "caller-stack"]) {
+            it(`${variant} preserves its initiation context with parent ${JSON.stringify(parentHandle)}`, async () => {
+                await state.withLocalStorage(async function program() {
+                    runtime.setMocks(new TestMocks());
+                    state.setParentStackTraceHandle(parentHandle);
+                    const requests: any[] = [];
+                    const monitor = state.getStore().settings.monitor!;
+                    monitor.invoke = ((request: any, callback: any) => {
+                        requests.push(request);
+                        callback(null, {
+                            getFailuresList: () => [],
+                            getReturn: () => gstruct.Struct.fromJavaScript({ value: "ok" }),
+                        });
+                    }) as any;
+                    const invoke: (tok: string, props: Inputs) => Promise<any> | Output<any> = runtime[variant];
+                    function sdkWrapper() {
+                        return invoke("test:index:lookup", {});
+                    }
+                    const callSite = getStackTrace(0)[0]!;
+                    const result = sdkWrapper();
+                    state.setParentStackTraceHandle("later-context");
+                    if (Output.isInstance(result)) {
+                        await result.promise();
+                    } else {
+                        await result;
+                    }
+                    assert.strictEqual(requests.length, 1);
+                    const req = requests[0];
+                    const source = req.getSourceposition();
+                    assert.ok(source.getUri().endsWith("/props.spec.ts"), source.getUri());
+                    assert.strictEqual(source.getLine(), callSite.line + 1);
+                    const frames = req.getStacktrace().getFramesList();
+                    assert.ok(frames[0].getPc().getUri().endsWith("/runtime/invoke.ts"));
+                    assert.ok(
+                        frames.some(
+                            (frame: any) =>
+                                frame.getPc()?.getUri() === source.getUri() &&
+                                frame.getPc()?.getLine() === source.getLine(),
+                        ),
+                    );
+                    assert.strictEqual(req.getParentstacktracehandle(), parentHandle);
+                });
+            });
+        }
+    }
 });

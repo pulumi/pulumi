@@ -50,7 +50,7 @@ func init() {
 						}
 					}
 					require.True(l, foundStackEvent, "expected stack outputs event")
-					stackOutputs := resource.FromResourcePropertyMap(stackEvent.Metadata.New.Outputs)
+					stackOutputs := stackEvent.Metadata.New.Outputs
 					assert.True(l, stackOutputs.Get("echoed").IsComputed(),
 						"the invoke depends on the component, whose child is pending creation:"+
 							" its result must be unknown, got %v", stackOutputs)

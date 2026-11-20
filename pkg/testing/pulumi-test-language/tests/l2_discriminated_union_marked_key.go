@@ -45,10 +45,10 @@ func init() {
 					payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 					switch payload.Metadata.URN.Name() {
 					case "first":
-						firstOutputs = resource.FromResourcePropertyMap(payload.Metadata.New.Outputs)
+						firstOutputs = payload.Metadata.New.Outputs
 						foundFirst = true
 					case "second":
-						secondInputs = resource.FromResourcePropertyMap(payload.Metadata.New.Inputs)
+						secondInputs = payload.Metadata.New.Inputs
 						foundSecond = true
 					}
 				}

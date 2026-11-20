@@ -1382,10 +1382,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
 	for name, deps := range ret.ReturnDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
@@ -1481,10 +1478,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, err
 	}
 
-	additionalSecretOutputs := slice.Prealloc[resource.PropertyKey](len(req.GetAdditionalSecretOutputs()))
-	for _, name := range req.GetAdditionalSecretOutputs() {
-		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
-	}
+	additionalSecretOutputs := slice.Cast[resource.PropertyKey](req.GetAdditionalSecretOutputs())
 
 	sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
 
@@ -2968,16 +2962,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
-	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
-	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
-	// dependencies down to `Computed` and `Secret` or their plain values. We only do this for non-remote resources.
-	// Remote resources already deal with `OutputValue`s and even though it would be more consistent to downgrade them
-	// here it would be a break change.
-	if !remote {
-		props = downgradeOutputValues(props)
-	}
-
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
@@ -3107,17 +3091,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
 		for k, deps := range constructResult.OutputDependencies {
-			urns := make([]string, len(deps))
-			for i, d := range deps {
-				urns[i] = string(d)
-			}
+			urns := slice.Cast[string](deps)
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 	} else {
-		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
-		for _, name := range additionalSecretOutputs {
-			additionalSecretKeys = append(additionalSecretKeys, resource.PropertyKey(name))
-		}
+		additionalSecretKeys := slice.Cast[resource.PropertyKey](additionalSecretOutputs)
 
 		var timeouts resource.CustomTimeouts
 		if customTimeouts != nil {
@@ -3585,35 +3563,6 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp any, 
 	case "/pulumirpc.ResourceMonitor/RegisterResource":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.RegisterResourceRequest).Type)
 	}
-}
-
-// downgradeOutputValues recursively strips dependency information from a [property.Map].
-func downgradeOutputValues(m property.Map) property.Map {
-	result := map[string]property.Value{}
-	for k, v := range m.All {
-		result[k] = downgradeOutputPropertyValue(v)
-	}
-	return property.NewMap(result)
-}
-
-func downgradeOutputPropertyValue(v property.Value) property.Value {
-	v = v.WithDependencies(nil)
-	switch {
-	case v.IsMap():
-		v = property.WithGoValue(v, downgradeOutputValues(v.AsMap()))
-	case v.IsArray():
-		arr := v.AsArray().AsSlice()
-		newArr := make([]property.Value, len(arr))
-		for i, elem := range arr {
-			newArr[i] = downgradeOutputPropertyValue(elem)
-		}
-		v = property.WithGoValue(v, property.NewArray(newArr))
-	case v.IsResourceReference():
-		ref := v.AsResourceReference()
-		ref.ID = downgradeOutputPropertyValue(ref.ID)
-		v = property.WithGoValue(v, ref)
-	}
-	return v
 }
 
 // upgradeOutputValues ensures each value in m carries at least the dependencies recorded

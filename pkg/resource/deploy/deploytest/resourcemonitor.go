@@ -591,15 +591,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.SupportsPartialValues != nil {
 		supportsPartialValues = *opts.SupportsPartialValues
 	}
-	additionalSecretOutputs := make([]string, len(opts.AdditionalSecretOutputs))
-	for i, v := range opts.AdditionalSecretOutputs {
-		additionalSecretOutputs[i] = string(v)
-	}
+	additionalSecretOutputs := slice.Cast[string](opts.AdditionalSecretOutputs)
 
-	replaceWith := make([]string, len(opts.ReplaceWith))
-	for i, v := range opts.ReplaceWith {
-		replaceWith[i] = string(v)
-	}
+	replaceWith := slice.Cast[string](opts.ReplaceWith)
 
 	sourcePosition, stackTrace, err := marshalSourceInfo(opts.SourcePosition, opts.StackTrace)
 	if err != nil {
@@ -678,10 +672,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	// unmarshal dependencies
 	depsMap := make(map[resource.PropertyKey][]resource.URN)
 	for k, p := range resp.PropertyDependencies {
-		var urns []resource.URN
-		for _, urn := range p.Urns {
-			urns = append(urns, resource.URN(urn))
-		}
+		urns := slice.Cast[resource.URN](p.Urns)
 		depsMap[resource.PropertyKey(k)] = urns
 	}
 
@@ -869,10 +860,7 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs prop
 	}
 	ins := propertyrpc.Marshal(filteredInputs)
 
-	dependsOn := make([]string, len(opts.DependsOn))
-	for i, urn := range opts.DependsOn {
-		dependsOn[i] = string(urn)
-	}
+	dependsOn := slice.Cast[string](opts.DependsOn)
 
 	// submit request
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
@@ -932,10 +920,7 @@ func (rm *ResourceMonitor) Call(
 
 	mArgDependencies := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
 	for k, p := range argDependencies {
-		urns := make([]string, len(p))
-		for i, urn := range p {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](p)
 		mArgDependencies[string(k)] = &pulumirpc.ResourceCallRequest_ArgumentDependencies{
 			Urns: urns,
 		}
@@ -971,10 +956,7 @@ func (rm *ResourceMonitor) Call(
 	// unmarshal return deps
 	deps := make(map[resource.PropertyKey][]resource.URN)
 	for k, p := range resp.ReturnDependencies {
-		var urns []resource.URN
-		for _, urn := range p.Urns {
-			urns = append(urns, resource.URN(urn))
-		}
+		urns := slice.Cast[resource.URN](p.Urns)
 		deps[resource.PropertyKey(k)] = urns
 	}
 

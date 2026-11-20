@@ -232,9 +232,8 @@ func TestDoCmdResourceCreate(t *testing.T) {
 				return plugin.CheckResponse{Properties: req.NewInputs}, nil
 			},
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-				properties := resource.ToResourcePropertyMap(req.Properties)
 				calls = append(calls, "create")
-				assert.Equal(t, "example", properties["name"].StringValue())
+				assert.Equal(t, "example", req.Properties.Get("name").AsString())
 				return plugin.CreateResponse{
 					ID: "res-1",
 					Properties: property.NewMap(map[string]property.Value{
@@ -309,10 +308,9 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 				return plugin.CheckResponse{Properties: req.NewInputs}, nil
 			},
 			CreateF: func(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-				properties := resource.ToResourcePropertyMap(req.Properties)
 				return plugin.CreateResponse{
 					ID:         "res-1",
-					Properties: resource.FromResourcePropertyMap(properties),
+					Properties: req.Properties,
 				}, nil
 			},
 		},

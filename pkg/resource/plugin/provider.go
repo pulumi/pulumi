@@ -219,7 +219,17 @@ type CheckConfigRequest struct {
 
 type CheckConfigResponse struct {
 	Properties property.Map
-	Failures   []CheckFailure
+	Failures   []CheckConfigFailure
+}
+
+// CheckConfigFailure indicates that a call to CheckConfig failed; it contains the property and reason for the
+// failure.
+type CheckConfigFailure struct {
+	Property resource.PropertyKey // the provider configuration property that failed checking.
+	Reason   string               // the reason the property failed to check.
+
+	// Remediations are commands that resolve the failure. Only CheckConfig2 carries them.
+	Remediations []CommandRemediation
 }
 
 type DiffConfigRequest struct {

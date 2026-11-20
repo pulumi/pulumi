@@ -241,6 +241,10 @@ type languageTestServer struct {
 	// tests align and their combined memory demand can take down the runner.
 	runSlots chan struct{}
 
+	// Tests asserting runtime logs run exclusively. Logs share one endpoint, and
+	// a program can send an error without a resource URN or other test identity.
+	executionMu sync.RWMutex
+
 	// A map storing the paths to the generated package artifacts
 	artifactMap gsync.Map[string, string]
 
@@ -248,6 +252,8 @@ type languageTestServer struct {
 	DisableSnapshotWriting bool
 
 	logLock sync.Mutex
+	// Points at the active test's error log buffer during an exclusive run.
+	capturedErrors *[]string
 	// Used by the Log method to track the number of times a message has been repeated.
 	logRepeat int
 	// Used by the Log method to track the last message logged, this is so we can elide duplicate messages.
@@ -280,6 +286,10 @@ func (eng *languageTestServer) SetDisableSnapshotWriting(v bool) {
 func (eng *languageTestServer) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
 	eng.logLock.Lock()
 	defer eng.logLock.Unlock()
+
+	if eng.capturedErrors != nil && req.Severity == pulumirpc.LogSeverity_ERROR {
+		*eng.capturedErrors = append(*eng.capturedErrors, req.Message)
+	}
 
 	var sev diag.Severity
 	switch req.Severity {
@@ -514,6 +524,9 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	ctx context.Context,
 	req *testingrpc.PrepareLanguageTestsRequest,
 ) (*testingrpc.PrepareLanguageTestsResponse, error) {
+	eng.executionMu.RLock()
+	defer eng.executionMu.RUnlock()
+
 	if req.LanguagePluginName == "" {
 		return nil, errors.New("language plugin name must be specified")
 	}
@@ -698,13 +711,21 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (resp *testingrpc.RunLanguageTestResponse, err error) {
-	eng.runSlots <- struct{}{}
-	defer func() { <-eng.runSlots }()
-
 	test, has := eng.languageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
+
+	if test.AssertRuntimeErrors != nil {
+		eng.executionMu.Lock()
+		defer eng.executionMu.Unlock()
+	} else {
+		eng.executionMu.RLock()
+		defer eng.executionMu.RUnlock()
+	}
+
+	eng.runSlots <- struct{}{}
+	defer func() { <-eng.runSlots }()
 
 	// Decode the test token
 	tokenBytes, err := b64.StdEncoding.DecodeString(req.Token)
@@ -747,11 +768,35 @@ func (eng *languageTestServer) RunLanguageTest(
 		Color: colors.Never,
 	})
 
+	if test.AssertRuntimeErrors != nil {
+		var logs []string
+		eng.logLock.Lock()
+		eng.capturedErrors = &logs
+		eng.logLock.Unlock()
+		// Run after the plugin context closes to include provider teardown errors.
+		defer func() {
+			eng.logLock.Lock()
+			eng.capturedErrors = nil
+			eng.logLock.Unlock()
+			if resp == nil || !resp.Success {
+				return
+			}
+			stderrText := stderr.String()
+			result := tests.WithL(func(l *tests.L) {
+				test.AssertRuntimeErrors(l, logs, stderrText)
+			})
+			resp.Success = !result.Failed
+			resp.Messages = append(resp.Messages, result.Messages...)
+			resp.Stderr = stderrText
+		}()
+	}
+
 	// Connect to the language host
 	conn, err := grpc.NewClient(token.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("dial language plugin: %w", err)
 	}
+	defer contract.IgnoreClose(conn)
 
 	languageClient := plugin.NewLanguageRuntimeClient(
 		token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))

@@ -108,6 +108,11 @@ func probe(ctx context.Context, info Info, prov plugin.Provider, news property.M
 			reason = string(f.Property) + ": " + reason
 		}
 		p.details = append(p.details, reason)
+		for i, r := range f.Remediations {
+			if p.remediation == nil && len(r.Command) > 0 && r.Command[0] != "" {
+				p.remediation = &f.Remediations[i]
+			}
+		}
 	}
 	return p
 }
@@ -115,9 +120,16 @@ func probe(ctx context.Context, info Info, prov plugin.Provider, news property.M
 // Problem is the error [Check] reports when a provider rejects the configuration or cannot validate
 // the user's credentials.
 type Problem struct {
-	info     Info
-	headline string
-	details  []string
+	info        Info
+	headline    string
+	details     []string
+	remediation *plugin.CommandRemediation
+}
+
+// Remediation returns the first command the provider suggests to resolve the problem, or nil. A
+// remediation it returns always names a program to run.
+func (p *Problem) Remediation() *plugin.CommandRemediation {
+	return p.remediation
 }
 
 func (p *Problem) Error() string {

@@ -198,7 +198,7 @@ func TestProbeFailures(t *testing.T) {
 
 	mock := &plugin.MockProvider{
 		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-			return plugin.CheckConfigResponse{Failures: []plugin.CheckFailure{
+			return plugin.CheckConfigResponse{Failures: []plugin.CheckConfigFailure{
 				{Property: "region", Reason: "expected a valid region"},
 				{Reason: "unable to validate AWS credentials.\nDetails: no valid credential sources found"},
 			}}, nil
@@ -288,7 +288,7 @@ func TestProbeErrorIncludesDocURL(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		checkFailures []plugin.CheckFailure
+		checkFailures []plugin.CheckConfigFailure
 		configureErr  error
 	}{
 		{
@@ -297,7 +297,7 @@ func TestProbeErrorIncludesDocURL(t *testing.T) {
 		},
 		{
 			name: "check failure",
-			checkFailures: []plugin.CheckFailure{
+			checkFailures: []plugin.CheckConfigFailure{
 				{Reason: "unable to validate AWS credentials.\nSee " + awsDocURL},
 			},
 		},
@@ -362,4 +362,45 @@ func TestProbeTimeout(t *testing.T) {
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	var problem *Problem
 	assert.NotErrorAs(t, err, &problem, "a cancelled check says nothing about the credentials")
+}
+
+func TestProbeRemediation(t *testing.T) {
+	t.Parallel()
+
+	signIn := plugin.CommandRemediation{Description: "Sign in to AWS", Command: []string{"aws", "login"}}
+	ssoSignIn := plugin.CommandRemediation{Description: "Sign in to AWS", Command: []string{"aws", "sso", "login"}}
+
+	t.Run("first with a command", func(t *testing.T) {
+		t.Parallel()
+
+		mock := &plugin.MockProvider{
+			CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+				return plugin.CheckConfigResponse{Failures: []plugin.CheckConfigFailure{
+					{Property: "region", Reason: "expected a valid region"},
+					{Reason: "No valid credential sources found.", Remediations: []plugin.CommandRemediation{
+						{Description: "Nothing to run"}, {Command: []string{""}}, signIn,
+					}},
+					{Reason: "The SSO session has expired.", Remediations: []plugin.CommandRemediation{ssoSignIn}},
+				}}, nil
+			},
+		}
+		var problem *Problem
+		require.ErrorAs(t, probe(t.Context(), awsProvider, mock, property.Map{}), &problem)
+		assert.Equal(t, &signIn, problem.Remediation())
+	})
+
+	t.Run("none", func(t *testing.T) {
+		t.Parallel()
+
+		mock := &plugin.MockProvider{
+			CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+				return plugin.CheckConfigResponse{Failures: []plugin.CheckConfigFailure{
+					{Reason: "No valid credential sources found."},
+				}}, nil
+			},
+		}
+		var problem *Problem
+		require.ErrorAs(t, probe(t.Context(), awsProvider, mock, property.Map{}), &problem)
+		assert.Nil(t, problem.Remediation())
+	})
 }

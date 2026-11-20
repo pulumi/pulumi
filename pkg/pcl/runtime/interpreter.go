@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -2278,10 +2279,7 @@ func castSliceToString[T ~string](arr []T) []string {
 	if arr == nil {
 		return nil
 	}
-	dst := make([]string, len(arr))
-	for i, v := range arr {
-		dst[i] = string(v)
-	}
+	dst := slice.Cast[string](arr)
 	return dst
 }
 

@@ -130,11 +130,8 @@ A weekly job runs every Wednesday.  It bumps `sdk/.version` to the next minor ve
 
 To cut a patch release instead, bump `sdk/.version` to the next patch version by hand using `scripts/set-version.py <next-patch-version>`, and merge that.
 
-The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
+Once the freeze PR is on `master`, the `publish frozen release` job in `on-push.yml` runs the [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) suite against the frozen build.  If it passes, the job publishes the draft release of the version we froze, marking it as the latest release and creating a discussion for it in the "Releases" category.  Either way, it posts the outcome to `#team-iac-core`.
 
-Finally to create the release, navigate to the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) and edit the release of the version we froze just before.  Untick "Set as a pre-release", and tick both "Set as the latest release" and "Create a discussion for this release" in the "Releases" category at the bottom of the page, before clicking "Publish release".
-
-> [!CAUTION]
-> Double-check the version number of the release. The most recent release in [the releases list](https://github.com/pulumi/pulumi/releases) tracks changes to `master`, and might not be the one you want to release if PRs have been merged since the freeze. For this reason, the version you want to release may be the second one in the list. The version should be the one that was in `sdk/.version` *before* the freeze PR was merged.
+If the job fails, fix the problem and publish the release by hand: navigate to the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) and edit the release of the version named in the Slack message, which is usually the second in the list.  Untick "Set as a pre-release", and tick both "Set as the latest release" and "Create a discussion for this release" in the "Releases" category at the bottom of the page, before clicking "Publish release".
 
 Publishing the release tags `sdk/vX` and `pkg/vX` at the release commit.  `pulumi-bot` then creates a PR that moves the released changelog entries into `CHANGELOG.md` on `master`.  This PR is approved and queued to merge automatically. The next freeze PR can't merge until this one has, so a release never goes out with a stale changelog.

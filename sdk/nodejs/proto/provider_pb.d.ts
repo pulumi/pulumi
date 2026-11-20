@@ -771,6 +771,141 @@ export namespace CheckFailure {
     }
 }
 
+export class CheckConfigRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): CheckConfigRequest;
+    getName(): string;
+    setName(value: string): CheckConfigRequest;
+    getType(): string;
+    setType(value: string): CheckConfigRequest;
+
+    hasOldInputs(): boolean;
+    clearOldInputs(): void;
+    getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    hasNewInputs(): boolean;
+    clearNewInputs(): void;
+    getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+    getRandomSeed(): Uint8Array | string;
+    getRandomSeed_asU8(): Uint8Array;
+    getRandomSeed_asB64(): string;
+    setRandomSeed(value: Uint8Array | string): CheckConfigRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigRequest): CheckConfigRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigRequest;
+    static deserializeBinaryFromReader(message: CheckConfigRequest, reader: jspb.BinaryReader): CheckConfigRequest;
+}
+
+export namespace CheckConfigRequest {
+    export type AsObject = {
+        urn: string,
+        name: string,
+        type: string,
+        oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        randomSeed: Uint8Array | string,
+    }
+}
+
+export class CheckConfigResponse extends jspb.Message { 
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigResponse;
+    clearFailuresList(): void;
+    getFailuresList(): Array<CheckConfigFailure>;
+    setFailuresList(value: Array<CheckConfigFailure>): CheckConfigResponse;
+    addFailures(value?: CheckConfigFailure, index?: number): CheckConfigFailure;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigResponse): CheckConfigResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigResponse;
+    static deserializeBinaryFromReader(message: CheckConfigResponse, reader: jspb.BinaryReader): CheckConfigResponse;
+}
+
+export namespace CheckConfigResponse {
+    export type AsObject = {
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<CheckConfigFailure.AsObject>,
+    }
+}
+
+export class CheckConfigFailure extends jspb.Message { 
+    getProperty(): string;
+    setProperty(value: string): CheckConfigFailure;
+    getReason(): string;
+    setReason(value: string): CheckConfigFailure;
+    clearRemediationsList(): void;
+    getRemediationsList(): Array<CommandRemediation>;
+    setRemediationsList(value: Array<CommandRemediation>): CheckConfigFailure;
+    addRemediations(value?: CommandRemediation, index?: number): CommandRemediation;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigFailure.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigFailure): CheckConfigFailure.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigFailure, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigFailure;
+    static deserializeBinaryFromReader(message: CheckConfigFailure, reader: jspb.BinaryReader): CheckConfigFailure;
+}
+
+export namespace CheckConfigFailure {
+    export type AsObject = {
+        property: string,
+        reason: string,
+        remediationsList: Array<CommandRemediation.AsObject>,
+    }
+}
+
+export class CommandRemediation extends jspb.Message { 
+    getDescription(): string;
+    setDescription(value: string): CommandRemediation;
+    clearCommandList(): void;
+    getCommandList(): Array<string>;
+    setCommandList(value: Array<string>): CommandRemediation;
+    addCommand(value: string, index?: number): string;
+
+    getEnvMap(): jspb.Map<string, string>;
+    clearEnvMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CommandRemediation.AsObject;
+    static toObject(includeInstance: boolean, msg: CommandRemediation): CommandRemediation.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CommandRemediation, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CommandRemediation;
+    static deserializeBinaryFromReader(message: CommandRemediation, reader: jspb.BinaryReader): CommandRemediation;
+}
+
+export namespace CommandRemediation {
+    export type AsObject = {
+        description: string,
+        commandList: Array<string>,
+
+        envMap: Array<[string, string]>,
+    }
+}
+
 export class DiffRequest extends jspb.Message { 
     getId(): string;
     setId(value: string): DiffRequest;

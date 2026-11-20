@@ -72,15 +72,9 @@ func (rs *ResourceStatus) PublishViewSteps(token string, steps []ViewStep) error
 }
 
 func (rs *ResourceStatus) marshalStep(step ViewStep) (*pulumirpc.ViewStep, error) {
-	keys := slice.Prealloc[string](len(step.Keys))
-	for _, key := range step.Keys {
-		keys = append(keys, string(key))
-	}
+	keys := slice.Cast[string](step.Keys)
 
-	diffs := slice.Prealloc[string](len(step.Diffs))
-	for _, diff := range step.Diffs {
-		diffs = append(diffs, string(diff))
-	}
+	diffs := slice.Cast[string](step.Diffs)
 
 	detailedDiff := rs.unmarshalDetailedDiff(step.DetailedDiff)
 

@@ -162,7 +162,7 @@ func buildImportFile(
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
-				providerInputs[urn] = preEvent.Metadata.Res.Inputs
+				providerInputs[urn] = resource.ToResourcePropertyMap(preEvent.Metadata.Res.Inputs)
 			}
 
 			// Only interested in creates

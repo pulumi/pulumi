@@ -40,7 +40,7 @@ import (
 
 const (
 	confirmYes    = "Yes, create the project"
-	confirmChange = "Change these values"
+	confirmChange = "No, change these values"
 )
 
 var errNoProjectCreated = errors.New("no project created; please use `pulumi new` to start again")
@@ -324,7 +324,7 @@ func confirmGuidedValues(
 	if shows.stack {
 		// A DIY backend validates a stack name without a project (e.g. `prod`) against its current
 		// project, which isn't saved yet. Set it before any stack-name prompt: the one below for a taken
-		// default, and the one after "Change these values". Any project name will do, even if renamed.
+		// default, and the one after "No, change these values". Any project name will do, even if renamed.
 		b.SetCurrentProject(&workspace.Project{Name: tokens.PackageName(c.name)})
 		if c.stackName, err = buildStackName(ctx, b, defaultStackName); err != nil {
 			return nil, err
@@ -507,6 +507,7 @@ func (c *setupAnswers) repromptConfig(
 	return nil
 }
 
+// configRows lists each config value under its key, hiding secrets.
 func (c *setupAnswers) configRows() []field {
 	if c.config == nil {
 		return nil
@@ -526,17 +527,21 @@ func askConfirmation(
 	w io.Writer, opts display.Options, sel selectFunc, rows, configRows []field,
 ) (bool, error) {
 	fmt.Fprintln(w)
-	printFields(w, opts.Color, "", rows)
+	fmt.Fprintln(w, opts.Color.Colorize(colors.SpecSubHeadline+"Review your new project:"+colors.Reset))
+	fmt.Fprintln(w)
+	printFields(w, opts.Color, "  ", rows)
 	if len(configRows) > 0 {
-		fmt.Fprintln(w, opts.Color.Colorize(colors.SpecSubHeadline+"Config:"+colors.Reset))
-		printFields(w, opts.Color, "  ", configRows)
+		fmt.Fprintln(w, "  Config:")
+		printFields(w, opts.Color, "    ", configRows)
 	}
-	i, err := sel("Do these look good?", []string{confirmYes, confirmChange}, opts)
+	fmt.Fprintln(w)
+	i, err := sel("Create the project with these settings?", []string{confirmYes, confirmChange}, opts)
 	return i == 0, err
 }
 
 type field struct{ label, value string }
 
+// printFields prints fields as a table of plain labels and bold values.
 func printFields(w io.Writer, color colors.Colorization, indent string, fields []field) {
 	width := 0
 	for _, f := range fields {
@@ -544,6 +549,6 @@ func printFields(w io.Writer, color colors.Colorization, indent string, fields [
 	}
 	for _, f := range fields {
 		label := f.label + ":" + strings.Repeat(" ", width-len(f.label))
-		fmt.Fprintln(w, indent+color.Colorize(colors.SpecSubHeadline+label+colors.Reset)+"  "+f.value)
+		fmt.Fprintln(w, indent+label+"  "+color.Colorize(colors.SpecSubHeadline+f.value+colors.Reset))
 	}
 }

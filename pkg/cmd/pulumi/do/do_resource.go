@@ -707,9 +707,7 @@ func formatPatchSummary(
 	var b strings.Builder
 	fmt.Fprintf(&b, "This will update %s %q.\n", res.Token, id)
 
-	oldPM := resource.ToResourcePropertyMap(oldInputs)
-	newPM := resource.ToResourcePropertyMap(newInputs)
-	objDiff := oldPM.Diff(newPM)
+	objDiff := oldInputs.Diff(newInputs)
 	if providerDiff.Changes == plugin.DiffNone || objDiff == nil {
 		b.WriteString("No changes.\n")
 		return b.String()

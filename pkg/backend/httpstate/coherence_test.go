@@ -43,7 +43,7 @@ func outputsEvent(urn resource.URN, typ tokens.Type, outputs resource.PropertyMa
 				URN:     urn,
 				Type:    typ,
 				State:   &pkgresource.State{URN: urn, Type: typ, Outputs: outputs},
-				Outputs: outputs,
+				Outputs: resource.FromResourcePropertyMap(outputs),
 			},
 		},
 	})

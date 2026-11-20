@@ -132,6 +132,61 @@ class CheckResponse:
         self.failures = failures
 
 
+class CheckConfigRequest:
+    """
+    Represents a request to check the configuration of a provider.
+    """
+
+    def __init__(
+        self,
+        urn: str,
+        old_inputs: dict[str, PropertyValue],
+        new_inputs: dict[str, PropertyValue],
+    ) -> None:
+        """
+        :param urn: The unique resource name (URN) of the provider resource.
+        :param old_inputs: The previous configuration of the provider.
+        :param new_inputs: The new configuration of the provider.
+        """
+        self.urn = urn
+        self.old_inputs = old_inputs
+        self.new_inputs = new_inputs
+
+    @property
+    def type(self) -> str:
+        """
+        Extracts the type from the URN.
+        """
+        return _extract_type(self.urn)
+
+    @property
+    def name(self) -> str:
+        """
+        Extracts the name from the URN.
+        """
+        return _extract_name(self.urn)
+
+
+class CheckConfigFailure:
+    """Represents a single failure in a check_config operation."""
+
+    def __init__(self, property: str, reason: str) -> None:
+        self.property = property
+        self.reason = reason
+
+
+class CheckConfigResponse:
+    """Represents the response of a check_config operation."""
+
+    def __init__(
+        self,
+        inputs: Optional[dict[str, PropertyValue]] = None,
+        failures: Optional[list[CheckConfigFailure]] = None,
+    ) -> None:
+        self.inputs = inputs
+        self.failures = failures
+
+
 class DiffRequest:
     """
     Represents a request to compute the difference between the old and new states of a resource.
@@ -656,11 +711,11 @@ class Provider(ABC):
         """
         raise NotImplementedError("The method 'get_schema' is not implemented")
 
-    async def check_config(self, request: CheckRequest) -> CheckResponse:
+    async def check_config(self, request: CheckConfigRequest) -> CheckConfigResponse:
         """
-        Handle the check_config request.
+        Handle the check_config request. The server calls this for both the CheckConfig and CheckConfig2 RPCs.
         """
-        return CheckResponse(inputs=request.new_inputs)
+        return CheckConfigResponse(inputs=request.new_inputs)
 
     async def diff_config(self, request: DiffRequest) -> DiffResponse:
         """

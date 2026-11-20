@@ -17,6 +17,8 @@ package apitype
 import (
 	"encoding/json"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -177,19 +179,19 @@ type UpdateEvent struct {
 }
 
 // UpdateStatus is an enum describing the current state during the lifecycle of an update.
-type UpdateStatus string
+type UpdateStatus = cloudapitype.AppUpdateStatus
 
 const (
 	// StatusNotStarted is returned when the Update has been created but not applied.
-	StatusNotStarted UpdateStatus = "not started"
+	StatusNotStarted = cloudapitype.AppUpdateStatusNotStarted
 	// StatusRequested is returned when the Update application has been requested but not started.
-	StatusRequested UpdateStatus = "requested"
+	StatusRequested = cloudapitype.AppUpdateStatusRequested
 	// StatusRunning is returned when the Update is in progress.
-	StatusRunning UpdateStatus = "running"
+	StatusRunning = cloudapitype.AppUpdateStatusRunning
 	// StatusFailed is returned when the update has failed.
-	StatusFailed UpdateStatus = "failed"
+	StatusFailed = cloudapitype.AppUpdateStatusFailed
 	// StatusSucceeded is returned when the update has succeeded.
-	StatusSucceeded UpdateStatus = "succeeded"
+	StatusSucceeded = cloudapitype.AppUpdateStatusSucceeded
 )
 
 // UpdateResults returns a series of events and the current status of an update. The events can be filtered. See
@@ -254,11 +256,11 @@ type RenewUpdateLeaseResponse struct {
 
 const (
 	// UpdateStatusSucceeded indicates that an update completed successfully.
-	UpdateStatusSucceeded UpdateStatus = "succeeded"
+	UpdateStatusSucceeded = cloudapitype.AppUpdateStatusSucceeded
 	// UpdateStatusFailed indicates that an update completed with one or more failures.
-	UpdateStatusFailed UpdateStatus = "failed"
+	UpdateStatusFailed = cloudapitype.AppUpdateStatusFailed
 	// UpdateStatusCancelled indicates that an update completed due to cancellation.
-	UpdateStatusCancelled UpdateStatus = "cancelled"
+	UpdateStatusCancelled = cloudapitype.AppUpdateStatusCancelled
 )
 
 // CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.

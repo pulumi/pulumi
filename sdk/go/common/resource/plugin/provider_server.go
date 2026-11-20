@@ -316,6 +316,12 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
+// CheckConfig2 is not supported by this package, so callers fall back to CheckConfig.
+func (p *providerServer) CheckConfig2(context.Context, *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "CheckConfig2 is not yet implemented")
+}
+
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
@@ -897,16 +903,10 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		aliases[i] = result
 	}
-	dependencies := make([]resource.URN, len(req.GetDependencies()))
-	for i, urn := range req.GetDependencies() {
-		dependencies[i] = resource.URN(urn)
-	}
+	dependencies := slice.Cast[resource.URN](req.GetDependencies())
 	propertyDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetInputDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
-		}
+		urns := slice.Cast[resource.URN](deps.Urns)
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
 
@@ -923,10 +923,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.OnError] = binding.GetOnError()
 	}
 
-	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
-	for i, urn := range req.GetReplaceWith() {
-		replaceWith[i] = resource.URN(urn)
-	}
+	replaceWith := slice.Cast[resource.URN](req.GetReplaceWith())
 
 	var replacementTrigger resource.PropertyValue
 	if trigger := req.GetReplacementTrigger(); trigger != nil {
@@ -975,10 +972,7 @@ func (p *providerServer) Construct(ctx context.Context,
 
 	outputDependencies := map[string]*pulumirpc.ConstructResponse_PropertyDependencies{}
 	for name, deps := range resp.OutputDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		outputDependencies[string(name)] = &pulumirpc.ConstructResponse_PropertyDependencies{Urns: urns}
 	}
 
@@ -1045,10 +1039,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
-		}
+		urns := slice.Cast[resource.URN](deps.Urns)
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
 	options := CallOptions{
@@ -1075,10 +1066,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
 	for name, deps := range result.ReturnDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 

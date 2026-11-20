@@ -149,19 +149,19 @@ func (p *ConfigProvider) CheckConfig(
 		if !ok {
 			if required {
 				return &plugin.CheckConfigResponse{
-					Failures: makeCheckFailure(resource.PropertyKey(key), "missing "+key),
+					Failures: makeCheckConfigFailure(resource.PropertyKey(key), "missing "+key),
 				}
 			}
 			return nil
 		}
 		if !value.IsString() {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(resource.PropertyKey(key), key+" is not a string"),
+				Failures: makeCheckConfigFailure(resource.PropertyKey(key), key+" is not a string"),
 			}
 		}
 		if expected != "" && value.AsString() != expected {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(resource.PropertyKey(key), fmt.Sprintf("%s is not %s", key, expected)),
+				Failures: makeCheckConfigFailure(resource.PropertyKey(key), fmt.Sprintf("%s is not %s", key, expected)),
 			}
 		}
 		return nil
@@ -184,7 +184,7 @@ func (p *ConfigProvider) CheckConfig(
 
 	if req.News.Len() > 3 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
