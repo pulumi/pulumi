@@ -172,7 +172,6 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			Dependencies:            nil,
 			Provider:                "",
 			InitErrors:              nil,
-			PropertyDependencies:    nil,
 			DeleteBeforeReplace:     nil,
 			IgnoreChanges:           nil,
 			AdditionalSecretOutputs: nil,

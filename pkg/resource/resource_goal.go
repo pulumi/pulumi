@@ -41,7 +41,8 @@ type Goal struct {
 	Provider string
 	// errors encountered as we attempted to initialize the resource.
 	InitErrors []string
-	// the set of dependencies that affect each property.
+	// the set of dependencies that affect each property. Derived by the step generator from
+	// `Properties` (OutputValue deps); do not set when constructing a [NewGoal].
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool
@@ -107,9 +108,6 @@ type NewGoal struct {
 
 	// errors encountered as we attempted to initialize the resource.
 	InitErrors []string // required
-
-	// the set of dependencies that affect each property.
-	PropertyDependencies map[resource.PropertyKey][]resource.URN // required
 
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool // required
@@ -178,7 +176,6 @@ func (g NewGoal) Make() *Goal {
 		Dependencies:            g.Dependencies,
 		Provider:                g.Provider,
 		InitErrors:              g.InitErrors,
-		PropertyDependencies:    g.PropertyDependencies,
 		DeleteBeforeReplace:     g.DeleteBeforeReplace,
 		IgnoreChanges:           g.IgnoreChanges,
 		HideDiff:                g.HideDiff,
