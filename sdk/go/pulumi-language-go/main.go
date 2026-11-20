@@ -36,6 +36,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -1626,10 +1627,23 @@ func (host *goLanguageHost) Link(
 
 	// Map of moduleName to replacement paths
 	modules := map[string]string{}
+	requirements := map[string]string{}
+	start := "./"
+	if runtime.GOOS == "windows" {
+		start = ".\\"
+	}
+	relativeReplacePath := func(path string) string {
+		if !strings.HasPrefix(path, start) {
+			return start + path
+		}
+		return path
+	}
 	var imports strings.Builder
 	for _, dep := range req.Packages {
 		if dep.Package.Name == "pulumi" { // TODO: should this just be github.com/pulumi/pulumi/sdk/v3?
-			modules["github.com/pulumi/pulumi/sdk/v3"] = dep.Path
+			modulePath := "github.com/pulumi/pulumi/sdk/v3"
+			modules[modulePath] = relativeReplacePath(dep.Path)
+			requirements[modulePath] = module.ZeroPseudoVersion("v3")
 			continue
 		}
 
@@ -1681,16 +1695,16 @@ func (host *goLanguageHost) Link(
 			return nil, err
 		}
 
-		modules[modulePath] = dep.Path
-		// The relative path used in the replace directive must start with `./` or `.\`.
-		// https://go.dev/ref/mod#go-mod-file-replace
-		start := "./"
-		if runtime.GOOS == "windows" {
-			start = ".\\"
+		modules[modulePath] = relativeReplacePath(dep.Path)
+		_, pathMajor, ok := module.SplitPathVersion(modulePath)
+		if !ok {
+			return nil, fmt.Errorf("invalid Go module path %q", modulePath)
 		}
-		if !strings.HasPrefix(dep.Path, start) {
-			modules[modulePath] = start + dep.Path
+		major := "v0"
+		if pathMajor != "" {
+			major = module.PathMajorPrefix(pathMajor)
 		}
+		requirements[modulePath] = module.ZeroPseudoVersion(major)
 		fmt.Fprintf(&imports, "    \"%s\"\n", importPath)
 	}
 	instructions += imports.String()
@@ -1711,6 +1725,19 @@ func (host *goLanguageHost) Link(
 	}
 
 	for modulePath, path := range modules {
+		hasRequirement := false
+		for _, require := range gomod.Require {
+			if require.Mod.Path == modulePath {
+				hasRequirement = true
+				break
+			}
+		}
+		if !hasRequirement {
+			err = gomod.AddRequire(modulePath, requirements[modulePath])
+			if err != nil {
+				return nil, fmt.Errorf("could not add require statement: %w", err)
+			}
+		}
 		err = gomod.AddReplace(modulePath, "", path, "")
 		if err != nil {
 			return nil, fmt.Errorf("could not add replace statement: %w", err)
@@ -1720,6 +1747,11 @@ func (host *goLanguageHost) Link(
 	data, err := gomod.Format()
 	if err != nil {
 		return nil, fmt.Errorf("formatting go.mod: %w", err)
+	}
+	if bytes.Equal(data, gomodFileContent) {
+		return &pulumirpc.LinkResponse{
+			ImportInstructions: instructions,
+		}, nil
 	}
 	err = os.WriteFile(gomodFilepath, data, stat.Mode().Perm())
 	if err != nil {
