@@ -67,8 +67,6 @@ func (h *Hint) rpc() *pulumirpc.Hint {
 	case HintUnspecified:
 		kind = pulumirpc.Hint_UNSPECIFIED
 	default:
-		// Unlike the kinds a provider sends, which may come from a newer protocol version, a HintKind is defined in this
-		// package, so an unknown one is a bug.
 		contract.Failf("unknown hint kind %d", h.Kind)
 	}
 	return &pulumirpc.Hint{Kind: kind, Message: h.Message}
