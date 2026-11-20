@@ -35,6 +35,8 @@ import (
 	"github.com/pgavlin/fx/v2"
 	fxm "github.com/pgavlin/fx/v2/maps"
 	fxs "github.com/pgavlin/fx/v2/slices"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -669,7 +671,7 @@ func (s *benchmarkServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		require.NoError(s.t, err)
 		resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{{
 			Version:       2,
-			Capability:    apitype.DeltaCheckpointUploadsV2,
+			Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploadsV2,
 			Configuration: json.RawMessage(bytes),
 		}}}
 		err = json.NewEncoder(w).Encode(resp)
