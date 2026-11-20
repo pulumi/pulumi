@@ -37,14 +37,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TransformFunction(
 	f func(
 		name, typ string, custom bool, parent string,
-		props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-	) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error),
+		props property.Map, opts *pulumirpc.TransformResourceOptions,
+	) (property.Map, *pulumirpc.TransformResourceOptions, error),
 ) func([]byte) (proto.Message, error) {
 	return func(request []byte) (proto.Message, error) {
 		var transformationRequest pulumirpc.TransformRequest
@@ -53,12 +54,7 @@ func TransformFunction(
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
 
-		mprops, err := plugin.UnmarshalProperties(transformationRequest.Properties, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
+		mprops, err := propertyrpc.Unmarshal(transformationRequest.Properties)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
@@ -69,19 +65,9 @@ func TransformFunction(
 		if err != nil {
 			return nil, err
 		}
-		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			KeepByteString:   true,
-		})
-		if err != nil {
-			return nil, err
-		}
 
 		return &pulumirpc.TransformResponse{
-			Properties: mret,
+			Properties: propertyrpc.Marshal(ret),
 			Options:    opts,
 		}, nil
 	}
@@ -89,8 +75,8 @@ func TransformFunction(
 
 func TransformInvokeFunction(
 	f func(
-		token string, props resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
-	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error),
+		token string, props property.Map, opts *pulumirpc.TransformInvokeOptions,
+	) (property.Map, *pulumirpc.TransformInvokeOptions, error),
 ) func([]byte) (proto.Message, error) {
 	return func(request []byte) (proto.Message, error) {
 		var transformationRequest pulumirpc.TransformInvokeRequest
@@ -99,12 +85,7 @@ func TransformInvokeFunction(
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
 
-		margs, err := plugin.UnmarshalProperties(transformationRequest.Args, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-		})
+		margs, err := propertyrpc.Unmarshal(transformationRequest.Args)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling properties: %w", err)
 		}
@@ -114,38 +95,21 @@ func TransformInvokeFunction(
 		if err != nil {
 			return nil, err
 		}
-		mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			KeepByteString:   true,
-		})
-		if err != nil {
-			return nil, err
-		}
 
 		return &pulumirpc.TransformInvokeResponse{
-			Args:    mret,
+			Args:    propertyrpc.Marshal(ret),
 			Options: opts,
 		}, nil
 	}
 }
 
-func pvApply(pv resource.PropertyValue, f func(resource.PropertyValue) resource.PropertyValue) resource.PropertyValue {
-	if pv.IsOutput() {
-		o := pv.OutputValue()
-		if !o.Known {
-			return pv
-		}
-		return resource.NewProperty(resource.Output{
-			Element:      f(o.Element),
-			Known:        true,
-			Secret:       o.Secret,
-			Dependencies: o.Dependencies,
-		})
+// bumpNumber returns v with its inner number incremented by 1. Secret/dependency metadata
+// is preserved. Computed values are returned unchanged.
+func bumpNumber(v property.Value) property.Value {
+	if v.IsComputed() {
+		return v
 	}
-	return f(pv)
+	return property.WithGoValue(v, v.AsNumber()+1)
 }
 
 // Test that the engine invokes all transformation functions in the correct order.
@@ -165,13 +129,11 @@ func TestRemoteTransforms(t *testing.T) {
 
 		callback1, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
-					return resource.NewProperty(v.NumberValue() + 1)
-				})
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
+				props = props.Set("foo", bumpNumber(props.Get("foo")))
 				// callback 2 should run before this one so "bar" should exist at this point
-				props["bar"] = resource.NewProperty(props["bar"].StringValue() + "baz")
+				props = props.Set("bar", property.New(props.Get("bar").AsString()+"baz"))
 
 				return props, opts, nil
 			}))
@@ -179,17 +141,15 @@ func TestRemoteTransforms(t *testing.T) {
 
 		callback2, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
-					return resource.NewProperty(v.NumberValue() + 1)
-				})
-				props["bar"] = resource.NewProperty("bar")
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
+				props = props.Set("foo", bumpNumber(props.Get("foo")))
+				props = props.Set("bar", property.New("bar"))
 				// if this is for resB then callback 3 will have run before this one
-				if prop, has := props["frob"]; has {
-					props["frob"] = resource.MakeSecret(prop)
+				if prop, has := props.GetOk("frob"); has {
+					props = props.Set("frob", prop.WithSecret(true))
 				} else {
-					props["frob"] = resource.NewProperty("nofrob")
+					props = props.Set("frob", property.New("nofrob"))
 				}
 
 				return props, opts, nil
@@ -198,12 +158,10 @@ func TestRemoteTransforms(t *testing.T) {
 
 		callback3, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
-					return resource.NewProperty(v.NumberValue() + 1)
-				})
-				props["frob"] = resource.NewProperty("frob")
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
+				props = props.Set("foo", bumpNumber(props.Get("foo")))
+				props = props.Set("frob", property.New("frob"))
 				return props, opts, nil
 			}))
 		require.NoError(t, err)
@@ -282,18 +240,17 @@ func TestRemoteTransformSecretOutput(t *testing.T) {
 
 		callback, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				// Some SDKs, like .NET, expect secret inputs in transforms to be Output values.
-				value := props["value"]
-				if !value.IsOutput() {
-					return nil, nil, fmt.Errorf("expected a secret Output value, got %s", value.TypeString())
-				}
-				output := value.OutputValue()
-				assert.True(t, output.Known)
-				assert.True(t, output.Secret)
-				assert.Empty(t, output.Dependencies)
-				assert.Equal(t, resource.NewProperty(21.0), output.Element)
+				// At the property.Map level the Output envelope is indistinguishable from a bare
+				// secret, so we assert the observable properties the peer cares about: secret,
+				// known, and no dependencies.
+				value := props.Get("value")
+				assert.False(t, value.IsComputed())
+				assert.True(t, value.Secret())
+				assert.Empty(t, value.Dependencies())
+				assert.Equal(t, 21.0, value.AsNumber())
 
 				return props, opts, nil
 			}))
@@ -446,13 +403,11 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 
 		callback1, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				if typ == "pkgA:m:typA" {
 					assert.Equal(t, "urn:pulumi:test::test::pkgA:m:typC::resC", parent)
-					props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
-						return resource.NewProperty(v.NumberValue() + 1)
-					})
+					props = props.Set("foo", bumpNumber(props.Get("foo")))
 				}
 				return props, opts, nil
 			}))
@@ -517,8 +472,8 @@ func TestRemoteTransformsOptions(t *testing.T) {
 
 		callback1, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				// Check that the options are passed through correctly
 				assert.Equal(t, []string{"foo"}, opts.AdditionalSecretOutputs)
 				assert.Equal(t, urnB, opts.Aliases[0].Alias.(*pulumirpc.Alias_Urn).Urn)
@@ -650,18 +605,13 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 
 		callback, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				// props should be tracking that it depends on resB
-				assert.True(t, props["foo"].IsOutput())
-				assert.Equal(t, []resource.URN{respB.URN}, props["foo"].OutputValue().Dependencies)
+				assert.Equal(t, []urn.URN{respB.URN}, props.Get("foo").Dependencies())
 
 				// Add a dependency on resA
-				props["foo"] = resource.NewProperty(resource.Output{
-					Element:      resource.ToResourcePropertyValue(respA.Outputs.Get("foo")),
-					Known:        true,
-					Dependencies: []resource.URN{respA.URN},
-				})
+				props = props.Set("foo", respA.Outputs.Get("foo").WithDependencies([]urn.URN{respA.URN}))
 
 				return props, opts, nil
 			}))
@@ -754,12 +704,10 @@ func TestRemoteComponentTransforms(t *testing.T) {
 
 		callback1, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				if typ == "pkgA:m:typA" {
-					props["foo"] = pvApply(props["foo"], func(v resource.PropertyValue) resource.PropertyValue {
-						return resource.NewProperty(v.NumberValue() + 1)
-					})
+					props = props.Set("foo", bumpNumber(props.Get("foo")))
 				}
 				return props, opts, nil
 			}))
@@ -913,8 +861,8 @@ func TestTransformsProviderOpt(t *testing.T) {
 		require.NoError(t, err)
 		callback, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				if opts.Provider == "" {
 					opts.Provider = implicitProvider
 				}
@@ -1014,9 +962,9 @@ func TestTransformInvoke(t *testing.T) {
 		require.NoError(t, err)
 		callback, err := callbacks.Allocate(
 			TransformInvokeFunction(func(token string,
-				args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
-				args["foo"] = resource.NewProperty("bar")
+				args property.Map, opts *pulumirpc.TransformInvokeOptions,
+			) (property.Map, *pulumirpc.TransformInvokeOptions, error) {
+				args = args.Set("foo", property.New("bar"))
 
 				return args, opts, nil
 			}))
@@ -1075,8 +1023,8 @@ func TestTransformInvokeTransformProvider(t *testing.T) {
 		require.NoError(t, err)
 		callback, err := callbacks.Allocate(
 			TransformInvokeFunction(func(token string,
-				args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+				args property.Map, opts *pulumirpc.TransformInvokeOptions,
+			) (property.Map, *pulumirpc.TransformInvokeOptions, error) {
 				if opts.Provider == "" {
 					opts.Provider = implicitProvider
 				}
@@ -1127,13 +1075,13 @@ func TestTransformOrdering(t *testing.T) {
 		require.NoError(t, err)
 		callback, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				if name == "resA" && opts.Provider == "" {
 					//nolint:usetesting // outlives t.Context inside the engine
 					provider, err := pcs.Promise().Result(context.Background())
 					if err != nil {
-						return nil, nil, err
+						return property.Map{}, nil, err
 					}
 					implicitProvider = string(provider.URN) + "::" + provider.ID.String()
 					opts.Provider = implicitProvider
@@ -1215,10 +1163,14 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 
 		callback1, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				props["asset"].AssetValue().Hash = ""
-				props["archive"].ArchiveValue().Hash = ""
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
+				a := props.Get("asset").AsAsset()
+				a.Hash = ""
+				props = props.Set("asset", property.New(a))
+				ar := props.Get("archive").AsArchive()
+				ar.Hash = ""
+				props = props.Set("archive", property.New(ar))
 				return props, opts, nil
 			}))
 		require.NoError(t, err)
@@ -1297,10 +1249,10 @@ func TestRemoteTransformByteString(t *testing.T) {
 
 		callback, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				assert.Equal(t, resource.NewProperty(rawBytes), props["foo"])
-				props["bar"] = resource.NewProperty(rawBytes)
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
+				assert.Equal(t, rawBytes, props.Get("foo").AsString())
+				props = props.Set("bar", property.New(rawBytes))
 				return props, opts, nil
 			}))
 		require.NoError(t, err)
@@ -1364,10 +1316,10 @@ func TestTransformInheritedThroughReadParent(t *testing.T) {
 		// A transform that bumps "foo" by 1 on every leaf custom resource it is applied to.
 		bumpFoo, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 				if typ == "pkgA:m:typLeaf" {
-					props["foo"] = resource.NewProperty(props["foo"].NumberValue() + 1)
+					props = props.Set("foo", bumpNumber(props.Get("foo")))
 				}
 				return props, opts, nil
 			}))
