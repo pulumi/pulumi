@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -219,11 +220,17 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				err = result.BailError(closeErr)
 			}
 		} else {
-			cancelled, cancel := context.WithCancel(callerCtx)
-			cancel()
+			shutdownCtx, cancel := context.WithTimeout(callerCtx, 5*time.Second)
+			defer cancel()
+			shutdownDone := make(chan struct{})
 			go func() {
-				contract.IgnoreError(src.Cancel(cancelled))
+				defer close(shutdownDone)
+				contract.IgnoreError(src.Cancel(shutdownCtx))
 			}()
+			select {
+			case <-shutdownDone:
+			case <-shutdownCtx.Done():
+			}
 		}
 	}()
 
