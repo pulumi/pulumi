@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Keep top-level comments in ESC environment definitions that are separated from the definition by a blank line
+time: 2026-10-21T00:00:00Z
