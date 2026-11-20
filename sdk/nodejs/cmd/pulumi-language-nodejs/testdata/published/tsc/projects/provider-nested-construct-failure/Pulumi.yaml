@@ -1,0 +1,5 @@
+name: provider-nested-construct-failure
+runtime:
+  name: nodejs
+  options:
+    typescript: false

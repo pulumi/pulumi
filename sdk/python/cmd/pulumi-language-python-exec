@@ -243,6 +243,8 @@ if __name__ == "__main__":
         coro = pulumi.runtime.run_in_stack(run)
         loop.run_until_complete(coro)
         exit_code = 0
+    except pulumi.runtime.settings._ErrorAlreadyReported:
+        exit_code = PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
     except Exception:  # noqa -- we really want to catch any exception here

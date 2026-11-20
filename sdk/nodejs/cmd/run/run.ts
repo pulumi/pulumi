@@ -35,7 +35,7 @@ import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
-import { defaultErrorMessage } from "./error";
+import { defaultErrorMessage, isErrorAlreadyReported } from "./error";
 
 import * as mod from ".";
 
@@ -411,6 +411,10 @@ export async function run(
         // pair.  Because the exception is the same through all of these, we keep track of it and
         // only report it once so the user doesn't get N messages for the same thing.
         if (isErrorReported(err)) {
+            return;
+        }
+        if (isErrorAlreadyReported(err)) {
+            reportLoggedError(err);
             return;
         }
 
