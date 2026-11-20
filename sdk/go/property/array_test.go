@@ -226,5 +226,6 @@ func TestArrayEmpty(t *testing.T) {
 	assert.Equal(t, New(Array{}), New([]Value{}))
 	assert.Equal(t, New(Array{}).AsArray(), New([]Value{}).AsArray())
 	assert.Equal(t, New(Array{}).AsArray(), Array{})
-	assert.Nil(t, Array{}.AsSlice())
+	assert.NotNil(t, Array{}.AsSlice())
+	assert.Empty(t, Array{}.AsSlice())
 }

@@ -97,6 +97,7 @@ func normalize(goValue any) any {
 		}
 		return copyAsset(goValue)
 	case int32:
+		// int32 is the widest integer type that fits losslessly in float64.
 		return float64(goValue)
 	case null:
 		return nil

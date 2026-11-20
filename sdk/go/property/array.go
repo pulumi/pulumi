@@ -27,13 +27,12 @@ type Array struct{ arr []Value }
 
 // AsSlice copies the [Array] into a slice.
 //
-// AsSlice will return nil for an empty slice.
+// AsSlice always returns a non-nil slice.
 func (a Array) AsSlice() []Value {
-	// We always return nil because it's generally easy to work with nil slices in Go.
-	//
-	// We return a non-nil for Map.AsMap because it is painful to work with nil maps
-	// in Go.
-	return copyArray(a.arr)
+	if a.arr == nil {
+		return []Value{}
+	}
+	return slices.Clone(a.arr)
 }
 
 // All calls yield for each element of the list.
@@ -82,25 +81,21 @@ func NewArray(slice []Value) Array {
 	return Array{copyArray(slice)}
 }
 
-// HasComputed returns true if any [Value] in the Array, or any nested Value, is computed.
-func (a Array) HasComputed() bool {
+// any reports whether f returns true for any [Value] in the Array or any nested Value.
+func (a Array) any(f func(Value) bool) bool {
 	for _, v := range a.arr {
-		if v.HasComputed() {
+		if v.any(f) {
 			return true
 		}
 	}
 	return false
 }
 
+// HasComputed returns true if any [Value] in the Array, or any nested Value, is computed.
+func (a Array) HasComputed() bool { return a.any(Value.IsComputed) }
+
 // HasSecrets returns true if any [Value] in the Array, or any nested Value, is secret.
-func (a Array) HasSecrets() bool {
-	for _, v := range a.arr {
-		if v.HasSecrets() {
-			return true
-		}
-	}
-	return false
-}
+func (a Array) HasSecrets() bool { return a.any(Value.IsSecret) }
 
 func copyArray[T any](a []T) []T {
 	if len(a) == 0 {
