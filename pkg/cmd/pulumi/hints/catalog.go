@@ -16,6 +16,15 @@ package hints
 
 import "time"
 
+// DriftDetection suggests Pulumi Cloud's scheduled drift detection after a refresh finds drift.
+var DriftDetection = Hint{
+	ID:       "drift-detection",
+	Cooldown: 7 * 24 * time.Hour,
+	Message: "This refresh found drift. Pulumi Deployments can detect drift on a schedule and alert you, " +
+		"or fix it automatically.\nLearn more: https://www.pulumi.com/docs/deployments/concepts/drift/",
+	CloudOnly: true,
+}
+
 // ESCCredentials suggests Pulumi ESC after a provider says that dynamic credentials may help with a failure. The
 // provider writes the message, because it knows its cloud and how to set up ESC for it.
 func ESCCredentials(message string) Hint {

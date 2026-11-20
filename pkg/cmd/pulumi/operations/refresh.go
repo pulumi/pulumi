@@ -380,6 +380,9 @@ func NewRefreshCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			})
+			if err == nil && changes != nil && engine.HasChanges(changes) {
+				hints.Offer(hints.DriftDetection)
+			}
 
 			switch {
 			case err == context.Canceled:
