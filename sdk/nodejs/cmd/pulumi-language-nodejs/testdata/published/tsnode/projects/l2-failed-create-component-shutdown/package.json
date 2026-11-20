@@ -1,0 +1,11 @@
+{
+	"name": "l2-failed-create-component-shutdown",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/failingcomponent": "ROOT/artifacts/pulumi-failingcomponent-59.0.0.tgz"
+	}
+}

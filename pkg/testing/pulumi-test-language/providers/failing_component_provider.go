@@ -36,6 +36,7 @@ import (
 // A provider for testing remote components whose outputs depend on a child resource that fails to create.
 type FailingComponentProvider struct {
 	plugin.UnimplementedProvider
+	WaitForCancellation bool
 }
 
 var _ plugin.Provider = (*FailingComponentProvider)(nil)
@@ -206,6 +207,11 @@ func (p *FailingComponentProvider) Construct(
 			},
 		},
 	})
+	// Keep Construct in flight even if the child registration completes before the monitor shuts down.
+	if p.WaitForCancellation && !req.Info.DryRun {
+		<-ctx.Done()
+		return plugin.ConstructResponse{}, ctx.Err()
+	}
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register child resource: %w", err)
 	}

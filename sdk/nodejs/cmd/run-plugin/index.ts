@@ -14,6 +14,7 @@
 
 // Enable source map support so we get good stack traces.
 import "source-map-support/register";
+import { isErrorAlreadyReported } from "../run/error";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
@@ -35,6 +36,10 @@ const loggedErrors = new Set<Error>();
 let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
+    if (isErrorAlreadyReported(err)) {
+        loggedErrors.add(err);
+        return;
+    }
     if (!programRunning) {
         console.error(err.stack || err.message || "" + err);
     }

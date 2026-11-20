@@ -1,0 +1,3 @@
+component: cli
+kind: fix
+body: Avoid reporting resource monitor shutdown as an additional error after a deployment failure
