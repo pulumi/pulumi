@@ -1,0 +1,10 @@
+<{%reset%}>  pkgA:m:A: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:A::a]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:B: (same)
+<{%reset%}>    [id=4]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:B::b]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
