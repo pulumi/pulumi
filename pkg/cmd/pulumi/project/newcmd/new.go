@@ -38,6 +38,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
@@ -456,6 +457,8 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 	if template.Quickstart != "" {
 		fmt.Fprintln(args.stdout, template.Quickstart)
 	}
+
+	hints.OfferAgentSkills(cwd)
 
 	return nil
 }

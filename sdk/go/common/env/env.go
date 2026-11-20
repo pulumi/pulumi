@@ -49,7 +49,8 @@ var HideNotifications = env.Bool("HIDE_NOTIFICATIONS", "Disable fetching and sho
 
 var DisableHints = env.Bool("DISABLE_HINTS", "Disable product hints shown at the end of CLI commands.")
 
-var SkipHints = env.String("SKIP_HINTS", "A comma-separated list of the IDs of product hints not to show.")
+var SkipHints = env.String("SKIP_HINTS", "A comma-separated list of the IDs of product hints not to show, "+
+	"for example \"agent-skills\".")
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
