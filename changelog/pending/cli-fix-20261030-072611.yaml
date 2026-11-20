@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Report that a stack has never been updated in `pulumi stack` and `pulumi stack output` when it has not been deployed
+time: 2026-10-30T07:26:11.220095803Z

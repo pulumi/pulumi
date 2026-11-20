@@ -268,6 +268,8 @@ func TestRunStackText_PrintsSecretsProvider(t *testing.T) {
 
 	out := buf.String()
 	assert.Contains(t, out, "Secrets provider: cloud")
+	assert.Contains(t, out, "No updates yet; run `pulumi up`")
+	assert.NotContains(t, out, "Last updated:")
 	assert.NotContains(t, out, "provider-state")
 	assert.NotContains(t, out, "opaque")
 }
@@ -363,6 +365,11 @@ func stringIndex(haystack, needle string) int {
 func newMockStack(snap *deploy.Snapshot, snapErr error) backend.Stack {
 	mockBe := &backend.MockBackend{
 		NameF: func() string { return "mock://test" },
+		// No history unless a test overrides the stack. A snapshot with no resources and
+		// no history is a stack that has never been updated.
+		GetHistoryF: func(context.Context, backend.StackReference, int, int) ([]backend.UpdateInfo, error) {
+			return nil, nil
+		},
 	}
 	return &backend.MockStack{
 		RefF: func() backend.StackReference {
