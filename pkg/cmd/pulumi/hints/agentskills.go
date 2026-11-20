@@ -33,7 +33,7 @@ var agentSkills = Hint{
 	Message: "Pulumi agent skills help AI agents write and operate Pulumi programs. " +
 		"Install them with `npx skills add pulumi/agent-skills/pulumi --skill '*'`, or in Claude Code with " +
 		"`/plugin marketplace add pulumi/agent-skills` and `/plugin install pulumi@pulumi-agent-skills`.\n" +
-		"Learn more: https://github.com/pulumi/agent-skills",
+		"Learn more: https://github.com/pulumi/agent-skills?utm_source=cli",
 }
 
 // OfferAgentSkills offers the agent skills hint if an AI coding agent is creating a project in dir and doesn't
