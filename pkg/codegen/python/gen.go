@@ -2717,9 +2717,13 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 		case schema.DocRefKindFunction:
 			base = PyName(tokenToName(ref.Function.Token))
 		case schema.DocRefKindFunctionInputProperty:
-			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Args"
+			// Function inputs are keyword arguments, there is no args class.
+			base = PyName(tokenToName(ref.Function.Token))
 		case schema.DocRefKindFunctionOutputProperty:
-			base = cgstrings.UppercaseFirst(PyName(tokenToName(ref.Function.Token))) + "Result"
+			// The result class is named from the outputs type token, like genFunction does.
+			if returnType, ok := ref.Function.ReturnType.(*schema.ObjectType); ok {
+				base, _ = awaitableTypeNames(returnType.Token)
+			}
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			switch t := ref.Type.(type) {
 			case *schema.ObjectType:
@@ -2753,6 +2757,10 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 
 		if ref.IsWithin(selfRef) {
 			return property, true
+		}
+
+		if ref.Kind == schema.DocRefKindFunctionInputProperty {
+			return fmt.Sprintf("%s(%s=...)", base, property), true
 		}
 
 		return fmt.Sprintf("%s.%s", base, property), true

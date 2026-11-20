@@ -1,0 +1,4 @@
+component: sdkgen/python
+kind: fix
+body: Fix Python doc references to function inputs and outputs so they use the keyword argument and the real result class name
+time: 2026-11-20T21:30:00.000000000+05:30

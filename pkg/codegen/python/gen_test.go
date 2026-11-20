@@ -403,3 +403,46 @@ func TestPythonRequiresNotProvided(t *testing.T) {
 	observed := *schema.Project.RequiresPython
 	assert.Equal(t, expected, observed, "Expected version %s but observed version %s", expected, observed)
 }
+
+func TestDocRefResolverFunctionProperties(t *testing.T) {
+	t.Parallel()
+
+	spec := schema.PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Functions: map[string]schema.FunctionSpec{
+			"test:index:getServer": {
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"serverName": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"isFound": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+					},
+				},
+			},
+		},
+	}
+	pkg, err := schema.ImportSpec(spec, nil, schema.NewNullLoader(), schema.ValidationOptions{})
+	require.NoError(t, err)
+
+	mod := &modContext{pkg: pkg.Reference()}
+	description := "Pass {{% ref #/functions/test:index:getServer/inputs/properties/serverName %}} to " +
+		"{{% ref #/functions/test:index:getServer %}} and read " +
+		"{{% ref #/functions/test:index:getServer/outputs/properties/isFound %}}."
+
+	result, diags := pkg.InterpretPulumiRefsWithDiagnostics(description, mod.docRefResolver(schema.DocRef{}))
+	require.False(t, diags.HasErrors())
+	assert.Equal(t, "Pass get_server(server_name=...) to get_server and read GetServerResult.is_found.", result)
+
+	// Within the function's own docs the refs stay unqualified.
+	fn, ok, err := pkg.Reference().Functions().Get("test:index:getServer")
+	require.NoError(t, err)
+	require.True(t, ok)
+	result, diags = pkg.InterpretPulumiRefsWithDiagnostics(description,
+		mod.docRefResolver(schema.DocRefForFunction(fn)))
+	require.False(t, diags.HasErrors())
+	assert.Equal(t, "Pass server_name to get_server and read is_found.", result)
+}
