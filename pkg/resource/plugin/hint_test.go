@@ -27,23 +27,18 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-type recordedHint struct {
-	hint    Hint
-	message string
-}
-
 type testRecorder struct {
 	mu   sync.Mutex
-	seen []recordedHint
+	seen []Hint
 }
 
-func (r *testRecorder) RecordHint(hint Hint, message string) {
+func (r *testRecorder) RecordHint(hint Hint) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.seen = append(r.seen, recordedHint{hint, message})
+	r.seen = append(r.seen, hint)
 }
 
-var escHint = recordedHint{HintDynamicCredentials, "use ESC"}
+var escHint = Hint{Kind: HintDynamicCredentials, Message: "use ESC"}
 
 // newHintTestContext returns a plugin context that reports hints to rec.
 func newHintTestContext(t *testing.T, rec HintRecorder) *Context {
@@ -74,7 +69,7 @@ func TestProviderRecordsCheckConfigFailureHint(t *testing.T) {
 	require.Len(t, resp.Failures, 2)
 	assert.Nil(t, resp.Failures[0].Hint)
 	assert.Equal(t, &Hint{Kind: HintDynamicCredentials, Message: "use ESC"}, resp.Failures[1].Hint)
-	assert.Equal(t, []recordedHint{escHint}, rec.seen)
+	assert.Equal(t, []Hint{escHint}, rec.seen)
 }
 
 func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {
