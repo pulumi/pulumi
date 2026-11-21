@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Stop `pulumi neo` grep and content_replace from reading or writing through symlinks that point outside the allowed roots
+time: 2026-09-29T22:10:00.000000000Z
