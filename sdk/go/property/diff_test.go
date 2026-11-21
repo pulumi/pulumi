@@ -421,10 +421,10 @@ func TestSecretVsNonSecretMapDiff(t *testing.T) {
 	vd := diff.Updates["k"]
 	assert.True(t, vd.Old.IsString())
 	assert.Equal(t, "v", vd.Old.AsString())
-	assert.False(t, vd.Old.Secret())
+	assert.False(t, vd.Old.IsSecret())
 	assert.True(t, vd.New.IsString())
 	assert.Equal(t, "v", vd.New.AsString())
-	assert.True(t, vd.New.Secret())
+	assert.True(t, vd.New.IsSecret())
 	assert.Nil(t, vd.Array)
 	assert.Nil(t, vd.Object)
 
@@ -462,9 +462,9 @@ func TestSecretVsNonSecretWholeMapDiff(t *testing.T) {
 	assert.Nil(t, vd.Object)
 	assert.Nil(t, vd.Array)
 	assert.True(t, vd.Old.IsMap())
-	assert.False(t, vd.Old.Secret())
+	assert.False(t, vd.Old.IsSecret())
 	assert.True(t, vd.New.IsMap())
-	assert.True(t, vd.New.Secret())
+	assert.True(t, vd.New.IsSecret())
 }
 
 func TestSecretVsNonSecretWholeArrayDiff(t *testing.T) {
@@ -484,7 +484,7 @@ func TestSecretVsNonSecretWholeArrayDiff(t *testing.T) {
 	assert.Nil(t, vd.Array)
 	assert.Nil(t, vd.Object)
 	assert.True(t, vd.Old.IsArray())
-	assert.False(t, vd.Old.Secret())
+	assert.False(t, vd.Old.IsSecret())
 	assert.True(t, vd.New.IsArray())
-	assert.True(t, vd.New.Secret())
+	assert.True(t, vd.New.IsSecret())
 }

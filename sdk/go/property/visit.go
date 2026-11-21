@@ -39,6 +39,7 @@ func (v Value) visit(f func(Value) (continueWalking bool)) bool {
 	return true
 }
 
+// any reports whether f returns true for v or any nested [Value] within v.
 func (v Value) any(f func(Value) bool) bool {
 	var found bool
 	v.visit(func(v Value) bool {

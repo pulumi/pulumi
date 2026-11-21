@@ -84,7 +84,7 @@ type inputFlagValue struct {
 }
 
 func jsonifyPropertyValue(v property.Value, showSecrets bool) (any, error) {
-	if !showSecrets && v.Secret() {
+	if !showSecrets && v.IsSecret() {
 		return "[secret]", nil
 	}
 
@@ -103,7 +103,7 @@ func jsonifyPropertyValue(v property.Value, showSecrets bool) (any, error) {
 	if v.IsArray() {
 		arr := v.AsArray()
 		res := make([]any, arr.Len())
-		for i, el := range arr.All {
+		for i, el := range arr.All() {
 			ev, err := jsonifyPropertyValue(el, showSecrets)
 			if err != nil {
 				return nil, err
@@ -116,7 +116,7 @@ func jsonifyPropertyValue(v property.Value, showSecrets bool) (any, error) {
 	if v.IsMap() {
 		obj := v.AsMap()
 		res := make(map[string]any, obj.Len())
-		for k, v := range obj.All {
+		for k, v := range obj.All() {
 			ev, err := jsonifyPropertyValue(v, showSecrets)
 			if err != nil {
 				return nil, err
@@ -176,12 +176,12 @@ func filterOutput(
 
 	if optTyp, ok := typ.(*schema.OptionalType); ok {
 		if prop.IsNull() {
-			return property.New(property.Null).WithSecret(prop.Secret())
+			return property.New(property.Null).WithSecret(prop.IsSecret())
 		}
 		typ = optTyp.ElementType
 	}
 
-	isSecret := prop.Secret()
+	isSecret := prop.IsSecret()
 	// Strip secrecy for recursive dispatch; reapply at the end.
 	bare := prop.WithSecret(false)
 
@@ -197,7 +197,7 @@ func filterOutput(
 		if bare.IsArray() {
 			arr := bare.AsArray()
 			filtered := make([]property.Value, arr.Len())
-			for i, el := range arr.All {
+			for i, el := range arr.All() {
 				filtered[i] = filterOutput(el, t.ElementType)
 			}
 			out = property.New(property.NewArray(filtered))
@@ -208,7 +208,7 @@ func filterOutput(
 		if bare.IsMap() {
 			obj := bare.AsMap()
 			filtered := map[string]property.Value{}
-			for k, v := range obj.All {
+			for k, v := range obj.All() {
 				filtered[k] = filterOutput(v, t.ElementType)
 			}
 			out = property.New(property.NewMap(filtered))
@@ -689,7 +689,7 @@ func injectProviderOptionInPCL(source []byte, filename, name string) ([]byte, er
 // kinds are supported — computed/output/asset/archive/resource-reference values would need engine
 // support to encode, so they return an error naming the offending attribute.
 func propertyValueToPCLLiteral(name string, v property.Value) (string, error) {
-	if v.Secret() {
+	if v.IsSecret() {
 		lit, err := propertyValueToPCLLiteral(name, v.WithSecret(false))
 		if err != nil {
 			return "", err
@@ -711,7 +711,7 @@ func propertyValueToPCLLiteral(name string, v property.Value) (string, error) {
 			return "[]", nil
 		}
 		elems := make([]string, arr.Len())
-		for i, el := range arr.All {
+		for i, el := range arr.All() {
 			ev, err := propertyValueToPCLLiteral(name, el)
 			if err != nil {
 				return "", err
@@ -937,7 +937,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 	// or --input:* flags. A property absent from the overlay falls through to the base.
 	if hasBase {
 		merged := baseConfig.AsMap()
-		maps.Insert(merged, config.All)
+		maps.Insert(merged, config.All())
 		config = property.NewMap(merged)
 	}
 

@@ -97,7 +97,7 @@ func TestPreviewMetadataStepRedactsSecretMaps(t *testing.T) {
 	metadata := event.Payload().(engine.ResourcePreEventPayload).Metadata
 	for _, state := range []*engine.StepEventStateMetadata{metadata.Old, metadata.New} {
 		require.NotNil(t, state)
-		require.True(t, state.Inputs.Get("keepers").Secret())
+		require.True(t, state.Inputs.Get("keepers").IsSecret())
 		// JSON event replay does not populate the engine's internal resource state.
 		inputs := resource.ToResourcePropertyMap(state.Inputs)
 		state.State = pkgresource.NewState{ //nolint:requiredfield // Only properties and identity matter here.
