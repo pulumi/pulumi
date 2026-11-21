@@ -332,6 +332,10 @@ def monitor_supports_feature(feature: int) -> bool:
     return feature in SETTINGS.monitor_features
 
 
+class _ErrorAlreadyReported(RunError):
+    pass
+
+
 def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
     # the usefulness come from the fact that it is polymorphically also a grpc.Call and thus has
@@ -339,6 +343,11 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     #
     # Neither pylint nor I are the only ones who find this confusing:
     # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+
+    trailers = exn.trailing_metadata() if hasattr(exn, "trailing_metadata") else None
+    if ("pulumi-error-already-reported", "true") in (trailers or ()):
+        return _ErrorAlreadyReported(exn.details())
+
     if exn.code() == grpc.StatusCode.UNAVAILABLE:
         # If the monitor is unavailable, it is in the process of
         # shutting down or has already shut down.

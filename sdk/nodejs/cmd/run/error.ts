@@ -14,6 +14,11 @@
 
 import * as util from "util";
 
+/** @internal */
+export function isErrorAlreadyReported(err: any): boolean {
+    return err?.metadata?.get?.("pulumi-error-already-reported")?.includes("true") === true;
+}
+
 /**
  * @internal
  * defaultErrorMessage returns a string representation of the error. This includes

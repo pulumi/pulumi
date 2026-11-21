@@ -24,7 +24,7 @@ import * as log from "../../log";
 import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
-import { defaultErrorMessage } from "../run/error";
+import { defaultErrorMessage, isErrorAlreadyReported } from "../run/error";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -205,6 +205,10 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     const errorSet = new Set<Error>();
 
     const uncaughtHandler = (err: Error) => {
+        if (isErrorAlreadyReported(err)) {
+            opts.reportLoggedError(err);
+            return;
+        }
         // In node, if you throw an error in a chained promise, but the exception is not finally
         // handled, then you can end up getting an unhandledRejection for each exception/promise
         // pair.  Because the exception is the same through all of these, we keep track of it and
