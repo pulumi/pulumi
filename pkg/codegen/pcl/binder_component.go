@@ -258,7 +258,6 @@ func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hc
 				}
 			default:
 				node.Inputs = append(node.Inputs, item)
-				inputProperties[item.Name] = item.Value.Type()
 			}
 		case *model.Block:
 			if item.Type != "options" {
@@ -273,6 +272,12 @@ func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hc
 		}
 	}
 
+	inputs, expandDiags := expandQuotedProperties(node.Inputs)
+	diagnostics = append(diagnostics, expandDiags...)
+	node.Inputs = inputs
+	for _, input := range node.Inputs {
+		inputProperties[input.Name] = input.Value.Type()
+	}
 	node.InputType = model.NewObjectType(inputProperties)
 
 	if node.Token == "" {
@@ -450,15 +455,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				continue
 			}
 			// all other attributes are part of the inputs
-			_, knownInput := componentInputs[item.Name]
-
-			if !knownInput {
-				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
-				return diagnostics
-			}
-
 			node.Inputs = append(node.Inputs, item)
-			providedInputs = append(providedInputs, item.Name)
 		case *model.Block:
 			switch item.Type {
 			case "options":
@@ -471,6 +468,17 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
 			}
 		}
+	}
+
+	inputs, expandDiags := expandQuotedProperties(node.Inputs)
+	diagnostics = append(diagnostics, expandDiags...)
+	node.Inputs = inputs
+	for _, input := range node.Inputs {
+		if _, knownInput := componentInputs[input.Name]; !knownInput {
+			diagnostics = append(diagnostics, unsupportedAttribute(input.Name, input.Syntax.NameRange))
+			return diagnostics
+		}
+		providedInputs = append(providedInputs, input.Name)
 	}
 
 	if objectType, ok := node.InputType.(*model.ObjectType); ok {
