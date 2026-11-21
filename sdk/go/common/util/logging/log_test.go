@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
@@ -96,6 +97,40 @@ func TestInitLoggingSkipsLogFileWithOTel(t *testing.T) {
 	require.NotNil(t, exportHandler)
 	assert.Equal(t, discardHandler{}, primary)
 	assert.Equal(t, prevPath, logFilePath)
+}
+
+// TestInitLoggingLogFileIsPrivate verifies that the verbose log file, which is written to the shared
+// temp directory, is only readable by the current user.
+func TestInitLoggingLogFileIsPrivate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix file permissions are not available on Windows")
+	}
+
+	t.Setenv("PULUMI_LOG_OTLP_ENDPOINT", "")
+	t.Setenv("TMPDIR", t.TempDir())
+
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	prevPath, prevFile := logFilePath, logFile
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		if logFile != nil && logFile != prevFile {
+			require.NoError(t, logFile.Close())
+		}
+		primary = discardHandler{}
+		logFilePath, logFile = prevPath, prevFile
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	InitLogging(false, 9, false)
+
+	path, err := GetLogfilePath()
+	require.NoError(t, err)
+	require.NotEqual(t, prevPath, path)
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 }
 
 //nolint:paralleltest // exercises the process-global secret filter state.

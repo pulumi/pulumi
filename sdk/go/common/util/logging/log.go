@@ -309,7 +309,9 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 			Level: verbosityLevel(Verbose),
 		})
 	case Verbose > 0:
-		f, err := os.Create(logFileName())
+		// The log lives in the shared temp directory and can hold credentials, so keep it private to the
+		// current user and never open a file or symlink that already exists at the predictable name.
+		f, err := os.OpenFile(logFileName(), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		if err == nil {
 			logFilePath = f.Name()
 			logFile = f
