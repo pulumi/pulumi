@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Record `retainOnDelete` in update plans and reject updates that change it
+time: 2026-11-21T12:00:00.000000000+00:00

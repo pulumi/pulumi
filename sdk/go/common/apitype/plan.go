@@ -48,6 +48,8 @@ type GoalV1 struct {
 	Parent resource.URN `json:"parent,omitempty"`
 	// true to protect this resource from deletion.
 	Protect bool `json:"protect"`
+	// true if this resource should be retained in the cloud provider when deleted.
+	RetainOnDelete *bool `json:"retainOnDelete,omitempty"`
 	// dependencies of this resource object.
 	Dependencies []resource.URN `json:"dependencies,omitempty"`
 	// the provider to use for this resource.

@@ -150,6 +150,9 @@ type GoalPlan struct {
 	Parent resource.URN
 	// true to protect this resource from deletion.
 	Protect bool
+	// true if this resource should be retained in the cloud provider when deleted. Nil for plans that predate this
+	// field, in which case it is not checked.
+	RetainOnDelete *bool
 	// dependencies of this resource object.
 	Dependencies []resource.URN
 	// the provider to use for this resource.
@@ -220,6 +223,11 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *pkgresource.Goal) *GoalPl
 		protect = *goal.Protect
 	}
 
+	var retainOnDelete bool
+	if goal.RetainOnDelete != nil {
+		retainOnDelete = *goal.RetainOnDelete
+	}
+
 	return &GoalPlan{
 		Type:                    goal.Type,
 		Name:                    goal.Name,
@@ -228,6 +236,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *pkgresource.Goal) *GoalPl
 		OutputDiff:              PlanDiff{},
 		Parent:                  goal.Parent,
 		Protect:                 protect,
+		RetainOnDelete:          &retainOnDelete,
 		Dependencies:            goal.Dependencies,
 		Provider:                goal.Provider,
 		PropertyDependencies:    goal.PropertyDependencies,
@@ -361,6 +370,7 @@ func checkMissingPlan(
 		OutputDiff:              PlanDiff{},
 		Parent:                  oldState.Parent,
 		Protect:                 oldState.Protect,
+		RetainOnDelete:          &oldState.RetainOnDelete,
 		Dependencies:            oldState.Dependencies,
 		Provider:                oldState.Provider,
 		PropertyDependencies:    oldState.PropertyDependencies,
@@ -611,6 +621,17 @@ func (rp *ResourcePlan) checkGoal(
 	}
 	if protect != rp.Goal.Protect {
 		return fmt.Errorf("protect changed (expected %v)", rp.Goal.Protect)
+	}
+
+	// Check that the retainOnDelete bit is identical, if the plan recorded it.
+	if rp.Goal.RetainOnDelete != nil {
+		var retainOnDelete bool
+		if programGoal.RetainOnDelete != nil {
+			retainOnDelete = *programGoal.RetainOnDelete
+		}
+		if retainOnDelete != *rp.Goal.RetainOnDelete {
+			return fmt.Errorf("retainOnDelete changed (expected %v)", *rp.Goal.RetainOnDelete)
+		}
 	}
 
 	// Check that the DBR bit is identical.
