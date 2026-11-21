@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Reject Neo's built-in deployment tool when the task is in read-only mode
+time: 2026-09-16T16:00:00Z
