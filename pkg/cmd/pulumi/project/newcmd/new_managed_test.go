@@ -41,9 +41,14 @@ type managedNewBackend struct {
 	backend.MockManagedEnvironmentsBackend
 	// The plaintexts of each EncryptEnvironmentSecrets call.
 	encrypted [][]string
+	// orgDefaultsToESC makes stacks created with CreateStackConfigModeDefault managed.
+	orgDefaultsToESC bool
+	// The ConfigMode of each CreateStack call.
+	sentModes []apitype.CreateStackConfigMode
 }
 
-// managedNewTestBackend's stacks manage environment proj/dev when created with ManagedEnvironment.
+// managedNewTestBackend's stacks manage environment proj/dev when created with ManagedEnvironment, or with the default
+// config mode if orgDefaultsToESC is set.
 func managedNewTestBackend(t *testing.T) (*managedNewBackend, *[]string) {
 	t.Helper()
 
@@ -60,14 +65,15 @@ func managedNewTestBackend(t *testing.T) (*managedNewBackend, *[]string) {
 		ms := s.(*backend.MockStack)
 		ms.BackendF = func() backend.Backend { return b }
 		ms.OrgNameF = func() string { return "my-org" }
-		if opts.ManagedEnvironment {
+		b.sentModes = append(b.sentModes, opts.ConfigMode)
+		if opts.ManagedEnvironment || (b.orgDefaultsToESC && opts.ConfigMode == apitype.CreateStackConfigModeDefault) {
 			ms.ConfigLocationF = func() backend.StackConfigLocation {
 				return backend.StackConfigLocation{ManagedEnvironment: "proj/dev"}
 			}
-		}
-		ms.DefaultSecretManagerF = func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
-			t.Error("the stack secrets manager must not encrypt config for a managed stack")
-			return nil, errors.New("unexpected stack secrets manager")
+			ms.DefaultSecretManagerF = func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+				t.Error("the stack secrets manager must not encrypt config for a managed stack")
+				return nil, errors.New("unexpected stack secrets manager")
+			}
 		}
 		return ms, nil
 	}
@@ -233,6 +239,99 @@ func TestNewEscConfigWritesCommandLineConfigToEnvironment(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewFollowsOrgConfigDefault(t *testing.T) {
+	tests := []struct {
+		name             string
+		orgDefaultsToESC bool
+		staticConfig     bool
+		wantMode         apitype.CreateStackConfigMode
+		wantConfig       string
+	}{
+		{
+			name:             "org defaults to ESC",
+			orgDefaultsToESC: true,
+			wantMode:         apitype.CreateStackConfigModeDefault,
+			wantConfig:       "pulumiConfig",
+		},
+		{
+			name:       "org stays static or the service predates config modes",
+			wantMode:   apitype.CreateStackConfigModeDefault,
+			wantConfig: "config:",
+		},
+		{
+			name:             "--static-config",
+			orgDefaultsToESC: true,
+			staticConfig:     true,
+			wantMode:         apitype.CreateStackConfigModeStatic,
+			wantConfig:       "config:",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			guidedRepoTemplate(t, "aws-python", managedTemplateYAML)
+			tempdir := tempProjectDir(t)
+			t.Chdir(tempdir)
+			b, _ := managedNewTestBackend(t)
+			b.orgDefaultsToESC = tt.orgDefaultsToESC
+			mockCurrentBackend(t, b)
+
+			selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmYes)
+			var out bytes.Buffer
+			err := runNew(t.Context(), newArgs{
+				interactive:          true,
+				name:                 "proj",
+				prompt:               promptMock("proj", "dev"),
+				promptRuntimeOptions: runtimeOptionsNone,
+				languageTemplate:     languageTemplateMock,
+				selectOne:            selectOne,
+				secretsProvider:      "default",
+				stdout:               &out,
+				staticConfig:         tt.staticConfig,
+				configArray:          []string{"extra=value"},
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, []apitype.CreateStackConfigMode{tt.wantMode}, b.sentModes)
+			stackFile := readStackFile(t, tempdir)
+			assert.Contains(t, stackFile, tt.wantConfig)
+			assert.Contains(t, stackFile, "proj:extra: value")
+			if tt.wantConfig == "pulumiConfig" {
+				assert.Regexp(t, `ESC environment:\s+proj/dev`, out.String())
+			} else {
+				assert.NotContains(t, stackFile, "environment:")
+				assert.NotContains(t, out.String(), "ESC environment")
+			}
+		})
+	}
+}
+
+func TestNewYesFollowsOrgConfigDefault(t *testing.T) {
+	tests := []struct {
+		name          string
+		automationAPI string
+		want          apitype.CreateStackConfigMode
+	}{
+		{name: "--yes", want: apitype.CreateStackConfigModeDefault},
+		{name: "automation API", automationAPI: "true", want: apitype.CreateStackConfigModeStatic},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_AUTOMATION_API", tt.automationAPI)
+			tempdir := tempProjectDir(t)
+			t.Chdir(tempdir)
+			b, _ := managedNewTestBackend(t)
+			mockCurrentBackend(t, b)
+			args := managedNewArgs(localTemplate(t))
+			args.escConfig = false
+
+			require.NoError(t, runNew(t.Context(), args))
+
+			assert.Equal(t, []apitype.CreateStackConfigMode{tt.want}, b.sentModes)
+		})
+	}
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
 func TestNewEscConfigEncryptFailureKeepsPlaceholder(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
@@ -284,23 +383,35 @@ func TestNewEscConfigOnDIYBackendFailsBeforeCopy(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(tempdir, "Pulumi.yaml"))
 }
 
-func TestNewEscConfigFlagConflicts(t *testing.T) {
+func TestNewConfigModeFlagConflicts(t *testing.T) {
 	t.Parallel()
 
-	for _, other := range []string{"remote-stack-config", "generate-only"} {
-		t.Run(other, func(t *testing.T) {
-			t.Parallel()
+	for _, flag := range []string{"esc-config", "static-config"} {
+		for _, other := range []string{"remote-stack-config", "generate-only"} {
+			t.Run(flag+" "+other, func(t *testing.T) {
+				t.Parallel()
 
-			cmd := NewNewCmd()
-			cmd.SetArgs([]string{"--esc-config", "--" + other})
-			cmd.SetOut(io.Discard)
-			cmd.SetErr(io.Discard)
+				cmd := NewNewCmd()
+				cmd.SetArgs([]string{"--" + flag, "--" + other})
+				cmd.SetOut(io.Discard)
+				cmd.SetErr(io.Discard)
 
-			err := cmd.Execute()
+				err := cmd.Execute()
 
-			assert.ErrorContains(t, err, "[esc-config "+other+"] are set none of the others can be")
-		})
+				assert.ErrorContains(t, err, "["+flag+" "+other+"] are set none of the others can be")
+			})
+		}
 	}
+	t.Run("esc-config static-config", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := NewNewCmd()
+		cmd.SetArgs([]string{"--esc-config", "--static-config"})
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+
+		assert.ErrorContains(t, cmd.Execute(), "[esc-config static-config] are set none of the others can be")
+	})
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager

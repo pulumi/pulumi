@@ -1,0 +1,3 @@
+component: cli
+kind: feat
+body: Follow the organization default for stack configuration in `pulumi stack init` and `pulumi new`, except under the Automation API

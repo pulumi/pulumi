@@ -231,7 +231,8 @@
             "path": ["new"],
             "propagate": true,
             "flags": {
-                "esc-config": { "omit": true }
+                "esc-config": { "omit": true },
+                "static-config": { "omit": true }
             }
         },
         {
@@ -283,7 +284,8 @@
             "path": ["project", "new"],
             "propagate": false,
             "flags": {
-                "esc-config": { "omit": true }
+                "esc-config": { "omit": true },
+                "static-config": { "omit": true }
             }
         },
         {

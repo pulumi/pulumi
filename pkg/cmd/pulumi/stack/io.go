@@ -351,6 +351,10 @@ type CreateStackOptions struct {
 	ConfigFile string
 	// ManagedEnvironment creates an ESC environment that the stack manages, defined in the stack's YAML config file.
 	ManagedEnvironment bool
+	// ConfigMode asks the backend to choose where the stack's configuration lives.
+	ConfigMode apitype.CreateStackConfigMode
+	// StaticConfigReason says why the command sent a static ConfigMode in place of the organization default.
+	StaticConfigReason string
 	// Quiet suppresses the "Created stack" announcement so the caller can own the creation summary.
 	Quiet bool
 }
@@ -417,6 +421,10 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("%s already has secrets provider settings; delete its `secretsprovider`, "+
 			"`encryptionsalt` and `encryptedkey` keys, or the file, before creating a managed stack", managedStackFile)
 	}
+	configMode, staticConfigReason := opts.ConfigMode, opts.StaticConfigReason
+	if configMode == apitype.CreateStackConfigModeDefault {
+		configMode, staticConfigReason = resolveDefaultConfigMode(b, stackRef, ps, opts)
+	}
 	needsSave, sm, err := createSecretsManagerForNewStack(ctx, b, ps, opts.SecretsProvider)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
@@ -454,6 +462,8 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	backendOpts := backend.CreateStackOptions{
 		Teams:              opts.Teams,
 		ManagedEnvironment: opts.ManagedEnvironment,
+		ConfigMode:         configMode,
+		StaticConfigReason: staticConfigReason,
 	}
 
 	var escEnvironment string
@@ -484,12 +494,12 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		sink.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
 	}
 
-	if opts.ManagedEnvironment {
-		managedEnv := stack.ConfigLocation().ManagedEnvironment
-		if managedEnv == "" {
-			return nil, fmt.Errorf("%w; remove it with `pulumi stack rm %s`", ErrCreatedWithoutManagedEnvironment,
-				stack.Ref().FullyQualifiedName())
-		}
+	managedEnv := stack.ConfigLocation().ManagedEnvironment
+	if opts.ManagedEnvironment && managedEnv == "" {
+		return nil, fmt.Errorf("%w; remove it with `pulumi stack rm %s`", ErrCreatedWithoutManagedEnvironment,
+			stack.Ref().FullyQualifiedName())
+	}
+	if managedEnv != "" {
 		if !opts.Quiet {
 			sink.Infof(diag.Message("", "Created environment %s for stack configuration"), managedEnv)
 		}
@@ -506,21 +516,21 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	if needsSave {
 		err = SaveProjectStack(ctx, stack, ps, opts.ConfigFile)
 		if err != nil {
-			return nil, managedStackCreatedError(opts, stack, fmt.Errorf("%w: %w", ErrSaveStackConfig, err))
+			return nil, managedStackCreatedError(stack, fmt.Errorf("%w: %w", ErrSaveStackConfig, err))
 		}
 	}
 
 	if opts.SetCurrent {
 		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String()); err != nil {
-			return nil, managedStackCreatedError(opts, stack, fmt.Errorf("%w: %w", ErrSelectCreatedStack, err))
+			return nil, managedStackCreatedError(stack, fmt.Errorf("%w: %w", ErrSelectCreatedStack, err))
 		}
 	}
 
 	return stack, nil
 }
 
-func managedStackCreatedError(opts CreateStackOptions, stack backend.Stack, err error) error {
-	if !opts.ManagedEnvironment {
+func managedStackCreatedError(stack backend.Stack, err error) error {
+	if stack.ConfigLocation().ManagedEnvironment == "" {
 		return err
 	}
 	return ManagedStackCreatedError(err, stack.Ref(), "")
