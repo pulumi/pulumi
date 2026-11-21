@@ -83,3 +83,37 @@ func TestBuildGCPLoginOIDCNode_WithOptionals(t *testing.T) {
       - team
 `, string(out))
 }
+
+func TestGCPLoginEnvVars(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		projectID string
+		want      []envVar
+	}{
+		{
+			name: "falls back to the project number output",
+			want: []envVar{
+				{"GOOGLE_PROJECT", "${gcp.login.project}"},
+				{"GOOGLE_OAUTH_ACCESS_TOKEN", "${gcp.login.accessToken}"},
+				{"CLOUDSDK_AUTH_ACCESS_TOKEN", "${gcp.login.accessToken}"},
+			},
+		},
+		{
+			name:      "uses the project ID when known",
+			projectID: "my-project",
+			want: []envVar{
+				{"GOOGLE_PROJECT", "my-project"},
+				{"GOOGLE_OAUTH_ACCESS_TOKEN", "${gcp.login.accessToken}"},
+				{"CLOUDSDK_AUTH_ACCESS_TOKEN", "${gcp.login.accessToken}"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, gcpLoginEnvVars("gcp.login", tt.projectID))
+		})
+	}
+}
