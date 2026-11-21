@@ -320,6 +320,37 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
+//nolint:paralleltest // changes directory for process
+func TestGeneratingProjectFromRelativeLocalTemplatePath(t *testing.T) {
+	// Regression test: a relative path to a local template must be resolved
+	// before the working directory changes. Otherwise the template is reported as
+	// not found, or the un-normalized relative path panics in NewProgramInfo.
+	tmpl := localTemplate(t)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	rel, err := filepath.Rel(tempdir, tmpl)
+	require.NoError(t, err)
+	require.False(t, filepath.IsAbs(rel))
+
+	args := newArgs{
+		generateOnly:      true,
+		interactive:       false,
+		yes:               true,
+		name:              projectName,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		templateNameOrURL: rel,
+		languageTemplate:  languageTemplateMock,
+	}
+
+	err = runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, projectName, proj.Name.String())
+}
+
 //nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	tempdir := tempProjectDir(t)
