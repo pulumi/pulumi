@@ -817,3 +817,35 @@ func TestRetrievePulumiTemplatesBranchChange(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, featureCommit, cacheHead.Hash())
 }
+
+// Verifies that retrieveFileTemplates returns a TemplateRepository whose Root and
+// SubDirectory are always absolute paths, even when the caller supplies a relative
+// path.
+//
+//nolint:paralleltest // uses shared state in pulumi dir
+func TestRetrieveFileTemplatesAlwaysAbsolute(t *testing.T) {
+	// Create a template directory and a separate working directory so that
+	// the relative path between them starts with "..".
+	base := t.TempDir()
+	templateDir := filepath.Join(base, "my-template")
+	require.NoError(t, os.MkdirAll(templateDir, 0o700))
+
+	workDir := filepath.Join(base, "workdir")
+	require.NoError(t, os.MkdirAll(workDir, 0o700))
+	t.Chdir(workDir)
+
+	// Confirm the relative path actually starts with ".." so the test
+	// exercises the case that triggered the original bug.
+	relPath, err := filepath.Rel(workDir, templateDir)
+	require.NoError(t, err)
+	require.True(t, filepath.IsAbs(templateDir))
+	require.False(t, filepath.IsAbs(relPath), "relative path should not be absolute")
+
+	repo, err := retrieveFileTemplates(relPath)
+	require.NoError(t, err)
+
+	assert.True(t, filepath.IsAbs(repo.Root), "Root should be absolute, got %q", repo.Root)
+	assert.True(t, filepath.IsAbs(repo.SubDirectory), "SubDirectory should be absolute, got %q", repo.SubDirectory)
+	assert.Equal(t, templateDir, repo.Root)
+	assert.Equal(t, templateDir, repo.SubDirectory)
+}

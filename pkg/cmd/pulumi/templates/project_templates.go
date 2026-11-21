@@ -391,10 +391,16 @@ func retrieveURLTemplates(
 }
 
 // retrieveFileTemplates points to the "template repository" at the specified location in the file system.
+// The path is resolved to an absolute path so that the returned TemplateRepository.SubDirectory is
+// always absolute, regardless of any subsequent working-directory changes.
 func retrieveFileTemplates(path string) (TemplateRepository, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return TemplateRepository{}, fmt.Errorf("resolving template path: %w", err)
+	}
 	return TemplateRepository{
-		Root:         path,
-		SubDirectory: path,
+		Root:         absPath,
+		SubDirectory: absPath,
 		ShouldDelete: false,
 	}, nil
 }
