@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -2070,4 +2071,72 @@ func TestPlannedUpdateWithInternalKeys(t *testing.T) {
 		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
+}
+
+// Tests that an update with a plan rejects a change to retainOnDelete, as it does for protect.
+func TestPlannedUpdateRetainOnDeleteChange(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	run := func(t *testing.T, plannedRetain, actualRetain bool) {
+		retain := plannedRetain
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				RetainOnDelete: &retain,
+			})
+			if retain == plannedRetain {
+				require.NoError(t, err)
+			}
+			return nil
+		})
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{
+				T:     t,
+				HostF: hostF,
+				UpdateOptions: UpdateOptions{
+					GeneratePlan: true,
+					Experimental: true,
+				},
+				SkipDisplayTests: true,
+			},
+		}
+		project := p.GetProject()
+
+		plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+		require.NoError(t, err)
+
+		retain = actualRetain
+		p.Options.Plan = plan.Clone()
+		var validate lt.ValidateFunc
+		if plannedRetain != actualRetain {
+			validate = ExpectDiagMessage(t, regexp.QuoteMeta(
+				"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+					fmt.Sprintf("retainOnDelete changed (expected %v)<{%%reset%%}>\n", plannedRetain)))
+		}
+		_, err = lt.TestOp(Update).RunStep(
+			project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
+		require.NoError(t, err)
+	}
+
+	t.Run("changed to false", func(t *testing.T) {
+		t.Parallel()
+		run(t, true, false)
+	})
+
+	t.Run("changed to true", func(t *testing.T) {
+		t.Parallel()
+		run(t, false, true)
+	})
+
+	t.Run("unchanged", func(t *testing.T) {
+		t.Parallel()
+		run(t, true, true)
+	})
 }
