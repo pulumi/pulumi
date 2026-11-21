@@ -15,6 +15,8 @@
 package auto
 
 import (
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrename"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -508,4 +511,66 @@ func TestRunPulumiCmdSyncStackFlagBeforeSeparator(t *testing.T) {
 		"--stack", "organization/testproj/teststack",
 		"--", "state.json",
 	}, m.capturedArgs)
+}
+
+func TestRemotePreviewWithoutSummaryEvent(t *testing.T) {
+	t.Parallel()
+
+	// Remote operations do not stream engine events, so no summary event is emitted.
+	ctx := t.Context()
+	// The mock output also advertises `--remote` so the CLI version check passes.
+	m := mockPulumiCommand{stdout: "--remote\nPreviewing update (dev)\n"}
+	ws, err := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "test", "testproj")), Pulumi(&m), remote(true))
+	require.NoError(t, err)
+	s, err := NewStack(ctx, "organization/testproj/teststack", ws)
+	require.NoError(t, err)
+
+	res, err := s.Preview(ctx)
+	require.NoError(t, err)
+	assert.Contains(t, res.StdOut, "Previewing update (dev)")
+	assert.Empty(t, res.ChangeSummary)
+}
+
+// summaryEventMockPulumiCommand writes a summary event to the --event-log file the
+// way the Pulumi CLI does, then behaves like mockPulumiCommand.
+type summaryEventMockPulumiCommand struct {
+	mockPulumiCommand
+	summaryLine string
+}
+
+func (m *summaryEventMockPulumiCommand) Run(ctx context.Context,
+	workdir string,
+	stdin io.Reader,
+	additionalOutput []io.Writer,
+	additionalErrorOutput []io.Writer,
+	additionalEnv []string,
+	args ...string,
+) (string, string, int, error) {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--event-log" {
+			if err := os.WriteFile(args[i+1], []byte(m.summaryLine+"\n"), 0o600); err != nil {
+				return "", "", 1, err
+			}
+		}
+	}
+	return m.mockPulumiCommand.Run(ctx, workdir, stdin, additionalOutput, additionalErrorOutput, additionalEnv, args...)
+}
+
+func TestRemotePreviewWithSummaryEventPopulatesChangeSummary(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	m := &summaryEventMockPulumiCommand{
+		mockPulumiCommand: mockPulumiCommand{stdout: "--remote\nPreviewing update (dev)\n"},
+		summaryLine:       `{"sequence":1,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":1,"resourceChanges":{"same":1,"create":2}}}`,
+	}
+	ws, err := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "test", "testproj")), Pulumi(m), remote(true))
+	require.NoError(t, err)
+	s, err := NewStack(ctx, "organization/testproj/teststack", ws)
+	require.NoError(t, err)
+
+	res, err := s.Preview(ctx)
+	require.NoError(t, err)
+	assert.Contains(t, res.StdOut, "Previewing update (dev)")
+	assert.Equal(t, map[apitype.OpType]int{apitype.OpSame: 1, apitype.OpCreate: 2}, res.ChangeSummary)
 }

@@ -1,0 +1,3 @@
+component: sdk/go/auto
+kind: fix
+body: Don't fail remote preview when no summary event is streamed; `PreviewResult.ChangeSummary` is nil for remote previews
