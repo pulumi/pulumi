@@ -64,8 +64,6 @@ type Options struct {
 	FullyQualifyStackNames bool
 	// Ignore the protect resource option for this operation, allowing protected resources to be deleted or replaced. Use with caution: deleted resources cannot be recovered
 	IgnoreProtect bool
-	// Serialize the update diffs, operations, and overall output as JSON
-	Json bool
 	// Flow log settings to child processes (like plugins)
 	Logflow bool
 	// Log to stderr instead of to files
@@ -80,8 +78,6 @@ type Options struct {
 	NeoTaskOnFailure bool
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// Output format. Supported values are: default and json
-	Output string
 	// [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable
 	OverrideEnv []string
 	// Allow P resource operations to run in parallel at once (1 for no parallelism).
@@ -291,13 +287,6 @@ func IgnoreProtect(v bool) Option {
 	}
 }
 
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
-	}
-}
-
 // Logflow returns an Option that sets Logflow.
 func Logflow(v bool) Option {
 	return func(o *Options) {
@@ -344,13 +333,6 @@ func NeoTaskOnFailure(v bool) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 

@@ -36,8 +36,6 @@ type Options struct {
 	DisableIntegrityChecking bool
 	// Show fully-qualified stack names
 	FullyQualifyStackNames bool
-	// Emit output as JSON (alias for --output=json)
-	Json bool
 	// Flow log settings to child processes (like plugins)
 	Logflow bool
 	// Log to stderr instead of to files
@@ -46,8 +44,6 @@ type Options struct {
 	Memprofilerate int
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// Output format. Supported values are: default and json
-	Output string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
 	// The name of the stack to get info on. Defaults to the current stack
@@ -100,13 +96,6 @@ func FullyQualifyStackNames(v bool) Option {
 	}
 }
 
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
-	}
-}
-
 // Logflow returns an Option that sets Logflow.
 func Logflow(v bool) Option {
 	return func(o *Options) {
@@ -132,13 +121,6 @@ func Memprofilerate(v int) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 

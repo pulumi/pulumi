@@ -52,8 +52,6 @@ type Options struct {
 	GenerateCode bool
 	// When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path
 	GenerateResources string
-	// Serialize the import diffs, operations, and overall output as JSON
-	Json bool
 	// Flow log settings to child processes (like plugins)
 	Logflow bool
 	// Log to stderr instead of to files
@@ -66,8 +64,6 @@ type Options struct {
 	OtelTraces string
 	// The path to the file that will contain the generated resource declarations
 	Out string
-	// Output format. Supported values are: default, json
-	Output string
 	// Allow P resource operations to run in parallel at once (1 for no parallelism).
 	Parallel int
 	// The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource
@@ -203,13 +199,6 @@ func GenerateResources(v string) Option {
 	}
 }
 
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
-	}
-}
-
 // Logflow returns an Option that sets Logflow.
 func Logflow(v bool) Option {
 	return func(o *Options) {
@@ -249,13 +238,6 @@ func OtelTraces(v string) Option {
 func Out(v string) Option {
 	return func(o *Options) {
 		o.Out = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 

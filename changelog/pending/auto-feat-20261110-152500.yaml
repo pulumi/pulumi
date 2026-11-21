@@ -1,0 +1,4 @@
+component: auto
+kind: feat
+body: Return JSON by default from generated automation API commands that support it
+time: 2026-11-10T15:25:00.015311+01:00
