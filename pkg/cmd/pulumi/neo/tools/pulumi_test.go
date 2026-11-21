@@ -875,6 +875,28 @@ func TestPulumi_DrainEvents_Diag_WarningAndError(t *testing.T) {
 	assert.Contains(t, diags[1], "config invalid")
 }
 
+func TestPulumi_DrainEvents_StdoutGoesToLogsOnly(t *testing.T) {
+	t.Parallel()
+
+	rec := &sinkRecorder{}
+	p := &Pulumi{Sink: rec.sink()}
+
+	ch := make(chan engine.Event, 2)
+	ch <- engine.NewEvent(engine.StdoutEventPayload{
+		Message: "<{%fg 3%}>Environment app/dev: local changes based on revision 3<{%reset%}>\n" +
+			"    + values.pulumiConfig[\"app:new\"]: \"v\"\n",
+		Color: colors.Raw,
+	})
+	ch <- engine.NewEvent(engine.StdoutEventPayload{Message: "\n"})
+	close(ch)
+
+	diags, _ := p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	assert.Empty(t, rec.diags, "stdout events stay out of the TUI block")
+	assert.Equal(t, []string{
+		"Environment app/dev: local changes based on revision 3\n    + values.pulumiConfig[\"app:new\"]: \"v\"",
+	}, diags)
+}
+
 func TestPulumi_DrainEvents_Diag_FiltersEphemeralAndInfo(t *testing.T) {
 	t.Parallel()
 
