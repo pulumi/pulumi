@@ -1,0 +1,3 @@
+component: sdk/nodejs
+kind: fix
+body: Fix generated Node.js SDKs failing to compile when a module with upper-case letters contains an enum
