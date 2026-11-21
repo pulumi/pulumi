@@ -2169,26 +2169,17 @@ func (pc *Client) ListPolicyExceptions(
 	return resp, nil
 }
 
-// CreatePolicyException creates a policy exception (POST /api/orgs/{orgName}/policy/exceptions), and returns whether
-// it already existed.
+// CreatePolicyException creates a policy exception (POST /api/orgs/{orgName}/policy/exceptions).
 func (pc *Client) CreatePolicyException(
 	ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
-) (cloudapitype.PolicyException, bool, error) {
+) (cloudapitype.PolicyException, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions", url.PathEscape(orgName))
 
-	var httpResp *http.Response
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &httpResp); err != nil {
-		return cloudapitype.PolicyException{}, false, fmt.Errorf("creating policy exception: %w", err)
-	}
-	body, err := readBody(httpResp)
-	if err != nil {
-		return cloudapitype.PolicyException{}, false, fmt.Errorf("reading the created policy exception: %w", err)
-	}
 	var resp cloudapitype.PolicyException
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return cloudapitype.PolicyException{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return cloudapitype.PolicyException{}, fmt.Errorf("creating policy exception: %w", err)
 	}
-	return resp, httpResp.StatusCode == http.StatusOK, nil
+	return resp, nil
 }
 
 // PolicyExceptionDraft is a policy exception requested in a change request, which creates it once approved. It isn't
@@ -2212,6 +2203,21 @@ func (pc *Client) CreatePolicyExceptionDraft(
 	var resp PolicyExceptionDraft
 	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
 		return PolicyExceptionDraft{}, fmt.Errorf("creating policy exception draft: %w", err)
+	}
+	return resp, nil
+}
+
+// GetPolicyExceptionDraft returns the policy exception a change request creates, at its latest revision
+// (GET /api/orgs/{orgName}/policy/exceptions/drafts/{changeRequestID}).
+func (pc *Client) GetPolicyExceptionDraft(
+	ctx context.Context, orgName, changeRequestID string,
+) (PolicyExceptionDraft, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/drafts/%s",
+		url.PathEscape(orgName), url.PathEscape(changeRequestID))
+
+	var resp PolicyExceptionDraft
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return PolicyExceptionDraft{}, err
 	}
 	return resp, nil
 }

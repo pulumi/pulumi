@@ -51,9 +51,10 @@ func policyExceptionsError(err error, org string) error {
 // organization requires approval, so an ID that's a change request gets its status instead.
 func policyExceptionNotFound(ctx context.Context, c policyExceptionClients, org, id string) error {
 	if _, err := uuid.Parse(id); err == nil {
-		if cr, err := c.changeRequests.GetChangeRequest(ctx, org, id); err == nil {
-			return fmt.Errorf("%s is a change request (status: %s), not a policy exception; "+
-				"it creates the exception once it's approved and applied", id, cr.Status)
+		cr, err := c.changeRequests.GetChangeRequest(ctx, org, id)
+		if err == nil && isPolicyExceptionRequest(cr.ChangeRequest) {
+			return fmt.Errorf("%s is a request for a policy exception (status: %s), not an exception; "+
+				"see it with `pulumi policy exception approval get %s`", id, cr.Status, id)
 		}
 	}
 	return fmt.Errorf("policy exception %s not found in %s", id, org)
@@ -70,7 +71,7 @@ func policyExceptionStatus(e cloudapitype.PolicyException) string {
 type policyExceptionClient interface {
 	CreatePolicyException(
 		ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
-	) (cloudapitype.PolicyException, bool, error)
+	) (cloudapitype.PolicyException, error)
 	ListPolicyExceptions(
 		ctx context.Context, orgName string, opts client.ListPolicyExceptionsOptions,
 	) (cloudapitype.ListPolicyExceptionsResponse, error)
@@ -79,6 +80,7 @@ type policyExceptionClient interface {
 	CreatePolicyExceptionDraft(
 		ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
 	) (client.PolicyExceptionDraft, error)
+	GetPolicyExceptionDraft(ctx context.Context, orgName, changeRequestID string) (client.PolicyExceptionDraft, error)
 	// URL is the Pulumi Cloud API URL, which console links are derived from.
 	URL() string
 	GetStackUpdates(
@@ -91,13 +93,23 @@ type policyExceptionClient interface {
 	) (apitype.GetUpdateEventsResponse, error)
 }
 
-// changeRequestClient submits and reads change requests. The ESC client has these routes, which policy exceptions
-// share.
+// changeRequestClient submits, reads and reviews change requests. The ESC client has these routes, which policy
+// exceptions share.
 type changeRequestClient interface {
 	SubmitChangeRequest(ctx context.Context, orgName, changeRequestID string, description *string) error
 	GetChangeRequest(
 		ctx context.Context, orgName, changeRequestID string,
 	) (*esc_client.GetChangeRequestResponse, error)
+	ListChangeRequestsForEntity(
+		ctx context.Context, orgName, entityType, continuationToken string,
+	) ([]esc_client.ChangeRequest, string, error)
+	ApproveChangeRequest(ctx context.Context, orgName, changeRequestID string, revisionNumber int, comment string) error
+	UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error
+	CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error
+	AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error
+	ListChangeRequestEvents(
+		ctx context.Context, orgName, changeRequestID, continuationToken string,
+	) ([]esc_client.ChangeRequestEvent, string, error)
 }
 
 // policyExceptionClients are the Pulumi Cloud clients of the policy exception commands.
@@ -132,6 +144,7 @@ func newPolicyExceptionCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) 
 	cmd.AddCommand(newPolicyExceptionListCmd(ws, lm))
 	cmd.AddCommand(newPolicyExceptionGetCmd(ws, lm))
 	cmd.AddCommand(newPolicyExceptionRemoveCmd(ws, lm))
+	cmd.AddCommand(newPolicyExceptionApprovalCmd(ws, lm))
 	return cmd
 }
 
