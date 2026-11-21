@@ -16,6 +16,7 @@ package logs
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -364,19 +365,18 @@ func parseLogTimestamp(name string) (time.Time, bool) {
 // messages from pulumi.log.arg* fields, removes those fields, and
 // writes the resulting JSON to w.
 func formatLogRecords(r io.Reader, w io.Writer, redactSecrets bool) error {
-	scanner := bufio.NewScanner(r)
 	enc := json.NewEncoder(w)
-	for scanner.Scan() {
-		line := scanner.Bytes()
+
+	formatLine := func(line []byte) error {
 		if len(line) == 0 {
-			continue
+			return nil
 		}
 
 		var rec map[string]any
 		if err := json.Unmarshal(line, &rec); err != nil {
 			// Not JSON — write through as-is (e.g. old plain-text logs).
 			fmt.Fprintf(w, "%s\n", line)
-			continue
+			return nil
 		}
 
 		// Collect pulumi.log.argN keys in order, reconstruct the
@@ -407,11 +407,28 @@ func formatLogRecords(r io.Reader, w io.Writer, redactSecrets bool) error {
 			redactSecretsInValue(rec)
 		}
 
-		if err := enc.Encode(rec); err != nil {
+		return enc.Encode(rec)
+	}
+
+	// Read with a bufio.Reader rather than a bufio.Scanner so a single record is
+	// not capped at bufio.MaxScanTokenSize (64 KiB). Debug records routinely
+	// exceed that and would otherwise fail with "token too long".
+	reader := bufio.NewReader(r)
+	for {
+		line, readErr := reader.ReadBytes('\n')
+		// Match bufio.ScanLines: drop the trailing newline and a single CR.
+		line = bytes.TrimSuffix(line, []byte("\n"))
+		line = bytes.TrimSuffix(line, []byte("\r"))
+		if err := formatLine(line); err != nil {
 			return err
 		}
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				return nil
+			}
+			return readErr
+		}
 	}
-	return scanner.Err()
 }
 
 func decodePropertyArg(v any) any {

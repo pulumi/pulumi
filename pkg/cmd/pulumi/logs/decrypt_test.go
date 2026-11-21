@@ -89,6 +89,35 @@ func TestFormatLogRecordsFoldsArgs(t *testing.T) {
 	assert.EqualValues(t, 3, got["v"])
 }
 
+func TestFormatLogRecordsHandlesLargeRecords(t *testing.T) {
+	t.Parallel()
+
+	// A record larger than bufio.MaxScanTokenSize (64 KiB) must still be printed;
+	// a bufio.Scanner would fail it with "token too long".
+	big := strings.Repeat("a", 70*1024)
+	first, err := json.Marshal(map[string]any{"level": "DEBUG", "msg": big})
+	require.NoError(t, err)
+	second, err := json.Marshal(map[string]any{"level": "INFO", "msg": "after"})
+	require.NoError(t, err)
+
+	// Join the records with a newline and leave the final record unterminated.
+	var input []byte
+	input = append(input, first...)
+	input = append(input, '\n')
+	input = append(input, second...)
+
+	var out bytes.Buffer
+	err = formatLogRecords(bytes.NewReader(input), &out, false)
+	require.NoError(t, err)
+
+	dec := json.NewDecoder(bytes.NewReader(out.Bytes()))
+	var got1, got2 map[string]any
+	require.NoError(t, dec.Decode(&got1))
+	require.NoError(t, dec.Decode(&got2))
+	assert.Equal(t, big, got1["msg"])
+	assert.Equal(t, "after", got2["msg"])
+}
+
 func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
 	t.Parallel()
 
