@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Fix command names and wording in the help of `pulumi stack init`, `pulumi stack rm`, `pulumi stack tag` and `pulumi state protect`
+time: 2026-11-18T00:00:00Z
