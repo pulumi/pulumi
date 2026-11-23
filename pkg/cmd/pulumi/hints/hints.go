@@ -15,8 +15,8 @@
 // Package hints shows short, contextual product hints at the end of a CLI command.
 //
 // Commands [Offer] hints while they run, and the root command calls [Flush] when it exits. Flush shows
-// at most one hint per command. A hint is shown only if hints are enabled, the user hasn't turned that
-// hint off, and the hint's own [Hint.Cooldown] has passed.
+// at most one hint per command: the first offered hint that the user hasn't turned off and whose fields, such as
+// [Hint.Cooldown], allow it to be shown now.
 //
 // Users turn all hints off with PULUMI_DISABLE_HINTS or `hints.disabled` in the Pulumi config file, and
 // turn individual hints off by [Hint.ID] with PULUMI_SKIP_HINTS or `hints.skip`.
@@ -82,7 +82,7 @@ func newManager() *manager {
 var defaultManager = newManager()
 
 // Offer queues a hint to be shown when the command exits, subject to the rules described in the package
-// documentation. Offering a hint does not guarantee that it is shown.
+// documentation.
 func Offer(h Hint) { defaultManager.offer(h) }
 
 // Suppress prevents any hint from being shown for the current command, for example because it writes
