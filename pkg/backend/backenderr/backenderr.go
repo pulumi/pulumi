@@ -115,44 +115,58 @@ func (c ConflictingUpdateError) Error() string {
 // It renders the same text as LoginRequiredError. The types stay separate because callers branch on them.
 type MissingEnvVarForNonInteractiveError struct {
 	Var env.Var
-	// TokensURL, if set, is the console page where the user can create an access token.
-	TokensURL string
+	LoginHelp
 }
 
 func (err MissingEnvVarForNonInteractiveError) Error() string {
-	return loginRequiredMessage(err.Var.Name(), err.TokensURL)
+	return loginRequiredMessage(err.Var.Name(), err.LoginHelp)
+}
+
+// LoginHelp is what a login-required error knows about the cloud the user needs to log in to. The zero value
+// gives the steps that are true for any cloud.
+type LoginHelp struct {
+	// TokensURL, if set, is the console page where the user can create an access token. It's empty when the CLI
+	// can't work out the console's address from the API's, and then `pulumi login` can't sign in through a
+	// browser either: it asks for a token instead.
+	TokensURL string
+	// PulumiCloud is true for pulumi.com, where anyone can create a free account.
+	PulumiCloud bool
 }
 
 // LoginRequiredSuggestions returns the next steps for someone who needs to log in to Pulumi Cloud, one per line.
-// tokensURL is the console page for creating an access token, or empty if it isn't known.
 //
 // People, scripts and agents all see the same steps. Each line stands on its own, because agents often keep
 // only the last few lines of a command's output.
-func LoginRequiredSuggestions(tokensURL string) []string {
-	return loginRequiredSuggestions(pulumienv.AccessToken.Var().Name(), tokensURL)
+func LoginRequiredSuggestions(help LoginHelp) []string {
+	return loginRequiredSuggestions(pulumienv.AccessToken.Var().Name(), help)
 }
 
-func loginRequiredSuggestions(tokenVar string, tokensURL string) []string {
-	tokenLine := "To log in without a browser (CI, headless), set " + tokenVar + " to a Pulumi Cloud access token."
-	if tokensURL != "" {
-		tokenLine = fmt.Sprintf("To log in without a browser (CI, headless), set %s to a token from %s.", tokenVar, tokensURL)
+func loginRequiredSuggestions(tokenVar string, help LoginHelp) []string {
+	var lines []string
+	if help.PulumiCloud {
+		lines = append(lines, "Run `pulumi login` to sign in or create a free account.")
+	} else {
+		lines = append(lines, "Run `pulumi login` to sign in.")
 	}
-	return []string{
-		"Run `pulumi login` to sign in or create a free account.",
-		"It opens your web browser and waits until you've signed in there.",
-		tokenLine,
+	if help.TokensURL != "" {
+		lines = append(lines, "It opens your web browser and waits until you've signed in there.")
 	}
+	tokenLine := "To log in without a browser (CI, headless), set " + tokenVar + "."
+	if help.TokensURL != "" {
+		tokenLine += " Create a token at " + help.TokensURL + "."
+	}
+	return append(lines, tokenLine)
 }
 
 // LoginRequiredMessage returns the text of LoginRequiredError, for code that reports a missing login without
-// returning that type. tokensURL is the console page for creating an access token, or empty if it isn't known.
-func LoginRequiredMessage(tokensURL string) string {
-	return loginRequiredMessage(pulumienv.AccessToken.Var().Name(), tokensURL)
+// returning that type.
+func LoginRequiredMessage(help LoginHelp) string {
+	return loginRequiredMessage(pulumienv.AccessToken.Var().Name(), help)
 }
 
 // loginRequiredMessage is the text of both LoginRequiredError and MissingEnvVarForNonInteractiveError.
-func loginRequiredMessage(tokenVar string, tokensURL string) string {
-	return "Pulumi Cloud login required\n  " + strings.Join(loginRequiredSuggestions(tokenVar, tokensURL), "\n  ")
+func loginRequiredMessage(tokenVar string, help LoginHelp) string {
+	return "Pulumi Cloud login required\n  " + strings.Join(loginRequiredSuggestions(tokenVar, help), "\n  ")
 }
 
 // NoConfirmationInNonInteractiveError represents a situation where the CLI is run
@@ -257,15 +271,14 @@ func (ForbiddenError) Is(other error) bool {
 type LoginRequiredError struct {
 	// ReauthURL, if set, is the URL the user should visit to re-authenticate.
 	ReauthURL string
-	// TokensURL, if set, is the console page where the user can create an access token.
-	TokensURL string
+	LoginHelp
 }
 
 func (err LoginRequiredError) Error() string {
 	if err.ReauthURL != "" {
 		return fmt.Sprintf("SAML SSO authentication is required. Log in at:\n\n    %s\n", err.ReauthURL)
 	}
-	return LoginRequiredMessage(err.TokensURL)
+	return LoginRequiredMessage(err.LoginHelp)
 }
 
 // CancelledError represents a user-initiated cancellation of an operation

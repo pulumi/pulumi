@@ -517,8 +517,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		unauthorizedClient := newMockClient(unauthorizedServer)
 		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(t.Context(), nil)
 
-		assert.EqualError(t, unauthorizedErr, backenderr.LoginRequiredMessage(
-			CloudConsoleURL(unauthorizedServer.URL, "user", "settings", "tokens")))
+		assert.EqualError(t, unauthorizedErr, backenderr.LoginRequiredMessage(LoginHelpFor(unauthorizedServer.URL)))
 	})
 	t.Run("TestRateLimitError", func(t *testing.T) {
 		t.Parallel()

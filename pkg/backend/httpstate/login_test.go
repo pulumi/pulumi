@@ -55,7 +55,8 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
-		assert.Equal(t, "https://app.example.com/user/settings/tokens", expectedErr.TokensURL)
+		assert.Equal(t, backenderr.LoginHelp{TokensURL: "https://app.example.com/user/settings/tokens"},
+			expectedErr.LoginHelp)
 	}
 }
 

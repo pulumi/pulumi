@@ -19,6 +19,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 )
 
 const (
@@ -66,6 +68,14 @@ func CloudConsoleURL(cloudURL string, paths ...string) string {
 
 	u.Path = path.Join(paths...)
 	return u.String()
+}
+
+// LoginHelpFor returns what a login-required error should say about logging in to cloudURL.
+func LoginHelpFor(cloudURL string) backenderr.LoginHelp {
+	return backenderr.LoginHelp{
+		TokensURL:   CloudConsoleURL(cloudURL, "user", "settings", "tokens"),
+		PulumiCloud: strings.TrimSuffix(cloudURL, "/") == PulumiCloudURL,
+	}
 }
 
 // AgentClaimURL returns the Pulumi Console URL for claiming an ephemeral agent

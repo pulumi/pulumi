@@ -321,8 +321,7 @@ func executeLive(
 	if !resolved.LoggedIn {
 		return NewAPIError(cmdutil.ExitAuthenticationError, ErrNotLoggedIn,
 			"not logged in to Pulumi Cloud").
-			WithSuggestions(backenderr.LoginRequiredSuggestions(
-				client.CloudConsoleURL(resolved.CloudURL, "user", "settings", "tokens"))...)
+			WithSuggestions(backenderr.LoginRequiredSuggestions(client.LoginHelpFor(resolved.CloudURL))...)
 	}
 
 	apiClient := resolved.Client

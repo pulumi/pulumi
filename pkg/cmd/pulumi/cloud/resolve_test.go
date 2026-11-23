@@ -231,8 +231,11 @@ func TestResolveContextRejectedToken(t *testing.T) {
 			apiErr := resolveContextError(err)
 			assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode, "error: %v", err)
 			assert.Equal(t, ErrNotLoggedIn, apiErr.Envelope.Error.Code)
-			assert.Contains(t, apiErr.Envelope.Error.Suggestions,
-				"Run `pulumi login` to sign in or create a free account.")
+			// The test server is a self-hosted cloud whose console the CLI can't find.
+			assert.Equal(t, []string{
+				"Run `pulumi login` to sign in.",
+				"To log in without a browser (CI, headless), set PULUMI_ACCESS_TOKEN.",
+			}, apiErr.Envelope.Error.Suggestions)
 		})
 	}
 }

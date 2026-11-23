@@ -732,7 +732,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 				cloudURL, *expiresAt)
 			return nil, fmt.Errorf(
 				"shared agent credentials for %q can no longer authenticate; ask the user to run `pulumi login`: %w",
-				cloudURL, errors.Join(ErrUnauthorized, backenderr.LoginRequiredError{}))
+				cloudURL, errors.Join(ErrUnauthorized, backenderr.LoginRequiredError{LoginHelp: client.LoginHelpFor(cloudURL)}))
 		}
 		claim, err := workspace.GetAgentClaim()
 		if err != nil {
@@ -840,13 +840,16 @@ func (m defaultLoginManager) Login(
 	// Agents and people get the same text, but keep the two error types: callers branch on them, and switching
 	// people to LoginRequiredError would let some commands carry on without a backend where they fail today.
 	if !cmdutil.Interactive() && agentdetect.Detect(os.Getenv) != "" {
-		return nil, backenderr.LoginRequiredError{TokensURL: accountLink}
+		return nil, backenderr.LoginRequiredError{LoginHelp: client.LoginHelpFor(cloudURL)}
 	}
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
-		return nil, backenderr.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var(), TokensURL: accountLink}
+		return nil, backenderr.MissingEnvVarForNonInteractiveError{
+			Var:       env.AccessToken.Var(),
+			LoginHelp: client.LoginHelpFor(cloudURL),
+		}
 	}
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to
