@@ -425,16 +425,16 @@ var unresolvedProvider = regexp.MustCompile(`\{providers\.[^}]*\} ?`)
 // resolve replaces the placeholders in a notification's text, dropping those for providers whose
 // versions are unknown.
 func resolve(s, cliVersion string, providers map[string][]semver.Version) string {
-	vars := []string{"{cli}", cliVersion}
+	s = strings.ReplaceAll(s, "{cli}", cliVersion)
 	for name, versions := range providers {
 		versions = slices.SortedFunc(slices.Values(versions), semver.Version.Compare)
 		vs := make([]string, len(versions))
 		for i, v := range versions {
 			vs[i] = v.String()
 		}
-		vars = append(vars, "{providers."+name+"}", strings.Join(vs, ", "))
+		s = strings.ReplaceAll(s, "{providers."+name+"}", strings.Join(vs, ", "))
 	}
-	return unresolvedProvider.ReplaceAllString(strings.NewReplacer(vars...).Replace(s), "")
+	return unresolvedProvider.ReplaceAllString(s, "")
 }
 
 // writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written
