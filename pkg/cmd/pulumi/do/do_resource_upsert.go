@@ -743,7 +743,7 @@ func (pc *packageCommand) buildProviderSnippet(
 				return nil, nil, nil, fmt.Errorf("--provider: %w", err)
 			}
 			baseLiterals := make(map[string]string, base.Len())
-			for k, v := range base.All {
+			for k, v := range base.All() {
 				// Skip engine bookkeeping (__internal) and the pinned plugin version — carrying
 				// these into a new snippet would collide with the plugin selection the descriptor
 				// already encodes.

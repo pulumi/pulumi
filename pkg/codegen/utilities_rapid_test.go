@@ -172,10 +172,12 @@ func wireMatches(v property.Value, typ schema.Type) bool {
 			return false
 		}
 		ok := true
-		v.AsMap().All(func(_ string, e property.Value) bool {
+		for _, e := range v.AsMap().All() {
 			ok = wireMatches(e, typ.ElementType)
-			return ok
-		})
+			if !ok {
+				break
+			}
+		}
 		return ok
 	case *schema.ObjectType:
 		return objectWireMatches(v, typ)
@@ -191,19 +193,20 @@ func objectWireMatches(v property.Value, typ *schema.ObjectType) bool {
 	}
 	m := v.AsMap()
 	ok := true
-	m.All(func(name string, e property.Value) bool {
+	for name, e := range m.All() {
 		p, declared := typ.Property(name)
 		switch {
 		case !declared:
 			ok = false
 		case p.ConstValue != nil:
-			// An optional constant property may also be explicitly null.
 			ok = e.Equals(liftConstant(p.ConstValue)) || (!p.IsRequired() && e.IsNull())
 		default:
 			ok = wireMatches(e, p.Type)
 		}
-		return ok
-	})
+		if !ok {
+			break
+		}
+	}
 	if !ok {
 		return false
 	}

@@ -27,7 +27,7 @@ import (
 
 // Print the value in a human-readable JSON like format. If showSecrets is false, secret values will be redacted.
 func Value(writer io.Writer, value property.Value, showSecrets bool) error {
-	if value.Secret() && !showSecrets {
+	if value.IsSecret() && !showSecrets {
 		_, err := writer.Write([]byte("<secret>"))
 		return err
 	}
@@ -113,7 +113,7 @@ func Value(writer io.Writer, value property.Value, showSecrets bool) error {
 			return err
 		}
 		arr := value.AsArray()
-		for i, elem := range arr.All {
+		for i, elem := range arr.All() {
 			if i > 0 {
 				_, err := writer.Write([]byte(", "))
 				if err != nil {
@@ -134,7 +134,7 @@ func Value(writer io.Writer, value property.Value, showSecrets bool) error {
 		}
 		obj := value.AsMap()
 		i := 0
-		for k, v := range obj.AllStable {
+		for k, v := range obj.AllStable() {
 			if i > 0 {
 				_, err := writer.Write([]byte(", "))
 				if err != nil {

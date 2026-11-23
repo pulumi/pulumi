@@ -139,14 +139,13 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 
 	got := annotateSecrets(to, from)
 
-	got.All(func(key string, val property.Value) bool {
+	for key, val := range got.All() {
 		fromVal, fromHas := from.GetOk(key)
 		if !fromHas {
-			return true
+			continue
 		}
 		assert.Truef(t, fromVal.Equals(val), "expected properties %s to be equal", key)
-		return true
-	})
+	}
 
 	_, has := got.GetOk("extraFromValue")
 	assert.Falsef(t, has, "to should not have a key named extraFromValue, it was not present before annotating secrets")
@@ -846,6 +845,7 @@ func newTestContext(t testing.TB) *Context {
 type stubClient struct {
 	pulumirpc.ResourceProviderClient
 
+	CheckConfig2F  func(*pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error)
 	DiffConfigF    func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
 	ConstructF     func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
 	ConfigureF     func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
@@ -878,6 +878,17 @@ func (c *stubClient) Construct(
 		return f(req)
 	}
 	return c.ResourceProviderClient.Construct(ctx, req, opts...)
+}
+
+func (c *stubClient) CheckConfig2(
+	ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.CheckConfigResponse, error) {
+	if f := c.CheckConfig2F; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.CheckConfig2(ctx, req, opts...)
 }
 
 func (c *stubClient) Configure(

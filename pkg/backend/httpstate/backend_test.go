@@ -35,6 +35,7 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -936,7 +937,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	capabilities := func() []apitype.APICapabilityConfig {
 		if v4 {
 			return []apitype.APICapabilityConfig{{
-				Capability:    apitype.DeploymentSchemaVersion,
+				Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 				Version:       1,
 				Configuration: json.RawMessage(`{"version":4}`),
 			}}
@@ -1132,7 +1133,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	capabilities := func() []apitype.APICapabilityConfig {
 		if v4 {
 			return []apitype.APICapabilityConfig{{
-				Capability:    apitype.DeploymentSchemaVersion,
+				Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 				Version:       1,
 				Configuration: json.RawMessage(`{"version":4}`),
 			}}
@@ -1177,7 +1178,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 			req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
 		case "/api/stacks/owner/project/stack/update":
 			resp := apitype.UpdateResults{
-				Status: apitype.StatusSucceeded,
+				Status: cloudapitype.AppUpdateStatusSucceeded,
 			}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
@@ -1630,7 +1631,7 @@ func TestRunEngineActionCoherenceWindow(t *testing.T) {
 
 			completions := fx.completions()
 			require.Len(t, completions, 1)
-			assert.Equal(t, apitype.UpdateStatusSucceeded, completions[0].Status)
+			assert.Equal(t, cloudapitype.AppUpdateStatusSucceeded, completions[0].Status)
 			if tc.wantSentOutputs {
 				assert.Empty(t, completions[0].Outputs)
 				require.NotNil(t, completions[0].SecretsProviders)

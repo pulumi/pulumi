@@ -1098,7 +1098,7 @@ func (rm *resmon) Invoke(
 		}
 		rootSet.Add(urn)
 	}
-	for _, v := range args.All {
+	for _, v := range args.All() {
 		addOutputDependencies(rootSet, v)
 	}
 
@@ -1326,7 +1326,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	defer stackTraceHandle.Release()
 
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
-	for key, output := range args.All {
+	for key, output := range args.All() {
 		pk := resource.PropertyKey(key)
 		argDependencies[pk] = extendOutputDependencies(argDependencies[pk], output)
 	}
@@ -1375,7 +1375,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if ret.ReturnDependencies == nil {
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
-	for k, v := range ret.Return.All {
+	for k, v := range ret.Return.All() {
 		pk := resource.PropertyKey(k)
 		ret.ReturnDependencies[pk] = extendOutputDependencies(ret.ReturnDependencies[pk], v)
 	}
@@ -2265,8 +2265,8 @@ func (s *sourcePositions) getFromRequest(req hasSourcePosition) (string, stackTr
 		if handle := req.GetParentStackTraceHandle(); handle != "" {
 			if parent, ok := s.stackTraces.Load(handle); ok {
 				newStack := make(stackTrace, 0, len(parent)+len(stack))
-				newStack = append(newStack, parent...)
 				newStack = append(newStack, stack...)
+				newStack = append(newStack, parent...)
 				stack = newStack
 			}
 		}
@@ -2539,7 +2539,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// and must not inherit the top-level set.
 		// Clone so that downstream code merging a property's Output-value dependencies into its set does not
 		// leak those dependencies into every other property via a shared underlying set instance.
-		for k := range props.All {
+		for k := range props.All() {
 			propertyDependencies[resource.PropertyKey(k)] = dependencies.Clone()
 		}
 	} else {
@@ -2802,7 +2802,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Now we've run the transforms we can rebuild the property dependency maps. If we have output values we can add the
 		// dependencies from them to the dependencies map we send to the provider and save to state.
 		propertyDependencies = make(map[resource.PropertyKey]mapset.Set[resource.URN])
-		for key, output := range props.All {
+		for key, output := range props.All() {
 			pk := resource.PropertyKey(key)
 			deps := mapset.NewSet[resource.URN]()
 			addOutputDependencies(deps, output)
@@ -2811,7 +2811,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	} else {
 		// If we ran transforms we would have merged all the dependencies togther already, but if we didn't we want to
 		// ensure any output values add their dependencies to the dependencies map we send to the provider.
-		for key, output := range props.All {
+		for key, output := range props.All() {
 			pk := resource.PropertyKey(key)
 			if propertyDependencies[pk] == nil {
 				propertyDependencies[pk] = mapset.NewSet[resource.URN]()
@@ -3571,7 +3571,7 @@ func upgradeOutputValues(
 	m property.Map, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
 ) property.Map {
 	result := map[string]property.Value{}
-	for k, v := range m.All {
+	for k, v := range m.All() {
 		if deps, has := propertyDependencies[resource.PropertyKey(k)]; has {
 			current := mapset.NewSet[resource.URN]()
 			addOutputDependencies(current, v)
@@ -3599,12 +3599,12 @@ func addOutputDependencies(deps mapset.Set[resource.URN], v property.Value) {
 		addOutputDependencies(deps, ref.ID)
 	}
 	if v.IsMap() {
-		for _, elem := range v.AsMap().All {
+		for _, elem := range v.AsMap().All() {
 			addOutputDependencies(deps, elem)
 		}
 	}
 	if v.IsArray() {
-		for _, elem := range v.AsArray().All {
+		for _, elem := range v.AsArray().All() {
 			addOutputDependencies(deps, elem)
 		}
 	}

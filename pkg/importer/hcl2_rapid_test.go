@@ -63,7 +63,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 				return true
 			}
 			if v.IsMap() {
-				for k := range v.AsMap().All {
+				for k := range v.AsMap().All() {
 					if !norm.NFC.IsNormalString(k) {
 						return true
 					}
@@ -93,7 +93,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			if !p.IsMap() {
 				return false
 			}
-			for k := range p.AsMap().All {
+			for k := range p.AsMap().All() {
 				if strings.HasPrefix(k, "__") {
 					return true
 				}
@@ -179,14 +179,14 @@ func checkPropertyMap(m property.Map, check func(property.Value) bool) bool {
 		case check(v):
 			return true
 		case v.IsArray():
-			for _, v := range v.AsArray().All {
+			for _, v := range v.AsArray().All() {
 				if walk(v) {
 					return true
 				}
 			}
 			return false
 		case v.IsMap():
-			for _, v := range v.AsMap().All {
+			for _, v := range v.AsMap().All() {
 				if walk(v) {
 					return true
 				}

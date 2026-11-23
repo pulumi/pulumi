@@ -58,7 +58,7 @@ func valueKey(v property.Value) string {
 }
 
 func writeValueKey(b *strings.Builder, v property.Value) {
-	if v.Secret() {
+	if v.IsSecret() {
 		b.WriteString("secret:")
 	}
 	if deps := v.Dependencies(); len(deps) > 0 {

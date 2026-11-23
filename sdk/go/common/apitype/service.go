@@ -178,13 +178,13 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 	var parsed Capabilities
 	for _, entry := range r.Capabilities {
 		switch entry.Capability {
-		case DeltaCheckpointUploads:
+		case cloudapitype.AppAPICapabilityDeltaCheckpointUploads:
 			var upcfg DeltaCheckpointUploadsConfigV2
 			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
 				return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfig returned %w", err)
 			}
 			parsed.DeltaCheckpointUpdates = &upcfg
-		case DeltaCheckpointUploadsV2:
+		case cloudapitype.AppAPICapabilityDeltaCheckpointUploadsV2:
 			if entry.Version == 2 {
 				var upcfg DeltaCheckpointUploadsConfigV2
 				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
@@ -192,17 +192,17 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.DeltaCheckpointUpdates = &upcfg
 			}
-		case BatchEncrypt:
+		case cloudapitype.AppAPICapabilityBatchEncrypt:
 			parsed.BatchEncryption = true
-		case CopilotSummarizeError:
+		case cloudapitype.AppAPICapabilityCopilotSummarizeError:
 			if entry.Version == 1 {
 				parsed.CopilotSummarizeErrorV1 = true
 			}
-		case CopilotExplainPreview:
+		case cloudapitype.AppAPICapabilityCopilotExplainPreview:
 			if entry.Version == 1 {
 				parsed.CopilotExplainPreviewV1 = true
 			}
-		case DeploymentSchemaVersion:
+		case cloudapitype.AppAPICapabilityDeploymentSchemaVersion:
 			if entry.Version == 1 {
 				var versionConfig DeploymentSchemaVersionConfig
 				if err := json.Unmarshal(entry.Configuration, &versionConfig); err != nil {
@@ -210,11 +210,11 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.DeploymentSchemaVersion = versionConfig.Version
 			}
-		case StackPolicyPacks:
+		case cloudapitype.AppAPICapabilityStackPolicyPacks:
 			if entry.Version == 1 {
 				parsed.StackPolicyPacks = true
 			}
-		case APIVersion:
+		case cloudapitype.AppAPICapabilityAPIVersion:
 			if entry.Version == 1 {
 				var cfg APIVersionCapabilityConfig
 				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
@@ -225,7 +225,7 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.APIVersion = &cfg
 			}
-		case NeoCLIMode:
+		case cloudapitype.AppAPICapabilityNeoCLIMode:
 			if entry.Version == 1 {
 				var cfg NeoCLIModeConfig
 				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
@@ -233,15 +233,15 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.NeoCLIMode = &cfg
 			}
-		case BeginUpdate:
+		case cloudapitype.AppAPICapabilityBeginUpdate:
 			if entry.Version == 1 {
 				parsed.BeginUpdate = true
 			}
-		case StackOutputs:
+		case cloudapitype.AppAPICapabilityStackOutputs:
 			if entry.Version == 1 {
 				parsed.StackOutputs = true
 			}
-		case CoherenceWindows:
+		case cloudapitype.AppAPICapabilityCoherenceWindows:
 			parsed.CoherenceWindowsVersion = entry.Version
 		default:
 			continue

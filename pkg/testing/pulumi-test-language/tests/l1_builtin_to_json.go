@@ -32,10 +32,10 @@ func assertJSONOutput(l *L, props property.Map, key string, secret bool, want an
 	if !assert.True(l, ok, "expected output %q to be present", key) {
 		return
 	}
-	if assert.Equal(l, secret, pv.Secret(), "expected output %q secret to be %v", key, secret) {
+	if assert.Equal(l, secret, pv.IsSecret(), "expected output %q secret to be %v", key, secret) {
 		return
 	}
-	if pv.Secret() {
+	if pv.IsSecret() {
 		pv = pv.WithSecret(false)
 	}
 	if !assert.True(l, pv.IsString(), "expected output %q to be a JSON string, got %v", key, pv) {

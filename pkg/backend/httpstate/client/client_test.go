@@ -736,10 +736,10 @@ func TestGetCapabilities(t *testing.T) {
 		actualResp := apitype.CapabilitiesResponse{
 			Capabilities: []apitype.APICapabilityConfig{{
 				Version:       3,
-				Capability:    apitype.DeltaCheckpointUploads,
+				Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 				Configuration: json.RawMessage(cfgJSON),
 			}, {
-				Capability: apitype.BatchEncrypt,
+				Capability: cloudapitype.AppAPICapabilityBatchEncrypt,
 			}},
 		}
 		respJSON, err := json.Marshal(actualResp)
@@ -752,10 +752,10 @@ func TestGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		require.Len(t, resp.Capabilities, 2)
-		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
+		assert.Equal(t, cloudapitype.AppAPICapabilityDeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
-		assert.Equal(t, resp.Capabilities[1].Capability, apitype.BatchEncrypt)
+		assert.Equal(t, resp.Capabilities[1].Capability, cloudapitype.AppAPICapabilityBatchEncrypt)
 
 		parsed, err := resp.Parse()
 		require.NoError(t, err)
@@ -2428,9 +2428,9 @@ func TestCompleteUpdateSendsOutputs(t *testing.T) {
 	}
 
 	err := newMockClient(server).CompleteUpdate(
-		t.Context(), update, apitype.UpdateStatusSucceeded, updateTokenStaticSource("update-token"), outputs)
+		t.Context(), update, cloudapitype.AppUpdateStatusSucceeded, updateTokenStaticSource("update-token"), outputs)
 	require.NoError(t, err)
-	assert.Equal(t, apitype.UpdateStatusSucceeded, gotBody.Status)
+	assert.Equal(t, cloudapitype.AppUpdateStatusSucceeded, gotBody.Status)
 	assert.Equal(t, map[string]any{"foo": "bar"}, gotBody.Outputs)
 	assert.Equal(t, &apitype.SecretsProvidersV1{Type: "b64"}, gotBody.SecretsProviders)
 }

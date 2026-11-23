@@ -25,11 +25,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
@@ -216,12 +217,9 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 	}
 
 	// Don't calculate hashes in the program, leave it to the engine
-	asset, err := plugin.MarshalAsset(&resource.Asset{
+	asset := propertyrpc.MarshalValue(property.New(&resource.Asset{
 		Path: "../test.txt",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal asset: %w", err)
-	}
+	}))
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:   "asset-archive:index:AssetResource",
@@ -237,12 +235,9 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
-	archive, err := plugin.MarshalArchive(&resource.Archive{
+	archive := propertyrpc.MarshalValue(property.New(&resource.Archive{
 		Path: "../archive.tar",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal archive: %w", err)
-	}
+	}))
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:   "asset-archive:index:ArchiveResource",
@@ -258,12 +253,9 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
-	folder, err := plugin.MarshalArchive(&resource.Archive{
+	folder := propertyrpc.MarshalValue(property.New(&resource.Archive{
 		Path: "../folder",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal folder: %w", err)
-	}
+	}))
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:   "asset-archive:index:ArchiveResource",
@@ -279,7 +271,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
-	assarc, err := plugin.MarshalArchive(&resource.Archive{
+	assarc := propertyrpc.MarshalValue(property.New(&resource.Archive{
 		Assets: map[string]any{
 			"string": &resource.Asset{
 				Text: "file contents",
@@ -294,10 +286,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 				Path: "../archive.tar",
 			},
 		},
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal asset archive: %w", err)
-	}
+	}))
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:   "asset-archive:index:ArchiveResource",
@@ -320,10 +309,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not create remote asset: %w", err)
 	}
 
-	mremoteass, err := plugin.MarshalAsset(remoteass, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal remote asset: %w", err)
-	}
+	mremoteass := propertyrpc.MarshalValue(property.New(remoteass))
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:   "asset-archive:index:AssetResource",
@@ -346,10 +332,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not create remote archive: %w", err)
 	}
 
-	mremotetarc, err := plugin.MarshalArchive(remotearc, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal remote archive: %w", err)
-	}
+	mremotetarc := propertyrpc.MarshalValue(property.New(remotearc))
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:   "asset-archive:index:ArchiveResource",
@@ -365,18 +348,12 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
-	stringAsset, err := plugin.MarshalAsset(&resource.Asset{
+	stringAsset := propertyrpc.MarshalValue(property.New(&resource.Asset{
 		Text: "file contents",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal string asset: %w", err)
-	}
-	folderArchive, err := plugin.MarshalArchive(&resource.Archive{
+	}))
+	folderArchive := propertyrpc.MarshalValue(property.New(&resource.Archive{
 		Path: "../folder",
-	}, plugin.MarshalOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal folder archive: %w", err)
-	}
+	}))
 
 	outputs := &structpb.Struct{
 		Fields: map[string]*structpb.Value{
