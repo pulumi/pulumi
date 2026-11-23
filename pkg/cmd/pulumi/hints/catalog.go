@@ -47,8 +47,7 @@ func ESCCredentials(message string) Hint {
 	}
 }
 
-// NeoDebug suggests debugging a preview's or update's errors or warnings with Pulumi Neo, through link or by running
-// debugCommand.
+// NeoDebug suggests debugging a preview's or update's diagnostics with Pulumi Neo, at link or by running debugCommand.
 func NeoDebug(link, debugCommand string) Hint {
 	return Hint{
 		ID:       "neo-debug",
