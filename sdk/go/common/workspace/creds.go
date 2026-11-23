@@ -244,14 +244,16 @@ func (a Account) Save(key string, current bool) error {
 	return storeAccountAt(a.sourcePath, key, a, current)
 }
 
-// Information about the token that was used to authenticate the current user. At most one of Team or
-// ServicePrincipal is set. Organization is set for organization and service principal tokens, and may be set for
-// team tokens.
+// Information about the token that was used to authenticate the current user. The values are display names for
+// showing to people, not identifiers. An organization token sets Organization. A team token sets Team and
+// Organization (older Pulumi Cloud versions set only Team, to the team's name). A service principal token sets
+// ServicePrincipal and Organization. A personal token has no token information. To tell the kind of token, check
+// ServicePrincipal first, then Team, then Organization.
 type TokenInformation struct {
 	Name             string     `json:"name"`                       // The name of the token.
 	Organization     string     `json:"organization,omitempty"`     // The display name of the token's organization.
-	Team             string     `json:"team,omitempty"`             // If this was a team token, the team it was for.
-	ServicePrincipal string     `json:"servicePrincipal,omitempty"` // For a service principal token, its name.
+	Team             string     `json:"team,omitempty"`             // For a team token, the team's display name.
+	ServicePrincipal string     `json:"servicePrincipal,omitempty"` // For a service principal token, its display name.
 	ExpiresAt        *time.Time `json:"expiresAt,omitempty"`        // The time when this token expires.
 }
 

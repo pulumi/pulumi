@@ -161,6 +161,42 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	assert.Contains(t, stdout, "Token name: team-token")
 }
 
+func TestWhoAmICmd_verbose_teamTokenWithOrganization(t *testing.T) {
+	t.Parallel()
+
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "team-account:abc123", []string{"org1"}, &workspace.TokenInformation{
+				Name:         "team-token",
+				Organization: "My Org",
+				Team:         "My Team",
+			}, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--verbose"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	stdout := buff.String()
+	assert.Contains(t, stdout, "Token type: team: My Team\n")
+	assert.Contains(t, stdout, "Token name: team-token")
+}
+
 func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	t.Parallel()
 

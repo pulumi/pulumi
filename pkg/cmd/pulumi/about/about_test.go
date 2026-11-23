@@ -57,17 +57,22 @@ func TestBackendAboutTokenType(t *testing.T) {
 		expected  string
 	}{
 		{"personal", nil, "personal"},
-		{"organization", &workspace.TokenInformation{Name: "t", Organization: "org1"}, "organization: org1"},
-		{"team", &workspace.TokenInformation{Name: "t", Organization: "org1", Team: "myTeam"}, "team: myTeam"},
+		{"organization", &workspace.TokenInformation{Name: "t", Organization: "My Org"}, "organization: My Org"},
+		{"team", &workspace.TokenInformation{Name: "t", Team: "My Team"}, "team: My Team"},
+		{
+			"team with organization",
+			&workspace.TokenInformation{Name: "t", Organization: "My Org", Team: "My Team"},
+			"team: My Team",
+		},
 		{
 			"service principal",
-			&workspace.TokenInformation{Name: "t", Organization: "org1", ServicePrincipal: "ci-bot"},
-			"service principal: ci-bot (organization: org1)",
+			&workspace.TokenInformation{Name: "t", Organization: "My Org", ServicePrincipal: "CI Bot"},
+			"service principal: CI Bot (organization: My Org)",
 		},
 		{
 			"service principal without organization",
-			&workspace.TokenInformation{Name: "t", ServicePrincipal: "ci-bot"},
-			"service principal: ci-bot",
+			&workspace.TokenInformation{Name: "t", ServicePrincipal: "CI Bot"},
+			"service principal: CI Bot",
 		},
 		{"unknown", &workspace.TokenInformation{Name: "t"}, "unknown"},
 	}
