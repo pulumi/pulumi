@@ -499,8 +499,23 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			outs = resource.ToResourcePropertyMap(resp.Properties)
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
-			if err == nil && !s.deployment.opts.DryRun && id == "" {
-				return resourceStatus, nil, errors.New("provider did not return an ID from Create")
+			if !s.deployment.opts.DryRun && id == "" {
+				if err == nil {
+					return resourceStatus, nil, errors.New("provider did not return an ID from Create")
+				}
+
+				// The provider reported a partial failure but gave us no ID. Without an ID the engine can't
+				// refresh, update or delete the resource, so committing it to state would leave the user with
+				// an entry they can only remove by hand. Treat this as a plain failure instead, so nothing is
+				// written and the next update tries the create again, and tell the user that something may
+				// have been created that Pulumi isn't tracking.
+				s.Deployment().Diag().Warningf(&diag.Diag{
+					URN: s.URN(),
+					Message: "the provider reported a partial failure but did not return an ID from Create, " +
+						"so the resource was not saved to state; check whether it was created in the cloud " +
+						"provider and delete or import it if so",
+				})
+				return resource.StatusOK, nil, err
 			}
 		}
 	}

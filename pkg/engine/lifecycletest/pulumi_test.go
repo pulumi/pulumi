@@ -1050,6 +1050,67 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 }
 
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
+// TestCreatePartialFailureWithoutID checks that a resource is not committed to state when the provider reports a
+// partial failure from Create without returning an ID. The engine can do nothing with such a resource other than
+// make the user delete it, so it should be left out of state and created again on the next update.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/25765.
+func TestCreatePartialFailureWithoutID(t *testing.T) {
+	t.Parallel()
+
+	failCreate := true
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if failCreate {
+						return plugin.CreateResponse{
+							Properties: property.NewMap(map[string]property.Value{
+								"output_prop": property.New(float64(42)),
+							}),
+							Status: resource.StatusPartialFailure,
+						}, errors.New("intentionally failed create, no id")
+					}
+					return plugin.CreateResponse{ID: "created-id", Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create, no id")
+	require.NotNil(t, snap)
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, resURN, res.URN, "resource without an ID must not be committed to state")
+	}
+	assert.Empty(t, snap.PendingOperations)
+
+	// The next update creates the resource again rather than tripping over an empty ID.
+	failCreate = false
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	var found *pkgresource.State
+	for _, res := range snap.Resources {
+		if res.URN == resURN {
+			found = res
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, resource.ID("created-id"), found.ID)
+}
+
 func TestUpdatePartialFailure(t *testing.T) {
 	t.Parallel()
 

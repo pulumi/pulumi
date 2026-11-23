@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Don't save a resource to state when the provider reports a partial failure from Create without returning an ID, and warn that it may exist in the cloud provider
+time: 2026-11-23T17:45:00.000000000+02:00
