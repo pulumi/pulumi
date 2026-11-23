@@ -96,17 +96,23 @@ type cacheEntry struct {
 type source struct {
 	key   string
 	fetch func(context.Context) ([]Notification, error)
+	// dismiss, if set, also dismisses the notification where it came from.
+	dismiss func(ctx context.Context, id string) error
 }
 
-// sources returns where to fetch notifications from: the static file, and the default org of the
-// current Pulumi Cloud login, if there is one.
+// sources returns where to fetch notifications from: the static file, and the Pulumi Cloud inbox of
+// the current login's default org, if there is one.
 func sources(staticURL string) []source {
-	static := source{staticSource, func(ctx context.Context) ([]Notification, error) {
+	static := source{key: staticSource, fetch: func(ctx context.Context) ([]Notification, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, staticURL, nil)
 		if err != nil {
 			return nil, err
 		}
-		return decodeResponse(http.DefaultClient.Do(req))
+		var raw []json.RawMessage
+		if err := decodeResponse(http.DefaultClient.Do(req))(&raw); err != nil {
+			return nil, err
+		}
+		return decode(raw), nil
 	}}
 
 	// ponytail: like the update check, this only knows the stored current login, so
@@ -125,22 +131,75 @@ func sources(staticURL string) []source {
 		}
 	}
 
-	cloud := source{cloudURL + "/" + org, func(ctx context.Context) ([]Notification, error) {
-		c := client.NewClient(cloudURL, token, false, cmdutil.Diag())
+	c := client.NewClient(cloudURL, token, false, cmdutil.Diag())
+	// inbox returns the path of the org's Notification Center inbox, or "" if the user has no org.
+	inbox := func(ctx context.Context) (string, error) {
 		org := org
 		if org == "" {
 			resp, err := c.GetDefaultOrg(ctx)
-			if err != nil {
-				return nil, err
+			if err != nil || resp.GitHubLogin == "" {
+				return "", err
 			}
 			org = resp.GitHubLogin
 		}
-		if org == "" {
-			return []Notification{}, nil
+		return "/api/preview/orgs/" + url.PathEscape(org) + "/notifications", nil
+	}
+
+	cloud := source{key: cloudURL + "/" + org}
+	cloud.fetch = func(ctx context.Context) ([]Notification, error) {
+		path, err := inbox(ctx)
+		if err != nil || path == "" {
+			return []Notification{}, err
+		}
+		var resp struct {
+			Notifications []struct {
+				ID          string  `json:"id"`
+				Title       string  `json:"title"`
+				Body        *string `json:"body"`
+				DeepLinkURL *string `json:"deepLinkUrl"`
+				Dismissible bool    `json:"dismissible"`
+			} `json:"notifications"`
+		}
+		err = decodeResponse(c.RawCall(
+			ctx, http.MethodGet, path, url.Values{"unreadOnly": {"true"}}, nil, nil, false))(&resp)
+		if err != nil {
+			return nil, err
+		}
+
+		ns := []Notification{}
+		for _, item := range resp.Notifications {
+			var lines []string
+			if item.Body != nil {
+				lines = append(lines, *item.Body)
+			}
+			if item.DeepLinkURL != nil {
+				if link := client.CloudConsoleURL(cloudURL, *item.DeepLinkURL); link != "" {
+					lines = append(lines, link)
+				}
+			}
+			// Items that can't be dismissed mirror a problem that needs fixing, such as billing.
+			severity := diag.Error
+			if item.Dismissible {
+				severity = diag.Warning
+			}
+			ns = append(ns, Notification{
+				Title: item.Title, ID: item.ID, Overview: strings.Join(lines, "\n"), Severity: severity, SchemaVersion: 1,
+			})
+		}
+		return ns, nil
+	}
+	cloud.dismiss = func(ctx context.Context, id string) error {
+		path, err := inbox(ctx)
+		if err != nil || path == "" {
+			return err
+		}
+		body, err := json.Marshal(map[string][]string{"ids": {id}})
+		if err != nil {
+			return err
 		}
 		return decodeResponse(c.RawCall(
-			ctx, http.MethodGet, "/api/orgs/"+url.PathEscape(org)+"/notifications", nil, nil, nil, false))
-	}}
+			ctx, http.MethodPost, path+"/dismiss", nil, bytes.NewReader(body), nil, false))(nil)
+	}
 	return []source{static, cloud}
 }
 
@@ -214,20 +273,22 @@ func refresh(ctx context.Context, ss []source, cache map[string]cacheEntry) ([]N
 	return ns, errors.Join(errs...)
 }
 
-func decodeResponse(resp *http.Response, err error) ([]Notification, error) {
-	if err != nil {
-		return nil, err
+// decodeResponse checks that a response succeeded, and returns a function that decodes its JSON body
+// into v, or only closes it if v is nil.
+func decodeResponse(resp *http.Response, err error) func(v any) error {
+	return func(v any) error {
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			return fmt.Errorf("unexpected status: %s", resp.Status)
+		}
+		if v == nil {
+			return nil
+		}
+		return json.NewDecoder(resp.Body).Decode(v)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
-	}
-
-	var raw []json.RawMessage
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return nil, err
-	}
-	return decode(raw), nil
 }
 
 // decode skips entries it can't understand, so that one malformed or newer-format entry doesn't
@@ -431,7 +492,17 @@ func Dismiss(ctx context.Context, staticURL, prefix string) (Notification, error
 		})
 	}
 
-	return m.notification, writeJSON(dismissedFile, dismissed)
+	if err := writeJSON(dismissedFile, dismissed); err != nil {
+		return m.notification, err
+	}
+	for _, s := range ss {
+		if s.key == m.source && s.dismiss != nil {
+			if err := s.dismiss(ctx, m.notification.ID); err != nil {
+				return m.notification, fmt.Errorf("dismissing in Pulumi Cloud: %w", err)
+			}
+		}
+	}
+	return m.notification, nil
 }
 
 // shortPrefixes maps each lowercased ID to its shortest prefix, of at least minPrefix characters,

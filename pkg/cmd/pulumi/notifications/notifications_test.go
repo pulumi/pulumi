@@ -210,23 +210,31 @@ func TestDismiss(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(stderr.String(), "pulumi notifications dismiss <id>"))
 }
 
-func TestStart_FetchesCloudNotifications(t *testing.T) {
+func TestCloudNotifications(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
-	billing := Notification{Title: "Billing", ID: "b1111111-0000-0000-0000-000000000000", SchemaVersion: 1}
+	t.Setenv("PULUMI_CONSOLE_DOMAIN", "app.example.com")
 	static, err := json.Marshal([]Notification{survey})
 	require.NoError(t, err)
-	cloud, err := json.Marshal([]Notification{billing})
-	require.NoError(t, err)
 
+	var dismissed string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/static":
 			_, _ = w.Write(static)
 		case "/api/user/organizations/default":
 			_, _ = w.Write([]byte(`{"GitHubLogin": "acme"}`))
-		case "/api/orgs/acme/notifications":
+		case "/api/preview/orgs/acme/notifications":
 			assert.Equal(t, "token secret", r.Header.Get("Authorization"))
-			_, _ = w.Write(cloud)
+			assert.Equal(t, "true", r.URL.Query().Get("unreadOnly"))
+			_, _ = w.Write([]byte(`{"notifications": [
+				{"id": "b1111111", "title": "Payment failed", "body": "Update your card.",
+				 "deepLinkUrl": "/acme/settings/billing", "dismissible": false},
+				{"id": "c2222222", "title": "Task complete", "dismissible": true}
+			], "unreadCount": 2}`))
+		case "/api/preview/orgs/acme/notifications/dismiss":
+			b, _ := io.ReadAll(r.Body)
+			dismissed = string(b)
+			w.WriteHeader(http.StatusNoContent)
 		default:
 			http.NotFound(w, r)
 		}
@@ -237,15 +245,25 @@ func TestStart_FetchesCloudNotifications(t *testing.T) {
 		Accounts: map[string]workspace.Account{srv.URL: {AccessToken: "secret"}},
 	}))
 
+	billing := Notification{
+		Title: "Payment failed", ID: "b1111111", Severity: diag.Error, SchemaVersion: 1,
+		Overview: "Update your card.\nhttp://app.example.com/acme/settings/billing",
+	}
+	task := Notification{Title: "Task complete", ID: "c2222222", Severity: diag.Warning, SchemaVersion: 1}
+
 	pending := Start(t.Context(), srv.URL+"/static")
 	var got []Notification
 	require.Eventually(t, func() bool {
 		got = pending()
-		return len(got) == 2
+		return len(got) == 3
 	}, 5*time.Second, 10*time.Millisecond)
+	assert.ElementsMatch(t, []Notification{survey, billing, task}, got)
 
-	assert.ElementsMatch(t, []Notification{survey, billing}, got)
-	assert.Equal(t, []Notification{billing}, readCache()[srv.URL+"/"].Notifications)
+	n, err := Dismiss(t.Context(), srv.URL+"/static", "c22")
+	require.NoError(t, err)
+	assert.Equal(t, task, n)
+	assert.JSONEq(t, `{"ids": ["c2222222"]}`, dismissed)
+	assert.Equal(t, []string{task.ID}, readDismissed()[srv.URL+"/"])
 }
 
 func TestPrint_Frequency(t *testing.T) {
