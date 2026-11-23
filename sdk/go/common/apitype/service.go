@@ -19,52 +19,53 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 )
 
 // An APICapability is the name of a capability or feature that a service backend
 // may or may not support.
-type APICapability string
+type APICapability = cloudapitype.AppAPICapability
 
 const (
 	// Deprecated. Use DeltaCheckpointUploadsV2.
-	DeltaCheckpointUploads APICapability = "delta-checkpoint-uploads"
+	DeltaCheckpointUploads = cloudapitype.AppAPICapabilityDeltaCheckpointUploads
 
 	// DeltaCheckpointUploads is the feature that enables the CLI to upload checkpoints
 	// via the PatchUpdateCheckpointDeltaRequest API to save on network bytes.
-	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
+	DeltaCheckpointUploadsV2 = cloudapitype.AppAPICapabilityDeltaCheckpointUploadsV2
 
 	// Indicates that the service backend supports batch encryption.
-	BatchEncrypt APICapability = "batch-encrypt"
+	BatchEncrypt = cloudapitype.AppAPICapabilityBatchEncrypt
 
 	// Indicates whether the service supports summarizing errors via Copilot.
-	CopilotSummarizeError APICapability = "copilot-summarize-error"
+	CopilotSummarizeError = cloudapitype.AppAPICapabilityCopilotSummarizeError
 
 	// Indicates whether the service supports the Copilot explainer.
-	CopilotExplainPreview APICapability = "copilot-explain-preview"
+	CopilotExplainPreview = cloudapitype.AppAPICapabilityCopilotExplainPreview
 
 	// Indicates the maximum deployment schema version that the service supports.
-	DeploymentSchemaVersion APICapability = "deployment-schema-version"
+	DeploymentSchemaVersion = cloudapitype.AppAPICapabilityDeploymentSchemaVersion
 
 	// Indicates whether the service supports retrieving a stack's required policy packs.
-	StackPolicyPacks APICapability = "stack-policy-packs"
+	StackPolicyPacks = cloudapitype.AppAPICapabilityStackPolicyPacks
 
 	// APIVersion advertises the REST API version range that the service speaks, negotiated
 	// via the `Accept: application/vnd.pulumi+N` header. The configuration carries the
 	// server's max, min, and default API versions; see APIVersionCapabilityConfig.
-	APIVersion APICapability = "api-version"
+	APIVersion = cloudapitype.AppAPICapabilityAPIVersion
 
 	// NeoCLIMode advertises minimum CLI requirements for `pulumi neo`; see NeoCLIModeConfig.
-	NeoCLIMode APICapability = "neo-cli-mode"
+	NeoCLIMode = cloudapitype.AppAPICapabilityNeoCLIMode
 
 	// Indicates that the service supports the combined begin-update endpoint.
-	BeginUpdate APICapability = "begin-update"
+	BeginUpdate = cloudapitype.AppAPICapabilityBeginUpdate
 
 	// Indicates that the service supports reading a stack's outputs directly, without
 	// exporting the whole deployment.
-	StackOutputs APICapability = "stack-outputs"
+	StackOutputs = cloudapitype.AppAPICapabilityStackOutputs
 
 	// Indicates that the service supports stack update coherence windows.
-	CoherenceWindows APICapability = "coherence-windows"
+	CoherenceWindows = cloudapitype.AppAPICapabilityCoherenceWindows
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -177,13 +178,13 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 	var parsed Capabilities
 	for _, entry := range r.Capabilities {
 		switch entry.Capability {
-		case DeltaCheckpointUploads:
+		case cloudapitype.AppAPICapabilityDeltaCheckpointUploads:
 			var upcfg DeltaCheckpointUploadsConfigV2
 			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
 				return Capabilities{}, fmt.Errorf("decoding DeltaCheckpointUploadsConfig returned %w", err)
 			}
 			parsed.DeltaCheckpointUpdates = &upcfg
-		case DeltaCheckpointUploadsV2:
+		case cloudapitype.AppAPICapabilityDeltaCheckpointUploadsV2:
 			if entry.Version == 2 {
 				var upcfg DeltaCheckpointUploadsConfigV2
 				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
@@ -191,17 +192,17 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.DeltaCheckpointUpdates = &upcfg
 			}
-		case BatchEncrypt:
+		case cloudapitype.AppAPICapabilityBatchEncrypt:
 			parsed.BatchEncryption = true
-		case CopilotSummarizeError:
+		case cloudapitype.AppAPICapabilityCopilotSummarizeError:
 			if entry.Version == 1 {
 				parsed.CopilotSummarizeErrorV1 = true
 			}
-		case CopilotExplainPreview:
+		case cloudapitype.AppAPICapabilityCopilotExplainPreview:
 			if entry.Version == 1 {
 				parsed.CopilotExplainPreviewV1 = true
 			}
-		case DeploymentSchemaVersion:
+		case cloudapitype.AppAPICapabilityDeploymentSchemaVersion:
 			if entry.Version == 1 {
 				var versionConfig DeploymentSchemaVersionConfig
 				if err := json.Unmarshal(entry.Configuration, &versionConfig); err != nil {
@@ -209,11 +210,11 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.DeploymentSchemaVersion = versionConfig.Version
 			}
-		case StackPolicyPacks:
+		case cloudapitype.AppAPICapabilityStackPolicyPacks:
 			if entry.Version == 1 {
 				parsed.StackPolicyPacks = true
 			}
-		case APIVersion:
+		case cloudapitype.AppAPICapabilityAPIVersion:
 			if entry.Version == 1 {
 				var cfg APIVersionCapabilityConfig
 				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
@@ -224,7 +225,7 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.APIVersion = &cfg
 			}
-		case NeoCLIMode:
+		case cloudapitype.AppAPICapabilityNeoCLIMode:
 			if entry.Version == 1 {
 				var cfg NeoCLIModeConfig
 				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
@@ -232,15 +233,15 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.NeoCLIMode = &cfg
 			}
-		case BeginUpdate:
+		case cloudapitype.AppAPICapabilityBeginUpdate:
 			if entry.Version == 1 {
 				parsed.BeginUpdate = true
 			}
-		case StackOutputs:
+		case cloudapitype.AppAPICapabilityStackOutputs:
 			if entry.Version == 1 {
 				parsed.StackOutputs = true
 			}
-		case CoherenceWindows:
+		case cloudapitype.AppAPICapabilityCoherenceWindows:
 			parsed.CoherenceWindowsVersion = entry.Version
 		default:
 			continue

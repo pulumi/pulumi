@@ -909,6 +909,14 @@ func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
 // snapshot before it is written, in order to aid debugging should future operations
 // fail with an error.
 func (sm *SnapshotManager) saveSnapshot() error {
+	// If the persister discards writes (dry-run paths that only need the final in-memory
+	// snapshot), skip serialization entirely. Serializing re-encrypts changed secrets via the
+	// stack's secrets manager — for the service manager that's a `stack:encrypt` API call per
+	// step — and all of it would be thrown away.
+	if _, ok := sm.persister.(DiscardPersister); ok {
+		return nil
+	}
+
 	deployment, err := sm.Deployment()
 	if err != nil {
 		return err

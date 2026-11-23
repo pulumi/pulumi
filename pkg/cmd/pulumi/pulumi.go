@@ -69,6 +69,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/notifications"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
@@ -223,6 +224,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	processStartTime := time.Now()
 
 	updateCheckResult := make(chan *updateCheckResult)
+	pendingNotifications := func() []notifications.Notification { return nil }
 
 	var cmd *cobra.Command
 	cleanup := func() {
@@ -422,6 +424,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}()
 			}
 
+			if !env.HideNotifications.Value() && !cmdutil.DisableInteractive &&
+				notifications.ShownAfter(cmd.CommandPath()) {
+				pendingNotifications = notifications.Start(ctx, notifications.StaticURL)
+			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -444,6 +451,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				default:
 					// The version didn't make it in time, so don't block the user
 				}
+
+				notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version)
 			}
 		},
 	}

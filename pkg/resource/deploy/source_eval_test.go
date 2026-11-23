@@ -47,13 +47,13 @@ import (
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -3215,10 +3215,9 @@ func TestCall(t *testing.T) {
 			close(cancel)
 		}()
 
-		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewProperty("test-value"),
-		}, plugin.MarshalOptions{})
-		require.NoError(t, err)
+		args := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"test": property.New("test-value"),
+		}))
 
 		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
@@ -3285,10 +3284,9 @@ func TestCall(t *testing.T) {
 		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
-		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewProperty("test-value"),
-		}, plugin.MarshalOptions{})
-		require.NoError(t, err)
+		args := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"test": property.New("test-value"),
+		}))
 
 		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
@@ -3367,10 +3365,9 @@ func TestCall(t *testing.T) {
 		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
-		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewProperty("test-value"),
-		}, plugin.MarshalOptions{})
-		require.NoError(t, err)
+		args := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"test": property.New("test-value"),
+		}))
 
 		res, err := mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
@@ -4042,16 +4039,11 @@ func TestValidationFailures(t *testing.T) {
 			},
 		}
 
-		props := resource.PropertyMap{
-			"testproperty": resource.NewPropertyValue("testvalue"),
-			"nested": resource.NewProperty(
-				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
-			),
-			"secretproperty": resource.MakeSecret(resource.NewPropertyValue("secretvalue")),
-		}
-
-		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{KeepSecrets: true})
-		require.NoError(t, err)
+		marshalledProps := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"testproperty":   property.New("testvalue"),
+			"nested":         property.New(property.NewArray([]property.Value{property.New("nestedvalue")})),
+			"secretproperty": property.New("secretvalue").WithSecret(true),
+		}))
 
 		req := &pulumirpc.RegisterResourceRequest{
 			Version: "1.0.0",
@@ -4060,7 +4052,7 @@ func TestValidationFailures(t *testing.T) {
 			Remote:  true,
 			Object:  marshalledProps,
 		}
-		_, err = rm.RegisterResource(t.Context(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "resource monitor shut down")
 		assert.Equal(t, c.expectedStderr, stderr.String())
 		assert.Equal(t, "", stdout.String())
@@ -4112,115 +4104,6 @@ func TestUpgradeOutputValues(t *testing.T) {
 			})
 			assert.True(t, tt.expected.Equals(actual.Get("wrapper")),
 				"expected %v, got %v", tt.expected, actual.Get("wrapper"))
-		})
-	}
-}
-
-func TestDowngradeOutputValues(t *testing.T) {
-	t.Parallel()
-
-	dep := urn.URN("urn:pulumi:stack::project::package:module:resource::dep")
-
-	cases := []struct {
-		name     string
-		input    property.Map
-		expected property.Map
-	}{
-		{
-			"plain",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello"),
-				"bar": property.New(42.0),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello"),
-				"bar": property.New(42.0),
-			}),
-		},
-		{
-			"secret",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello").WithSecret(true),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello").WithSecret(true),
-			}),
-		},
-		{
-			"value with dependencies",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello").WithDependencies([]urn.URN{dep}),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello"),
-			}),
-		},
-		{
-			"secret value with dependencies",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello").WithSecret(true).WithDependencies([]urn.URN{dep}),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New("hello").WithSecret(true),
-			}),
-		},
-		{
-			"computed value with dependencies",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New(property.Computed).WithDependencies([]urn.URN{dep}),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New(property.Computed),
-			}),
-		},
-		{
-			"nested array",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New([]property.Value{
-					property.New("hello").WithDependencies([]urn.URN{dep}),
-				}),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New([]property.Value{
-					property.New("hello"),
-				}),
-			}),
-		},
-		{
-			"nested map",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New(property.NewMap(map[string]property.Value{
-					"bar": property.New("hello").WithDependencies([]urn.URN{dep}),
-				})),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New(property.NewMap(map[string]property.Value{
-					"bar": property.New("hello"),
-				})),
-			}),
-		},
-		{
-			"resource reference with computed id and dependencies",
-			property.NewMap(map[string]property.Value{
-				"foo": property.New(property.ResourceReference{
-					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  property.New(property.Computed).WithDependencies([]urn.URN{dep}),
-				}).WithDependencies([]urn.URN{dep}),
-			}),
-			property.NewMap(map[string]property.Value{
-				"foo": property.New(property.ResourceReference{
-					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  property.New(property.Computed),
-				}),
-			}),
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			actual := downgradeOutputValues(tt.input)
-			assert.True(t, tt.expected.Equals(actual), "expected %v, got %v", tt.expected, actual)
 		})
 	}
 }

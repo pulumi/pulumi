@@ -36,6 +36,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/hexops/gotextdiff"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -142,13 +143,13 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		var result []apitype.APICapabilityConfig
 		if delta {
 			result = append(result, apitype.APICapabilityConfig{
-				Capability:    apitype.DeltaCheckpointUploads,
+				Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 				Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 			})
 		}
 		if v4 {
 			result = append(result, apitype.APICapabilityConfig{
-				Capability:    apitype.DeploymentSchemaVersion,
+				Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 				Version:       1,
 				Configuration: json.RawMessage(`{"version":4}`),
 			})
@@ -668,11 +669,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			case "/api/capabilities":
 				resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{
 					{
-						Capability:    apitype.DeltaCheckpointUploads,
+						Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 						Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 					},
 					{
-						Capability:    apitype.DeploymentSchemaVersion,
+						Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 						Version:       1,
 						Configuration: json.RawMessage(`{"version":4}`),
 					},

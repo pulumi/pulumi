@@ -1136,6 +1136,7 @@ class CheckConfigFailure(google.protobuf.message.Message):
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
     REMEDIATIONS_FIELD_NUMBER: builtins.int
+    HINT_FIELD_NUMBER: builtins.int
     property: builtins.str
     """The provider configuration property that failed validation."""
     reason: builtins.str
@@ -1144,14 +1145,20 @@ class CheckConfigFailure(google.protobuf.message.Message):
     def remediations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CommandRemediation]:
         """Commands the user can run to resolve the failure."""
 
+    @property
+    def hint(self) -> global___Hint:
+        """A product hint relevant to this failure, if any."""
+
     def __init__(
         self,
         *,
         property: builtins.str = ...,
         reason: builtins.str = ...,
         remediations: collections.abc.Iterable[global___CommandRemediation] | None = ...,
+        hint: global___Hint | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason", "remediations", b"remediations"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["hint", b"hint"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["hint", b"hint", "property", b"property", "reason", b"reason", "remediations", b"remediations"]) -> None: ...
 
 global___CheckConfigFailure = CheckConfigFailure
 
@@ -1209,6 +1216,57 @@ class CommandRemediation(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["command", b"command", "description", b"description", "env", b"env"]) -> None: ...
 
 global___CommandRemediation = CommandRemediation
+
+@typing.final
+class Hint(google.protobuf.message.Message):
+    """A `Hint` points the user to a Pulumi feature that helps with a failure. A provider sets it on a
+    [](pulumirpc.CheckConfigFailure), and the engine decides whether to show it.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    class _Kind:
+        ValueType = typing.NewType("ValueType", builtins.int)
+        V: typing_extensions.TypeAlias = ValueType
+
+    class _KindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Hint._Kind.ValueType], builtins.type):
+        DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+        UNSPECIFIED: Hint._Kind.ValueType  # 0
+        """No product hint is relevant."""
+        DYNAMIC_CREDENTIALS: Hint._Kind.ValueType  # 1
+        """The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+        provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown
+        profile.
+        """
+
+    class Kind(_Kind, metaclass=_KindEnumTypeWrapper):
+        """The kinds of product hint."""
+
+    UNSPECIFIED: Hint.Kind.ValueType  # 0
+    """No product hint is relevant."""
+    DYNAMIC_CREDENTIALS: Hint.Kind.ValueType  # 1
+    """The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+    provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown
+    profile.
+    """
+
+    KIND_FIELD_NUMBER: builtins.int
+    MESSAGE_FIELD_NUMBER: builtins.int
+    kind: global___Hint.Kind.ValueType
+    """Which product hint this is."""
+    message: builtins.str
+    """The text that the engine shows if it decides to show the hint. It may span several lines, for example to put a
+    "Learn more" link on a line of its own.
+    """
+    def __init__(
+        self,
+        *,
+        kind: global___Hint.Kind.ValueType = ...,
+        message: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["kind", b"kind", "message", b"message"]) -> None: ...
+
+global___Hint = Hint
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):

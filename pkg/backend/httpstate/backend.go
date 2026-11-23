@@ -38,6 +38,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -2406,16 +2407,16 @@ func (b *cloudBackend) runEngineAction(
 	close(displayEvents)
 
 	// Mark the update as complete.
-	status := apitype.UpdateStatusSucceeded
+	status := cloudapitype.AppUpdateStatusSucceeded
 	if updateErr != nil {
-		status = apitype.UpdateStatusFailed
+		status = cloudapitype.AppUpdateStatusFailed
 	}
 	var outputs *apitype.StackOutputsResponse
-	if status == apitype.UpdateStatusSucceeded {
+	if status == cloudapitype.AppUpdateStatusSucceeded {
 		var err error
 		if outputs, err = outputsRecorder.response(ctx, op.SecretsManager); err != nil {
 			// Fail rather than let the coherence window read this preview as having no outputs.
-			status = apitype.UpdateStatusFailed
+			status = cloudapitype.AppUpdateStatusFailed
 			updateErr = result.MergeBails(updateErr, fmt.Errorf("recording stack outputs: %w", err))
 		}
 	}
@@ -2637,7 +2638,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack
 		display.Options{Color: colors.Always})
 	if err != nil {
 		return fmt.Errorf("waiting for import: %w", err)
-	} else if status != apitype.StatusSucceeded {
+	} else if status != cloudapitype.AppUpdateStatusSucceeded {
 		return fmt.Errorf("import unsuccessful: status %v", status)
 	}
 	return nil
@@ -2711,7 +2712,7 @@ func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, up
 			},
 		})
 		if err != nil {
-			return apitype.StatusFailed, err
+			return cloudapitype.AppUpdateStatusFailed, err
 		}
 
 		// We got a result, print it out.

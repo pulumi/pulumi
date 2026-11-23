@@ -103,11 +103,8 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 					"Created environment open request with ID: %s\n",
 					cr.ChangeRequestID,
 				)
-				fmt.Fprintf(
-					envcmd.esc.stdout,
-					"Change request URL: %v\n",
-					envcmd.esc.openRequestURL(crRef, cr.ChangeRequestID),
-				)
+				url := envcmd.esc.openRequestURL(crRef, cr.ChangeRequestID)
+				fmt.Fprintf(envcmd.esc.stdout, "Change request URL: %v\n", envcmd.esc.colors.Hyperlink(url, url))
 				fmt.Fprintln(envcmd.esc.stdout, "Change request submitted")
 			}
 
