@@ -50,9 +50,6 @@ var pulumiSkills = []string{
 
 // agentSkillsInstalled reports whether Pulumi's agent skills look installed for an agent working in dir. It only
 // looks at local files, and an install it doesn't recognize counts as not installed.
-//
-// This repeats a little of agentdetect's home and Claude config directory lookup rather than exporting it from the
-// SDK.
 func agentSkillsInstalled(getEnv func(string) string, home, dir string) bool {
 	claudeHome := cmp.Or(strings.TrimSpace(getEnv("CLAUDE_CONFIG_DIR")), filepath.Join(home, ".claude"))
 	configHome := cmp.Or(strings.TrimSpace(getEnv("XDG_CONFIG_HOME")), filepath.Join(home, ".config"))
