@@ -34,7 +34,7 @@ func TestLoginRequiredErrorsShareText(t *testing.T) {
 	want := "Pulumi Cloud login required\n" +
 		"  Run `pulumi login` to sign in or create a free account.\n" +
 		"  It opens your web browser and waits until you've signed in there.\n" +
-		"  For CI or headless use, set PULUMI_ACCESS_TOKEN (create one at " + tokensURL + ")."
+		"  To log in without a browser (CI, headless), set PULUMI_ACCESS_TOKEN to a token from " + tokensURL + "."
 
 	assert.Equal(t, want, LoginRequiredError{TokensURL: tokensURL}.Error())
 	assert.Equal(t, want, MissingEnvVarForNonInteractiveError{
@@ -50,7 +50,7 @@ func TestLoginRequiredErrorWithoutTokensURL(t *testing.T) {
 	assert.Equal(t, "Pulumi Cloud login required\n"+
 		"  Run `pulumi login` to sign in or create a free account.\n"+
 		"  It opens your web browser and waits until you've signed in there.\n"+
-		"  For CI or headless use, set PULUMI_ACCESS_TOKEN to a Pulumi Cloud access token.",
+		"  To log in without a browser (CI, headless), set PULUMI_ACCESS_TOKEN to a Pulumi Cloud access token.",
 		LoginRequiredError{}.Error())
 }
 

@@ -133,9 +133,9 @@ func LoginRequiredSuggestions(tokensURL string) []string {
 }
 
 func loginRequiredSuggestions(tokenVar string, tokensURL string) []string {
-	tokenLine := "For CI or headless use, set " + tokenVar + " to a Pulumi Cloud access token."
+	tokenLine := "To log in without a browser (CI, headless), set " + tokenVar + " to a Pulumi Cloud access token."
 	if tokensURL != "" {
-		tokenLine = fmt.Sprintf("For CI or headless use, set %s (create one at %s).", tokenVar, tokensURL)
+		tokenLine = fmt.Sprintf("To log in without a browser (CI, headless), set %s to a token from %s.", tokenVar, tokensURL)
 	}
 	return []string{
 		"Run `pulumi login` to sign in or create a free account.",
