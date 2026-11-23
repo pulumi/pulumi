@@ -400,7 +400,7 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	}
 	if dismissible {
 		sink.Infoerrf(diag.RawMessage("", "\nTo hide a notification, run "+
-			colors.SpecCommand+"pulumi notifications dismiss <id>"+colors.Reset+".\n"))
+			colors.SpecCommand+"pulumi notifications dismiss <id>"+colors.Reset+"."))
 	}
 	if !changed {
 		return
@@ -557,9 +557,13 @@ func render(n Notification, cliVersion, idPrefix string) string {
 		prefix = "INFO:"
 	}
 
-	resolve := strings.NewReplacer("{cli}", cliVersion)
-	overview := strings.ReplaceAll(resolve.Replace(n.Overview), "\n", "\n  ")
-	return fmt.Sprintf("\n%s %s\n\n  %s\n", prefix, resolve.Replace(n.Title), overview)
+	overview := strings.ReplaceAll(resolve(n.Overview, cliVersion), "\n", "\n  ")
+	return fmt.Sprintf("\n%s %s\n\n  %s", prefix, resolve(n.Title, cliVersion), overview)
+}
+
+// resolve replaces the placeholders in a notification's text.
+func resolve(s, cliVersion string) string {
+	return strings.ReplaceAll(s, "{cli}", cliVersion)
 }
 
 // writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written

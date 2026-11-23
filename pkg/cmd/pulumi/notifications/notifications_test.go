@@ -94,7 +94,7 @@ func TestRender(t *testing.T) {
 	}
 
 	assert.Equal(t,
-		"\nWARNING [90a]: CLI v3.100.0 is no longer actively maintained\n\n  You are running v3.100.0.\n  Please upgrade.\n",
+		"\nWARNING [90a]: CLI v3.100.0 is no longer actively maintained\n\n  You are running v3.100.0.\n  Please upgrade.",
 		colors.Never.Colorize(render(n, "v3.100.0", "90a")))
 
 	assert.NotContains(t, render(survey, "v3.100.0", "90a"), "90a")
