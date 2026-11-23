@@ -49,7 +49,7 @@ func newDismissCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Dismissed %q.\n", resolve(n.Title, version.Version))
+			fmt.Fprintf(cmd.OutOrStdout(), "Dismissed %q.\n", resolve(n.Title, version.Version, nil))
 			return nil
 		},
 	}
