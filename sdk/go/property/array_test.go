@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestArrayAppend(t *testing.T) {
@@ -226,6 +227,6 @@ func TestArrayEmpty(t *testing.T) {
 	assert.Equal(t, New(Array{}), New([]Value{}))
 	assert.Equal(t, New(Array{}).AsArray(), New([]Value{}).AsArray())
 	assert.Equal(t, New(Array{}).AsArray(), Array{})
-	assert.NotNil(t, Array{}.AsSlice())
+	require.NotNil(t, Array{}.AsSlice())
 	assert.Empty(t, Array{}.AsSlice())
 }
