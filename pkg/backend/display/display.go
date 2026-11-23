@@ -84,6 +84,7 @@ func stampEvents(events <-chan engine.Event) <-chan engine.StampedEvent {
 	go func() {
 		var sequence int
 		for e := range events {
+			recordProviderVersion(e)
 			timestamp := int(time.Now().Unix())
 			stampedEvents <- engine.StampedEvent{Event: e, Sequence: sequence, Timestamp: timestamp}
 			sequence++

@@ -61,6 +61,7 @@ func TestApplies(t *testing.T) {
 	t.Parallel()
 
 	cli := semver.MustParse("3.200.0")
+	providers := map[string][]semver.Version{"aws": {semver.MustParse("6.0.0"), semver.MustParse("7.1.0")}}
 	cases := []struct {
 		name     string
 		where    Where
@@ -73,12 +74,16 @@ func TestApplies(t *testing.T) {
 		{"CLI out of range", Where{CLI: ">= 3.201.0"}, true, false},
 		{"CLI range, unknown CLI", Where{CLI: "< 3.201.0"}, false, false},
 		{"invalid range", Where{CLI: "not a range"}, true, false},
-		{"provider condition", Where{Providers: map[string]string{"aws": ">= 0.0.0"}}, true, false},
+		{"provider in range", Where{Providers: map[string]string{"aws": "< 6.1.0"}}, true, true},
+		{"provider out of range", Where{Providers: map[string]string{"aws": ">= 8.0.0"}}, true, false},
+		{"provider absent", Where{Providers: map[string]string{"gcp": ">= 0.0.0"}}, true, false},
+		{"one provider out of range", Where{Providers: map[string]string{"aws": ">= 0.0.0", "gcp": ">= 0.0.0"}}, true, false},
+		{"invalid provider range", Where{Providers: map[string]string{"aws": "not a range"}}, true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, c.want, applies(Notification{Where: c.where}, cli, c.cliKnown))
+			assert.Equal(t, c.want, applies(Notification{Where: c.where}, cli, c.cliKnown, providers))
 		})
 	}
 }
@@ -88,16 +93,19 @@ func TestRender(t *testing.T) {
 
 	n := Notification{
 		Title:    "CLI {cli} is no longer actively maintained",
-		Overview: "You are running {cli}.\nPlease upgrade.",
+		Overview: "You are running {cli} with aws {providers.aws}.\nPlease upgrade.",
 		Severity: diag.Warning,
 	}
 
 	assert.Equal(t,
 		"\nWARNING [ID: 90a]: CLI v3.100.0 is no longer actively maintained\n\n"+
-			"  You are running v3.100.0.\n  Please upgrade.",
-		colors.Never.Colorize(render(n, "v3.100.0", "90a")))
+			"  You are running v3.100.0 with aws 6.0.0, 10.0.0.\n  Please upgrade.",
+		colors.Never.Colorize(render(n, "v3.100.0", map[string][]semver.Version{
+			"aws": {semver.MustParse("10.0.0"), semver.MustParse("6.0.0")},
+		}, "90a")))
+	assert.Equal(t, "random has a bug", resolve("random {providers.random} has a bug", "v3.100.0", nil))
 
-	assert.NotContains(t, render(survey, "v3.100.0", "90a"), "90a")
+	assert.NotContains(t, render(survey, "v3.100.0", nil, "90a"), "90a")
 }
 
 func TestShortPrefixes(t *testing.T) {
@@ -203,7 +211,7 @@ func TestDismiss(t *testing.T) {
 
 	var stderr bytes.Buffer
 	Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}),
-		[]Notification{survey, other, third}, "v3.200.0")
+		[]Notification{survey, other, third}, "v3.200.0", nil)
 	assert.NotContains(t, stderr.String(), survey.Title)
 	assert.Contains(t, stderr.String(), "WARNING [ID: 90abf]: Upgrade")
 	assert.Contains(t, stderr.String(), "ERROR [ID: 123]: Third")
@@ -222,7 +230,7 @@ func TestPrint_Frequency(t *testing.T) {
 
 	show := func() string {
 		var stderr bytes.Buffer
-		Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}), ns, "v3.200.0")
+		Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}), ns, "v3.200.0", nil)
 		return stderr.String()
 	}
 
