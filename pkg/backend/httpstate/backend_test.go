@@ -100,14 +100,14 @@ func TestBrowserLoginURLs(t *testing.T) {
 		assert.Equal(t, "https://app.pulumi.com/welcome/cli", welcomeURL)
 	})
 
-	t.Run("a known agent is named on both pages, never with its raw value", func(t *testing.T) {
+	t.Run("a known agent is named, never with its raw value", func(t *testing.T) {
 		t.Parallel()
 		u, welcomeURL, err := browserLoginURLs(ctx, "https://api.pulumi.com", "1234", "n", "laptop",
 			envFrom(map[string]string{"AI_AGENT": "claude-code_2-1-321_agent", "CLAUDECODE": "1"}))
 		require.NoError(t, err)
 		assert.Equal(t, "claude", u.Query().Get("cliAgent"))
 		assert.NotContains(t, u.String(), "2-1-321")
-		assert.Equal(t, "https://app.pulumi.com/welcome/cli?agent=claude", welcomeURL)
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli", welcomeURL)
 	})
 
 	t.Run("an agent found by its environment variables", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestBrowserLoginURLs(t *testing.T) {
 			envFrom(map[string]string{"CURSOR_AGENT": "1"}))
 		require.NoError(t, err)
 		assert.Equal(t, "cursor-cli", u.Query().Get("cliAgent"))
-		assert.Equal(t, "https://app.pulumi.com/welcome/cli?agent=cursor-cli", welcomeURL)
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli", welcomeURL)
 	})
 
 	t.Run("an unknown agent is sent as other", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestBrowserLoginURLs(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "other", u.Query().Get("cliAgent"))
 		assert.NotContains(t, u.String(), "my-internal-tool")
-		assert.Equal(t, "https://app.pulumi.com/welcome/cli?agent=other", welcomeURL)
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli", welcomeURL)
 	})
 }
 

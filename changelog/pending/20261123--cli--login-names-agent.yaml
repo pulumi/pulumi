@@ -1,4 +1,4 @@
 component: cli
 kind: improvement
-body: Tell the browser which AI coding agent started `pulumi login`, so the welcome page can say the agent can continue
+body: Tell Pulumi Cloud which AI coding agent started a browser-based `pulumi login`
 time: 2026-11-23T12:00:00Z

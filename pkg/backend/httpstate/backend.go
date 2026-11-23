@@ -470,12 +470,10 @@ func browserLoginURLs(
 	if name, ok := commandNameFromContext(ctx); ok && name != "" && name != "pulumi" {
 		q.Add("cliCommand", name)
 	}
-	// When an AI coding agent is driving the CLI, say which one, so the welcome page can tell the person signing in
-	// that their agent can carry on. Only a known agent name is sent, never the raw AI_AGENT value.
-	agent := agentdetect.KnownName(agentdetect.Detect(getEnv))
-	if agent != "" {
+	// When an AI coding agent is driving the CLI, say which one, so the console can account for someone whose agent
+	// is waiting. Only a known agent name is sent, never the raw AI_AGENT value.
+	if agent := agentdetect.KnownName(agentdetect.Detect(getEnv)); agent != "" {
 		q.Add("cliAgent", agent)
-		welcomeURL += "?" + url.Values{"agent": {agent}}.Encode()
 	}
 	u.RawQuery = q.Encode()
 
