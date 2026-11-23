@@ -2265,8 +2265,8 @@ func (s *sourcePositions) getFromRequest(req hasSourcePosition) (string, stackTr
 		if handle := req.GetParentStackTraceHandle(); handle != "" {
 			if parent, ok := s.stackTraces.Load(handle); ok {
 				newStack := make(stackTrace, 0, len(parent)+len(stack))
-				newStack = append(newStack, parent...)
 				newStack = append(newStack, stack...)
+				newStack = append(newStack, parent...)
 				stack = newStack
 			}
 		}

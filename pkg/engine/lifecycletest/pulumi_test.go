@@ -4291,8 +4291,8 @@ func TestSourcePositions(t *testing.T) {
 						Inputs:         inputs,
 						SourcePosition: fileURL(providerRegPos),
 						StackTrace: []pkgresource.StackFrame{
-							{SourcePosition: fileURL(providerPos)},
 							{SourcePosition: fileURL(providerRegPos)},
+							{SourcePosition: fileURL(providerPos)},
 						},
 						ParentStackTraceHandle: req.Info.StackTraceHandle,
 					})
@@ -4308,8 +4308,8 @@ func TestSourcePositions(t *testing.T) {
 						"",
 						fileURL(providerCallPos),
 						[]pkgresource.StackFrame{
-							{SourcePosition: fileURL(providerPos)},
 							{SourcePosition: fileURL(providerCallPos)},
+							{SourcePosition: fileURL(providerPos)},
 						}, req.Info.StackTraceHandle,
 					)
 					require.NoError(t, err)
@@ -4331,8 +4331,8 @@ func TestSourcePositions(t *testing.T) {
 						"",
 						fileURL(providerReadPos),
 						[]pkgresource.StackFrame{
-							{SourcePosition: fileURL(providerPos)},
 							{SourcePosition: fileURL(providerReadPos)},
+							{SourcePosition: fileURL(providerPos)},
 						},
 						req.Info.StackTraceHandle,
 						"",
@@ -4372,8 +4372,8 @@ func TestSourcePositions(t *testing.T) {
 			Inputs:         inputs,
 			SourcePosition: fileURL(regPos),
 			StackTrace: []pkgresource.StackFrame{
-				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(regPos)},
+				{SourcePosition: fileURL(progPos)},
 			},
 		})
 		require.NoError(t, err)
@@ -4388,8 +4388,8 @@ func TestSourcePositions(t *testing.T) {
 			"",
 			fileURL(readPos),
 			[]pkgresource.StackFrame{
-				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(readPos)},
+				{SourcePosition: fileURL(progPos)},
 			},
 			"",
 			"",
@@ -4401,8 +4401,8 @@ func TestSourcePositions(t *testing.T) {
 			Inputs:         inputs,
 			SourcePosition: fileURL(constructPos),
 			StackTrace: []pkgresource.StackFrame{
-				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(constructPos)},
+				{SourcePosition: fileURL(progPos)},
 			},
 		})
 		require.NoError(t, err)
@@ -4411,8 +4411,8 @@ func TestSourcePositions(t *testing.T) {
 		_, _, _, err = monitor.Call(
 			"pkgA:m:callA", callInputs, nil, "", "", "", fileURL(callPos),
 			[]pkgresource.StackFrame{
-				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(callPos)},
+				{SourcePosition: fileURL(progPos)},
 			}, "")
 		require.NoError(t, err)
 
@@ -4442,48 +4442,55 @@ func TestSourcePositions(t *testing.T) {
 	assert.Equal(t, regURN, reg.URN)
 	assert.Equal(t, projURL(regPos), reg.SourcePosition)
 	assert.Equal(t, []pkgresource.StackFrame{
-		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(regPos)},
+		{SourcePosition: projURL(progPos)},
 	}, reg.StackTrace)
 
 	read := snap.Resources[2]
 	assert.Equal(t, readURN, read.URN)
 	assert.Equal(t, projURL(readPos), read.SourcePosition)
 	assert.Equal(t, []pkgresource.StackFrame{
-		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(readPos)},
+		{SourcePosition: projURL(progPos)},
 	}, read.StackTrace)
 
 	reg2 := snap.Resources[3]
 	assert.Equal(t, reg2URN, reg2.URN)
 	assert.Equal(t, projURL(providerRegPos), reg2.SourcePosition)
 	assert.Equal(t, []pkgresource.StackFrame{
-		{SourcePosition: projURL(progPos)},
-		{SourcePosition: projURL(constructPos)},
-		{SourcePosition: projURL(providerPos)},
+		// RegisterResource inside Construct.
 		{SourcePosition: projURL(providerRegPos)},
+		{SourcePosition: projURL(providerPos)},
+		// Program call that entered Construct.
+		{SourcePosition: projURL(constructPos)},
+		{SourcePosition: projURL(progPos)},
 	}, reg2.StackTrace)
 
 	read2 := snap.Resources[4]
 	assert.Equal(t, read2URN, read2.URN)
 	assert.Equal(t, projURL(providerReadPos), read2.SourcePosition)
 	assert.Equal(t, []pkgresource.StackFrame{
-		{SourcePosition: projURL(progPos)},
-		{SourcePosition: projURL(constructPos)},
+		// ReadResource inside Call.
+		{SourcePosition: projURL(providerReadPos)},
 		{SourcePosition: projURL(providerPos)},
+		// Call inside Construct.
 		{SourcePosition: projURL(providerCallPos)},
 		{SourcePosition: projURL(providerPos)},
-		{SourcePosition: projURL(providerReadPos)},
+		// Program call that entered Construct.
+		{SourcePosition: projURL(constructPos)},
+		{SourcePosition: projURL(progPos)},
 	}, read2.StackTrace)
 
 	read3 := snap.Resources[5]
 	assert.Equal(t, read3URN, read3.URN)
 	assert.Equal(t, projURL(providerReadPos), read3.SourcePosition)
 	assert.Equal(t, []pkgresource.StackFrame{
-		{SourcePosition: projURL(progPos)},
-		{SourcePosition: projURL(callPos)},
-		{SourcePosition: projURL(providerPos)},
+		// ReadResource inside Call.
 		{SourcePosition: projURL(providerReadPos)},
+		{SourcePosition: projURL(providerPos)},
+		// Program call that entered Call.
+		{SourcePosition: projURL(callPos)},
+		{SourcePosition: projURL(progPos)},
 	}, read3.StackTrace)
 }
 
