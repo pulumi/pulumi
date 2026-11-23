@@ -16,9 +16,7 @@ package hints
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,9 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -47,11 +43,8 @@ type testManager struct {
 	// noTerminal is true when the command doesn't run interactively, as in CI.
 	noTerminal bool
 	skip       []string
-	path       string
 	local      bool
-	// resources is what stackResources returns for any stack, and resourcesErr the error it returns.
-	resources    int
-	resourcesErr error
+	path       string
 }
 
 func newTestManager(t *testing.T) *testManager {
@@ -77,9 +70,6 @@ func (tm *testManager) newManager() *Manager {
 			return s
 		},
 		isCloud: func() bool { return !tm.local },
-		stackResources: func(backend.Stack) (int, error) {
-			return tm.resources, tm.resourcesErr
-		},
 	}
 }
 
@@ -332,36 +322,88 @@ func TestIsTerminal(t *testing.T) {
 	assert.False(t, isTerminal(f))
 }
 
+func TestFirstFlushRecordsFirstSeen(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	first := tm.now
+
+	// A flush with nothing offered still records when hints were first flushed.
+	assert.Empty(t, tm.run())
+	st, _, err := tm.load()
+	require.NoError(t, err)
+	assert.True(t, first.Equal(st.FirstSeen))
+
+	// Later flushes, including ones that show a hint, keep it.
+	tm.now = tm.now.Add(time.Hour)
+	assert.Contains(t, tm.run(hintA), "hint a")
+	st, _, err = tm.load()
+	require.NoError(t, err)
+	assert.True(t, first.Equal(st.FirstSeen))
+}
+
+func TestSuppressedFlushDoesNotRecordFirstSeen(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		setup func(tm *testManager)
+	}{
+		{"suppressed", func(tm *testManager) { tm.suppress() }},
+		{"disabled", func(tm *testManager) { tm.disabled = true }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tt.setup(tm)
+			assert.Empty(t, tm.run())
+			assert.NoFileExists(t, tm.path)
+		})
+	}
+}
+
+func TestHideFromNewUsers(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	newUserHint := Hint{ID: "later", Cooldown: time.Hour, Message: "later hint", HideFromNewUsers: true}
+
+	// On the first command, only hints that don't wait for new users are shown.
+	out := tm.run(newUserHint, hintA)
+	assert.NotContains(t, out, "later hint")
+	assert.Contains(t, out, "hint a")
+
+	tm.now = tm.now.Add(newUserPeriod - time.Minute)
+	assert.Empty(t, tm.run(newUserHint))
+
+	tm.now = tm.now.Add(time.Minute)
+	assert.Contains(t, tm.run(newUserHint), "later hint")
+}
+
 func TestESCHintOnCredentialsFailure(t *testing.T) {
 	t.Parallel()
 
 	const message = "Run `pulumi env setup aws`."
-	stack := &backend.MockStack{}
 	tests := []struct {
-		name         string
-		kind         plugin.HintKind
-		message      string
-		isCloud      bool
-		stack        backend.Stack
-		resources    int
-		resourcesErr error
-		want         bool
+		name      string
+		kind      plugin.HintKind
+		message   string
+		isCloud   bool
+		firstSeen time.Duration
+		want      bool
 	}{
-		{"established cloud stack", plugin.HintDynamicCredentials, message, true, stack, 2, nil, true},
-		{"diy backend", plugin.HintDynamicCredentials, message, false, stack, 2, nil, false},
-		{"no message", plugin.HintDynamicCredentials, "", true, stack, 2, nil, false},
-		{"unspecified hint", plugin.HintUnspecified, message, true, stack, 2, nil, false},
-		{"no stack", plugin.HintDynamicCredentials, message, true, nil, 2, nil, false},
-		{"too few resources", plugin.HintDynamicCredentials, message, true, stack, 1, nil, false},
-		{"resources unknown", plugin.HintDynamicCredentials, message, true, stack, 2, errors.New("offline"), false},
+		{"established cloud user", plugin.HintDynamicCredentials, message, true, 2 * newUserPeriod, true},
+		{"new user", plugin.HintDynamicCredentials, message, true, newUserPeriod / 2, false},
+		{"diy backend", plugin.HintDynamicCredentials, message, false, 2 * newUserPeriod, false},
+		{"no message", plugin.HintDynamicCredentials, "", true, 2 * newUserPeriod, false},
+		{"unspecified hint", plugin.HintUnspecified, message, true, 2 * newUserPeriod, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tm := newTestManager(t)
 			tm.local = !tt.isCloud
-			tm.resources, tm.resourcesErr = tt.resources, tt.resourcesErr
-			(&recorder{m: tm.manager, stack: tt.stack}).RecordHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
+			require.NoError(t, save(tm.path, state{FirstSeen: tm.now.Add(-tt.firstSeen)}))
+			(&recorder{m: tm.manager}).RecordHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
 			out := tm.run()
 			if tt.want {
 				assert.Contains(t, out, message)
@@ -370,34 +412,4 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestHintWithoutStackGateIgnoresStack(t *testing.T) {
-	t.Parallel()
-	tm := newTestManager(t)
-	tm.resourcesErr = errors.New("must not be called")
-
-	assert.Contains(t, tm.run(hintA), "hint a")
-}
-
-func TestCountStackResources(t *testing.T) {
-	t.Parallel()
-
-	deployment := `{"resources": [
-		{"type": "pulumi:pulumi:Stack"},
-		{"type": "pulumi:providers:aws"},
-		{"type": "aws:s3/bucket:Bucket"},
-		{"type": "aws:s3/bucket:Bucket", "delete": true},
-		{"type": "aws:iam/role:Role"}
-	]}`
-	s := &backend.MockStack{BackendF: func() backend.Backend {
-		return &backend.MockBackend{
-			ExportDeploymentF: func(context.Context, backend.Stack) (*apitype.UntypedDeployment, error) {
-				return &apitype.UntypedDeployment{Version: 3, Deployment: json.RawMessage(deployment)}, nil
-			},
-		}
-	}}
-	n, err := countStackResources(s)
-	require.NoError(t, err)
-	assert.Equal(t, 2, n)
 }

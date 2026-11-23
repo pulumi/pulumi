@@ -250,7 +250,7 @@ func NewUpCmd() *cobra.Command {
 		}
 		opts.Engine = engine.UpdateOptions{
 			CloudCredentialEnv:        cloudCredentialEnv,
-			HintRecorder:              hints.Recorder(s),
+			HintRecorder:              hints.Recorder(),
 			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -548,7 +548,7 @@ func NewUpCmd() *cobra.Command {
 		}
 		opts.Engine = engine.UpdateOptions{
 			CloudCredentialEnv: cloudCredentialEnv,
-			HintRecorder:       hints.Recorder(s),
+			HintRecorder:       hints.Recorder(),
 			ParallelDiff:       env.ParallelDiff.Value(),
 			LocalPolicyPacks:   engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:           parallel,

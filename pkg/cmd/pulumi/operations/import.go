@@ -1213,7 +1213,7 @@ func NewImportCmd() *cobra.Command {
 
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:   cloudCredentialEnv,
-				HintRecorder:         hints.Recorder(s),
+				HintRecorder:         hints.Recorder(),
 				Parallel:             parallel,
 				Debug:                debug,
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),

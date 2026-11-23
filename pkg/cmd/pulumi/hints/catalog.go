@@ -44,6 +44,6 @@ func ESCCredentials(message string) Hint {
 		Message:   message,
 		CloudOnly: true,
 		// Don't distract new users with product hints.
-		EstablishedStackOnly: true,
+		HideFromNewUsers: true,
 	}
 }

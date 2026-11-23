@@ -14,19 +14,14 @@
 
 package hints
 
-import (
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-)
+import "github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 
 // Recorder returns a recorder that turns the hints providers report for their failures, such as dynamic
-// credentials, into this process's hints for stack s. Commands set it as the HintRecorder of the plugin contexts
-// they create.
-func Recorder(s backend.Stack) plugin.HintRecorder { return &recorder{m: defaultManager, stack: s} }
+// credentials, into this process's hints. Commands set it as the HintRecorder of the plugin contexts they create.
+func Recorder() plugin.HintRecorder { return &recorder{m: defaultManager} }
 
 type recorder struct {
-	m     *manager
-	stack backend.Stack
+	m *manager
 }
 
 // RecordHint implements plugin.HintRecorder. It offers the hint a provider sent, with the provider's message.
@@ -34,5 +29,5 @@ func (r *recorder) RecordHint(hint plugin.Hint) {
 	if hint.Kind != plugin.HintDynamicCredentials || hint.Message == "" {
 		return
 	}
-	r.m.offerFor(ESCCredentials(hint.Message), r.stack)
+	r.m.offer(ESCCredentials(hint.Message))
 }

@@ -577,7 +577,7 @@ func NewPreviewCmd() *cobra.Command {
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					CloudCredentialEnv:        cloudCredentialEnv,
-					HintRecorder:              hints.Recorder(s),
+					HintRecorder:              hints.Recorder(),
 					ParallelDiff:              env.ParallelDiff.Value(),
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,
