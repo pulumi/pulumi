@@ -324,15 +324,22 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	// Builds without a version stamped in at link time have an empty version, which won't parse.
 	cli, err := semver.ParseTolerant(cliVersion)
 	prefixes := shortPrefixes(ns)
+	dismissible := false
 	for _, n := range ns {
 		if dismissed[n.ID] || !applies(n, cli, err == nil) || !due(n, shown) {
 			continue
 		}
 		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		// Infos are only shown once, so there is nothing to dismiss.
+		dismissible = dismissible || n.Severity == diag.Warning || n.Severity == diag.Error
 		if n.Severity != diag.Error {
 			shown[n.ID] = time.Now()
 			changed = true
 		}
+	}
+	if dismissible {
+		sink.Infoerrf(diag.RawMessage("", "\nTo hide a notification, run "+
+			colors.SpecCommand+"pulumi notifications dismiss <id>"+colors.Reset+".\n"))
 	}
 	if !changed {
 		return
@@ -472,8 +479,8 @@ func applies(n Notification, cli semver.Version, cliKnown bool) bool {
 
 func render(n Notification, cliVersion, idPrefix string) string {
 	prefix, ok := map[diag.Severity]string{
-		diag.Warning: colors.SpecWarning + "WARNING:" + colors.Reset,
-		diag.Error:   colors.SpecError + "ERROR:" + colors.Reset,
+		diag.Warning: colors.SpecWarning + "WARNING [" + idPrefix + "]:" + colors.Reset,
+		diag.Error:   colors.SpecError + "ERROR [" + idPrefix + "]:" + colors.Reset,
 	}[n.Severity]
 	if !ok {
 		prefix = "INFO:"
@@ -481,13 +488,7 @@ func render(n Notification, cliVersion, idPrefix string) string {
 
 	resolve := strings.NewReplacer("{cli}", cliVersion)
 	overview := strings.ReplaceAll(resolve.Replace(n.Overview), "\n", "\n  ")
-	msg := fmt.Sprintf("\n%s %s\n\n  %s\n", prefix, resolve.Replace(n.Title), overview)
-	// Infos are only shown once, so there is nothing to dismiss.
-	if ok {
-		msg += "\n  To hide this, run " +
-			colors.SpecCommand + "pulumi notifications dismiss " + idPrefix + colors.Reset + ".\n"
-	}
-	return msg
+	return fmt.Sprintf("\n%s %s\n\n  %s\n", prefix, resolve.Replace(n.Title), overview)
 }
 
 // writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written
