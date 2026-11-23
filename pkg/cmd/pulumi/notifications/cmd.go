@@ -42,7 +42,7 @@ func newDismissCmd() *cobra.Command {
 		Short: "Stop showing a notification",
 		Long: "Stop showing a notification.\n" +
 			"\n" +
-			"Pass the ID shown in the notification's heading, such as #3fa in WARNING #3fa. " +
+			"Pass the ID shown in the notification's heading, such as 3fa in WARNING [ID: 3fa]. " +
 			"To hide every notification, set PULUMI_HIDE_NOTIFICATIONS=true.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n, err := Dismiss(cmd.Context(), StaticURL, args[0])
