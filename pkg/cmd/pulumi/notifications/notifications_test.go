@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -92,11 +93,10 @@ func TestRender(t *testing.T) {
 	}
 
 	assert.Equal(t,
-		"\nWARNING: CLI v3.100.0 is no longer actively maintained\n\n  You are running v3.100.0.\n  Please upgrade.\n"+
-			"\n  To hide this, run pulumi notifications dismiss 90a.\n",
+		"\nWARNING [90a]: CLI v3.100.0 is no longer actively maintained\n\n  You are running v3.100.0.\n  Please upgrade.\n",
 		colors.Never.Colorize(render(n, "v3.100.0", "90a")))
 
-	assert.NotContains(t, render(survey, "v3.100.0", "90a"), "dismiss")
+	assert.NotContains(t, render(survey, "v3.100.0", "90a"), "90a")
 }
 
 func TestShortPrefixes(t *testing.T) {
@@ -204,8 +204,9 @@ func TestDismiss(t *testing.T) {
 	Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}),
 		[]Notification{survey, other, third}, "v3.200.0")
 	assert.NotContains(t, stderr.String(), survey.Title)
-	assert.Contains(t, stderr.String(), "pulumi notifications dismiss 90abf")
-	assert.Contains(t, stderr.String(), "pulumi notifications dismiss 123")
+	assert.Contains(t, stderr.String(), "WARNING [90abf]: Upgrade")
+	assert.Contains(t, stderr.String(), "ERROR [123]: Third")
+	assert.Equal(t, 1, strings.Count(stderr.String(), "pulumi notifications dismiss <id>"))
 }
 
 func TestPrint_Frequency(t *testing.T) {
@@ -228,6 +229,7 @@ func TestPrint_Frequency(t *testing.T) {
 	assert.Contains(t, first, survey.Title)
 	assert.Contains(t, first, outage.Title)
 	assert.Contains(t, first, upgrade.Title)
+	assert.Contains(t, first, "dismiss <id>")
 	assert.Equal(t, []string{survey.ID, upgrade.ID}, slices.Sorted(maps.Keys(readShown())))
 
 	second := show()
@@ -241,4 +243,9 @@ func TestPrint_Frequency(t *testing.T) {
 	third := show()
 	assert.NotContains(t, third, survey.Title)
 	assert.Contains(t, third, upgrade.Title)
+
+	ns = []Notification{{Title: "Tip", ID: "i", Severity: diag.Info, SchemaVersion: 1}}
+	infoOnly := show()
+	assert.Contains(t, infoOnly, "Tip")
+	assert.NotContains(t, infoOnly, "dismiss")
 }
