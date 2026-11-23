@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 // NewNotificationsCmd creates the `pulumi notifications` command group.
@@ -41,14 +42,14 @@ func newDismissCmd() *cobra.Command {
 		Short: "Stop showing a notification",
 		Long: "Stop showing a notification.\n" +
 			"\n" +
-			"Pass the ID prefix shown at the end of the notification. " +
+			"Pass the ID shown in the notification's heading, such as 3fa in WARNING [3fa]. " +
 			"To hide every notification, set PULUMI_HIDE_NOTIFICATIONS=true.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n, err := Dismiss(cmd.Context(), StaticURL, args[0])
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Dismissed %q.\n", n.Title)
+			fmt.Fprintf(cmd.OutOrStdout(), "Dismissed %q.\n", resolve(n.Title, version.Version))
 			return nil
 		},
 	}
