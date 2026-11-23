@@ -1049,10 +1049,9 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
 
-// Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
-// TestCreatePartialFailureWithoutID checks that a resource is not committed to state when the provider reports a
-// partial failure from Create without returning an ID. The engine can do nothing with such a resource other than
-// make the user delete it, so it should be left out of state and created again on the next update.
+// TestCreatePartialFailureWithoutID checks that when the provider reports a partial failure from Create without
+// returning an ID, the resource is not committed to state (the engine can do nothing with a resource that has no ID)
+// and the create is instead left as a pending operation, so the user can import or clear it with `pulumi refresh`.
 //
 // Regression test for https://github.com/pulumi/pulumi/issues/25765.
 func TestCreatePartialFailureWithoutID(t *testing.T) {
@@ -1095,9 +1094,12 @@ func TestCreatePartialFailureWithoutID(t *testing.T) {
 	for _, res := range snap.Resources {
 		assert.NotEqual(t, resURN, res.URN, "resource without an ID must not be committed to state")
 	}
-	assert.Empty(t, snap.PendingOperations)
+	require.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
+	assert.Equal(t, resURN, snap.PendingOperations[0].Resource.URN)
 
-	// The next update creates the resource again rather than tripping over an empty ID.
+	// The next update isn't blocked by the pending create: it warns about it, creates the resource, and keeps the
+	// pending create for the user to resolve with `pulumi refresh`.
 	failCreate = false
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
@@ -1109,8 +1111,11 @@ func TestCreatePartialFailureWithoutID(t *testing.T) {
 	}
 	require.NotNil(t, found)
 	assert.Equal(t, resource.ID("created-id"), found.ID)
+	require.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
 }
 
+// Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
 func TestUpdatePartialFailure(t *testing.T) {
 	t.Parallel()
 

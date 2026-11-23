@@ -1505,6 +1505,13 @@ func (acts *updateActions) OnResourceStepPost(
 		maps.Copy(new.Inputs, old.Inputs)
 	}
 
+	// If a create failed in a way that leaves it unknown whether the resource exists (e.g. a partial failure without
+	// an ID), don't end the mutation. This leaves the pending create operation in the snapshot, exactly as if the
+	// deployment had been interrupted during the create, so the user can import or clear it with `pulumi refresh`.
+	if create, ok := step.(*deploy.CreateStep); ok && create.OutcomeUnknown() {
+		return nil
+	}
+
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
 	// safe checkpoint.  Note that any error that occurs when writing the checkpoint trumps the error
 	// reported above.

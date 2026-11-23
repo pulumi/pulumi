@@ -263,9 +263,18 @@ type CreateStep struct {
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
 	provider      plugin.Provider                // the optional provider to use.
+
+	// outcomeUnknown is set when Create failed in a way that leaves it unknown whether the resource was
+	// created (a partial failure without an ID). The create is then left as a pending operation.
+	outcomeUnknown bool
 }
 
 var _ Step = (*CreateStep)(nil)
+
+// OutcomeUnknown returns true if Create failed in a way that leaves it unknown whether the resource was created.
+// The snapshot should then keep the pending create operation rather than complete it, so that the user can
+// resolve it with `pulumi refresh`.
+func (s *CreateStep) OutcomeUnknown() bool { return s.outcomeUnknown }
 
 func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgresource.State) Step {
 	contract.Requiref(reg != nil, "reg", "must not be nil")
@@ -504,18 +513,19 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 				}
 
-				// The provider reported a partial failure but gave us no ID. Without an ID the engine can't
-				// refresh, update or delete the resource, so committing it to state would leave the user with
-				// an entry they can only remove by hand. Treat this as a plain failure instead, so nothing is
-				// written and the next update tries the create again, and tell the user that something may
-				// have been created that Pulumi isn't tracking.
+				// The provider reported a partial failure but gave us no ID, so we can't tell whether the
+				// resource exists. Without an ID the engine can't refresh, update or delete it, so we must not
+				// commit it as a resource. Instead leave the create as a pending operation, the same as a create
+				// that was interrupted, so the user can import or clear it with `pulumi refresh`.
+				s.outcomeUnknown = true
 				s.Deployment().Diag().Warningf(&diag.Diag{
 					URN: s.URN(),
 					Message: "the provider reported a partial failure but did not return an ID from Create, " +
-						"so the resource was not saved to state; check whether it was created in the cloud " +
-						"provider and delete or import it if so",
+						"so it is unknown whether the resource was created; it has been recorded as a pending " +
+						"create. Run `pulumi refresh` to import it if it exists in the cloud provider, or to " +
+						"clear it if it does not",
 				})
-				return resource.StatusOK, nil, err
+				return resource.StatusUnknown, nil, err
 			}
 		}
 	}
