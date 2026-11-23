@@ -118,6 +118,7 @@ func Start(ctx context.Context, url string) func() []Notification {
 // refresh fetches the notifications and, if that succeeds, caches them. Concurrent CLI processes
 // may overwrite each other's cache; the losing process's entries are simply fetched again later.
 func refresh(ctx context.Context, url string, cache map[string]cacheEntry) ([]Notification, error) {
+	contract.Requiref(cache != nil, "cache", "must not be nil")
 	ns, err := fetch(ctx, url)
 	if err != nil {
 		return nil, err
