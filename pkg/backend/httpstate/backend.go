@@ -1987,21 +1987,13 @@ func (b *cloudBackend) createAndStartUpdate(
 	isNeoEnabled := isNeoIntegrationEnabled
 	b.neoEnabledForCurrentProject = &isNeoEnabled
 	neoEnabledValueString := "is"
-	continuationString := ""
-	if isNeoEnabled {
-		if env.SuppressNeoLink.Value() {
-			// Neo is enabled in user's org, but the environment variable to suppress the link to Neo is set.
-			op.Opts.Display.OfferNeoLink = nil
-			continuationString = " but the environment variable PULUMI_SUPPRESS_NEO_LINK" +
-				" suppresses the link to Neo in diagnostics"
-		}
-	} else {
+	if !isNeoEnabled {
 		op.Opts.Display.OfferNeoLink = nil
 		op.Opts.Display.ShowNeoFeatures = false
 		neoEnabledValueString = "is not"
 	}
-	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
-		stackID.Owner, neoEnabledValueString, userName, continuationString)
+	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'",
+		stackID.Owner, neoEnabledValueString, userName)
 
 	return update, updateMetadata{
 		version:        version,

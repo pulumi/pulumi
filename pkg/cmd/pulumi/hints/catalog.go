@@ -14,11 +14,7 @@
 
 package hints
 
-import (
-	"time"
-
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-)
+import "time"
 
 // AgentSkills suggests Pulumi's agent skills to users who create a new project and don't have them yet.
 var AgentSkills = Hint{
@@ -51,21 +47,17 @@ func ESCCredentials(message string) Hint {
 	}
 }
 
-// NeoDebug suggests debugging a failed or warning preview or update with Pulumi Neo. permalink is the update's page in
-// Pulumi Cloud.
-func NeoDebug(permalink string, isPreview bool) Hint {
-	command := "pulumi neo --debug-update"
-	if isPreview {
-		command = "pulumi neo --debug-preview"
-	}
+// NeoDebug suggests debugging a preview's or update's errors or warnings with Pulumi Neo, through link or by running
+// debugCommand.
+func NeoDebug(link, debugCommand string) Hint {
 	return Hint{
 		ID:       "neo-debug",
 		Cooldown: 7 * 24 * time.Hour,
-		Message: "Pulumi Neo can help with these diagnostics: " + display.ExplainFailureLink(permalink) + "\n" +
-			"Or run `" + command + "` for an interactive agent in your terminal.",
+		Message: "Pulumi Neo can help with these diagnostics: " + link + "\n" +
+			"Or run `" + debugCommand + "` for an interactive agent in your terminal.",
 		CloudOnly: true,
 	}
 }
 
 // OfferNeoDebug offers the NeoDebug hint. Commands set it as the display's OfferNeoLink.
-func OfferNeoDebug(permalink string, isPreview bool) { Offer(NeoDebug(permalink, isPreview)) }
+func OfferNeoDebug(link, debugCommand string) { Offer(NeoDebug(link, debugCommand)) }

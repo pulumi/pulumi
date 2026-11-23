@@ -88,12 +88,8 @@ func TestProgressEventsNeoDiagnosticLink(t *testing.T) {
 			opts := defaultOpts()
 			opts.Color = colors.Never
 			opts.Stdout, opts.Stderr = &stdout, &stderr
-			type link struct {
-				permalink string
-				isPreview bool
-			}
-			var links []link
-			opts.OfferNeoLink = func(permalink string, isPreview bool) { links = append(links, link{permalink, isPreview}) }
+			var links [][2]string
+			opts.OfferNeoLink = func(link, debugCommand string) { links = append(links, [2]string{link, debugCommand}) }
 			opts.Debug = true
 			events := sliceToBufferedChan([]engine.Event{event, engine.NewCancelEvent()})
 			done := make(chan bool)
@@ -102,7 +98,7 @@ func TestProgressEventsNeoDiagnosticLink(t *testing.T) {
 			<-done
 
 			if tt.wantLink {
-				assert.Equal(t, []link{{"link", false}}, links)
+				assert.Equal(t, [][2]string{{"link?explainFailure", "pulumi neo --debug-update"}}, links)
 			} else {
 				assert.Empty(t, links)
 			}

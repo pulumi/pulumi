@@ -845,11 +845,9 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Offer a link to Neo to explain warnings or errors. "ShowNeoFeatures" renders the link after Neo's summary, and
-	// there is no permalink to link to when it's suppressed, for example for DIY backends.
-	if wroteWarningOrError && display.opts.OfferNeoLink != nil && !display.opts.ShowNeoFeatures &&
-		!display.opts.SuppressPermalink {
-		display.opts.OfferNeoLink(display.permalink, display.isPreview)
+	// Offer a link to Neo to explain warnings or errors.
+	if wroteWarningOrError && display.opts.OfferNeoLink != nil {
+		display.opts.OfferNeoLink(ExplainFailureLink(display.permalink), neoDebugCommand(display.isPreview))
 	}
 }
 
