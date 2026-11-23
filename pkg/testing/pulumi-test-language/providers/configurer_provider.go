@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -343,12 +344,7 @@ func (p *ConfigurerProvider) Construct(
 	// Store the inner provider reference on the component so methods can retrieve it later.
 	innerRef := resource.MakeCustomResourceReference(
 		resource.URN(innerProv.Urn), resource.ID(innerProv.Id), "")
-	innerRefStruct, err := plugin.MarshalPropertyValue(
-		"innerProviderRef", innerRef,
-		plugin.MarshalOptions{KeepResources: true, KeepSecrets: true})
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal inner provider ref: %w", err)
-	}
+	innerRefStruct := propertyrpc.MarshalValue(resource.FromResourcePropertyValue(innerRef))
 
 	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn: parent.Urn,

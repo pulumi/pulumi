@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -248,13 +249,13 @@ func (p *OutputValueInputDepsProvider) Construct(
 	//       explicit propertyDependencies map built from each OV's deps. The engine stores it verbatim.
 	var childInputs resource.PropertyMap
 	var propDeps map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies
-	marshalOpts := plugin.MarshalOptions{KeepResources: true, KeepSecrets: true, KeepUnknowns: true}
+	marshalOpts := propertyrpc.MarshalOptions{}
 	if useOutputValues {
 		childInputs = resource.PropertyMap{
 			"foo": resource.NewProperty(resource.Output{Element: xVal, Known: true, Dependencies: xDeps}),
 			"bar": resource.NewProperty(resource.Output{Element: yVal, Known: true, Dependencies: yDeps}),
 		}
-		marshalOpts.KeepOutputValues = true
+		marshalOpts.PreferOutputValues = true
 	} else {
 		childInputs = resource.PropertyMap{"foo": xVal, "bar": yVal}
 		propDeps = map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{
@@ -262,10 +263,7 @@ func (p *OutputValueInputDepsProvider) Construct(
 			"bar": {Urns: slice.Cast[string](yDeps)},
 		}
 	}
-	marshaled, err := plugin.MarshalProperties(childInputs, marshalOpts)
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal child inputs: %w", err)
-	}
+	marshaled := propertyrpc.MarshalWithOptions(resource.FromResourcePropertyMap(childInputs), marshalOpts)
 
 	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:                 "output-value-input-deps:index:Child",
