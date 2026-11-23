@@ -2,4 +2,4 @@ component: cli
 kind: improvement
 body: Show the suggestion to debug failures with Neo as a product hint
 custom:
-  PR: "TBD"
+  PR: "25836"
