@@ -400,7 +400,7 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	}
 	if dismissible {
 		sink.Infoerrf(diag.RawMessage("", "\nTo hide a notification, run "+
-			colors.SpecCommand+"`pulumi notifications dismiss #id`"+colors.Reset+"."))
+			colors.SpecCommand+"`pulumi notifications dismiss <ID>`"+colors.Reset+"."))
 	}
 	if !changed {
 		return
@@ -432,7 +432,6 @@ func due(n Notification, shown map[string]time.Time) bool {
 
 // Dismiss stops the notification whose ID starts with prefix from being shown again, and returns it.
 func Dismiss(ctx context.Context, staticURL, prefix string) (Notification, error) {
-	prefix = strings.TrimPrefix(prefix, "#")
 	if len(prefix) < minPrefix {
 		return Notification{}, fmt.Errorf("the ID prefix must be at least %d characters long", minPrefix)
 	}
@@ -551,8 +550,8 @@ func applies(n Notification, cli semver.Version, cliKnown bool) bool {
 
 func render(n Notification, cliVersion, idPrefix string) string {
 	prefix, ok := map[diag.Severity]string{
-		diag.Warning: colors.SpecWarning + "WARNING #" + idPrefix + ":" + colors.Reset,
-		diag.Error:   colors.SpecError + "ERROR #" + idPrefix + ":" + colors.Reset,
+		diag.Warning: colors.SpecWarning + "WARNING [ID: " + idPrefix + "]:" + colors.Reset,
+		diag.Error:   colors.SpecError + "ERROR [ID: " + idPrefix + "]:" + colors.Reset,
 	}[n.Severity]
 	if !ok {
 		prefix = "INFO:"
