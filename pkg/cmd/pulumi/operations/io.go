@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -167,16 +166,6 @@ func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *d
 	displayOpts.ShowNeoFeatures = showNeoFeatures
 	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
 	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
-}
-
-// configureNeoLink offers a link to debug failures with Neo, unless the user suppressed it, there's no permalink to
-// link to, or Neo features already show the link after Neo's summary. The backend also removes it for orgs without
-// Neo. Call it after configureNeoOptions and after setting SuppressPermalink.
-func configureNeoLink(displayOpts *display.Options) {
-	slog.Info("PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
-	if !env.SuppressNeoLink.Value() && !displayOpts.SuppressPermalink && !displayOpts.ShowNeoFeatures {
-		displayOpts.OfferNeoLink = hints.OfferNeoDebug
-	}
 }
 
 // configureNeoTaskOption configures the display option for starting a Neo task on error.

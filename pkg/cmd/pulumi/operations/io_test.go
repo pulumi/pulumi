@@ -67,28 +67,6 @@ func TestConfigureNeoTaskOption(t *testing.T) {
 	}
 }
 
-func TestConfigureNeoLink(t *testing.T) {
-	tests := []struct {
-		name     string
-		opts     display.Options
-		suppress string
-		want     bool
-	}{
-		{name: "default", want: true},
-		{name: "suppressed by env", suppress: "true"},
-		{name: "no permalink", opts: display.Options{SuppressPermalink: true}},
-		{name: "Neo summary shows the link", opts: display.Options{ShowNeoFeatures: true}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PULUMI_SUPPRESS_NEO_LINK", tt.suppress)
-			opts := tt.opts
-			configureNeoLink(&opts)
-			require.Equal(t, tt.want, opts.OfferNeoLink != nil)
-		})
-	}
-}
-
 func TestGetRefreshOption(t *testing.T) {
 	t.Parallel()
 
