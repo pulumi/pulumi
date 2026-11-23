@@ -480,13 +480,7 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 	// our ConstructResponse.
 
 	refPropVal := resource.MakeCustomResourceReference(resource.URN(child.Urn), resource.ID(child.Id), "")
-	refStruct, err := plugin.MarshalPropertyValue("ref", refPropVal, plugin.MarshalOptions{
-		KeepResources: true,
-		KeepSecrets:   true,
-	})
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal ref: %w", err)
-	}
+	refStruct := propertyrpc.MarshalValue(resource.FromResourcePropertyValue(refPropVal))
 
 	// Register the component's outputs and finish up.
 	value := child.Object.Fields["value"].GetStringValue()
