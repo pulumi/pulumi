@@ -21,25 +21,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 )
-
-// agentSkills suggests Pulumi's agent skills to users who create a new project and don't have them yet.
-var agentSkills = Hint{
-	ID:       "agent-skills",
-	Cooldown: 30 * 24 * time.Hour,
-	Message: "Pulumi agent skills help AI agents write and operate Pulumi programs. " +
-		"Install them with `npx skills add pulumi/agent-skills/pulumi --skill '*'`, or in Claude Code with " +
-		"`/plugin marketplace add pulumi/agent-skills` and `/plugin install pulumi@pulumi-agent-skills`.\n" +
-		"Learn more: https://github.com/pulumi/agent-skills?utm_source=cli",
-}
 
 // OfferAgentSkills offers the agent skills hint for a project created in dir, unless Pulumi's agent skills appear
 // to be installed.
 func OfferAgentSkills(dir string) {
 	// Without a home directory there's nowhere to look, so assume the skills aren't installed.
 	if home, err := os.UserHomeDir(); err != nil || !agentSkillsInstalled(os.Getenv, home, dir) {
-		Offer(agentSkills)
+		Offer(AgentSkills)
 	}
 }
 
