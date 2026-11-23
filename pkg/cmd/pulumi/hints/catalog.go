@@ -43,7 +43,7 @@ func ESCCredentials(message string) Hint {
 		Cooldown:  24 * time.Hour,
 		Message:   message,
 		CloudOnly: true,
-		// Don't distract new users with product hints.
+		// This hint isn't meant for first-time users.
 		HideFromNewUsers: true,
 	}
 }

@@ -63,8 +63,8 @@ type Hint struct {
 	// CloudOnly is true for hints about Pulumi Cloud features, which are shown only to users of a Pulumi Cloud
 	// backend.
 	CloudOnly bool
-	// HideFromNewUsers is true for hints that are shown only once hints were first flushed at least newUserPeriod
-	// ago, so that new users aren't distracted by product hints.
+	// HideFromNewUsers is true for hints that aren't meant for first-time users. They are shown only once hints were
+	// first flushed at least newUserPeriod ago.
 	HideFromNewUsers bool
 }
 
