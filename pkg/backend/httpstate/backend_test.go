@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -75,6 +76,58 @@ func TestCommandNameContext(t *testing.T) {
 	name, ok := commandNameFromContext(ctx)
 	assert.True(t, ok)
 	assert.Equal(t, "pulumi new", name)
+}
+
+func TestBrowserLoginURLs(t *testing.T) {
+	t.Parallel()
+
+	envFrom := func(env map[string]string) func(string) string {
+		return func(k string) string { return env[k] }
+	}
+	ctx := ContextWithCommandName(t.Context(), "pulumi up")
+
+	t.Run("no agent", func(t *testing.T) {
+		t.Parallel()
+		u, welcomeURL, err := browserLoginURLs(ctx, "https://api.pulumi.com", "1234", "n", "laptop", envFrom(nil))
+		require.NoError(t, err)
+		assert.Equal(t, "https://app.pulumi.com/cli-login", u.Scheme+"://"+u.Host+u.Path)
+		assert.Equal(t, url.Values{
+			"cliSessionPort":        {"1234"},
+			"cliSessionNonce":       {"n"},
+			"cliSessionDescription": {"laptop"},
+			"cliCommand":            {"pulumi up"},
+		}, u.Query())
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli", welcomeURL)
+	})
+
+	t.Run("a known agent is named on both pages, never with its raw value", func(t *testing.T) {
+		t.Parallel()
+		u, welcomeURL, err := browserLoginURLs(ctx, "https://api.pulumi.com", "1234", "n", "laptop",
+			envFrom(map[string]string{"AI_AGENT": "claude-code_2-1-321_agent", "CLAUDECODE": "1"}))
+		require.NoError(t, err)
+		assert.Equal(t, "claude", u.Query().Get("cliAgent"))
+		assert.NotContains(t, u.String(), "2-1-321")
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli?agent=claude", welcomeURL)
+	})
+
+	t.Run("an agent found by its environment variables", func(t *testing.T) {
+		t.Parallel()
+		u, welcomeURL, err := browserLoginURLs(ctx, "https://api.pulumi.com", "1234", "n", "laptop",
+			envFrom(map[string]string{"CURSOR_AGENT": "1"}))
+		require.NoError(t, err)
+		assert.Equal(t, "cursor-cli", u.Query().Get("cliAgent"))
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli?agent=cursor-cli", welcomeURL)
+	})
+
+	t.Run("an unknown agent is sent as other", func(t *testing.T) {
+		t.Parallel()
+		u, welcomeURL, err := browserLoginURLs(ctx, "https://api.pulumi.com", "1234", "n", "laptop",
+			envFrom(map[string]string{"AI_AGENT": "my-internal-tool"}))
+		require.NoError(t, err)
+		assert.Equal(t, "other", u.Query().Get("cliAgent"))
+		assert.NotContains(t, u.String(), "my-internal-tool")
+		assert.Equal(t, "https://app.pulumi.com/welcome/cli?agent=other", welcomeURL)
+	})
 }
 
 func TestWelcomeUserNewProjectHint(t *testing.T) {

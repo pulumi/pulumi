@@ -23,6 +23,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestKnownName(t *testing.T) {
+	t.Parallel()
+
+	for detected, want := range map[string]string{
+		"":                          "",
+		"  ":                        "",
+		"claude":                    "claude",
+		"claude-code":               "claude",
+		"claude-code_2-1-321_agent": "claude",
+		"Cursor-CLI":                "cursor-cli",
+		" codex ":                   "codex",
+		"github-copilot-cli":        "github-copilot",
+		"github-copilot":            "github-copilot",
+		"goose":                     "goose",
+		"my-agent":                  OtherAgent,
+		"my-agent_1-0":              OtherAgent,
+		"other":                     OtherAgent,
+	} {
+		assert.Equal(t, want, KnownName(detected), "KnownName(%q)", detected)
+	}
+
+	// Every detector's own name is known.
+	for _, d := range agents {
+		assert.Equal(t, d.name, KnownName(d.name))
+	}
+}
+
 func TestDetect(t *testing.T) {
 	t.Parallel()
 

@@ -90,6 +90,41 @@ func Detect(getEnv func(string) string) string {
 	return ""
 }
 
+// OtherAgent is what KnownName returns for an agent it doesn't recognize.
+const OtherAgent = "other"
+
+// knownNameAliases maps names that agents report for themselves through
+// AI_AGENT to the name of the matching detector above.
+var knownNameAliases = map[string]string{
+	"claude-code":        "claude",
+	"github-copilot-cli": "github-copilot",
+}
+
+// KnownName reduces an agent name, as returned by Detect, to one of the names
+// in the detector list above, or OtherAgent if it isn't one of them. It
+// returns "" when no agent was detected.
+//
+// Detect passes an AI_AGENT value through as is, and agents put more than
+// their name in it: Claude Code sets "claude-code_<version>_agent". KnownName
+// keeps only the part before the first underscore, so the result never
+// carries a version or other free-form text.
+func KnownName(detected string) string {
+	name := strings.TrimSpace(strings.ToLower(detected))
+	if name == "" {
+		return ""
+	}
+	name, _, _ = strings.Cut(name, "_")
+	if alias, ok := knownNameAliases[name]; ok {
+		return alias
+	}
+	for _, d := range agents {
+		if d.name == name {
+			return name
+		}
+	}
+	return OtherAgent
+}
+
 // DetectMetadata returns the normalized agent name and best-effort model
 // information for the AI coding agent driving the CLI.
 func DetectMetadata(getEnv func(string) string) Metadata {
