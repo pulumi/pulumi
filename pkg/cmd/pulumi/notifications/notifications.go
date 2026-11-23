@@ -251,6 +251,7 @@ func Start(ctx context.Context, staticURL string) func() []Notification {
 // Concurrent CLI processes may overwrite each other's cache; the losing process's entries are
 // simply fetched again later.
 func refresh(ctx context.Context, ss []source, cache map[string]cacheEntry) ([]Notification, error) {
+	contract.Requiref(cache != nil, "cache", "must not be nil")
 	var ns []Notification
 	var errs []error
 	for _, s := range ss {
