@@ -571,8 +571,7 @@ var unresolvedProvider = regexp.MustCompile(`\{providers\.[^}]*\} ?`)
 // resolve replaces the placeholders in a notification's text, dropping those for providers whose
 // versions are unknown.
 func resolve(s, cliVersion string, providers map[string][]semver.Version) string {
-	vars := make([]string, 0, 2+2*len(providers))
-	vars = append(vars, "{cli}", cliVersion)
+	vars := []string{"{cli}", cliVersion}
 	for name, versions := range providers {
 		versions = slices.SortedFunc(slices.Values(versions), semver.Version.Compare)
 		vs := make([]string, len(versions))
