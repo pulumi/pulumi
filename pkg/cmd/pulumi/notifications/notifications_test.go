@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -92,8 +93,23 @@ func TestRender(t *testing.T) {
 	}
 
 	assert.Equal(t,
-		"\nWARNING: CLI v3.100.0 is no longer actively maintained\n\n  You are running v3.100.0.\n  Please upgrade.\n",
-		colors.Never.Colorize(render(n, "v3.100.0")))
+		"\nWARNING [ID: 90a]: CLI v3.100.0 is no longer actively maintained\n\n"+
+			"  You are running v3.100.0.\n  Please upgrade.",
+		colors.Never.Colorize(render(n, "v3.100.0", "90a")))
+
+	assert.NotContains(t, render(survey, "v3.100.0", "90a"), "90a")
+}
+
+func TestShortPrefixes(t *testing.T) {
+	t.Parallel()
+
+	ns := []Notification{{ID: "ABC111"}, {ID: "abc222"}, {ID: "abd"}, {ID: "zzzzzz"}}
+	assert.Equal(t, map[string]string{
+		"abc111": "abc1",
+		"abc222": "abc2",
+		"abd":    "abd",
+		"zzzzzz": "zzz",
+	}, shortPrefixes(ns))
 }
 
 func serve(t *testing.T, body string, status int) (url string, calls *int) {
@@ -109,7 +125,7 @@ func serve(t *testing.T, body string, status int) (url string, calls *int) {
 
 func TestStart_UsesFreshCache(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
-	require.NoError(t, writeCache(map[string]cacheEntry{
+	require.NoError(t, writeJSON(cacheFile, map[string]cacheEntry{
 		staticSource: {FetchedAt: time.Now(), Notifications: []Notification{survey}},
 	}))
 	url, calls := serve(t, `[]`, http.StatusOK)
@@ -120,7 +136,7 @@ func TestStart_UsesFreshCache(t *testing.T) {
 
 func TestStart_RefreshesStaleCache(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
-	require.NoError(t, writeCache(map[string]cacheEntry{
+	require.NoError(t, writeJSON(cacheFile, map[string]cacheEntry{
 		staticSource: {FetchedAt: time.Now().Add(-25 * time.Hour)},
 	}))
 	body, err := json.Marshal([]Notification{survey})
@@ -143,7 +159,7 @@ func TestRefresh_FailureKeepsCache(t *testing.T) {
 	stale := map[string]cacheEntry{
 		staticSource: {FetchedAt: time.Now().Add(-25 * time.Hour).UTC(), Notifications: []Notification{survey}},
 	}
-	require.NoError(t, writeCache(stale))
+	require.NoError(t, writeJSON(cacheFile, stale))
 	url, _ := serve(t, `oops`, http.StatusInternalServerError)
 
 	_, err := refresh(t.Context(), url, readCache())
@@ -151,13 +167,58 @@ func TestRefresh_FailureKeepsCache(t *testing.T) {
 	assert.Equal(t, stale, readCache())
 }
 
+func TestDismiss(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	other := Notification{
+		Title: "Upgrade", ID: "90abffff-0000-0000-0000-000000000000", Severity: diag.Warning, SchemaVersion: 1,
+	}
+	third := Notification{
+		Title: "Third", ID: "12345678-0000-0000-0000-000000000000", Severity: diag.Error, SchemaVersion: 1,
+	}
+	require.NoError(t, writeJSON(cacheFile, map[string]cacheEntry{
+		staticSource: {FetchedAt: time.Now(), Notifications: []Notification{survey, other, third}},
+	}))
+	require.NoError(t, writeJSON(dismissedFile, map[string][]string{
+		staticSource: {"no-longer-sent"},
+		"acme":       {"not-fetched"},
+	}))
+
+	_, err := Dismiss(t.Context(), "", "90")
+	require.ErrorContains(t, err, "at least 3 characters")
+
+	_, err = Dismiss(t.Context(), "", "777")
+	require.ErrorContains(t, err, `no notification ID starts with "777"`)
+
+	_, err = Dismiss(t.Context(), "", "90ab")
+	require.EqualError(t, err, `"90ab" matches more than one notification:`+
+		"\n  90abc  We want to hear from you!\n  90abf  Upgrade")
+
+	n, err := Dismiss(t.Context(), "", "90ABC")
+	require.NoError(t, err)
+	assert.Equal(t, survey, n)
+	assert.Equal(t, map[string][]string{
+		staticSource: {survey.ID},
+		"acme":       {"not-fetched"},
+	}, readDismissed())
+
+	var stderr bytes.Buffer
+	Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}),
+		[]Notification{survey, other, third}, "v3.200.0")
+	assert.NotContains(t, stderr.String(), survey.Title)
+	assert.Contains(t, stderr.String(), "WARNING [ID: 90abf]: Upgrade")
+	assert.Contains(t, stderr.String(), "ERROR [ID: 123]: Third")
+	assert.Equal(t, 1, strings.Count(stderr.String(), "`pulumi notifications dismiss <ID>`"))
+}
+
 func TestPrint_Frequency(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())
 	outage := Notification{Title: "Outage", ID: "e", Severity: diag.Error, SchemaVersion: 1}
 	upgrade := Notification{Title: "Upgrade", ID: "w", Severity: diag.Warning, SchemaVersion: 1}
 	ns := []Notification{survey, outage, upgrade}
-	require.NoError(t, writeCache(map[string]cacheEntry{staticSource: {FetchedAt: time.Now(), Notifications: ns}}))
-	require.NoError(t, writeShown(map[string]time.Time{"no-longer-sent": time.Now()}))
+	require.NoError(t, writeJSON(cacheFile, map[string]cacheEntry{
+		staticSource: {FetchedAt: time.Now(), Notifications: ns},
+	}))
+	require.NoError(t, writeJSON(shownFile, map[string]time.Time{"no-longer-sent": time.Now()}))
 
 	show := func() string {
 		var stderr bytes.Buffer
@@ -169,6 +230,7 @@ func TestPrint_Frequency(t *testing.T) {
 	assert.Contains(t, first, survey.Title)
 	assert.Contains(t, first, outage.Title)
 	assert.Contains(t, first, upgrade.Title)
+	assert.Contains(t, first, "dismiss <ID>")
 	assert.Equal(t, []string{survey.ID, upgrade.ID}, slices.Sorted(maps.Keys(readShown())))
 
 	second := show()
@@ -178,8 +240,13 @@ func TestPrint_Frequency(t *testing.T) {
 
 	shown := readShown()
 	shown[upgrade.ID] = time.Now().Add(-25 * time.Hour)
-	require.NoError(t, writeShown(shown))
+	require.NoError(t, writeJSON(shownFile, shown))
 	third := show()
 	assert.NotContains(t, third, survey.Title)
 	assert.Contains(t, third, upgrade.Title)
+
+	ns = []Notification{{Title: "Tip", ID: "i", Severity: diag.Info, SchemaVersion: 1}}
+	infoOnly := show()
+	assert.Contains(t, infoOnly, "Tip")
+	assert.NotContains(t, infoOnly, "dismiss")
 }
