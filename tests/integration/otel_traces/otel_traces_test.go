@@ -157,6 +157,67 @@ func TestOtelTraces(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestOtelTracesNodejsError(t *testing.T) {
+	binDir := testutil.TestProviderDir(t)
+	for _, failure := range []struct {
+		name   string
+		reason string
+	}{
+		{name: "program", reason: "intentional program failure"},
+		{name: "resource", reason: "Create always fails for the FailsOnCreate resource"},
+	} {
+		t.Run(failure.name, func(t *testing.T) {
+			traceDir := t.TempDir()
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:          "nodejs",
+				Dependencies: []string{"@pulumi/pulumi"},
+				LocalProviders: []integration.LocalDependency{
+					{Package: "testprovider", Path: binDir},
+				},
+				Config:        map[string]string{"failure": failure.name},
+				OtelTraces:    "file:///" + filepath.ToSlash(filepath.Join(traceDir, "traces-{command}.json")),
+				Quick:         true,
+				SkipRefresh:   true,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+					var errors []string
+					for _, event := range stack.Events {
+						if d := event.DiagnosticEvent; d != nil && d.Severity == "error" {
+							errors = append(errors, d.Message)
+						}
+					}
+					require.Contains(t, strings.Join(errors, "\n"), failure.reason)
+
+					spans := readSpans(t, filepath.Join(traceDir, "traces-pulumi-update-initial.json"))
+					spanByID := make(map[pcommon.SpanID]traceSpan)
+					for _, span := range spans {
+						spanByID[span.SpanID] = span
+					}
+
+					runSpans := filterByService(findSpans(spans, "pulumirpc.LanguageRuntime/Run"), "pulumi-language-nodejs")
+					require.NotEmpty(t, runSpans)
+					sdkRegistrations := filterByService(
+						findSpans(spans, "grpc.pulumirpc.ResourceMonitor/RegisterResource"), "pulumi-sdk-nodejs")
+					require.NotEmpty(t, sdkRegistrations, "expected Node.js SDK spans to flush after failure")
+					for _, span := range sdkRegistrations {
+						assert.Equal(t, runSpans[0].TraceID, span.TraceID)
+						assert.True(t, isDescendantOfAny(span, runSpans, spanByID))
+					}
+
+					engineRegistrations := filterByService(
+						findSpans(spans, "pulumirpc.ResourceMonitor/RegisterResource"), "pulumi-cli")
+					require.NotEmpty(t, engineRegistrations)
+					for _, span := range engineRegistrations {
+						assert.True(t, isDescendantOfAny(span, sdkRegistrations, spanByID),
+							"engine registration span has no exported SDK ancestor")
+					}
+				},
+			})
+		})
+	}
+}
+
 // findSpans returns all spans whose name exactly matches the given string.
 func findSpans(spans []traceSpan, name string) []traceSpan {
 	var result []traceSpan
