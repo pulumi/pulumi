@@ -124,12 +124,12 @@ func TestFilterKeepSecrets(t *testing.T) {
 	// KeepSecrets=false strips the marker, retains the value.
 	out := filterMap(t, m, FilterOptions{KeepUnknowns: true, KeepResources: true})
 	v := out.Get("s")
-	assert.False(t, v.Secret())
+	assert.False(t, v.IsSecret())
 	assert.Equal(t, "secret-value", v.AsString())
 
 	// KeepSecrets=true preserves it.
 	out = filterMap(t, m, keepAll)
-	assert.True(t, out.Get("s").Secret())
+	assert.True(t, out.Get("s").IsSecret())
 }
 
 func TestFilterKeepResources(t *testing.T) {
@@ -187,7 +187,7 @@ func TestFilterKeepResourcesPreservesSecretAndDeps(t *testing.T) {
 	out := filterMap(t, m, opts)
 	v := out.Get("r")
 	assert.Equal(t, "abc", v.AsString())
-	assert.True(t, v.Secret())
+	assert.True(t, v.IsSecret())
 	assert.Equal(t, deps, v.Dependencies())
 }
 

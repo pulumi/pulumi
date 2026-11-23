@@ -47,7 +47,7 @@ func byteStringDisplay(s string) string {
 // not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
 // replaced with their b"<base64>" rendering.
 func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
-	if v.Secret() {
+	if v.IsSecret() {
 		if !showSecrets {
 			return property.New("[secret]")
 		}
@@ -59,14 +59,14 @@ func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
 	case v.IsArray():
 		arr := v.AsArray()
 		new := make([]property.Value, arr.Len())
-		for i, e := range arr.All {
+		for i, e := range arr.All() {
 			new[i] = massagePropertyValue(e, showSecrets)
 		}
 		return property.New(new)
 	case v.IsMap():
 		obj := v.AsMap()
 		new := make(map[string]property.Value, obj.Len())
-		for k, e := range obj.All {
+		for k, e := range obj.All() {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
 		return property.New(new)
@@ -81,7 +81,7 @@ func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
 // with the signature key and value.
 func MassageSecrets(m property.Map, showSecrets bool) property.Map {
 	new := make(map[string]property.Value, m.Len())
-	for k, e := range m.All {
+	for k, e := range m.All() {
 		new[k] = massagePropertyValue(e, showSecrets)
 	}
 	return property.NewMap(new)

@@ -286,7 +286,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			return nil, fmt.Errorf("hook %s: command must be a list of strings", hookName)
 		}
 		var cmdArgs []string
-		for _, arg := range cmdVal.AsArray().All {
+		for _, arg := range cmdVal.AsArray().All() {
 			if !arg.IsString() {
 				return nil, fmt.Errorf("hook %s: command elements must be strings", hookName)
 			}
@@ -997,11 +997,11 @@ func allDependencies(value property.Value) []urn.URN {
 		deps = append(deps, value.Dependencies()...)
 		switch {
 		case value.IsMap():
-			for _, v := range value.AsMap().AllStable {
+			for _, v := range value.AsMap().AllStable() {
 				inner(v)
 			}
 		case value.IsArray():
-			for _, v := range value.AsArray().All {
+			for _, v := range value.AsArray().All() {
 				inner(v)
 			}
 		}
@@ -1019,14 +1019,14 @@ func stripOutputs(value property.Value) property.Value {
 	case value.IsMap():
 		m := value.AsMap()
 		stripped := map[string]property.Value{}
-		for k, v := range m.All {
+		for k, v := range m.All() {
 			stripped[k] = stripOutputs(v)
 		}
 		value = property.New(property.NewMap(stripped))
 	case value.IsArray():
 		a := value.AsArray()
 		stripped := make([]property.Value, 0, a.Len())
-		for _, v := range a.All {
+		for _, v := range a.All() {
 			stripped = append(stripped, stripOutputs(v))
 		}
 		value = property.New(property.NewArray(stripped))
@@ -1054,7 +1054,7 @@ func providerReferences(providers property.Value) (map[string]string, error) {
 	psopt := map[string]string{}
 	switch {
 	case providers.IsMap():
-		for k, v := range providers.AsMap().All {
+		for k, v := range providers.AsMap().All() {
 			_, ref, err := reference(v)
 			if err != nil {
 				return nil, err
@@ -1062,7 +1062,7 @@ func providerReferences(providers property.Value) (map[string]string, error) {
 			psopt[k] = ref
 		}
 	case providers.IsArray():
-		for _, v := range providers.AsArray().All {
+		for _, v := range providers.AsArray().All() {
 			urn, ref, err := reference(v)
 			if err != nil {
 				return nil, err
@@ -1105,14 +1105,14 @@ func collapseResourceReferences(value property.Value) property.Value {
 	case value.IsArray():
 		array := value.AsArray()
 		collapsed := make([]property.Value, array.Len())
-		for i, elem := range array.All {
+		for i, elem := range array.All() {
 			collapsed[i] = collapseResourceReferences(elem)
 		}
 		return property.WithGoValue(value, collapsed)
 	case value.IsMap():
 		obj := value.AsMap()
 		collapsed := make(map[string]property.Value, obj.Len())
-		for key, elem := range obj.All {
+		for key, elem := range obj.All() {
 			collapsed[key] = collapseResourceReferences(elem)
 		}
 
@@ -1233,7 +1233,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			suffix  string
 			evalCtx *EvalContext
 		}, 0, values.Len())
-		for idx, v := range values.All {
+		for idx, v := range values.All() {
 			val, err := propertyValueToCty(ctx, i.getResource, v)
 			if err != nil {
 				return err
@@ -1252,7 +1252,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	if rangeValue.IsMap() {
 		values := rangeValue.AsMap()
 		resultMap := make(map[string]cty.Value, values.Len())
-		for key, value := range values.AllStable {
+		for key, value := range values.AllStable() {
 			val, err := propertyValueToCty(ctx, i.getResource, value)
 			if err != nil {
 				return err
@@ -1308,7 +1308,7 @@ func (i *Interpreter) registerResourceWith(
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs.All {
+	for key, val := range inputs.All() {
 		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
@@ -1349,7 +1349,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("additionalSecretOutputs must be an array of strings")
 				}
 				var additionalSecretOutputKeys []string
-				for _, v := range additionalSecretOutputs.AsArray().All {
+				for _, v := range additionalSecretOutputs.AsArray().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1375,7 +1375,7 @@ func (i *Interpreter) registerResourceWith(
 				}
 				var aliasOpts []*pulumirpc.Alias
 				// Translate each alias expression (either string or object) into an rpc alias object
-				for _, alias := range aliases.AsArray().All {
+				for _, alias := range aliases.AsArray().All() {
 					if alias.IsString() {
 						aliasOpts = append(aliasOpts, &pulumirpc.Alias{
 							Alias: &pulumirpc.Alias_Urn{
@@ -1452,7 +1452,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("dependsOn must be an array of resource objects")
 				}
 				var dependsOnUrns []string
-				for _, v := range dependsOn.AsArray().All {
+				for _, v := range dependsOn.AsArray().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1479,7 +1479,7 @@ func (i *Interpreter) registerResourceWith(
 						"envVarMappings must be an object mapping environment variable names to input property keys")
 				}
 				envVarMappings := map[string]string{}
-				for envVar, propKey := range envVars.AsMap().All {
+				for envVar, propKey := range envVars.AsMap().All() {
 					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
 						return cty.NilVal, errors.New(
 							"envVarMappings must be an object mapping environment variable names to input property keys")
@@ -1517,7 +1517,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 				}
 				icopt := []string{}
-				for _, v := range ignoreChanges.AsArray().All {
+				for _, v := range ignoreChanges.AsArray().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1560,7 +1560,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("replaceWith must be an array of resources")
 				}
 				var rwopt []string
-				for _, v := range replaceWith.AsArray().All {
+				for _, v := range replaceWith.AsArray().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1586,7 +1586,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 				}
 				rocopt := []string{}
-				for _, v := range replaceOnChanges.AsArray().All {
+				for _, v := range replaceOnChanges.AsArray().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1654,7 +1654,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("customTimeouts must be an object")
 				}
 				timeoutValues := map[string]string{}
-				for k, v := range timeouts.AsMap().All {
+				for k, v := range timeouts.AsMap().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1786,7 +1786,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 				}
 				hdopt := []string{}
-				for _, v := range hideDiffs.AsArray().All {
+				for _, v := range hideDiffs.AsArray().All() {
 					if v.IsNull() || v.IsComputed() {
 						continue
 					}
@@ -1813,7 +1813,7 @@ func (i *Interpreter) registerResourceWith(
 					return cty.NilVal, errors.New("hooks must be an object mapping hook types to command lists")
 				}
 				binding := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
-				for hookType, commandLists := range hooksVal.AsMap().All {
+				for hookType, commandLists := range hooksVal.AsMap().All() {
 					if commandLists.IsNull() || commandLists.IsComputed() {
 						continue
 					}
@@ -1821,7 +1821,7 @@ func (i *Interpreter) registerResourceWith(
 						return cty.NilVal, fmt.Errorf("hooks.%s must be an array of hooks", hookType)
 					}
 					var hookNames []string
-					for idx, hookVal := range commandLists.AsArray().All {
+					for idx, hookVal := range commandLists.AsArray().All() {
 						if hookVal.IsNull() || hookVal.IsComputed() {
 							continue
 						}
@@ -1999,7 +1999,7 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 			if !dependsOn.IsArray() {
 				return errors.New("dependsOn must be an array of resource objects")
 			}
-			for _, v := range dependsOn.AsArray().All {
+			for _, v := range dependsOn.AsArray().All() {
 				if v.IsNull() || v.IsComputed() {
 					continue
 				}
@@ -2091,7 +2091,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	dependencies := []string{}
 	propertyDependencies := map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{}
-	for key, val := range inputs.All {
+	for key, val := range inputs.All() {
 		deps := castSliceToString(allDependencies(val))
 		if len(deps) > 0 {
 			dependencies = append(dependencies, deps...)
@@ -2215,7 +2215,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		componentInterpreter.existsResource,
 	)
 
-	for k, v := range inputs.All {
+	for k, v := range inputs.All() {
 		if err := componentInterpreter.setVariable(ctx, k, v); err != nil {
 			return hcl.Diagnostics{{
 				Severity: hcl.DiagError,
@@ -2233,7 +2233,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 			Detail:   err.Error(),
 		}}
 	}
-	for key, val := range componentOutputs.All {
+	for key, val := range componentOutputs.All() {
 		componentOutputs = componentOutputs.Set(key, collapseResourceReferences(val))
 	}
 
@@ -2288,7 +2288,7 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs property
 		return errors.New("missing stack URN")
 	}
 	collapsedOutputs := make(map[string]property.Value, outputs.Len())
-	for key, val := range outputs.All {
+	for key, val := range outputs.All() {
 		collapsedOutputs[key] = collapseResourceReferences(val)
 	}
 
@@ -2347,7 +2347,7 @@ func getStackOutput(stackRef property.Value, outputName string) (property.Value,
 	secretByName := false
 	if secretNames, ok := obj.GetOk("secretOutputNames"); ok {
 		if secretNames.IsArray() {
-			for _, name := range secretNames.AsArray().All {
+			for _, name := range secretNames.AsArray().All() {
 				if name.IsString() && name.AsString() == outputName {
 					secretByName = true
 					break
@@ -2356,5 +2356,5 @@ func getStackOutput(stackRef property.Value, outputName string) (property.Value,
 		}
 	}
 
-	return output.WithSecret(secretByName || output.Secret()), nil
+	return output.WithSecret(secretByName || output.IsSecret()), nil
 }

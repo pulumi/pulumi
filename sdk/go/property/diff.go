@@ -198,7 +198,7 @@ func (props Map) diff(other Map, opts diffOptions, path Path) *ObjectDiff {
 	}
 
 	// First find any updates or deletes.
-	for k, old := range props.All {
+	for k, old := range props.All() {
 		if ignore(k) {
 			continue
 		}
@@ -224,7 +224,7 @@ func (props Map) diff(other Map, opts diffOptions, path Path) *ObjectDiff {
 	}
 
 	// Next find any additions not in the old map.
-	for k, new := range other.All {
+	for k, new := range other.All() {
 		if ignore(k) {
 			continue
 		}
@@ -257,7 +257,7 @@ func (props Value) Diff(other Value, options ...DiffOption) *ValueDiff {
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
 	// If secretness differs, then the values are different.
-	if v.Secret() != other.Secret() {
+	if v.IsSecret() != other.IsSecret() {
 		return &ValueDiff{Old: v, New: other}
 	}
 	// If the dependencies differ, then the values are different.
@@ -265,7 +265,7 @@ func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
 		return &ValueDiff{Old: v, New: other}
 	}
 
-	opaque := v.Secret() || len(v.Dependencies()) > 0
+	opaque := v.IsSecret() || len(v.Dependencies()) > 0
 
 	if v.IsArray() && other.IsArray() {
 		old := v.AsArray()

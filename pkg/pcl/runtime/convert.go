@@ -348,7 +348,7 @@ func fillSchemaOutputValue(value property.Value, targetType schema.Type, fillUnk
 		if value.IsArray() {
 			array := value.AsArray()
 			arr := make([]property.Value, array.Len())
-			for i, elem := range array.All {
+			for i, elem := range array.All() {
 				arr[i] = fillSchemaOutputValue(elem, t.ElementType, fillUnknown)
 			}
 			return property.WithGoValue(value, arr)
@@ -395,13 +395,13 @@ func applySchemaInputsInner(
 
 		// Only add a fresh secret marker at the outermost level — once inside a secret,
 		// schema-driven marks would just duplicate the outer wrap.
-		if !insideSecret && prop.Secret && !val.Secret() {
+		if !insideSecret && prop.Secret && !val.IsSecret() {
 			val = val.WithSecret(true)
 		}
 		converted[key] = val
 	}
 
-	for key, value := range inputs.All {
+	for key, value := range inputs.All() {
 		if _, ok := seen[key]; !ok {
 			converted[key] = value
 		}
@@ -415,7 +415,7 @@ func applySchemaInputConversion(
 ) (out property.Value, _ error) {
 	targetType = codegen.UnwrapType(targetType)
 
-	if value.Secret() {
+	if value.IsSecret() {
 		insideSecret = true
 		// Anything inside the secret wrap is by definition "inside a secret".
 		defer func() { out = out.WithSecret(true) }()
@@ -435,7 +435,7 @@ func applySchemaInputConversion(
 		}
 		arr := value.AsArray()
 		converted := make([]property.Value, arr.Len())
-		for i, elem := range arr.All {
+		for i, elem := range arr.All() {
 			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
 			if err != nil {
 				return property.Value{}, fmt.Errorf("array index %d: %w", i, err)
@@ -449,7 +449,7 @@ func applySchemaInputConversion(
 		}
 		obj := value.AsMap()
 		converted := make(map[string]property.Value, obj.Len())
-		for key, elem := range obj.All {
+		for key, elem := range obj.All() {
 			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
 			if err != nil {
 				return property.Value{}, fmt.Errorf("map key %q: %w", key, err)
@@ -544,7 +544,7 @@ func propertyValueToCty(
 	getResource func(context.Context, property.ResourceReference) (property.Map, error),
 	value property.Value,
 ) (out cty.Value, _ error) {
-	if value.Secret() {
+	if value.IsSecret() {
 		defer func() { out = out.Mark(secretMark{}) }()
 	}
 	if d := value.Dependencies(); len(d) > 0 {
@@ -574,7 +574,7 @@ func propertyValueToCty(
 	case value.IsArray():
 		array := value.AsArray()
 		vals := make([]cty.Value, array.Len())
-		for i, elem := range array.All {
+		for i, elem := range array.All() {
 			ctyElem, err := propertyValueToCty(ctx, getResource, elem)
 			if err != nil {
 				return cty.NilVal, err
@@ -594,7 +594,7 @@ func propertyValueToCty(
 	case value.IsMap():
 		obj := value.AsMap()
 		vals := map[string]cty.Value{}
-		for k, v := range obj.All {
+		for k, v := range obj.All() {
 			ctyVal, err := propertyValueToCty(ctx, getResource, v)
 			if err != nil {
 				return cty.NilVal, err

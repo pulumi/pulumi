@@ -252,7 +252,7 @@ func renderResourceStateText(cmd *cobra.Command, res *pkgresource.State, showSec
 // (double-underscore) keys.
 func renderProperties(ctx context.Context, props property.Map, showSecrets bool) (map[string]any, error) {
 	visible := make(map[string]property.Value, props.Len())
-	for k, v := range props.All {
+	for k, v := range props.All() {
 		if !resource.IsInternalPropertyKey(resource.PropertyKey(k)) {
 			visible[k] = v
 		}

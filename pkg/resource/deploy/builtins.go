@@ -127,7 +127,7 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 			"Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues."
 		p.diag.Warningf(diag.Message(req.URN, msg))
 
-		for k := range req.NewInputs.All {
+		for k := range req.NewInputs.All() {
 			if k != "name" {
 				return plugin.CheckResponse{
 					Failures: []plugin.CheckFailure{
@@ -150,7 +150,7 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 		}
 		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	case stashType:
-		for k := range req.NewInputs.All {
+		for k := range req.NewInputs.All() {
 			if k != "input" {
 				return plugin.CheckResponse{
 					Failures: []plugin.CheckFailure{
@@ -423,7 +423,7 @@ func (p *builtinProvider) readStackReference(
 	}
 
 	secretOutputs := make([]property.Value, 0)
-	for k, v := range outputs.All {
+	for k, v := range outputs.All() {
 		if v.HasSecrets() {
 			secretOutputs = append(secretOutputs, property.New(k))
 		}

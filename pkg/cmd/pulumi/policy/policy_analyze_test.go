@@ -291,7 +291,7 @@ func TestPolicyAnalyzeCmd_File_UndecryptableSecretsRedacted(t *testing.T) {
 	assert.Contains(t, stderr, "secret values redacted")
 
 	pw := analyzer.analyzeProperties.Get("password")
-	require.True(t, pw.Secret())
+	require.True(t, pw.IsSecret())
 	assert.Equal(t, "[secret]", pw.AsString())
 }
 

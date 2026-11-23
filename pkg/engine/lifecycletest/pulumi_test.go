@@ -1896,7 +1896,7 @@ func TestReplaceOnChanges(t *testing.T) {
 			// To establish a observable difference between the provider and engine diff function,
 			// we treat 42 as an OpSame. We use this to check that the right diff function is being
 			// used.
-			for k, v := range req.NewInputs.All {
+			for k, v := range req.NewInputs.All() {
 				if v.Equals(property.New(42.0)) {
 					req.NewInputs = req.NewInputs.Set(k, req.OldOutputs.Get(k))
 				}
@@ -3418,9 +3418,9 @@ func TestEventSecrets(t *testing.T) {
 				continue
 			}
 
-			assert.True(t, step.Old.Inputs.Get("webhooks").Secret())
-			assert.True(t, step.Old.Outputs.Get("webhooks").Secret())
-			assert.True(t, step.New.Inputs.Get("webhooks").Secret())
+			assert.True(t, step.Old.Inputs.Get("webhooks").IsSecret())
+			assert.True(t, step.Old.Outputs.Get("webhooks").IsSecret())
+			assert.True(t, step.New.Inputs.Get("webhooks").IsSecret())
 		}
 		return err
 	}
