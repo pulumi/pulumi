@@ -459,7 +459,11 @@ func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 					// The version didn't make it in time, so don't block the user
 				}
 
-				notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version)
+				// Show at most one message besides the update check, preferring a notification, which can
+				// carry a warning or an error, over a hint.
+				if notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version) {
+					hints.Suppress()
+				}
 			}
 		},
 	}
