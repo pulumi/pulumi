@@ -231,7 +231,8 @@ func TestResolveContextRejectedToken(t *testing.T) {
 			apiErr := resolveContextError(err)
 			assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode, "error: %v", err)
 			assert.Equal(t, ErrNotLoggedIn, apiErr.Envelope.Error.Code)
-			assert.Contains(t, apiErr.Envelope.Error.Suggestions, "run `pulumi login` first")
+			assert.Contains(t, apiErr.Envelope.Error.Suggestions,
+				"Run `pulumi login` to sign in or create a free account.")
 		})
 	}
 }

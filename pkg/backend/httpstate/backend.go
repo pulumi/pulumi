@@ -837,15 +837,16 @@ func (m defaultLoginManager) Login(
 		return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
 	}
 
-	// Point agents at `pulumi login`, which they can ask the user to run, rather than at an access token.
+	// Agents and people get the same text, but keep the two error types: callers branch on them, and switching
+	// people to LoginRequiredError would let some commands carry on without a backend where they fail today.
 	if !cmdutil.Interactive() && agentdetect.Detect(os.Getenv) != "" {
-		return nil, backenderr.LoginRequiredError{}
+		return nil, backenderr.LoginRequiredError{TokensURL: accountLink}
 	}
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
-		return nil, backenderr.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var()}
+		return nil, backenderr.MissingEnvVarForNonInteractiveError{Var: env.AccessToken.Var(), TokensURL: accountLink}
 	}
 
 	// If no access token is available from the environment, and we are interactive, prompt and offer to

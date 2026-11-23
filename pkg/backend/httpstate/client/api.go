@@ -584,7 +584,9 @@ func pulumiAPICall(ctx context.Context,
 		}
 
 		if resp.StatusCode == 401 {
-			loginErr := backenderr.LoginRequiredError{}
+			loginErr := backenderr.LoginRequiredError{
+				TokensURL: CloudConsoleURL(cloudAPI, "user", "settings", "tokens"),
+			}
 			if errResp, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 				for _, e := range errResp.Errors {
 					if (e.ErrorType == "saml_reauth_required" || e.ErrorType == "saml_login_required") && e.Attribute != nil {

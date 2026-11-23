@@ -37,6 +37,7 @@ import (
 	"github.com/blang/semver"
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -516,7 +517,8 @@ func TestAPIErrorResponses(t *testing.T) {
 		unauthorizedClient := newMockClient(unauthorizedServer)
 		_, _, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(t.Context(), nil)
 
-		assert.EqualError(t, unauthorizedErr, "this command requires logging in; try running `pulumi login` first")
+		assert.EqualError(t, unauthorizedErr, backenderr.LoginRequiredMessage(
+			CloudConsoleURL(unauthorizedServer.URL, "user", "settings", "tokens")))
 	})
 	t.Run("TestRateLimitError", func(t *testing.T) {
 		t.Parallel()

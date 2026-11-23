@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: When a command needs a Pulumi Cloud login and has no credentials, say how to sign in with `pulumi login` and where to create an access token for headless use. People, scripts and agents now all see this message; it replaces "PULUMI_ACCESS_TOKEN must be set for login during non-interactive CLI sessions", so update any script that matches on that text. The exit code is still 3
+time: 2026-11-23T12:00:00Z

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	pulumienv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -110,12 +111,48 @@ func (c ConflictingUpdateError) Error() string {
 
 // MissingEnvVarForNonInteractiveError represents a situation where the CLI is run in
 // non-interactive mode and that requires certain env vars to be set.
+//
+// It renders the same text as LoginRequiredError. The types stay separate because callers branch on them.
 type MissingEnvVarForNonInteractiveError struct {
 	Var env.Var
+	// TokensURL, if set, is the console page where the user can create an access token.
+	TokensURL string
 }
 
 func (err MissingEnvVarForNonInteractiveError) Error() string {
-	return err.Var.Name() + " must be set for login during non-interactive CLI sessions"
+	return loginRequiredMessage(err.Var.Name(), err.TokensURL)
+}
+
+// LoginRequiredSuggestions returns the next steps for someone who needs to log in to Pulumi Cloud, one per line.
+// tokensURL is the console page for creating an access token, or empty if it isn't known.
+//
+// People, scripts and agents all see the same steps. Each line stands on its own, because agents often keep
+// only the last few lines of a command's output.
+func LoginRequiredSuggestions(tokensURL string) []string {
+	return loginRequiredSuggestions(pulumienv.AccessToken.Var().Name(), tokensURL)
+}
+
+func loginRequiredSuggestions(tokenVar string, tokensURL string) []string {
+	tokenLine := "For CI or headless use, set " + tokenVar + " to a Pulumi Cloud access token."
+	if tokensURL != "" {
+		tokenLine = fmt.Sprintf("For CI or headless use, set %s (create one at %s).", tokenVar, tokensURL)
+	}
+	return []string{
+		"Run `pulumi login` to sign in or create a free account.",
+		"It opens your web browser and waits until you've signed in there.",
+		tokenLine,
+	}
+}
+
+// LoginRequiredMessage returns the text of LoginRequiredError, for code that reports a missing login without
+// returning that type. tokensURL is the console page for creating an access token, or empty if it isn't known.
+func LoginRequiredMessage(tokensURL string) string {
+	return loginRequiredMessage(pulumienv.AccessToken.Var().Name(), tokensURL)
+}
+
+// loginRequiredMessage is the text of both LoginRequiredError and MissingEnvVarForNonInteractiveError.
+func loginRequiredMessage(tokenVar string, tokensURL string) string {
+	return "Pulumi Cloud login required\n  " + strings.Join(loginRequiredSuggestions(tokenVar, tokensURL), "\n  ")
 }
 
 // NoConfirmationInNonInteractiveError represents a situation where the CLI is run
@@ -220,13 +257,15 @@ func (ForbiddenError) Is(other error) bool {
 type LoginRequiredError struct {
 	// ReauthURL, if set, is the URL the user should visit to re-authenticate.
 	ReauthURL string
+	// TokensURL, if set, is the console page where the user can create an access token.
+	TokensURL string
 }
 
 func (err LoginRequiredError) Error() string {
 	if err.ReauthURL != "" {
 		return fmt.Sprintf("SAML SSO authentication is required. Log in at:\n\n    %s\n", err.ReauthURL)
 	}
-	return "this command requires logging in; try running `pulumi login` first"
+	return LoginRequiredMessage(err.TokensURL)
 }
 
 // CancelledError represents a user-initiated cancellation of an operation

@@ -34,6 +34,7 @@ import (
 
 	"github.com/google/go-querystring/query"
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
@@ -2118,7 +2119,7 @@ func (pc *client) httpCall(
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && pc.apiToken == "" {
-		return nil, errors.New("this command requires logging in; try running `pulumi login` first")
+		return nil, errors.New(backenderr.LoginRequiredMessage(""))
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)

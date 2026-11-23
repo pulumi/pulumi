@@ -18,10 +18,62 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	pulumienv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNotFoundErrorIs(t *testing.T) {
 	t.Parallel()
 	assert.ErrorIs(t, ErrNotFound, registry.ErrNotFound)
+}
+
+func TestLoginRequiredErrorsShareText(t *testing.T) {
+	t.Parallel()
+
+	tokensURL := "https://app.pulumi.com/user/settings/tokens"
+	want := "Pulumi Cloud login required\n" +
+		"  Run `pulumi login` to sign in or create a free account.\n" +
+		"  It opens your web browser and waits until you've signed in there.\n" +
+		"  For CI or headless use, set PULUMI_ACCESS_TOKEN (create one at " + tokensURL + ")."
+
+	assert.Equal(t, want, LoginRequiredError{TokensURL: tokensURL}.Error())
+	assert.Equal(t, want, MissingEnvVarForNonInteractiveError{
+		Var:       pulumienv.AccessToken.Var(),
+		TokensURL: tokensURL,
+	}.Error())
+	assert.Equal(t, want, LoginRequiredMessage(tokensURL))
+}
+
+func TestLoginRequiredErrorWithoutTokensURL(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "Pulumi Cloud login required\n"+
+		"  Run `pulumi login` to sign in or create a free account.\n"+
+		"  It opens your web browser and waits until you've signed in there.\n"+
+		"  For CI or headless use, set PULUMI_ACCESS_TOKEN to a Pulumi Cloud access token.",
+		LoginRequiredError{}.Error())
+}
+
+func TestLoginRequiredErrorKeepsSAMLReauthText(t *testing.T) {
+	t.Parallel()
+
+	err := LoginRequiredError{
+		ReauthURL: "https://app.pulumi.com/signin/sso/acme/reauth",
+		TokensURL: "https://app.pulumi.com/user/settings/tokens",
+	}
+	assert.Equal(t,
+		"SAML SSO authentication is required. Log in at:\n\n    https://app.pulumi.com/signin/sso/acme/reauth\n",
+		err.Error())
+}
+
+func TestLoginRequiredErrorsStayDistinctTypes(t *testing.T) {
+	t.Parallel()
+
+	// Callers branch on the type, not the text, so sharing the text must not make one match the other.
+	missingEnvVar := MissingEnvVarForNonInteractiveError{Var: pulumienv.AccessToken.Var()}
+	assert.NotErrorIs(t, missingEnvVar, ErrLoginRequired)
+	assert.NotErrorIs(t, LoginRequiredError{}, MissingEnvVarForNonInteractiveError{})
+	assert.ErrorIs(t, LoginRequiredError{TokensURL: "https://example.com"}, ErrLoginRequired)
+	assert.True(t, IsAuthError(missingEnvVar))
+	assert.True(t, IsAuthError(LoginRequiredError{}))
 }

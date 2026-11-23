@@ -37,8 +37,12 @@ import (
 func resolveContextError(err error) *APIError {
 	message := fmt.Sprintf("resolving cloud context: %v", err)
 	if errors.Is(err, httpstate.ErrUnauthorized) || backenderr.IsAuthError(err) {
+		var tokensURL string
+		if loginErr, ok := errors.AsType[backenderr.LoginRequiredError](err); ok {
+			tokensURL = loginErr.TokensURL
+		}
 		return NewAPIError(cmdutil.ExitAuthenticationError, ErrNotLoggedIn, message).
-			WithSuggestions("run `pulumi login` first")
+			WithSuggestions(backenderr.LoginRequiredSuggestions(tokensURL)...)
 	}
 	return NewAPIError(cmdutil.ExitInternalError, ErrToolError, message)
 }
