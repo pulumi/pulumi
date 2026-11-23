@@ -305,10 +305,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
-			// Hints are for people at a terminal, so don't show them in CI or mix them into machine-readable output.
-			// Commands that parse their own flags, like `pulumi do`, may write JSON without cobra knowing, so they
-			// show no hints either.
-			if ciutil.IsCI() || cmd.DisableFlagParsing || isJSONOutput(cmd) {
+			// Hints are for people at a terminal, so don't show them in CI or non-interactive runs, or mix them into
+			// machine-readable output. Commands that parse their own flags, like `pulumi do`, may write JSON without
+			// cobra knowing, so they show no hints either.
+			if ciutil.IsCI() || cmdutil.DisableInteractive || cmd.DisableFlagParsing || isJSONOutput(cmd) {
 				hints.Suppress()
 			}
 
