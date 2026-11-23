@@ -39,11 +39,10 @@ var DriftDetection = Hint{
 // provider writes the message, because it knows its cloud and how to set up ESC for it.
 func ESCCredentials(message string) Hint {
 	return Hint{
-		ID:        "esc-credentials",
-		Cooldown:  24 * time.Hour,
-		Message:   message,
-		CloudOnly: true,
-		// This hint isn't meant for first-time users.
+		ID:               "esc-credentials",
+		Cooldown:         24 * time.Hour,
+		Message:          message,
+		CloudOnly:        true,
 		HideFromNewUsers: true,
 	}
 }
