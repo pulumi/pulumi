@@ -163,7 +163,8 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"\n" +
 			"The exception belongs to the Policy Pack named as <policy-pack> or <org>/<policy-pack>; the\n" +
 			"organization defaults to the stack's. It gets one entry per resource, listing the resource's\n" +
-			"selected policies. Requesting the same exception again returns the existing one.\n" +
+			"selected policies. An active exception that already covers the violations is returned instead\n" +
+			"of a new one, and so is an identical open request by the same author.\n" +
 			"\n" +
 			"When the organization requires approval for policy exceptions, or --draft is passed, the\n" +
 			"command creates a change request for the exception instead and submits it, with the reason as\n" +
@@ -871,7 +872,10 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		default:
 			fmt.Fprintln(stderr, "Exception will be applied after the request is approved.")
 		}
-		fprintPolicyExceptionExpiry(stderr, r)
+		// A covered exception has its own expiry, which may differ from the one requested.
+		if r.ID == "" || !r.Updated {
+			fprintPolicyExceptionExpiry(stderr, r)
+		}
 		return nil
 	}
 
@@ -931,11 +935,19 @@ func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
 	fmt.Fprintf(w, "Expires: %s after it's created\n", policyExceptionExpiresIn(*r.Exception.ExpiresInSeconds))
 }
 
-// policyExceptionExpiresIn says how long after it's created an exception expires, in days or hours.
+// policyExceptionExpiresIn says how long after it's created an exception expires, in the largest unit that's exact:
+// days, hours, minutes or seconds. The CLI only requests days or hours, but other clients may request any number of
+// seconds.
 func policyExceptionExpiresIn(seconds int64) string {
-	n, unit := seconds/(24*3600), "day"
-	if seconds%(24*3600) != 0 {
-		n, unit = seconds/3600, "hour"
+	n, unit := seconds, "second"
+	for _, u := range []struct {
+		seconds int64
+		name    string
+	}{{24 * 3600, "day"}, {3600, "hour"}, {60, "minute"}} {
+		if seconds%u.seconds == 0 {
+			n, unit = seconds/u.seconds, u.name
+			break
+		}
 	}
 	if n != 1 {
 		unit += "s"

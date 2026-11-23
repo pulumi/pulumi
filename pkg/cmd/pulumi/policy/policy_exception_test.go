@@ -76,6 +76,10 @@ type mockPolicyExceptionClient struct {
 	crs           []esc_client.ChangeRequest
 	draft         cloudapitype.CreatePolicyExceptionRequest
 	crEvents      []esc_client.ChangeRequestEvent
+	// reviewErr fails approving, unapproving, closing and commenting; rereadErr fails reading a change request after
+	// one of them.
+	reviewErr error
+	rereadErr error
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
 	gotOrgFlag   string
@@ -128,6 +132,9 @@ func (m *mockPolicyExceptionClient) GetChangeRequest(
 	if m.noCR {
 		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
 	}
+	if m.rereadErr != nil && len(m.gotReviews) > 0 {
+		return nil, m.rereadErr
+	}
 	status := cmp.Or(m.crOpen, changeRequestDraft)
 	if len(m.gotSubmitted) > 0 {
 		status = m.crStatus
@@ -165,25 +172,25 @@ func (m *mockPolicyExceptionClient) ApproveChangeRequest(
 	m.gotOrg = org
 	m.gotReviews = append(m.gotReviews, fmt.Sprintf("approve %s@%d %s", id, rev, comment))
 	m.crCurrent = cmp.Or(m.approveStatus, m.crCurrent)
-	return m.err
+	return cmp.Or(m.reviewErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) UnapproveChangeRequest(_ context.Context, org, id string) error {
 	m.gotOrg = org
 	m.gotReviews = append(m.gotReviews, "unapprove "+id)
-	return m.err
+	return cmp.Or(m.reviewErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) CloseChangeRequest(_ context.Context, org, id, comment string) error {
 	m.gotOrg = org
 	m.gotReviews = append(m.gotReviews, fmt.Sprintf("close %s %s", id, comment))
-	return m.err
+	return cmp.Or(m.reviewErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) AddChangeRequestComment(_ context.Context, org, id, comment string) error {
 	m.gotOrg = org
 	m.gotReviews = append(m.gotReviews, fmt.Sprintf("comment %s %s", id, comment))
-	return m.err
+	return cmp.Or(m.reviewErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) ListChangeRequestEvents(

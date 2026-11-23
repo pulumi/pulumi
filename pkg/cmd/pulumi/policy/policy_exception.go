@@ -115,7 +115,7 @@ type changeRequestClient interface {
 // policyExceptionClients are the Pulumi Cloud clients of the policy exception commands.
 type policyExceptionClients struct {
 	policyExceptionClient
-	// changeRequests requests exceptions when the organization requires approval.
+	// changeRequests requests exceptions when the organization requires approval, and reviews those requests.
 	changeRequests changeRequestClient
 }
 

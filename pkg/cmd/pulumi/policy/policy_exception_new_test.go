@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -117,10 +118,11 @@ func TestPolicyExceptionNew(t *testing.T) {
 	assert.Equal(t, []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
 		c.gotCreated[0].Match, "only the pairs that occurred in the run")
 
-	// An active exception that covers the request is returned as a 409 that names it.
+	// An active exception that covers the request is returned as a 409 that names it. Its expiry isn't the one
+	// requested, so none is printed.
 	c = twoBuckets()
 	c.createErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "already excepted by EXC-7"}
-	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31"})
+	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", expiresIn: "7d"})
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
 	assert.Equal(t, "Policy exception EXC-7 already covers these violations: "+
@@ -710,6 +712,38 @@ func TestPolicyExceptionNew_ExpiresIn(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.True(t, strings.HasSuffix(stdout, "]\n}\nExpires: 36 hours after it's created\n"), stdout)
+}
+
+func TestPolicyExceptionExpiresIn(t *testing.T) {
+	t.Parallel()
+
+	for seconds, want := range map[int64]string{
+		24 * 3600: "1 day", 7 * 24 * 3600: "7 days", 3600: "1 hour", 36 * 3600: "36 hours",
+		5400: "90 minutes", 60: "1 minute", 90: "90 seconds", 1: "1 second",
+	} {
+		assert.Equal(t, want, policyExceptionExpiresIn(seconds), seconds)
+	}
+}
+
+// The 409 that names a covering exception reaches coveredBy through the Pulumi Cloud client's error wrapping.
+func TestCoveredByClientError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"code": 409, "message": "already excepted by EXC-7"}`))
+	}))
+	defer server.Close()
+	c := client.NewClient(server.URL, "token", true, nil)
+
+	_, err := c.CreatePolicyException(t.Context(), "acme", cloudapitype.CreatePolicyExceptionRequest{})
+	id, ok := coveredBy(err)
+	assert.True(t, ok, err)
+	assert.Equal(t, "EXC-7", id)
+	_, err = c.CreatePolicyExceptionDraft(t.Context(), "acme", cloudapitype.CreatePolicyExceptionRequest{})
+	id, ok = coveredBy(err)
+	assert.True(t, ok, err)
+	assert.Equal(t, "EXC-7", id)
 }
 
 func TestParsePolicyExceptionExpiresIn(t *testing.T) {
