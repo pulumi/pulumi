@@ -47,7 +47,6 @@ func defaultOpts() Options {
 		ShowSameResources:    true,
 		ShowReads:            true,
 		DeterministicOutput:  true,
-		ShowLinkToNeo:        false,
 		RenderOnDirty:        true,
 	}
 }
@@ -89,7 +88,12 @@ func TestProgressEventsNeoDiagnosticLink(t *testing.T) {
 			opts := defaultOpts()
 			opts.Color = colors.Never
 			opts.Stdout, opts.Stderr = &stdout, &stderr
-			opts.ShowLinkToNeo = true
+			type link struct {
+				permalink string
+				isPreview bool
+			}
+			var links []link
+			opts.OfferNeoLink = func(permalink string, isPreview bool) { links = append(links, link{permalink, isPreview}) }
 			opts.Debug = true
 			events := sliceToBufferedChan([]engine.Event{event, engine.NewCancelEvent()})
 			done := make(chan bool)
@@ -98,13 +102,12 @@ func TestProgressEventsNeoDiagnosticLink(t *testing.T) {
 			<-done
 
 			if tt.wantLink {
-				assert.Contains(t, stdout.String(), "link?explainFailure")
-				assert.Contains(t, stdout.String(), "pulumi neo --debug-update")
+				assert.Equal(t, []link{{"link", false}}, links)
 			} else {
-				assert.NotContains(t, stdout.String(), "[Pulumi Neo]")
-				assert.NotContains(t, stdout.String(), "explainFailure")
-				assert.NotContains(t, stdout.String(), "pulumi neo --debug-update")
+				assert.Empty(t, links)
 			}
+			// The link is offered as a hint rather than printed with the diagnostics.
+			assert.NotContains(t, stdout.String(), "explainFailure")
 			if !tt.ephemeral {
 				assert.Contains(t, stdout.String(), "State migration applied (state entries: 2 before, 2 after).")
 			}

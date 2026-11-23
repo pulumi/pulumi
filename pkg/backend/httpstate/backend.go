@@ -1991,12 +1991,12 @@ func (b *cloudBackend) createAndStartUpdate(
 	if isNeoEnabled {
 		if env.SuppressNeoLink.Value() {
 			// Neo is enabled in user's org, but the environment variable to suppress the link to Neo is set.
-			op.Opts.Display.ShowLinkToNeo = false
+			op.Opts.Display.OfferNeoLink = nil
 			continuationString = " but the environment variable PULUMI_SUPPRESS_NEO_LINK" +
 				" suppresses the link to Neo in diagnostics"
 		}
 	} else {
-		op.Opts.Display.ShowLinkToNeo = false
+		op.Opts.Display.OfferNeoLink = nil
 		op.Opts.Display.ShowNeoFeatures = false
 		neoEnabledValueString = "is not"
 	}

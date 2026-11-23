@@ -66,7 +66,8 @@ type Options struct {
 	ShowDiff bool // true to print the full diff after the preview and the update, and omit the "details" prompt choice.
 
 	// Neo options
-	ShowLinkToNeo       bool // true to display a 'explainFailure' link to Neo.
+	// OfferNeoLink offers a link to debug a failure or warnings with Neo. If nil, no link is offered.
+	OfferNeoLink        func(permalink string, isPreview bool)
 	ShowNeoFeatures     bool // true to display Neo features like summaries and explanations.
 	StartNeoTaskOnError bool // true to start a Neo task when an error occurs.
 	// Neo options that are ignored if ShowCopilotFeatures is false.

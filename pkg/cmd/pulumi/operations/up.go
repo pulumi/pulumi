@@ -745,7 +745,9 @@ func NewUpCmd(hm *hints.Manager) *cobra.Command {
 
 			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
 			slog.InfoContext(ctx, "PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
-			opts.Display.ShowLinkToNeo = !env.SuppressNeoLink.Value()
+			if !env.SuppressNeoLink.Value() {
+				opts.Display.OfferNeoLink = hints.OfferNeoDebug
+			}
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)

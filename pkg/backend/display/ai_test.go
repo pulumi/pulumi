@@ -31,9 +31,8 @@ func TestRenderCopilotErrorSummary(t *testing.T) {
 	summary := "This is a test summary"
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout:        buf,
-		Color:         colors.Never,
-		ShowLinkToNeo: true,
+		Stdout: buf,
+		Color:  colors.Never,
 	}
 
 	// isPreview=false, so the suggestion targets a failed update.
@@ -58,9 +57,8 @@ func TestRenderCopilotErrorSummaryPreview(t *testing.T) {
 	// For a failed preview the suggestion targets --debug-preview instead of --debug-update.
 	buf := new(bytes.Buffer)
 	opts := Options{
-		Stdout:        buf,
-		Color:         colors.Never,
-		ShowLinkToNeo: true,
+		Stdout: buf,
+		Color:  colors.Never,
 	}
 
 	RenderNeoErrorSummary(&NeoErrorSummaryMetadata{
