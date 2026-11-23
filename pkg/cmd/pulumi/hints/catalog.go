@@ -43,7 +43,7 @@ func ESCCredentials(message string) Hint {
 		Cooldown:  24 * time.Hour,
 		Message:   message,
 		CloudOnly: true,
-		// A new user's first update failing on credentials is better served by the provider's own error.
+		// Don't distract new users with product hints.
 		EstablishedStackOnly: true,
 	}
 }
