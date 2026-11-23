@@ -131,7 +131,7 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 	args.outputFormat = defaultPolicyGroupGetRenderers()
 
 	cmd := &cobra.Command{
-		Use:   "get <name>",
+		Use:   "get",
 		Short: "[EXPERIMENTAL] Get the details of a Policy Group",
 		Long: "[EXPERIMENTAL] Get the details of a Policy Group.\n" +
 			"\n" +

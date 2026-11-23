@@ -90,7 +90,7 @@ func newInsightsAccountScanListCmd(factory accountScanListClientFactory) *cobra.
 	args := insightsAccountScanListArgs{output: defaultAccountScanListOutputFormat()}
 
 	cmd := &cobra.Command{
-		Use:     "list <account>",
+		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "[EXPERIMENTAL] List recent scans for an Insights account",
 		Long: "[EXPERIMENTAL] List recent scans for a Pulumi Insights account.\n" +

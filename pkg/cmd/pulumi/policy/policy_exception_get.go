@@ -57,7 +57,7 @@ func newPolicyExceptionGetCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 	args.outputFormat = defaultPolicyExceptionGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "get <exception-id>",
+		Use:   "get",
 		Short: "[EXPERIMENTAL] Get the details of a policy exception",
 		Long: "[EXPERIMENTAL] Get the details of a policy exception.\n" +
 			"\n" +

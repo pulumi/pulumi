@@ -82,7 +82,7 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 	args.outputFormat = defaultPolicyIssueGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:   "get <issue-id>",
+		Use:   "get",
 		Short: "[EXPERIMENTAL] Get the details of a specific policy issue",
 		Long: "[EXPERIMENTAL] Get the details of a specific policy issue.\n" +
 			"\n" +

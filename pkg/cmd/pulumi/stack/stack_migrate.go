@@ -56,7 +56,7 @@ type stackMigrateCmd struct {
 func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var smcmd stackMigrateCmd
 	cmd := &cobra.Command{
-		Use:   "migrate <url> [stack-name]",
+		Use:   "migrate",
 		Short: "Migrate a stack from another backend to the currently logged-in backend",
 		Long: "Migrate a stack from another backend (e.g. a DIY backend) to the currently logged-in backend.\n" +
 			"\n" +
