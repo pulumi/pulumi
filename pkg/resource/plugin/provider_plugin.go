@@ -755,7 +755,9 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		failures = slice.Prealloc[CheckConfigFailure](len(resp2.GetFailures()))
 		for _, rpcFailure := range resp2.GetFailures() {
 			failure := checkConfigFailureFromRPC(rpcFailure)
-			p.recordHint(failure.Hint)
+			if failure.Hint != nil && p.ctx != nil && p.ctx.HintRecorder != nil {
+				p.ctx.HintRecorder(*failure.Hint)
+			}
 			failures = append(failures, failure)
 		}
 	case rpcerror.Convert(err).Code() == codes.Unimplemented:

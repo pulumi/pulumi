@@ -16,18 +16,13 @@ package hints
 
 import "github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 
-// Recorder returns a recorder that turns the hints providers report for their failures, such as dynamic
-// credentials, into this process's hints. Commands set it as the HintRecorder of the plugin contexts they create.
-func Recorder() plugin.HintRecorder { return &recorder{m: defaultManager} }
+// RecordProviderHint offers the hint that a provider reported for a failure, such as dynamic credentials. Commands
+// set it as the HintRecorder of the updates they run.
+func RecordProviderHint(h plugin.Hint) { defaultManager.recordProviderHint(h) }
 
-type recorder struct {
-	m *manager
-}
-
-// RecordHint implements plugin.HintRecorder. It offers the hint a provider sent, with the provider's message.
-func (r *recorder) RecordHint(hint plugin.Hint) {
-	if hint.Kind != plugin.HintDynamicCredentials || hint.Message == "" {
+func (m *manager) recordProviderHint(h plugin.Hint) {
+	if h.Kind != plugin.HintDynamicCredentials || h.Message == "" {
 		return
 	}
-	r.m.offer(ESCCredentials(hint.Message))
+	m.offer(ESCCredentials(h.Message))
 }

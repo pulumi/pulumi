@@ -403,7 +403,7 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 			tm := newTestManager(t)
 			tm.local = !tt.isCloud
 			require.NoError(t, save(tm.path, state{FirstSeen: tm.now.Add(-tt.firstSeen)}))
-			(&recorder{m: tm.manager}).RecordHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
+			tm.recordProviderHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
 			out := tm.run()
 			if tt.want {
 				assert.Contains(t, out, message)

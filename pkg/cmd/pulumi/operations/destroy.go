@@ -352,7 +352,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:        cloudCredentialEnv,
-				HintRecorder:              hints.Recorder(),
+				HintRecorder:              hints.RecordProviderHint,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,

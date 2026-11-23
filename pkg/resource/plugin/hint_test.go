@@ -27,25 +27,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-type testRecorder struct {
-	mu   sync.Mutex
-	seen []Hint
-}
-
-func (r *testRecorder) RecordHint(hint Hint) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.seen = append(r.seen, hint)
-}
-
 var escHint = Hint{Kind: HintDynamicCredentials, Message: "use ESC"}
-
-// newHintTestContext returns a plugin context that reports hints to rec.
-func newHintTestContext(t *testing.T, rec HintRecorder) *Context {
-	pctx := newTestContext(t)
-	pctx.HintRecorder = rec
-	return pctx
-}
 
 func TestProviderRecordsCheckConfigFailureHint(t *testing.T) {
 	t.Parallel()
@@ -58,8 +40,15 @@ func TestProviderRecordsCheckConfigFailureHint(t *testing.T) {
 			}}, nil
 		},
 	}
-	rec := &testRecorder{}
-	p := NewProviderWithClient(newHintTestContext(t, rec), client, false /* disablePreview */)
+	var mu sync.Mutex
+	var seen []Hint
+	pctx := newTestContext(t)
+	pctx.HintRecorder = func(h Hint) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, h)
+	}
+	p := NewProviderWithClient(pctx, client, false /* disablePreview */)
 
 	resp, err := p.CheckConfig(t.Context(), CheckConfigRequest{
 		URN:  resource.NewURN("stack", "proj", "", "pulumi:providers:aws", "default"),
@@ -69,7 +58,7 @@ func TestProviderRecordsCheckConfigFailureHint(t *testing.T) {
 	require.Len(t, resp.Failures, 2)
 	assert.Nil(t, resp.Failures[0].Hint)
 	assert.Equal(t, &Hint{Kind: HintDynamicCredentials, Message: "use ESC"}, resp.Failures[1].Hint)
-	assert.Equal(t, []Hint{escHint}, rec.seen)
+	assert.Equal(t, []Hint{escHint}, seen)
 }
 
 func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {

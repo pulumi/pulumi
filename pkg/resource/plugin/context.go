@@ -50,8 +50,8 @@ type Context struct {
 	// Environment injected into every plugin launched with this context, appended by ExecPlugin.
 	CloudCredentialEnv map[string]string
 
-	// If non-nil, told about the product hints that providers loaded with this context report for their failures.
-	HintRecorder HintRecorder
+	// If non-nil, called with each product hint that providers loaded with this context report for their failures.
+	HintRecorder func(Hint)
 
 	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 

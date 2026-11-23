@@ -196,6 +196,28 @@ func (m *Manager) Flush(w io.Writer) {
 	if firstFlush {
 		st.FirstSeen = now
 	}
+	h, ok := m.pick(pending, st, settings, now)
+	if ok {
+		if st.LastShown == nil {
+			st.LastShown = map[string]time.Time{}
+		}
+		st.LastShown[h.ID] = now
+	}
+	if ok || firstFlush {
+		// Record the hint before showing it, so that a hint is never shown again early because the state
+		// could not be saved.
+		if err := save(path, st); err != nil {
+			slog.Info("could not write hints state", "err", err)
+			return
+		}
+	}
+	if ok {
+		show(w, h)
+	}
+}
+
+// pick returns the first of pending that may be shown now, if any.
+func (m *manager) pick(pending []Hint, st state, settings settings, now time.Time) (Hint, bool) {
 	isCloud := sync.OnceValue(m.isCloud)
 	for _, h := range m.pending {
 		if settings.skip[h.ID] {
@@ -213,27 +235,9 @@ func (m *Manager) Flush(w io.Writer) {
 		if o.applies != nil && !o.applies() {
 			continue
 		}
-
-		// Record the hint before showing it, so that a hint is never shown again early because the state
-		// could not be saved.
-		if st.LastShown == nil {
-			st.LastShown = map[string]time.Time{}
-		}
-		st.LastShown[h.ID] = now
-		if err := save(path, st); err != nil {
-			slog.Info("could not write hints state", "err", err)
-			return
-		}
-		show(w, h)
-		return
+		return h, true
 	}
-
-	// Showing a hint saves the state, so a first flush that shows none still needs to save FirstSeen.
-	if firstFlush {
-		if err := save(path, st); err != nil {
-			slog.Info("could not write hints state", "err", err)
-		}
-	}
+	return Hint{}, false
 }
 
 // isCloudBackend reports whether the current project uses a Pulumi Cloud backend, without contacting it.
