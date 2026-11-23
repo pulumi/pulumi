@@ -54,7 +54,7 @@ func newStateGetCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "get [resource]",
+		Use:   "get",
 		Short: "Show a resource's state",
 		Long: `Show a resource's state
 

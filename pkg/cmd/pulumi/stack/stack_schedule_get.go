@@ -53,7 +53,7 @@ func newStackScheduleGetCmdWith(factory stackScheduleGetClientFactory) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "get <schedule-id>",
+		Use:   "get",
 		Short: "[EXPERIMENTAL] Retrieve the configuration of a stack schedule",
 		Long:  "[EXPERIMENTAL] Retrieve the configuration of a stack schedule.",
 		RunE: func(cmd *cobra.Command, args []string) error {
