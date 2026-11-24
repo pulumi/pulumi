@@ -42,7 +42,7 @@ type Goal struct {
 	// errors encountered as we attempted to initialize the resource.
 	InitErrors []string
 	// the set of dependencies that affect each property. Derived by the step generator from
-	// `Properties` (OutputValue deps); do not set when constructing a [NewGoal].
+	// `Properties` (OutputValue deps).
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool
