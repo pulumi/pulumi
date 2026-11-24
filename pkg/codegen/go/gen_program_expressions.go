@@ -582,6 +582,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.Fgenf(w, "%q", "failed") // Write a value to avoid syntax errors
 				return
 			}
+			if strings.HasPrefix(fn, "Lookup") {
+				// The args type is named after the function, so it follows the Lookup form too.
+				outTypeName = strings.Replace(outTypeName, ".Get", ".Lookup", 1)
+			}
 			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
 			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
 		} else {

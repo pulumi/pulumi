@@ -577,6 +577,52 @@ func main() {
 `, string(files["main.go"]))
 }
 
+// The infra SDK exports LookupVpc rather than GetVpc, because GetVpc is the getter of the Vpc
+// resource. Every spelling of a root-module invoke token must generate a call to LookupVpc, in
+// both the plain and the output-versioned form.
+func TestRootModuleInvokeUsesLookupForm(t *testing.T) {
+	t.Parallel()
+
+	for _, token := range []string{
+		"infra:index:getVpc",
+		"infra::getVpc",
+		"infra:getVpc",
+	} {
+		t.Run(token, func(t *testing.T) {
+			t.Parallel()
+
+			source := `
+resource "pet" "random:index/randomPet:RandomPet" {
+}
+plain = invoke("` + token + `", {
+	default = true
+})
+output = invoke("` + token + `", {
+	default = pet.id == "default"
+})
+output "plainId" {
+	value = plain.id
+}
+output "outputId" {
+	value = output.id
+}`
+
+			program, diags, err := parseAndBindProgram(t, source, "lookup_invoke.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			files, diags, err := GenerateProgram(program)
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			main := string(files["main.go"])
+			assert.Contains(t, main, "infra.LookupVpc(ctx, &infra.LookupVpcArgs{")
+			assert.Contains(t, main, "infra.LookupVpcOutput(ctx, infra.LookupVpcOutputArgs{")
+			assert.NotContains(t, main, "GetVpc")
+		})
+	}
+}
+
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
 	t.Parallel()
 
