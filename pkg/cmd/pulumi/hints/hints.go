@@ -16,7 +16,8 @@
 //
 // Commands [Manager.Offer] hints while they run, and the root command calls [Manager.Flush] when it exits. Flush shows
 // at most one hint per command: the first offered hint that the user hasn't turned off and whose fields, such as
-// [Hint.Cooldown], allow it to be shown now.
+// [Hint.Cooldown], allow it to be shown now. [Manager.OfferIf] offers a hint whose condition is costly to check, such
+// as one that looks at files, so that the check runs only when the hint would otherwise be shown.
 //
 // Users turn all hints off with PULUMI_DISABLE_HINTS or `hints.disabled` in the Pulumi config file, and
 // turn individual hints off by [Hint.ID] with PULUMI_SKIP_HINTS or `hints.skip`.
@@ -62,12 +63,18 @@ type state struct {
 	LastShown map[string]time.Time `json:"lastShown,omitempty"`
 }
 
+// offer is a hint offered for the current command, with the condition it was offered on, if any.
+type offer struct {
+	hint    Hint
+	applies func() bool
+}
+
 // Manager holds the hints offered while a CLI command runs. The root command creates one and passes it to the
 // commands that offer hints. Its methods do nothing on a nil Manager, so commands created without one, as in tests,
 // offer no hints.
 type Manager struct {
 	mu         sync.Mutex
-	pending    []Hint
+	pending    []offer
 	suppressed bool
 
 	now         func() time.Time
@@ -121,13 +128,18 @@ func loadSettings() settings {
 
 // Offer queues a hint to be shown when the command exits, subject to the rules described in the package
 // documentation.
-func (m *Manager) Offer(h Hint) {
+func (m *Manager) Offer(h Hint) { m.OfferIf(h, nil) }
+
+// OfferIf is like Offer, but shows h only if applies reports true. Flush calls applies only once every other rule
+// allows h, so it may do work that's too costly for every command, such as looking at files. A nil applies always
+// applies.
+func (m *Manager) OfferIf(h Hint, applies func() bool) {
 	if m == nil {
 		return
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.pending = append(m.pending, h)
+	m.pending = append(m.pending, offer{hint: h, applies: applies})
 }
 
 // Suppress prevents any hint from being shown for the current command, for example because it writes
@@ -163,11 +175,15 @@ func (m *Manager) Flush(w io.Writer) {
 		return
 	}
 	now := m.now()
-	for _, h := range m.pending {
+	for _, o := range m.pending {
+		h := o.hint
 		if settings.skip[h.ID] {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
+			continue
+		}
+		if o.applies != nil && !o.applies() {
 			continue
 		}
 

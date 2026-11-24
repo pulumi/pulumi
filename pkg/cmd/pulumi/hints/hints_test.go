@@ -161,6 +161,55 @@ func TestSuppressedAndDisabled(t *testing.T) {
 	}
 }
 
+func TestOfferIfChecksOnlyWhenNeeded(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		setup func(tm *testManager)
+		// first is offered before the conditional hint.
+		first     []Hint
+		wantCalls int
+	}{
+		{"eligible", func(*testManager) {}, nil, 1},
+		{"suppressed", func(tm *testManager) { tm.Suppress() }, nil, 0},
+		{"disabled", func(tm *testManager) { tm.disabled = true }, nil, 0},
+		{"not interactive", func(tm *testManager) { tm.noTerminal = true }, nil, 0},
+		{"skipped", func(tm *testManager) { tm.skip = []string{"a"} }, nil, 0},
+		{"on cooldown", func(tm *testManager) { tm.run(hintA) }, nil, 0},
+		{"another hint shown first", func(*testManager) {}, []Hint{hintB}, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tt.setup(tm)
+			calls := 0
+			for _, h := range tt.first {
+				tm.Offer(h)
+			}
+			tm.OfferIf(hintA, func() bool { calls++; return true })
+			tm.Flush(&bytes.Buffer{})
+			assert.Equal(t, tt.wantCalls, calls)
+		})
+	}
+}
+
+func TestOfferIfNotApplying(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+
+	tm.OfferIf(hintA, func() bool { return false })
+	out := tm.run(hintB)
+	assert.NotContains(t, out, "hint a")
+	assert.Contains(t, out, "hint b")
+
+	// A hint that doesn't apply doesn't start its cooldown.
+	st, _, err := tm.load()
+	require.NoError(t, err)
+	assert.NotContains(t, st.LastShown, "a")
+}
+
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
