@@ -54,7 +54,8 @@ func TestNeoACPIdentityAdvertisesTerminalLogin(t *testing.T) {
 	assert.Equal(t, acp.AuthMethodTypeTerminal, m.Type)
 	assert.Equal(t, []string{"login"}, m.Args)
 	assert.Empty(t, m.Env)
-	assert.NotEmpty(t, m.Description, "description doubles as the degraded-method guidance")
+	assert.NotEmpty(t, m.Description,
+		"description doubles as the guidance for editors that don't understand the terminal type")
 
 	// The pre-stabilization terminal-auth meta mirrors the typed fields with an
 	// explicit command (our own binary) for editors that only execute the meta

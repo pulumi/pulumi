@@ -65,7 +65,10 @@ type ClientCapabilities struct {
 }
 
 // AuthCapability reports the editor's support for typed authentication methods
-// (https://agentclientprotocol.com/rfds/auth-methods).
+// (https://agentclientprotocol.com/rfds/auth-methods). Informational: auth
+// methods are advertised with their type either way, per the spec's
+// orthogonality of capabilities.auth
+// (https://agentclientprotocol.com/protocol/v2/authentication).
 type AuthCapability struct {
 	// Terminal reports whether the editor can run a terminal-typed auth method:
 	// re-launching the agent binary in a real terminal with the method's
@@ -111,8 +114,10 @@ type PromptCapabilities struct {
 // AuthMethodTypeTerminal marks an AuthMethod whose setup is an interactive
 // terminal flow: the client re-launches the agent binary in a real terminal,
 // with the method's Args and Env replacing the configured launch values for
-// that run only. Only advertised to clients that declare the auth.terminal
-// capability (see AuthCapability).
+// that run only. Always advertised with the method: per the spec every method
+// carries its type discriminator, and clients that don't understand a type
+// ignore the method or display it generically
+// (https://agentclientprotocol.com/protocol/v2/authentication).
 const AuthMethodTypeTerminal = "terminal"
 
 // AuthMethod is one authentication option the agent advertises on initialize.
