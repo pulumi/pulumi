@@ -25,10 +25,13 @@ import (
 
 // OfferAgentSkills offers the agent skills hint for a project created in dir, unless Pulumi's agent skills appear
 // to be installed.
-func OfferAgentSkills(dir string) {
+func (m *Manager) OfferAgentSkills(dir string) {
+	if m == nil {
+		return
+	}
 	// Without a home directory there's nowhere to look, so assume the skills aren't installed.
 	if home, err := os.UserHomeDir(); err != nil || !agentSkillsInstalled(os.Getenv, home, dir) {
-		Offer(AgentSkills)
+		m.Offer(AgentSkills)
 	}
 }
 

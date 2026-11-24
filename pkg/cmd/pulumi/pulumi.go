@@ -499,7 +499,7 @@ func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 		{
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
-				newcmd.NewNewCmd(),
+				newcmd.NewNewCmd(hm),
 				config.NewConfigCmd(pkgWorkspace.Instance),
 				cmdStack.NewStackCmd(),
 				console.NewConsoleCmd(pkgWorkspace.Instance),
@@ -531,7 +531,7 @@ func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
-				project.NewProjectCmd(),
+				project.NewProjectCmd(hm),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 				delivery.NewDeliveryCmd(),
 				cloud.NewAPICmd(),

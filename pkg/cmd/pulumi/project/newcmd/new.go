@@ -100,6 +100,7 @@ type newArgs struct {
 	escConfig            bool
 	stdout               io.Writer
 	stderr               io.Writer
+	hints                *hints.Manager
 }
 
 func runNew(ctx context.Context, args newArgs) (err error) {
@@ -458,7 +459,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		fmt.Fprintln(args.stdout, template.Quickstart)
 	}
 
-	hints.OfferAgentSkills(cwd)
+	args.hints.OfferAgentSkills(cwd)
 
 	return nil
 }
@@ -519,9 +520,10 @@ func isInteractive() bool {
 	return cmdutil.Interactive() || ok && cmdutil.IsTruthy(test)
 }
 
-// NewNewCmd creates a New command with default dependencies.
-func NewNewCmd() *cobra.Command {
+// NewNewCmd creates a New command with default dependencies. It offers hints to hm, which may be nil.
+func NewNewCmd(hm *hints.Manager) *cobra.Command {
 	args := newArgs{
+		hints:                hm,
 		prompt:               ui.PromptForValue,
 		selectOne:            surveySelect,
 		promptRuntimeOptions: promptRuntimeOptions,
