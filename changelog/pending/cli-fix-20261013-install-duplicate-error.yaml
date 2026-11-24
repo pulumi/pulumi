@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Report a failure to install dependencies once instead of three times, for example in `pulumi install` when the language toolchain is missing
+time: 2026-10-13T11:02:48.330917+01:00
