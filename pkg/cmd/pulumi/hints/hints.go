@@ -33,6 +33,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -71,7 +73,7 @@ type Manager struct {
 	now         func() time.Time
 	statePath   func() (string, error)
 	settings    func() settings
-	interactive func() bool
+	interactive func(w io.Writer) bool
 }
 
 // New returns a Manager that reads the user's hint settings and records shown hints under the Pulumi home directory.
@@ -80,8 +82,9 @@ func New() *Manager {
 		now:       time.Now,
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
 		settings:  loadSettings,
-		// Hints are for people at a terminal, so don't show them in CI or non-interactive runs.
-		interactive: cmdutil.Interactive,
+		// Hints are for people at a terminal, so don't show them in CI or non-interactive runs, or when they'd be
+		// written somewhere else, as with `pulumi refresh 2>errors.log`.
+		interactive: func(w io.Writer) bool { return cmdutil.Interactive() && isTerminal(w) },
 	}
 }
 
@@ -146,7 +149,7 @@ func (m *Manager) Flush(w io.Writer) {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.pending) == 0 || m.suppressed || !m.interactive() {
+	if len(m.pending) == 0 || m.suppressed || !m.interactive(w) {
 		return
 	}
 	settings := m.settings()
@@ -181,6 +184,12 @@ func (m *Manager) Flush(w io.Writer) {
 		show(w, h)
 		return
 	}
+}
+
+// isTerminal reports whether w is a terminal.
+func isTerminal(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
 }
 
 func show(w io.Writer, h Hint) {

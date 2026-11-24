@@ -17,6 +17,7 @@ package hints
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -58,7 +59,7 @@ func (tm *testManager) newManager() *Manager {
 	return &Manager{
 		now:         func() time.Time { return tm.now },
 		statePath:   func() (string, error) { return tm.path, nil },
-		interactive: func() bool { return !tm.noTerminal },
+		interactive: func(io.Writer) bool { return !tm.noTerminal },
 		settings: func() settings {
 			s := settings{disabled: tm.disabled, skip: map[string]bool{}}
 			for _, id := range tm.skip {
@@ -242,4 +243,15 @@ func TestLoadSettings(t *testing.T) {
 
 	t.Setenv("PULUMI_DISABLE_HINTS", "true")
 	assert.True(t, loadSettings().disabled)
+}
+
+func TestIsTerminal(t *testing.T) {
+	t.Parallel()
+
+	// Hints redirected to a buffer or a file, as with `2>errors.log`, have no one to read them.
+	assert.False(t, isTerminal(&bytes.Buffer{}))
+	f, err := os.Create(filepath.Join(t.TempDir(), "errors.log"))
+	require.NoError(t, err)
+	defer f.Close()
+	assert.False(t, isTerminal(f))
 }
