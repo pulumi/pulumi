@@ -219,6 +219,7 @@ func (m *Manager) Flush(w io.Writer) {
 // pick returns the first pending hint that may be shown now, if any.
 func (m *Manager) pick(st state, settings settings, now time.Time) (Hint, bool) {
 	isCloud := sync.OnceValue(m.isCloud)
+	// Cheapest checks first; applies last.
 	for _, o := range m.pending {
 		h := o.hint
 		if settings.skip[h.ID] {
