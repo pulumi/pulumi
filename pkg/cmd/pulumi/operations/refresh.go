@@ -52,7 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewRefreshCmd() *cobra.Command {
+func NewRefreshCmd(hm *hints.Manager) *cobra.Command {
 	var runProgram bool
 	var skipConfigValidation bool
 	var debug bool
@@ -380,7 +380,7 @@ func NewRefreshCmd() *cobra.Command {
 				CoherenceWindow:    coherenceWindow,
 			})
 			if err == nil && changes != nil && engine.HasChanges(changes) {
-				hints.Offer(hints.DriftDetection)
+				hm.Offer(hints.DriftDetection)
 			}
 
 			switch {
