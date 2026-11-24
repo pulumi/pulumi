@@ -20,6 +20,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -103,6 +104,19 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 		nil, /* err */
 	)
 	require.NoError(t, err)
+	// Verify the mutex was actually unlocked by OnResourceStepPost.
+	acquired := make(chan struct{})
+	go func() {
+		acts.MapLock.Lock()
+		defer acts.MapLock.Unlock()
+		close(acquired)
+	}()
+	select {
+	case <-acquired:
+		// ok: lock could be reacquired quickly -> it was released
+	case <-time.After(250 * time.Millisecond):
+		t.Fatalf("MapLock was left locked by OnResourceStepPost")
+	}
 
 	//nolint:exhaustive // the default case is for test failures
 	switch e := <-eventsChan; e.Type {
