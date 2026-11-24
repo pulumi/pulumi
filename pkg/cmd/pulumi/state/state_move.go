@@ -311,11 +311,18 @@ func (cmd *stateMoveCmd) Run(
 	// that are going to be moved.
 	remainingResources := make(map[string]*pkgresource.State)
 	var resourcesToMoveOrdered []*pkgresource.State
+	// destOrder also holds the providers to copy whose parent is being moved, at their source position,
+	// so that they come after their parent and their dependencies in the destination.
+	var destOrder []*pkgresource.State
 	for _, res := range sourceSnapshot.Resources {
 		if _, ok := resourcesToMove[string(res.URN)]; ok {
 			resourcesToMoveOrdered = append(resourcesToMoveOrdered, res)
+			destOrder = append(destOrder, res)
 		} else {
 			remainingResources[string(res.URN)] = res
+			if _, ok := resourcesToMove[string(res.Parent)]; ok && providersToCopy[string(res.URN)+"::"+string(res.ID)] {
+				destOrder = append(destOrder, res)
+			}
 		}
 	}
 
@@ -323,6 +330,10 @@ func (cmd *stateMoveCmd) Run(
 	// that need to be copied, remove all the resources that need
 	// to be removed, and break the dependencies that are no
 	// longer valid.
+	sourceRootStack, err := stack.GetRootStackResource(sourceSnapshot)
+	if err != nil {
+		return err
+	}
 	var providers []*pkgresource.State
 	var brokenSourceDependencies []brokenDependency
 	i := 0
@@ -333,6 +344,15 @@ func (cmd *stateMoveCmd) Run(
 		}
 		if providersToCopy[string(res.URN)+"::"+string(res.ID)] {
 			providers = append(providers, res)
+		}
+		// A provider stays in the source stack even when its parent is moved, so it needs a parent there.
+		// Its URN is kept so that references from the remaining resources stay valid.
+		if _, ok := resourcesToMove[string(res.Parent)]; ok && strings.HasPrefix(string(res.Type), providerPrefix) {
+			res = res.Copy()
+			res.Parent = ""
+			if sourceRootStack != nil {
+				res.Parent = sourceRootStack.URN
+			}
 		}
 
 		sourceSnapshot.Resources[i] = res
@@ -380,7 +400,7 @@ func (cmd *stateMoveCmd) Run(
 
 	var brokenDestDependencies []brokenDependency
 	rewriteMap := make(map[string]string)
-	for _, res := range providers {
+	copyProvider := func(res *pkgresource.State, parentRewrites map[string]string) error {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
 		originalProviderRef := fmt.Sprintf("%s::%s", res.URN, res.ID)
@@ -389,13 +409,9 @@ func (cmd *stateMoveCmd) Run(
 		// otherwise destination snapshot integrity verification fails.
 		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(r, remainingResources)...)
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
-			rootStack, err := stack.GetRootStackResource(destSnapshot)
-			if err != nil {
-				return err
-			}
 			r.Parent = rootStack.URN
 		}
-		err = rewriteURNs(r, dest, nil)
+		err := rewriteURNs(r, dest, parentRewrites)
 		if err != nil {
 			return err
 		}
@@ -404,20 +420,31 @@ func (cmd *stateMoveCmd) Run(
 			// If the provider ID matches, we can assume that the provider has previously been copied and we can just copy it.
 			if destRes.ID == r.ID {
 				rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
-				continue
+				return nil
 			}
 			// If all the inputs of the provider in the destination stack are the same as the provider in the source stack,
 			// we can assume that the provider is equal for the purpose of resources depending on it.  We don't need to copy
 			// it, but we need to set the provider for all resources to the provider in the destination stack.
 			if destRes.Inputs.DeepEquals(r.Inputs) {
-				rewriteMap[fmt.Sprintf("%s::%s", res.URN, res.ID)] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
-				continue
+				rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
+				return nil
 			}
 			return fmt.Errorf("provider %s already exists in destination stack", r.URN)
 		}
 
 		rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", r.URN, r.ID)
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
+		return nil
+	}
+
+	for _, res := range providers {
+		if _, ok := resourcesToMove[string(res.Parent)]; ok {
+			// Copied in source order along with the moved resources below.
+			continue
+		}
+		if err := copyProvider(res, nil); err != nil {
+			return err
+		}
 	}
 
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
@@ -430,7 +457,13 @@ func (cmd *stateMoveCmd) Run(
 	}
 	fmt.Fprintf(cmd.Stdout, "\n")
 
-	for _, res := range resourcesToMoveOrdered {
+	for _, res := range destOrder {
+		if _, ok := resourcesToMove[string(res.URN)]; !ok {
+			if err := copyProvider(res, rewriteMap); err != nil {
+				return err
+			}
+			continue
+		}
 		// We need the original resources URNs later in case of errors, so make a copy here before modifying them.
 		r := res.Copy()
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {

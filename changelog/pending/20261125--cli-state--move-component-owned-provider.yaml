@@ -1,0 +1,4 @@
+component: cli/state
+kind: fix
+body: Fix `pulumi state move` failing the snapshot integrity check when a moved component is the parent of an explicit provider
+time: 2026-11-24T18:50:00.000000000+00:00
