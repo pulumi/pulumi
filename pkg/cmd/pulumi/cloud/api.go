@@ -736,6 +736,11 @@ func findFieldIndex(fields []ParsedField, name string) int {
 func stringifyFieldForPath(f ParsedField) (string, error) {
 	switch v := f.Value.(type) {
 	case string:
+		if v == "" {
+			return "", NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
+				fmt.Sprintf("field %q is empty; path parameters cannot be empty", f.Key)).
+				WithField(f.Key)
+		}
 		return v, nil
 	case int64:
 		return strconv.FormatInt(v, 10), nil

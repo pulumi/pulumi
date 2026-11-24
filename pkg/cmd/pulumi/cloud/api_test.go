@@ -180,6 +180,26 @@ func TestResolveBindings_NullFieldRejected(t *testing.T) {
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 }
 
+// TestResolveBindings_EmptyFieldRejected: -F poolId= must not collapse
+// the path segment; it must error.
+func TestResolveBindings_EmptyFieldRejected(t *testing.T) {
+	t.Parallel()
+	mr := &MatchResult{
+		Op: &Operation{Method: "GET", Path: "/api/orgs/acme/agentPools/{poolId}"},
+		Bindings: map[string]Binding{
+			"poolId": {Placeholder: "poolId"},
+		},
+	}
+	fields := []ParsedField{
+		{Key: "poolId", Value: ""},
+	}
+	_, _, err := resolveBindings(mr, fields, nil)
+	require.Error(t, err)
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
+}
+
 // TestNegotiateAccept_DefaultPrefersMarkdownWithFallback pins the fallback
 // chain that protects against a 406 when the server can't produce markdown.
 func TestNegotiateAccept_DefaultPrefersMarkdownWithFallback(t *testing.T) {
