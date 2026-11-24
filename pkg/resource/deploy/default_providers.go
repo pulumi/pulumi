@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -140,23 +139,22 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	req providers.ProviderRequest,
 ) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
-	minputs, err := d.config.GetPackageConfig(req.Package())
+	inputs, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
 		return nil, nil, err
 	}
-	inputs := resource.ToResourcePropertyMap(minputs)
 	if req.Version() != nil {
-		providers.SetProviderVersion(inputs, req.Version())
+		inputs = providers.SetProviderVersion(inputs, req.Version())
 	}
 	if req.PluginDownloadURL() != "" {
-		providers.SetProviderURL(inputs, req.PluginDownloadURL())
+		inputs = providers.SetProviderURL(inputs, req.PluginDownloadURL())
 	}
 	if req.PluginChecksums() != nil {
-		providers.SetProviderChecksums(inputs, req.PluginChecksums())
+		inputs = providers.SetProviderChecksums(inputs, req.PluginChecksums())
 	}
 	if req.Parameterization() != nil {
-		providers.SetProviderName(inputs, req.Name())
-		providers.SetProviderParameterization(inputs, req.Parameterization())
+		inputs = providers.SetProviderName(inputs, req.Name())
+		inputs = providers.SetProviderParameterization(inputs, req.Parameterization())
 	}
 
 	// Create the result channel and the event.
@@ -166,7 +164,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 			Type:                    sdkproviders.MakeProviderType(req.Package()),
 			Name:                    req.DefaultName(),
 			Custom:                  true,
-			Properties:              resource.FromResourcePropertyMap(inputs),
+			Properties:              inputs,
 			Parent:                  "",
 			Protect:                 nil,
 			Dependencies:            nil,

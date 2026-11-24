@@ -39,36 +39,26 @@ import (
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 const (
 	// These are all internal settings that we use to store information about the provider in the Pulumi state, but
 	// should not clash with existing provider keys. They're all nested under "__internal" to avoid this.
-	internalKey resource.PropertyKey = "__internal"
+	internalKey string = "__internal"
 
-	parameterizationKey resource.PropertyKey = "parameterization"
-	nameKey             resource.PropertyKey = "name"
-	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
-	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
-	envVarMappingsKey   resource.PropertyKey = "envVarMappings"
+	parameterizationKey string = "parameterization"
+	nameKey             string = "name"
+	pluginDownloadKey   string = "pluginDownloadURL"
+	pluginChecksumsKey  string = "pluginChecksums"
+	envVarMappingsKey   string = "envVarMappings"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
 	// put in the root of the property map is the package version, not the plugin version. This means for parameterized
 	// providers we also need the plugin version saved in "__internal".
-	versionKey resource.PropertyKey = "version"
+	versionKey string = "version"
 )
-
-func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
-	internalInputs := inputs[internalKey]
-	if !internalInputs.IsObject() {
-		newMap := resource.PropertyMap{}
-		internalInputs = resource.NewProperty(newMap)
-		inputs[internalKey] = internalInputs
-		return newMap
-	}
-	return internalInputs.ObjectValue()
-}
 
 func mustNewReference(urn resource.URN, id resource.ID) providers.Reference {
 	ref, err := providers.NewReference(urn, id)
@@ -85,95 +75,111 @@ const UnknownID = plugin.UnknownStringValue
 // maximally reuse provider instances but only configure them once.
 const UnconfiguredID = "unconfigured"
 
-func getInternal(inputs resource.PropertyMap) (resource.PropertyMap, error) {
-	internalInputs := inputs[internalKey]
+func getInternal(inputs property.Map) (property.Map, error) {
+	internalInputs := inputs.Get(internalKey)
 	if internalInputs.IsNull() {
 		// __internal is missing, this is probably state from an old engine just fallback to looking in the base
 		// properties.
 		return inputs, nil
 	}
-	if internalInputs.IsObject() {
-		return internalInputs.ObjectValue(), nil
+	if internalInputs.IsMap() {
+		return internalInputs.AsMap(), nil
 	}
-	return nil, fmt.Errorf("'%s' must be an object", internalKey)
+	return property.Map{}, fmt.Errorf("'%s' must be an object", internalKey)
+}
+
+// setInternal sets a value in the "__internal" section of the property map. If the "__internal" section does not exist,
+// it is created.
+func setInternal(inputs property.Map, key string, value property.Value) property.Map {
+	internalInputs := inputs.Get(internalKey)
+	var internalMap property.Map
+	if internalInputs.IsMap() {
+		internalMap = internalInputs.AsMap()
+	}
+	internalMap = internalMap.Set(key, value)
+	return inputs.Set(internalKey, property.New(internalMap))
 }
 
 // SetProviderChecksums sets the provider plugin checksums in the given property map.
-func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) {
-	internalInputs := addOrGetInternal(inputs)
-
-	propMap := make(resource.PropertyMap)
+func SetProviderChecksums(inputs property.Map, value map[string][]byte) property.Map {
+	propMap := make(map[string]property.Value)
 	for key, checksum := range value {
 		hex := hex.EncodeToString(checksum)
-		propMap[resource.PropertyKey(key)] = resource.NewProperty(hex)
+		propMap[key] = property.New(hex)
 	}
-
-	internalInputs[pluginChecksumsKey] = resource.NewProperty(propMap)
+	return setInternal(inputs, pluginChecksumsKey, property.New(propMap))
 }
 
 // GetProviderChecksums fetches a provider plugin checksums from the given property map.
 // If the checksums is not set, this function returns nil.
-func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error) {
-	checksums, ok := inputs[pluginChecksumsKey]
+func GetProviderChecksums(inputs property.Map) (map[string][]byte, error) {
+	checksums, ok := inputs.GetOk(pluginChecksumsKey)
 	if !ok {
 		return nil, nil
 	}
-	if !checksums.IsObject() {
+	if !checksums.IsMap() {
 		return nil, fmt.Errorf("'%s' must be an object", pluginChecksumsKey)
 	}
 	result := make(map[string][]byte)
-	for key, value := range checksums.ObjectValue() {
+	for key, value := range checksums.AsMap().All() {
 		if !value.IsString() {
 			return nil, fmt.Errorf("'%s[%s]' must be a string", pluginChecksumsKey, key)
 		}
 
-		bytes, err := hex.DecodeString(value.StringValue())
+		bytes, err := hex.DecodeString(value.AsString())
 		if err != nil {
 			return nil, fmt.Errorf("'%s[%s]' must be a hexadecimal string", pluginChecksumsKey, key)
 		}
 
-		result[string(key)] = bytes
+		result[key] = bytes
 	}
 
 	return result, nil
 }
 
 // SetProviderURL sets the provider plugin download server URL in the given property map.
-func SetProviderURL(inputs resource.PropertyMap, value string) {
-	internalInputs := addOrGetInternal(inputs)
-	internalInputs[pluginDownloadKey] = resource.NewProperty(value)
+func SetProviderURL(inputs property.Map, value string) property.Map {
+	return setInternal(inputs, pluginDownloadKey, property.New(value))
 }
 
 // GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
 // If the server URL is not set, this function returns "".
-func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
+func GetProviderDownloadURL(inputs property.Map) (string, error) {
 	internalInputs, err := getInternal(inputs)
 	if err != nil {
 		return "", err
 	}
 
-	url, ok := internalInputs[pluginDownloadKey]
+	url, ok := internalInputs.GetOk(pluginDownloadKey)
 	if !ok {
 		return "", nil
 	}
 	if !url.IsString() {
 		return "", fmt.Errorf("'%s' must be a string", pluginDownloadKey)
 	}
-	return url.StringValue(), nil
+	return url.AsString(), nil
 }
 
 // Sets the provider version in the given property map.
-func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
+func SetProviderVersion(inputs property.Map, value *semver.Version) property.Map {
 	// We add the __internal key here even though we're not going to use it, this is so later checks for "name" etc see
 	// __internal, and don't try and look up the key from the root config where a provider may just have a config key
 	// itself of the same text.
-	addOrGetInternal(inputs)
-	inputs[versionKey] = resource.NewProperty(value.String())
+	internalInputs := inputs.Get(internalKey)
+	var internalMap property.Value
+	if internalInputs.IsMap() {
+		internalMap = internalInputs
+	} else {
+		internalMap = property.New(property.Map{})
+	}
+	inputs = inputs.Set(internalKey, internalMap)
+	inputs = inputs.Set(versionKey, property.New(value.String()))
+	return inputs
 }
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the
 // version property is not present, this function returns nil.
-func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
+func GetProviderVersion(inputs property.Map) (*semver.Version, error) {
 	internalInputs, err := getInternal(inputs)
 	if err != nil {
 		return nil, err
@@ -181,11 +187,11 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 
 	// If this is a parameterized provider, the version is stored in the internal section.
 	// Else it's on the base properties.
-	if _, has := internalInputs[parameterizationKey]; has {
+	if _, has := internalInputs.GetOk(parameterizationKey); has {
 		inputs = internalInputs
 	}
 
-	version, ok := inputs[versionKey]
+	version, ok := inputs.GetOk(versionKey)
 	if !ok {
 		return nil, nil
 	}
@@ -194,7 +200,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 		return nil, fmt.Errorf("'%s' must be a string", versionKey)
 	}
 
-	sv, err := semver.ParseTolerant(version.StringValue())
+	sv, err := semver.ParseTolerant(version.AsString())
 	if err != nil {
 		return nil, fmt.Errorf("could not parse provider version: %w", err)
 	}
@@ -202,20 +208,19 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 }
 
 // Sets the provider name in the given property map.
-func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
-	internalInputs := addOrGetInternal(inputs)
-	internalInputs[nameKey] = resource.NewProperty(name.String())
+func SetProviderName(inputs property.Map, name tokens.Package) property.Map {
+	return setInternal(inputs, nameKey, property.New(name.String()))
 }
 
 // GetProviderName fetches and parses a provider name from the given property map. If the
 // name property is not present, this function returns the passed in name.
-func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.Package, error) {
+func GetProviderName(name tokens.Package, inputs property.Map) (tokens.Package, error) {
 	internalInputs, err := getInternal(inputs)
 	if err != nil {
 		return "", err
 	}
 
-	nameProperty, ok := internalInputs[nameKey]
+	nameProperty, ok := internalInputs.GetOk(nameKey)
 	if !ok {
 		return name, nil
 	}
@@ -224,7 +229,7 @@ func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.P
 		return "", fmt.Errorf("'%s' must be a string", nameKey)
 	}
 
-	nameString := nameProperty.StringValue()
+	nameString := nameProperty.AsString()
 	if nameString == "" {
 		return "", fmt.Errorf("'%s' must not be empty", nameKey)
 	}
@@ -233,55 +238,55 @@ func GetProviderName(name tokens.Package, inputs resource.PropertyMap) (tokens.P
 }
 
 // Sets the provider parameterization in the given property map, this should be called _after_ SetVersion.
-func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.Parameterization) {
-	internalInputs := addOrGetInternal(inputs)
-
+func SetProviderParameterization(inputs property.Map, value *workspace.Parameterization) property.Map {
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
-	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewProperty(value.Version.String())
+
+	inputs = setInternal(inputs, versionKey, inputs.Get(versionKey))
+	inputs = inputs.Set(versionKey, property.New(value.Version.String()))
 	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewProperty(
-		base64.StdEncoding.EncodeToString(value.Value))
+	inputs = setInternal(inputs, parameterizationKey, property.New(
+		base64.StdEncoding.EncodeToString(value.Value)))
+	return inputs
 }
 
 // GetEnvironmentVariableMappings fetches environment variable remappings.
 // Returns a map of NEW_KEY -> OLD_KEY mappings.
 // If NEW_KEY exists in the environment, the provider will see OLD_KEY=value(NEW_KEY).
 func GetEnvironmentVariableMappings(
-	inputs resource.PropertyMap,
+	inputs property.Map,
 ) (map[string]string, error) {
 	internalInputs, err := getInternal(inputs)
 	if err != nil {
 		return nil, err
 	}
-	mappings, ok := internalInputs[envVarMappingsKey]
+	mappings, ok := internalInputs.GetOk(envVarMappingsKey)
 	if !ok {
 		return nil, nil
 	}
-	if !mappings.IsObject() {
+	if !mappings.IsMap() {
 		return nil, fmt.Errorf("'%s' must be an object", envVarMappingsKey)
 	}
 	result := make(map[string]string)
-	for k, v := range mappings.ObjectValue() {
+	for k, v := range mappings.AsMap().All() {
 		if !v.IsString() {
 			return nil, fmt.Errorf("'%s[%s]' must be a string", envVarMappingsKey, k)
 		}
 		// NEW_KEY -> OLD_KEY: take value from NEW_KEY, apply to OLD_KEY
-		result[string(k)] = v.StringValue()
+		result[k] = v.AsString()
 	}
 	return result, nil
 }
 
 // SetEnvironmentVariableMappings sets environment variable remappings in the given property map.
 // The mappings map should be NEW_KEY -> OLD_KEY (if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)).
-func SetEnvironmentVariableMappings(inputs resource.PropertyMap, mappings map[string]string) {
-	internalInputs := addOrGetInternal(inputs)
-	propMap := make(resource.PropertyMap)
+func SetEnvironmentVariableMappings(inputs property.Map, mappings map[string]string) property.Map {
+	propMap := make(map[string]property.Value)
 	for newKey, oldKey := range mappings {
-		propMap[resource.PropertyKey(newKey)] = resource.NewProperty(oldKey)
+		propMap[newKey] = property.New(oldKey)
 	}
-	internalInputs[envVarMappingsKey] = resource.NewProperty(propMap)
+	inputs = setInternal(inputs, envVarMappingsKey, property.New(propMap))
+	return inputs
 }
 
 // buildEnvWithMappings creates an env.Env with the given mappings applied.
@@ -306,14 +311,14 @@ func buildEnvWithMappings(mappings map[string]string) env.Env {
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
 // parameterization property is not present, this function returns nil.
 func GetProviderParameterization(
-	name tokens.Package, inputs resource.PropertyMap,
+	name tokens.Package, inputs property.Map,
 ) (*workspace.Parameterization, error) {
 	internalInputs, err := getInternal(inputs)
 	if err != nil {
 		return nil, err
 	}
 
-	parameter, ok := internalInputs[parameterizationKey]
+	parameter, ok := internalInputs.GetOk(parameterizationKey)
 	if !ok {
 		return nil, nil
 	}
@@ -321,19 +326,19 @@ func GetProviderParameterization(
 	if !parameter.IsString() {
 		return nil, fmt.Errorf("'%s' must be of type string", parameterizationKey)
 	}
-	bytes, err := base64.StdEncoding.DecodeString(parameter.StringValue())
+	bytes, err := base64.StdEncoding.DecodeString(parameter.AsString())
 	if err != nil {
 		return nil, fmt.Errorf("could not decode base64 parameter value: %w", err)
 	}
 
-	version, ok := inputs["version"]
+	version, ok := inputs.GetOk(versionKey)
 	if !ok {
 		return nil, errors.New("must have a 'version' field")
 	}
 	if !version.IsString() {
 		return nil, errors.New("must have a 'version' field of type string")
 	}
-	sv, err := semver.Parse(version.StringValue())
+	sv, err := semver.Parse(version.AsString())
 	if err != nil {
 		return nil, fmt.Errorf("could not parse provider version: %w", err)
 	}
@@ -451,15 +456,15 @@ func loadParameterizedProvider(
 
 // FilterProviderConfig filters out the __internal key from provider state so the resulting map can be passed to
 // provider plugins.
-func FilterProviderConfig(inputs resource.PropertyMap) resource.PropertyMap {
-	result := resource.PropertyMap{}
-	for k, v := range inputs {
+func FilterProviderConfig(inputs property.Map) property.Map {
+	results := make(map[string]property.Value)
+	for k, v := range inputs.All() {
 		if k == internalKey {
 			continue
 		}
-		result[k] = v
+		results[k] = v
 	}
-	return result
+	return property.NewMap(results)
 }
 
 // NewRegistry creates a new provider registry using the given plugin context.
@@ -626,37 +631,34 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	logging.V(7).Infof("%s executing (#oldInputs=%d,#newInputs=%d)",
 		label, req.OldInputs.Len(), req.NewInputs.Len())
 
-	oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
-	newInputs := resource.ToResourcePropertyMap(req.NewInputs)
-
 	// Parse the version from the provider properties and load the provider.
 	providerPkg := providers.GetProviderPackage(req.URN.Type())
-	name, err := GetProviderName(providerPkg, newInputs)
+	name, err := GetProviderName(providerPkg, req.NewInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "name", Reason: err.Error(),
 		}}}, nil
 	}
-	version, err := GetProviderVersion(newInputs)
+	version, err := GetProviderVersion(req.NewInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "version", Reason: err.Error(),
 		}}}, nil
 	}
-	downloadURL, err := GetProviderDownloadURL(newInputs)
+	downloadURL, err := GetProviderDownloadURL(req.NewInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "pluginDownloadURL", Reason: err.Error(),
 		}}}, nil
 	}
-	parameter, err := GetProviderParameterization(providerPkg, newInputs)
+	parameter, err := GetProviderParameterization(providerPkg, req.NewInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "parameter", Reason: err.Error(),
 		}}}, nil
 	}
 
-	envVarMappings, err := GetEnvironmentVariableMappings(newInputs)
+	envVarMappings, err := GetEnvironmentVariableMappings(req.NewInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "envVarMappings", Reason: err.Error(),
@@ -676,8 +678,8 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// Check the provider's config. If the check fails, unload the provider.
 	resp, err := provider.CheckConfig(ctx, plugin.CheckConfigRequest{
 		URN:           req.URN,
-		Olds:          resource.FromResourcePropertyMap(FilterProviderConfig(oldInputs)),
-		News:          resource.FromResourcePropertyMap(FilterProviderConfig(newInputs)),
+		Olds:          FilterProviderConfig(req.OldInputs),
+		News:          FilterProviderConfig(req.NewInputs),
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
@@ -692,36 +694,34 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
 
-	properties := resource.ToResourcePropertyMap(resp.Properties)
-
 	// If the provider tries to drop the versions field reset it back to the original value.
-	if _, ok := properties[versionKey]; !ok {
+	if _, ok := resp.Properties.GetOk(versionKey); !ok {
 		// Only set it if we had it originally
-		if _, ok := newInputs[versionKey]; ok {
-			properties[versionKey] = newInputs[versionKey]
+		if _, ok := req.NewInputs.GetOk(versionKey); ok {
+			resp.Properties = resp.Properties.Set(versionKey, req.NewInputs.Get(versionKey))
 		}
 	}
 	// If the provider tries to change the version field return an error
-	if newV, ok := properties[versionKey]; ok {
-		if oldV, ok := newInputs[versionKey]; ok {
-			if !oldV.DeepEquals(newV) {
+	if newV, ok := resp.Properties.GetOk(versionKey); ok {
+		if oldV, ok := req.NewInputs.GetOk(versionKey); ok {
+			if !oldV.Equals(newV) {
 				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
-					req.URN, oldV.StringValue(), newV.StringValue())
+					req.URN, oldV.AsString(), newV.AsString())
 			}
 		}
 	}
 
 	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
 	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
-	if _, has := newInputs[internalKey]; has {
+	if _, has := req.NewInputs.GetOk(internalKey); has {
 		// Before we reset it warn the user that the providers data is being discarded
-		if _, has := properties[internalKey]; has {
+		if _, has := resp.Properties.GetOk(internalKey); has {
 			r.pctx.Host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
 		}
-		properties[internalKey] = newInputs[internalKey]
+		resp.Properties = resp.Properties.Set(internalKey, req.NewInputs.Get(internalKey))
 	}
 
-	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(properties)}, nil
+	return plugin.CheckResponse{Properties: resp.Properties}, nil
 }
 
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list
@@ -756,15 +756,12 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	}
 
 	// Diff the properties.
-	oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
-	oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
-	newInputs := resource.ToResourcePropertyMap(req.NewInputs)
-	filteredNewInputs := FilterProviderConfig(newInputs)
+	filteredNewInputs := FilterProviderConfig(req.NewInputs)
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
-		OldInputs:     resource.FromResourcePropertyMap(FilterProviderConfig(oldInputs)),
-		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs), // OldOutputs is already filtered
-		NewInputs:     resource.FromResourcePropertyMap(filteredNewInputs),
+		OldInputs:     FilterProviderConfig(req.OldInputs),
+		OldOutputs:    req.OldOutputs, // OldOutputs is already filtered
+		NewInputs:     filteredNewInputs,
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
 	})
@@ -772,7 +769,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if oldOutputs.DeepEquals(filteredNewInputs) {
+		if req.OldOutputs.Equals(filteredNewInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
 			diff.Changes = plugin.DiffSome
@@ -816,6 +813,8 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 		return nil
 	}
 
+	inputs := resource.FromResourcePropertyMap(res.Inputs)
+
 	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
 	// reuse that instance, but as we're now configuring it remove the unconfigured ID from the provider map
 	// so nothing else tries to use it.
@@ -833,23 +832,23 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 		providerPkg := providers.GetProviderPackage(urn.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
-		name, err := GetProviderName(providerPkg, res.Inputs)
+		name, err := GetProviderName(providerPkg, inputs)
 		if err != nil {
 			return fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		version, err := GetProviderVersion(res.Inputs)
+		version, err := GetProviderVersion(inputs)
 		if err != nil {
 			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		downloadURL, err := GetProviderDownloadURL(res.Inputs)
+		downloadURL, err := GetProviderDownloadURL(inputs)
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
+		parameter, err := GetProviderParameterization(providerPkg, inputs)
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
+		envVarMappings, err := GetEnvironmentVariableMappings(inputs)
 		if err != nil {
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -869,13 +868,13 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 	name := urn.Name()
 	typ := urn.Type()
 
-	filteredInputs := FilterProviderConfig(res.Inputs)
+	filteredInputs := FilterProviderConfig(inputs)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &urn,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &res.ID,
-		Inputs: resource.FromResourcePropertyMap(filteredInputs),
+		Inputs: filteredInputs,
 	}); err != nil {
 		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
@@ -906,8 +905,6 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	label := fmt.Sprintf("%s.Create(%s)", r.label(), req.URN)
 	logging.V(7).Infof("%s executing (#news=%v)", label, req.Properties.Len())
 
-	properties := resource.ToResourcePropertyMap(req.Properties)
-
 	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
 	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
 	provider, ok := r.deleteProvider(mustNewReference(req.URN, UnconfiguredID))
@@ -918,28 +915,28 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		providerPkg := providers.GetProviderPackage(req.URN.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
-		name, err := GetProviderName(providerPkg, properties)
+		name, err := GetProviderName(providerPkg, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		version, err := GetProviderVersion(properties)
+		version, err := GetProviderVersion(req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		downloadURL, err := GetProviderDownloadURL(properties)
+		downloadURL, err := GetProviderDownloadURL(req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, properties)
+		parameter, err := GetProviderParameterization(providerPkg, req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 
-		envVarMappings, err := GetEnvironmentVariableMappings(properties)
+		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
@@ -972,13 +969,13 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	name := req.URN.Name()
 	typ := req.URN.Type()
 
-	filteredProperties := FilterProviderConfig(properties)
+	filteredProperties := FilterProviderConfig(req.Properties)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &req.URN,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
-		Inputs: resource.FromResourcePropertyMap(filteredProperties),
+		Inputs: filteredProperties,
 	}); err != nil {
 		return plugin.CreateResponse{Status: resource.StatusOK}, err
 	}
@@ -986,7 +983,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	r.setProvider(mustNewReference(req.URN, id), provider)
 	return plugin.CreateResponse{
 		ID:         id,
-		Properties: resource.FromResourcePropertyMap(filteredProperties),
+		Properties: filteredProperties,
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -1008,13 +1005,13 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	name := req.URN.Name()
 	typ := req.URN.Type()
 
-	filteredProperties := FilterProviderConfig(resource.ToResourcePropertyMap(req.NewInputs))
+	filteredProperties := FilterProviderConfig(req.NewInputs)
 	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
 		URN:    &req.URN,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &req.ID,
-		Inputs: resource.FromResourcePropertyMap(filteredProperties),
+		Inputs: filteredProperties,
 	})
 	if err != nil {
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
@@ -1025,7 +1022,7 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	// See https://github.com/pulumi/pulumi/issues/20529
 	r.setProviderAndCloseOld(mustNewReference(req.URN, req.ID), provider)
 	return plugin.UpdateResponse{
-		Properties: resource.FromResourcePropertyMap(filteredProperties),
+		Properties: filteredProperties,
 		Status:     resource.StatusOK,
 	}, nil
 }

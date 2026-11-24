@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Sample is a generated resource state and the snapshot needed to import it.
@@ -167,20 +168,20 @@ func drawProviderState(t *rapid.T, pkg *schema.Package) *pkgresource.State {
 	name := drawIdentifier(t, "provider-name")
 	id := drawResourceID(t, "provider-id")
 
-	inputs := resource.PropertyMap{}
+	inputs := property.Map{}
 	version := pkg.Version
 	if version == nil {
 		v := semver.MustParse("1.0.0")
 		version = &v
 	}
-	providers.SetProviderVersion(inputs, version)
+	inputs = providers.SetProviderVersion(inputs, version)
 
 	return &pkgresource.State{
 		Type:   typ,
 		URN:    resource.NewURN(stackName, projectName, "", typ, name),
 		Custom: true,
 		ID:     id,
-		Inputs: inputs,
+		Inputs: resource.ToResourcePropertyMap(inputs),
 	}
 }
 

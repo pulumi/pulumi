@@ -2827,20 +2827,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if sdkproviders.IsProviderType(t) {
-		// providers.SetProvider* mutate a resource.PropertyMap in-place; convert at the boundary.
-		legacyProps := resource.ToResourcePropertyMap(props)
 		if opts.GetVersion() != "" {
 			version, err := semver.Parse(opts.GetVersion())
 			if err != nil {
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}
-			providers.SetProviderVersion(legacyProps, &version)
+			props = providers.SetProviderVersion(props, &version)
 		}
 		if opts.GetPluginDownloadUrl() != "" {
-			providers.SetProviderURL(legacyProps, opts.GetPluginDownloadUrl())
+			props = providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
 		if len(req.GetEnvVarMappings()) > 0 {
-			providers.SetEnvironmentVariableMappings(legacyProps, req.GetEnvVarMappings())
+			props = providers.SetEnvironmentVariableMappings(props, req.GetEnvVarMappings())
 		}
 		if req.GetPackageRef() != "" {
 			// If the provider resource has a package ref then we need to set all it's input fields as in
@@ -2852,17 +2850,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 
 			if providerReq.Version() != nil {
-				providers.SetProviderVersion(legacyProps, providerReq.Version())
+				props = providers.SetProviderVersion(props, providerReq.Version())
 			}
 			if providerReq.PluginDownloadURL() != "" {
-				providers.SetProviderURL(legacyProps, providerReq.PluginDownloadURL())
+				props = providers.SetProviderURL(props, providerReq.PluginDownloadURL())
 			}
 			if providerReq.PluginChecksums() != nil {
-				providers.SetProviderChecksums(legacyProps, providerReq.PluginChecksums())
+				props = providers.SetProviderChecksums(props, providerReq.PluginChecksums())
 			}
 			if providerReq.Parameterization() != nil {
-				providers.SetProviderName(legacyProps, providerReq.Name())
-				providers.SetProviderParameterization(legacyProps, providerReq.Parameterization())
+				props = providers.SetProviderName(props, providerReq.Name())
+				props = providers.SetProviderParameterization(props, providerReq.Parameterization())
 			}
 		}
 
@@ -2871,13 +2869,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[sdkproviders.GetProviderPackage(t)]
 		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
-				providers.SetProviderVersion(legacyProps, defaultProvider.Version)
+				props = providers.SetProviderVersion(props, defaultProvider.Version)
 			}
 			if defaultProvider.PluginDownloadURL != "" {
-				providers.SetProviderURL(legacyProps, defaultProvider.PluginDownloadURL)
+				props = providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
 			}
 		}
-		props = resource.FromResourcePropertyMap(legacyProps)
 	}
 
 	protect := opts.Protect

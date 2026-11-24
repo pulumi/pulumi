@@ -169,20 +169,21 @@ func GenerateHCL2Definition(
 		// position as the package instead.
 		packageName = tokens.Package(state.Type.Name())
 	}
-	pluginName, err := providers.GetProviderName(packageName, provider.Inputs)
+	inputs := resource.FromResourcePropertyMap(provider.Inputs)
+	pluginName, err := providers.GetProviderName(packageName, inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider name: %w", err)
 	}
-	pluginVersion, err := providers.GetProviderVersion(provider.Inputs)
+	pluginVersion, err := providers.GetProviderVersion(inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider version: %w", err)
 	}
-	downloadURL, err := providers.GetProviderDownloadURL(provider.Inputs)
+	downloadURL, err := providers.GetProviderDownloadURL(inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider version: %w", err)
 	}
 	var parameterization *schema.ParameterizationDescriptor
-	parameters, err := providers.GetProviderParameterization(packageName, provider.Inputs)
+	parameters, err := providers.GetProviderParameterization(packageName, inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider parameterization: %w", err)
 	}
