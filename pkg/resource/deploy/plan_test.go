@@ -392,7 +392,7 @@ func TestResourcePlan(t *testing.T) {
 					&pkgresource.Goal{
 						RetainOnDelete: &goalRetain,
 					}, false)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 			t.Run("deleteBeforeReplace mismatch", func(t *testing.T) {
 				t.Parallel()
