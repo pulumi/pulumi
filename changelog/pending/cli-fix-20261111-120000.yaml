@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Fix the `pulumi stack webhook new` example to use `--hook-format` instead of the nonexistent `--format` flag
+time: 2026-11-11T12:00:00.000000+00:00

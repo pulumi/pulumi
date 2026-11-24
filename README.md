@@ -161,15 +161,7 @@ Serverless Lambdas, in minutes:
     curl $(pulumi stack output url)
     ```
 
-5. **Access the Logs**:
-
-    If you're using containers or functions, Pulumi's unified logging command will show all of your logs:
-
-    ```bash
-    pulumi logs -f
-    ```
-
-6. **Destroy your Resources**:
+5. **Destroy your Resources**:
 
     After you're done, you can remove all resources created by your program:
 
