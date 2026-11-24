@@ -263,6 +263,8 @@ type testPulumiClient struct {
 	submittedChangeRequests []submittedChangeRequest
 
 	changeRequests map[string]*testChangeRequest
+
+	accessDurationSeconds int
 }
 
 type testChangeRequest struct {
@@ -1841,6 +1843,8 @@ func (c *testPulumiClient) CreateEnvironmentOpenRequest(
 	grantExpirationSeconds int,
 	accessDurationSeconds int,
 ) (*client.CreateEnvironmentOpenRequestResponse, error) {
+	c.accessDurationSeconds = accessDurationSeconds
+
 	// Check if environment exists
 	key := fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)
 	if _, exists := c.environments[key]; !exists {
