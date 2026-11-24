@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Keep unexported struct fields when resolving outputs, so `JSONMarshal` works with custom JSON marshalers
+time: 2026-11-24T11:00:00Z

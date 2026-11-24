@@ -1111,6 +1111,48 @@ func TestJSONMarshalNested(t *testing.T) {
 	assert.Nil(t, v)
 }
 
+type jsonMarshalerWithUnexportedField struct {
+	field string
+}
+
+func (m jsonMarshalerWithUnexportedField) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + m.field + `"`), nil
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/17880.
+func TestJSONMarshalCustomMarshalerWithUnexportedField(t *testing.T) {
+	t.Parallel()
+
+	json := JSONMarshal(jsonMarshalerWithUnexportedField{field: "example"})
+	v, known, secret, deps, err := await(json)
+	require.NoError(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Equal(t, `"example"`, v)
+}
+
+func TestToOutputKeepsUnexportedStructFields(t *testing.T) {
+	t.Parallel()
+
+	type withUnexportedField struct {
+		Exported   any
+		unexported string
+	}
+
+	out := ToOutput(withUnexportedField{
+		Exported:   String("exported").ToStringOutput(),
+		unexported: "unexported",
+	})
+	v, known, _, _, err := await(out)
+	require.NoError(t, err)
+	assert.True(t, known)
+	assert.Equal(t, withUnexportedField{
+		Exported:   "exported",
+		unexported: "unexported",
+	}, v)
+}
+
 func TestJSONUnmarshalBasic(t *testing.T) {
 	t.Parallel()
 
