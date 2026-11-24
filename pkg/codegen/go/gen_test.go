@@ -545,6 +545,9 @@ func TestTitle(t *testing.T) {
 	assert.Equal("_3gppInfos", Title("3gppInfos"))
 	assert.Equal("_3gppRaw", Title("3gppRaw"))
 	assert.Equal("_0foo", Title("0foo"))
+	assert.Equal("FsAioMaxNr", Title("fs.aio-max-nr"))
+	assert.Equal("FsInotifyMax_user_instances", Title("fs.inotify.max_user_instances"))
+	assert.Equal("Foo_bar", Title("foo/bar"))
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {
