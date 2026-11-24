@@ -565,6 +565,11 @@ func (p *Pulumi) drainEvents(
 				p.Sink.OnDiag(toolName, string(payload.Severity), msg, string(payload.URN))
 			}
 			diags = append(diags, fmt.Sprintf("%s: %s", payload.Severity, msg))
+		case engine.StdoutEventPayload:
+			// Logs only: the TUI block stays limited to warnings and errors.
+			if msg := strings.TrimSpace(colors.Never.Colorize(payload.Message)); msg != "" {
+				diags = append(diags, msg)
+			}
 		case engine.UpdateStartedEventPayload:
 			if isPreview {
 				// The backend reports the stack's NEXT version for a preview, but a preview
