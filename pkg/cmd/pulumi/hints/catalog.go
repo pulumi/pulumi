@@ -59,4 +59,4 @@ func NeoDebug(link, debugCommand string) Hint {
 }
 
 // OfferNeoDebug offers the NeoDebug hint. Commands set it as the display's OfferNeoLink.
-func OfferNeoDebug(link, debugCommand string) { Offer(NeoDebug(link, debugCommand)) }
+func (m *Manager) OfferNeoDebug(link, debugCommand string) { m.Offer(NeoDebug(link, debugCommand)) }

@@ -744,7 +744,7 @@ func NewUpCmd(hm *hints.Manager) *cobra.Command {
 			}
 
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
-			opts.Display.OfferNeoLink = hints.OfferNeoDebug
+			opts.Display.OfferNeoLink = hm.OfferNeoDebug
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
 			if len(args) > 0 {
