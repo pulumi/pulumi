@@ -1,0 +1,4 @@
+component: cli/env
+kind: fix
+body: Explain AWS SSO OIDC network failures and timeouts in `pulumi env setup aws` in terms of the SSO region
+time: 2026-11-12T12:00:00+00:00
