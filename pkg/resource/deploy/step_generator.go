@@ -3890,7 +3890,7 @@ func extractPropertyDependencies(
 		}
 		result[k] = deps
 	}
-	for k, v := range m.All {
+	for k, v := range m.All() {
 		pk := resource.PropertyKey(k)
 		add(pk, extendOutputDependencies(existing[pk], v))
 	}
