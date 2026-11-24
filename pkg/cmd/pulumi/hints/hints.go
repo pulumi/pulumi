@@ -132,7 +132,7 @@ func (m *Manager) Offer(h Hint) { m.OfferIf(h, nil) }
 
 // OfferIf is like Offer, but shows h only if applies reports true. Flush calls applies only once every other rule
 // allows h, so it may do work that's too costly for every command, such as looking at files. A nil applies always
-// applies.
+// applies. applies runs under the Manager's lock, so it must not call the Manager.
 func (m *Manager) OfferIf(h Hint, applies func() bool) {
 	if m == nil {
 		return
