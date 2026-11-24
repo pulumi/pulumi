@@ -1,0 +1,3 @@
+component: cli
+kind: fix
+body: Fix `pulumi login --default-org` so that later commands use the organization it sets
