@@ -16,7 +16,6 @@ package logs
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"testing"
 	"time"
@@ -39,9 +38,10 @@ func TestLogsShareRedactsBase64EncodedSecretArgs(t *testing.T) {
 	handler := pkglogging.NewPropertySinkHandler(slog.NewJSONHandler(&disk, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	rec := slog.NewRecord(time.Now(), slog.LevelInfo, "inputs=%v", 0)
 	rec.AddAttrs(slog.Any("pulumi.log.arg0", pm))
-	require.NoError(t, handler.Handle(context.Background(), rec))
+	require.NoError(t, handler.Handle(t.Context(), rec))
 	require.Contains(t, disk.String(), "pulumi.log.arg0")
-	require.NotContains(t, disk.String(), secret, "sanity: the on-disk form encodes the property, so the raw secret is not plaintext")
+	require.NotContains(t, disk.String(), secret,
+		"the on-disk form encodes the property, so the raw secret is not present")
 
 	var out bytes.Buffer
 	require.NoError(t, formatLogRecords(&disk, &out, true))
