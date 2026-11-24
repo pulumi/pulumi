@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Make `pulumi config refresh` restore only the stack-local `Pulumi.<stack>.yaml` file instead of the fully-merged project+ESC config
+time: 2026-11-08T12:00:00.000000+00:00
