@@ -144,7 +144,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			}
 			if secret {
 				if yamlValue.Kind == yaml.ScalarNode && yamlValue.Tag != "!!str" {
-					err = yaml.Unmarshal([]byte(strconv.Quote(input)), &yamlValue)
+					err = yaml.Unmarshal([]byte(strconv.Quote(strings.TrimRight(input, "\r\n"))), &yamlValue)
 					if err != nil {
 						return fmt.Errorf(
 							"internal error decoding value; try surrounding the argument in both single and double quotes (e.g. '\"foo\"') (%w)", //nolint:lll
