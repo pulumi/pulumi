@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Input, Output, output } from "../output";
 import * as utils from "../utils";
 
 /**
@@ -86,4 +87,12 @@ export class RemoteAsset extends Asset {
         super();
         this.uri = Promise.resolve(uri);
     }
+}
+
+/**
+ * Creates a {@link StringAsset} from an {@link Input} string, allowing the use
+ * of an {@link Output}&lt;string&gt; or plain string value.
+ */
+export function stringAssetOutput(text: Input<string>): Output<StringAsset> {
+    return output(text).apply((t) => new StringAsset(t));
 }
