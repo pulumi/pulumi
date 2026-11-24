@@ -41,8 +41,11 @@ from typing import (  # type: ignore
     get_origin,
 )
 
+from typing_extensions import get_type_hints
+
+from ..._types import is_input_type, is_output_type
 from ...asset import Archive, Asset
-from ...output import Output
+from ...output import Output, T as _OutputT
 from ...resource import ComponentResource, Resource
 from .util import camel_case
 
@@ -268,6 +271,9 @@ class Analyzer:
         # reference to a type so that we can deserialize a raw value back into a Python
         # enum type.
         self.external_enum_types: dict[str, type[Enum]] = {}
+        # Names of the types whose properties are being analyzed further up the stack, so a
+        # recursive reference returns a ref instead of re-entering.
+        self.analyzing: set[str] = set()
         # For unresolved types, we need to keep track of whether we saw them in a
         # component output or an input.
         self.unresolved_forward_refs: dict[
@@ -410,7 +416,7 @@ class Analyzer:
         for cls in reversed(typ.__mro__):
             if cls is object or cls is Resource or cls is ComponentResource:
                 continue
-            ann.update(inspect.get_annotations(cls))
+            ann.update(resolved_annotations(cls))
             if typing.is_typeddict(cls):
                 optional_keys.update(getattr(cls, "__optional_keys__", ()))
         ann = {k: v for k, v in ann.items() if not k.startswith("_")}
@@ -622,8 +628,18 @@ class Analyzer:
             except DependencyError as e:
                 raise Exception(f"{package_name}: {str(e)}")
         elif is_union(arg):
-            raise Exception(
-                f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
+            member = schema_bearing_member(arg)
+            if member is None:
+                raise Exception(
+                    f"Union types are not supported: found type '{arg}' for '{typ.__name__}.{name}'"
+                )
+            return self.analyze_property(
+                member,
+                typ,
+                name,
+                can_be_plain=can_be_plain,
+                is_component_output=is_component_output,
+                optional=optional,
             )
         elif is_enum(arg):
             enum_type_string = getattr(arg, "pulumi_type", None)
@@ -687,11 +703,16 @@ class Analyzer:
             else:
                 if type_def.module and type_def.module != arg.__module__:
                     raise DuplicateTypeError(arg.__module__, type_def)
-            (properties, properties_mapping) = self.analyze_type(
-                arg, is_component_output=is_component_output
-            )
-            type_def.properties = properties
-            type_def.properties_mapping = properties_mapping
+            if type_def.name not in self.analyzing:
+                self.analyzing.add(type_def.name)
+                try:
+                    (properties, properties_mapping) = self.analyze_type(
+                        arg, is_component_output=is_component_output
+                    )
+                finally:
+                    self.analyzing.discard(type_def.name)
+                type_def.properties = properties
+                type_def.properties_mapping = properties_mapping
             if type_def.name in self.unresolved_forward_refs:
                 del self.unresolved_forward_refs[type_def.name]
             ref = f"#/types/{self.name}:index:{type_def.name}"
@@ -870,15 +891,45 @@ def is_any(typ: type) -> bool:
 
 def unwrap_optional(typ: type) -> type:
     """
-    Returns the first type of the Union that is not NoneType.
+    Returns the Union without NoneType, or its sole remaining member.
     """
     if not is_optional(typ):
         raise ValueError("Not an optional type")
-    elements = get_args(typ)
-    for element in elements:
-        if element is not _NoneType:
-            return element
-    raise ValueError("Optional type with no non-None elements")
+    elements = [element for element in get_args(typ) if element is not _NoneType]
+    if not elements:
+        raise ValueError("Optional type with no non-None elements")
+    if len(elements) == 1:
+        return elements[0]
+    return Union[tuple(elements)]  # type: ignore[return-value]
+
+
+def resolved_annotations(cls: type) -> dict[str, Any]:
+    """
+    Returns the annotations of `cls` with forward references evaluated in the module that
+    declares `cls`, falling back to the raw annotations when they do not all resolve there. A
+    generated SDK's TypedDict names its sibling types as strings, and those names live in the
+    SDK's module, not the component's.
+    """
+    try:
+        return get_type_hints(
+            cls, localns={"Output": Output, "T": _OutputT}, include_extras=True
+        )
+    except Exception:  # noqa
+        return inspect.get_annotations(cls)
+
+
+def schema_bearing_member(union: Any) -> Optional[Any]:
+    """
+    Returns the member of `union` that carries a schema when the others are alternative
+    spellings of it, or None. A generated SDK lets an input accept an object type as its
+    Args class, its TypedDict or its output class; only the TypedDict has readable items, so a
+    union of those forms reduces to it.
+    """
+    members = get_args(union)
+    remaining = [m for m in members if not (is_input_type(m) or is_output_type(m))]
+    if len(remaining) == 1 and len(remaining) < len(members):
+        return remaining[0]
+    return None
 
 
 def is_not_required(typ: Any) -> bool:
