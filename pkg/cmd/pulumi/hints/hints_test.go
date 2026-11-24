@@ -35,7 +35,7 @@ var (
 )
 
 type testManager struct {
-	*manager
+	*Manager
 	now      time.Time
 	disabled bool
 	skip     []string
@@ -47,7 +47,7 @@ func newTestManager(t *testing.T) *testManager {
 		now:  time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC),
 		path: filepath.Join(t.TempDir(), stateFileName),
 	}
-	tm.manager = &manager{
+	tm.Manager = &Manager{
 		now:       func() time.Time { return tm.now },
 		statePath: func() (string, error) { return tm.path, nil },
 		settings: func() settings {
@@ -64,10 +64,10 @@ func newTestManager(t *testing.T) *testManager {
 // run offers hs and flushes them, returning what was printed.
 func (tm *testManager) run(hs ...Hint) string {
 	for _, h := range hs {
-		tm.offer(h)
+		tm.Offer(h)
 	}
 	var buf bytes.Buffer
-	tm.flush(&buf)
+	tm.Flush(&buf)
 	return buf.String()
 }
 
@@ -128,7 +128,7 @@ func TestFlushResetsSuppress(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
 
-	tm.suppress()
+	tm.Suppress()
 	assert.Empty(t, tm.run(hintA))
 
 	// The next command in the same process isn't suppressed.
@@ -142,7 +142,7 @@ func TestSuppressedAndDisabled(t *testing.T) {
 		name  string
 		setup func(tm *testManager)
 	}{
-		{"suppressed", func(tm *testManager) { tm.suppress() }},
+		{"suppressed", func(tm *testManager) { tm.Suppress() }},
 		{"disabled", func(tm *testManager) { tm.disabled = true }},
 	}
 	for _, tt := range tests {
@@ -163,11 +163,11 @@ func TestSuppressedAndDisabled(t *testing.T) {
 func TestFlushClearsQueue(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
-	tm.offer(hintA)
+	tm.Offer(hintA)
 
 	var buf bytes.Buffer
-	tm.flush(&buf)
-	tm.flush(&buf)
+	tm.Flush(&buf)
+	tm.Flush(&buf)
 	assert.Equal(t, 1, bytes.Count(buf.Bytes(), []byte("hint a")))
 }
 

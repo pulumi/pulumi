@@ -23,7 +23,7 @@ import (
 func TestDeclaredEnvironmentVariable(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	up, _, err := cmd.Find([]string{"up"})
@@ -37,7 +37,7 @@ func TestDeclaredEnvironmentVariable(t *testing.T) {
 func TestEnvironmentVariableWorksWithMultipleCommands(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	preview, _, err := cmd.Find([]string{"preview"})
@@ -51,7 +51,7 @@ func TestEnvironmentVariableWorksWithMultipleCommands(t *testing.T) {
 func TestThatDefaultsAreNotOverriddenByEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	color, err := cmd.PersistentFlags().GetString("color")
@@ -63,7 +63,7 @@ func TestThatDefaultsAreNotOverriddenByEnvironmentVariables(t *testing.T) {
 func TestBooleanEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_EMOJI", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	emoji, err := cmd.PersistentFlags().GetBool("emoji")
@@ -74,7 +74,7 @@ func TestBooleanEnvironmentVariables(t *testing.T) {
 func TestNumericEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_VERBOSE", "2")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	verbose, err := cmd.PersistentFlags().GetInt("verbose")
@@ -99,7 +99,7 @@ func TestTypedFlagEnvironmentVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv(tt.env, tt.value)
 
-			cmd, cleanup := NewPulumiCmd()
+			cmd, cleanup := NewPulumiCmd(nil)
 			defer cleanup()
 
 			sub, _, err := cmd.Find(tt.path)
@@ -115,7 +115,7 @@ func TestTypedFlagEnvironmentVariables(t *testing.T) {
 func TestStringArrayEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_TARGET", "foo,bar,baz")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	up, _, err := cmd.Find([]string{"up"})
@@ -129,7 +129,7 @@ func TestStringArrayEnvironmentVariables(t *testing.T) {
 func TestStringArrayOneElement(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_TARGET", "foo")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	up, _, err := cmd.Find([]string{"up"})
@@ -143,7 +143,7 @@ func TestStringArrayOneElement(t *testing.T) {
 func TestStringSliceEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_MAPPINGS", "foo,bar,baz")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	convert, _, err := cmd.Find([]string{"convert"})
@@ -157,7 +157,7 @@ func TestStringSliceEnvironmentVariables(t *testing.T) {
 func TestStringArrayNoSplitOnComma(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_PLAINTEXT", "\"a=foo,bar,baz\"")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	config, _, err := cmd.Find([]string{"config", "set-all"})

@@ -14,7 +14,7 @@
 
 // Package hints shows short, contextual product hints at the end of a CLI command.
 //
-// Commands [Offer] hints while they run, and the root command calls [Flush] when it exits. Flush shows
+// Commands [Manager.Offer] hints while they run, and the root command calls [Manager.Flush] when it exits. Flush shows
 // at most one hint per command: the first offered hint that the user hasn't turned off and whose fields, such as
 // [Hint.Cooldown], allow it to be shown now.
 //
@@ -60,8 +60,10 @@ type state struct {
 	LastShown map[string]time.Time `json:"lastShown,omitempty"`
 }
 
-// manager holds the hints offered during this CLI process.
-type manager struct {
+// Manager holds the hints offered while a CLI command runs. The root command creates one and passes it to the
+// commands that offer hints. Its methods do nothing on a nil Manager, so commands created without one, as in tests,
+// offer no hints.
+type Manager struct {
 	mu         sync.Mutex
 	pending    []Hint
 	suppressed bool
@@ -71,27 +73,14 @@ type manager struct {
 	settings  func() settings
 }
 
-func newManager() *manager {
-	return &manager{
+// New returns a Manager that reads the user's hint settings and records shown hints under the Pulumi home directory.
+func New() *Manager {
+	return &Manager{
 		now:       time.Now,
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
 		settings:  loadSettings,
 	}
 }
-
-var defaultManager = newManager()
-
-// Offer queues a hint to be shown when the command exits, subject to the rules described in the package
-// documentation.
-func Offer(h Hint) { defaultManager.offer(h) }
-
-// Suppress prevents any hint from being shown for the current command, for example because it writes
-// machine-readable output or runs in CI.
-func Suppress() { defaultManager.suppress() }
-
-// Flush shows at most one of the offered hints on w and resets the hints for the next command, including any
-// [Suppress]. It never fails the command: errors reading or writing the state file are logged, and no hint is shown.
-func Flush(w io.Writer) { defaultManager.flush(w) }
 
 // settings are the user's choices about which hints to show.
 type settings struct {
@@ -124,19 +113,35 @@ func loadSettings() settings {
 	return s
 }
 
-func (m *manager) offer(h Hint) {
+// Offer queues a hint to be shown when the command exits, subject to the rules described in the package
+// documentation.
+func (m *Manager) Offer(h Hint) {
+	if m == nil {
+		return
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.pending = append(m.pending, h)
 }
 
-func (m *manager) suppress() {
+// Suppress prevents any hint from being shown for the current command, for example because it writes
+// machine-readable output or runs in CI.
+func (m *Manager) Suppress() {
+	if m == nil {
+		return
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.suppressed = true
 }
 
-func (m *manager) flush(w io.Writer) {
+// Flush shows at most one of the offered hints on w and resets the hints for the next command, including any
+// [Manager.Suppress]. It never fails the command: errors reading or writing the state file are logged, and no hint is
+// shown.
+func (m *Manager) Flush(w io.Writer) {
+	if m == nil {
+		return
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	pending, suppressed := m.pending, m.suppressed
@@ -189,7 +194,7 @@ func show(w io.Writer, h Hint) {
 	contract.IgnoreError(err)
 }
 
-func (m *manager) load() (state, string, error) {
+func (m *Manager) load() (state, string, error) {
 	path, err := m.statePath()
 	if err != nil {
 		return state{}, "", err

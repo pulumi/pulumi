@@ -63,13 +63,14 @@ func main() {
 	finished := new(bool)
 	defer panicHandler(finished)
 
-	pulumiCmd, cleanup := NewPulumiCmd()
+	hm := hints.New()
+	pulumiCmd, cleanup := NewPulumiCmd(hm)
 
 	err := pulumiCmd.Execute()
 	if err != nil {
 		cmd.DisplayErrorMessage(pulumiCmd.Context(), err, pulumiCmd.ErrOrStderr())
 	}
-	hints.Flush(pulumiCmd.ErrOrStderr())
+	hm.Flush(pulumiCmd.ErrOrStderr())
 	cleanup()
 	if err != nil {
 		os.Exit(cmd.ExitCodeFor(err))

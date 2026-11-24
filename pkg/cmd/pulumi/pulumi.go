@@ -207,8 +207,8 @@ func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
 	_ = pf.Parse(args)
 }
 
-// NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() (*cobra.Command, func()) {
+// NewPulumiCmd creates a new Pulumi Cmd instance. Its commands offer hints to hm, which may be nil to offer none.
+func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 	helpers := cmdBackend.DefaultLoginManager.CredentialHelperSession()
 	var cwd string
 	var logFlow bool
@@ -309,7 +309,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// machine-readable output. Commands that parse their own flags, like `pulumi do`, may write JSON without
 			// cobra knowing, so they show no hints either.
 			if ciutil.IsCI() || cmdutil.DisableInteractive || cmd.DisableFlagParsing || isJSONOutput(cmd) {
-				hints.Suppress()
+				hm.Suppress()
 			}
 
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
