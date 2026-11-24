@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRenderDescribeTextShowsPreviewStatus(t *testing.T) {
@@ -152,5 +153,26 @@ func TestRenderDescribeMarkdown_Golden(t *testing.T) {
 			path := filepath.Join("testdata", "describe_golden", tc.name+".md")
 			assertGolden(t, path, got)
 		})
+	}
+}
+
+func TestMatchDescribeArgMethod(t *testing.T) {
+	t.Parallel()
+	idx := loadTestIndex(t)
+
+	mr, err := matchDescribeArg(idx, "ListOrgTokens", "GET", false)
+	require.NoError(t, err)
+	assert.Equal(t, "ListOrgTokens", mr.Op.OperationID)
+
+	mr, err = matchDescribeArg(idx, "ListOrgTokens", "get", true)
+	require.NoError(t, err)
+	assert.Equal(t, "ListOrgTokens", mr.Op.OperationID)
+
+	for _, arg := range []string{"ListOrgTokens", "POST /api/orgs/{orgName}/tokens"} {
+		_, err = matchDescribeArg(idx, arg, "DELETE", true)
+		var apiErr *APIError
+		require.ErrorAs(t, err, &apiErr, arg)
+		assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code, arg)
+		assert.Equal(t, "method", apiErr.Envelope.Error.Field, arg)
 	}
 }

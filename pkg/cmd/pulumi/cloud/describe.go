@@ -93,31 +93,9 @@ func runDescribe(
 		return err
 	}
 
-	method = strings.ToUpper(method)
-	userArg := strings.TrimSpace(args[0])
-
-	if verb, rest, ok := splitLeadingHTTPMethod(userArg); ok {
-		if methodExplicit && method != verb {
-			return NewAPIError(cmdutil.ExitConfigurationError, ErrInvalidFlags,
-				fmt.Sprintf("conflicting methods: argument has %q, --method is %q", verb, method)).
-				WithField("method")
-		}
-		method = verb
-		userArg = rest
-	}
-
-	var mr *MatchResult
-	if looksLikeOperationID(userArg) {
-		mr, err = MatchByOperationID(idx, userArg)
-		if err != nil {
-			return err
-		}
-	} else {
-		userPath, _ := splitPathQuery(userArg)
-		mr, err = MatchPath(idx, method, userPath)
-		if err != nil {
-			return err
-		}
+	mr, err := matchDescribeArg(idx, args[0], method, methodExplicit)
+	if err != nil {
+		return err
 	}
 
 	//exhaustive:ignore // outputDefault/outputTable/outputRaw all render text.
@@ -129,6 +107,38 @@ func runDescribe(
 	default:
 		return emitDescribeText(w, mr.Op)
 	}
+}
+
+// matchDescribeArg finds the operation named by a describe argument: an operation ID, a path,
+// or a "METHOD path" pair.
+func matchDescribeArg(idx *Index, arg, method string, methodExplicit bool) (*MatchResult, error) {
+	method = strings.ToUpper(method)
+	userArg := strings.TrimSpace(arg)
+
+	if verb, rest, ok := splitLeadingHTTPMethod(userArg); ok {
+		if methodExplicit && method != verb {
+			return nil, NewAPIError(cmdutil.ExitConfigurationError, ErrInvalidFlags,
+				fmt.Sprintf("conflicting methods: argument has %q, --method is %q", verb, method)).
+				WithField("method")
+		}
+		method = verb
+		userArg = rest
+	}
+
+	if looksLikeOperationID(userArg) {
+		mr, err := MatchByOperationID(idx, userArg)
+		if err != nil {
+			return nil, err
+		}
+		if methodExplicit && method != mr.Op.Method {
+			return nil, NewAPIError(cmdutil.ExitConfigurationError, ErrInvalidFlags,
+				fmt.Sprintf("operation %s is %s; --method=%s disagrees", mr.Op.OperationID, mr.Op.Method, method)).
+				WithField("method")
+		}
+		return mr, nil
+	}
+	userPath, _ := splitPathQuery(userArg)
+	return MatchPath(idx, method, userPath)
 }
 
 // emitDescribeMarkdown writes a markdown description of the operation to w.
