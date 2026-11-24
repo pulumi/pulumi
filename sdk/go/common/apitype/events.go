@@ -74,9 +74,18 @@ type DiagnosticEvent struct {
 	Message string `json:"message"`
 	Color   string `json:"color"`
 	// Severity is one of "info", "info#err", "warning", or "error".
-	Severity  string `json:"severity"`
-	StreamID  int    `json:"streamID,omitempty"`
-	Ephemeral bool   `json:"ephemeral,omitempty"`
+	Severity      string                   `json:"severity"`
+	StreamID      int                      `json:"streamID,omitempty"`
+	Ephemeral     bool                     `json:"ephemeral,omitempty"`
+	SourceContext *DiagnosticSourceContext `json:"sourceContext,omitempty"`
+}
+
+// DiagnosticSourceContext describes the program call associated with a diagnostic.
+type DiagnosticSourceContext struct {
+	SourcePosition string         `json:"sourcePosition,omitempty"`
+	StackTrace     []StackFrameV1 `json:"stackTrace,omitempty"`
+	// Rendered is the human-readable context with Pulumi color markup.
+	Rendered string `json:"rendered,omitempty"`
 }
 
 // StartDebuggingEvent is emitted to start a debugging session.

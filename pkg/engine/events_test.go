@@ -17,6 +17,7 @@ package engine
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -64,4 +65,25 @@ func TestUpdateStartedEventIsInternal(t *testing.T) {
 
 	assert.Equal(t, UpdateStartedEvent, e.Type)
 	assert.True(t, e.Internal())
+}
+
+func TestDiagnosticSourceContextPreservesOriginalMessage(t *testing.T) {
+	t.Parallel()
+	events := make(chan Event, 1)
+	emitter := eventEmitter{ch: events}
+	source := &diag.SourceContext{
+		SourcePosition: "project:///main.py#5",
+		StackTrace:     []apitype.StackFrameV1{{SourcePosition: "project:///main.py#5"}},
+		Rendered:       "  ┌─ main.py:5",
+	}
+	diagnostic := diag.Message("", "invalid port")
+	diagnostic.SourceContext = source
+	diagEvent(&emitter, diagnostic, "error: ", "invalid port", diag.Error, false)
+	payload := (<-events).Payload().(DiagEventPayload)
+	assert.Equal(t, "invalid port", payload.Message)
+	assert.Equal(t, source, payload.SourceContext)
+	source.Rendered = "changed"
+	source.StackTrace[0].SourcePosition = "changed"
+	assert.Equal(t, "  ┌─ main.py:5", payload.SourceContext.Rendered)
+	assert.Equal(t, "project:///main.py#5", payload.SourceContext.StackTrace[0].SourcePosition)
 }
