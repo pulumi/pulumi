@@ -43,11 +43,10 @@ type fetch struct {
 	m         sync.Mutex
 	templates []Template
 	errs      []error
-
 	// errsOnEmpty are reported only if the [Source] as a whole found nothing.
 	errsOnEmpty []error
-
-	vcsOrgs []string
+	suggestions []string
+	vcsOrgs     []string
 }
 
 func (f *fetch) addTemplate(t Template) {
@@ -67,6 +66,20 @@ func (f *fetch) addErrorOnEmpty(err error) {
 	f.m.Lock()
 	f.errsOnEmpty = append(f.errsOnEmpty, err)
 	f.m.Unlock()
+}
+
+func (f *fetch) addSuggestions(suggestions ...string) {
+	f.m.Lock()
+	f.suggestions = append(f.suggestions, suggestions...)
+	f.m.Unlock()
+}
+
+func (f *fetch) joinSuggestions() []string {
+	f.wg.Wait()
+
+	f.m.Lock()
+	defer f.m.Unlock()
+	return slices.Clone(f.suggestions)
 }
 
 func (f *fetch) addVcsOrgs(totals []apitype.OrgVcsTemplateSourceTotal) {
@@ -187,8 +200,22 @@ func (s *Source) Templates() ([]Template, error) {
 	}
 	if len(all) == 0 {
 		var onEmpty []error
+		var suggestions []string
 		for _, w := range s.fetches() {
 			onEmpty = append(onEmpty, w.errsOnEmpty...)
+			suggestions = append(suggestions, w.joinSuggestions()...)
+		}
+		if len(suggestions) > 0 {
+			for i, err := range onEmpty {
+				if notFound, ok := errors.AsType[TemplateNotFoundError](err); ok {
+					candidates := append(append([]string{}, notFound.suggestions...), suggestions...)
+					onEmpty[i] = TemplateNotFoundError{
+						templateName: notFound.templateName,
+						suggestions:  templateSuggestions(notFound.templateName, candidates),
+					}
+					break
+				}
+			}
 		}
 		return nil, errors.Join(onEmpty...)
 	}

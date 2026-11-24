@@ -769,18 +769,29 @@ func newTemplateNotFoundError(templateDir string, templateName string) TemplateN
 		}
 	}
 
+	candidates := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		candidates = append(candidates, entry.Name())
+	}
+	return TemplateNotFoundError{templateName, templateSuggestions(templateName, candidates)}
+}
+
+func templateSuggestions(templateName string, candidates []string) []string {
 	// Get suggestions based on levenshtein distance.
 	suggestions := []string{}
 	const minDistance = 2
 	op := levenshtein.DefaultOptions
-	for _, entry := range entries {
-		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(entry.Name()), op)
+	seen := map[string]struct{}{}
+	for _, candidate := range candidates {
+		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(candidate), op)
 		if distance <= minDistance {
-			suggestions = append(suggestions, entry.Name())
+			if _, ok := seen[candidate]; !ok {
+				suggestions = append(suggestions, candidate)
+				seen[candidate] = struct{}{}
+			}
 		}
 	}
-
-	return TemplateNotFoundError{templateName, suggestions}
+	return suggestions
 }
 
 // transform returns a new string with ${PROJECT} and ${DESCRIPTION} replaced by
