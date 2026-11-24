@@ -35,6 +35,7 @@ import (
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
 	gitssh "github.com/go-git/go-git/v6/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v6/storage/memory"
+	"github.com/go-git/go-git/v6/x/plugin"
 	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 
@@ -383,11 +384,49 @@ func passwordOrEmpty(u *url.Userinfo) string {
 	return pw
 }
 
+var globalInsteadOfRules = sync.OnceValue(func() []*config.URL {
+	src, err := plugin.Get(plugin.ConfigLoader())
+	if err != nil {
+		logging.V(10).Infof("ignoring git config url rewrite rules: %v", err)
+		return nil
+	}
+
+	var rules []*config.URL
+	for _, scope := range []config.Scope{config.SystemScope, config.GlobalScope} {
+		storer, err := src.Load(scope)
+		if err != nil {
+			logging.V(10).Infof("ignoring git config url rewrite rules: %v", err)
+			continue
+		}
+		cfg, err := storer.Config()
+		if err != nil {
+			logging.V(10).Infof("ignoring git config url rewrite rules: %v", err)
+			continue
+		}
+		rules = append(rules, cfg.URLs...)
+	}
+	return rules
+})
+
+// applyInsteadOf rewrites rawurl using the longest matching `url.<base>.insteadOf` rule, like git does.
+func applyInsteadOf(rawurl string, rules []*config.URL) string {
+	best, bestLen := rawurl, 0
+	for _, rule := range rules {
+		for _, prefix := range rule.InsteadOfs {
+			if len(prefix) > bestLen && strings.HasPrefix(rawurl, prefix) {
+				best, bestLen = rule.Name+rawurl[len(prefix):], len(prefix)
+			}
+		}
+	}
+	return best
+}
+
 // getAuthForURL extracts HTTP basic auth parameters if provided in the URL.
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
 func getAuthForURL(url string) (string, clientOption, error) {
+	url = applyInsteadOf(url, globalInsteadOfRules())
 	endpoint, auth, err := defaultURLAuthParser.Parse(url)
 	if err != nil {
 		return "", nil, err

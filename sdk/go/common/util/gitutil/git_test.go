@@ -29,6 +29,7 @@ import (
 
 	"github.com/blang/semver"
 	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
 	"github.com/stretchr/testify/assert"
@@ -461,6 +462,22 @@ type mockSSHConfig struct {
 // GetKeyPath returns a canned response for SSH config.
 func (c *mockSSHConfig) GetStrict(host, key string) (string, error) {
 	return c.path, c.err
+}
+
+func TestApplyInsteadOf(t *testing.T) {
+	t.Parallel()
+
+	rules := []*config.URL{
+		{Name: "git@github.com:", InsteadOfs: []string{"https://github.com/"}},
+		{Name: "git@work:pulumi/", InsteadOfs: []string{"https://github.com/pulumi/"}},
+	}
+
+	assert.Equal(t, "git@github.com:other/repo.git",
+		applyInsteadOf("https://github.com/other/repo.git", rules))
+	assert.Equal(t, "git@work:pulumi/pulumi.git",
+		applyInsteadOf("https://github.com/pulumi/pulumi.git", rules))
+	assert.Equal(t, "https://gitlab.com/a/b.git", applyInsteadOf("https://gitlab.com/a/b.git", rules))
+	assert.Equal(t, "https://github.com/a/b.git", applyInsteadOf("https://github.com/a/b.git", nil))
 }
 
 func TestParseAuthURL(t *testing.T) {
