@@ -212,6 +212,31 @@ func TestOfferIfChecksOnlyWhenNeeded(t *testing.T) {
 	}
 }
 
+func TestOfferIfChecksCheaperRulesFirst(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		hint  Hint
+		setup func(tm *testManager)
+	}{
+		{"cloud-only hint on a local backend", Hint{ID: "c", CloudOnly: true}, func(tm *testManager) { tm.local = true }},
+		{"hidden from a new user", Hint{ID: "n", HideFromNewUsers: true}, func(*testManager) {}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tt.setup(tm)
+			tm.OfferIf(tt.hint, func() bool {
+				t.Error("applies called")
+				return true
+			})
+			tm.Flush(&bytes.Buffer{})
+		})
+	}
+}
+
 func TestOfferIfNotApplying(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)

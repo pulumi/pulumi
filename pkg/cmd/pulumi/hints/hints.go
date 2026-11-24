@@ -219,17 +219,18 @@ func (m *Manager) Flush(w io.Writer) {
 // pick returns the first pending hint that may be shown now, if any.
 func (m *Manager) pick(st state, settings settings, now time.Time) (Hint, bool) {
 	isCloud := sync.OnceValue(m.isCloud)
-	for _, h := range m.pending {
+	for _, o := range m.pending {
+		h := o.hint
 		if settings.skip[h.ID] {
+			continue
+		}
+		if h.HideFromNewUsers && now.Sub(st.FirstSeen) < newUserPeriod {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
 			continue
 		}
 		if h.CloudOnly && !isCloud() {
-			continue
-		}
-		if h.HideFromNewUsers && now.Sub(st.FirstSeen) < newUserPeriod {
 			continue
 		}
 		if o.applies != nil && !o.applies() {
