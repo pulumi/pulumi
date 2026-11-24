@@ -243,7 +243,7 @@ func SetProviderParameterization(inputs property.Map, value *workspace.Parameter
 	// it, and replace it with our package version.
 
 	inputs = setInternal(inputs, versionKey, inputs.Get(versionKey))
-	inputs.Set(versionKey, inputs.Get(value.Version.String()))
+	inputs = inputs.Set(versionKey, property.New(value.Version.String()))
 	// We don't write name here because we can reconstruct that from the providers type token
 	inputs = setInternal(inputs, parameterizationKey, property.New(
 		base64.StdEncoding.EncodeToString(value.Value)))
