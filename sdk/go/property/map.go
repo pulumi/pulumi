@@ -27,11 +27,6 @@ type Map struct{ m map[string]Value }
 //
 // AsMap always returns a non-nil map.
 func (m Map) AsMap() map[string]Value {
-	// We always return non-nil because it's generally painful to work with nil maps
-	// in Go.
-	//
-	// We return a nil for Array.AsSlice because it is easy to work with nil slices in
-	// Go.
 	return copyMapNonNil(m.m)
 }
 
@@ -56,26 +51,26 @@ func (m Map) AsMap() map[string]Value {
 //	for k, v := range arr.All {
 //		fmt.Printf("Index: %s, value: %s\n", k, v)
 //	}
-func (m Map) All(yield func(string, Value) bool) {
-	for k, v := range m.m {
-		if !yield(k, v) {
-			return
-		}
-	}
+func (m Map) All() iter.Seq2[string, Value] {
+	return maps.All(m.m)
 }
 
 // AllStable calls yield for each key value pair in the Map in sorted key order.
 //
 // For usage, see [Map.All].
-func (m Map) AllStable(yield func(string, Value) bool) {
+func (m Map) AllStable() iter.Seq2[string, Value] {
+	// Note: each call allocates and sorts a fresh slice of keys. Since Map is immutable the
+	// sort could be memoized, but we don't bother today.
 	keys := make([]string, 0, len(m.m))
 	for k := range m.m {
 		keys = append(keys, k)
 	}
 	slices.Sort(keys)
-	for _, k := range keys {
-		if !yield(k, m.m[k]) {
-			return
+	return func(yield func(string, Value) bool) {
+		for _, k := range keys {
+			if !yield(k, m.m[k]) {
+				return
+			}
 		}
 	}
 }
@@ -128,25 +123,21 @@ func (m Map) Delete(keys ...string) Map {
 // NewMap creates a new map from m.
 func NewMap(m map[string]Value) Map { return Map{copyMapMaybeNil(m)} }
 
-// HasComputed returns true if any [Value] in the Map, or any nested Value, is computed.
-func (m Map) HasComputed() bool {
+// any reports whether f returns true for any [Value] in the Map or any nested Value.
+func (m Map) any(f func(Value) bool) bool {
 	for _, v := range m.m {
-		if v.HasComputed() {
+		if v.any(f) {
 			return true
 		}
 	}
 	return false
 }
 
+// HasComputed returns true if any [Value] in the Map, or any nested Value, is computed.
+func (m Map) HasComputed() bool { return m.any(Value.IsComputed) }
+
 // HasSecrets returns true if any [Value] in the Map, or any nested Value, is secret.
-func (m Map) HasSecrets() bool {
-	for _, v := range m.m {
-		if v.HasSecrets() {
-			return true
-		}
-	}
-	return false
-}
+func (m Map) HasSecrets() bool { return m.any(Value.IsSecret) }
 
 func copyMapMaybeNil(m map[string]Value) map[string]Value {
 	if len(m) == 0 {

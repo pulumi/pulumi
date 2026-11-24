@@ -41,7 +41,7 @@ func getProperty(key any, v property.Value) (property.Value, bool) {
 			return property.Value{}, false
 		}
 		return v.AsMap().GetOk(k)
-	case v.IsComputed() || v.Secret():
+	case v.IsComputed() || v.IsSecret():
 		// We consider the contents of these values opaque and return them as-is, as we cannot know whether or not the
 		// value will or does contain an element with the given key.
 		return v, true

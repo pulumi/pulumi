@@ -44,3 +44,14 @@ func addrOfLocal(m dsl.Matcher) {
 		Report(`local "$x" exists only to be addressed; use "return new($expr)" instead`).
 		Suggest(`return new($expr)`)
 }
+
+// constrictorUse flags usage strings that spell out arguments in files that
+// declare them with constrictor: constrictor.AttachArguments overwrites
+// everything after the command name.
+func constrictorUse(m dsl.Matcher) {
+	m.Match(`cobra.Command{$*_, Use: $use, $*_}`).
+		Where(m.File().Imports("github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor") &&
+			m["use"].Text.Matches(`^"\S+\s`)).
+		At(m["use"]).
+		Report(`constrictor.AttachArguments overwrites the arguments in Use; keep only the command name`)
+}

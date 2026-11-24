@@ -91,7 +91,7 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 		RenderJSON:        renderDeploymentLogJSON,
 	}
 	cmd := &cobra.Command{
-		Use:   "log <deployment-version>",
+		Use:   "log",
 		Short: "[EXPERIMENTAL] Retrieve execution logs for a deployment",
 		Long: "[EXPERIMENTAL] Retrieve execution logs for a deployment.\n" +
 			"\n" +

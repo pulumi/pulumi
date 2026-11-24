@@ -97,6 +97,7 @@ func normalize(goValue any) any {
 		}
 		return copyAsset(goValue)
 	case int32:
+		// int32 is the widest integer type that fits losslessly in float64.
 		return float64(goValue)
 	case null:
 		return nil
@@ -242,7 +243,7 @@ func (v Value) asArchiveMut() Archive { return asMut[Archive](v) }
 //
 // It does not check if there are nested values that are secret. To recursively check if
 // the [Value] contains a secret, use [Value.HasSecrets].
-func (v Value) Secret() bool { return v.secret != nil }
+func (v Value) IsSecret() bool { return v.secret != nil }
 
 // SecretID returns an opaque identity for a secret [Value], or 0 if the Value is not
 // secret. The identity is a pointer value and so is only meaningful within a single
@@ -254,7 +255,7 @@ func (v Value) Secret() bool { return v.secret != nil }
 func (v Value) SecretID() uintptr { return uintptr(unsafe.Pointer(v.secret)) }
 
 // HasSecrets returns true if the Value or any nested Value is secret.
-func (v Value) HasSecrets() bool { return v.any(Value.Secret) }
+func (v Value) HasSecrets() bool { return v.any(Value.IsSecret) }
 
 // WithSecret produces a new [Value] identical to it's receiver except that it's secret
 // marker is set to isSecret.

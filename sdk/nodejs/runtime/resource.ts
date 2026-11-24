@@ -225,9 +225,7 @@ export function getResource(
                                             rpcError: grpc.ServiceError | null,
                                             innerResponse: resproto.ResourceInvokeResponse | undefined,
                                         ) => {
-                                            log.debug(
-                                                `getResource Invoke RPC finished: err: ${rpcError}, resp: ${innerResponse}`,
-                                            );
+                                            log.debug(`getResource Invoke RPC finished: err: ${rpcError}`);
                                             if (rpcError) {
                                                 if (
                                                     rpcError.code === grpc.status.UNAVAILABLE ||
@@ -386,9 +384,7 @@ export function readResource(
                                             rpcError: grpc.ServiceError | null,
                                             innerResponse: resproto.ReadResourceResponse | undefined,
                                         ) => {
-                                            log.debug(
-                                                `ReadResource RPC finished: ${label}; err: ${rpcError}, resp: ${innerResponse}`,
-                                            );
+                                            log.debug(`ReadResource RPC finished: ${label}; err: ${rpcError}`);
                                             if (rpcError) {
                                                 if (
                                                     rpcError.code === grpc.status.UNAVAILABLE ||
@@ -875,15 +871,11 @@ export function registerResource(
                                                 }
 
                                                 // Node lets us hack the message as long as we do it before accessing the `stack` property.
-                                                log.debug(
-                                                    `RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`,
-                                                );
+                                                log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}`);
                                                 preallocError.message = `failed to register new resource ${name} [${t}]: ${rpcErr.message}`;
                                                 reject(preallocError);
                                             } else {
-                                                log.debug(
-                                                    `RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`,
-                                                );
+                                                log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}`);
                                                 resolve(innerResponse);
                                             }
                                         },
@@ -1473,10 +1465,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                             monitor.registerResourceOutputs(
                                 req,
                                 (err: grpc.ServiceError | null, innerResponse: gempty.Empty | undefined) => {
-                                    log.debug(
-                                        `RegisterResourceOutputs RPC finished: urn=${urn}; ` +
-                                            `err: ${err}, resp: ${innerResponse}`,
-                                    );
+                                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` + `err: ${err}`);
                                     if (err) {
                                         // If the monitor is unavailable, it is in the process of shutting down or has already
                                         // shut down. Don't emit an error and don't do any more RPCs, just exit.
@@ -1490,10 +1479,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
 
                                         reject(err);
                                     } else {
-                                        log.debug(
-                                            `RegisterResourceOutputs RPC finished: urn=${urn}; ` +
-                                                `err: ${err}, resp: ${innerResponse}`,
-                                        );
+                                        log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` + `err: ${err}`);
                                         resolve();
                                     }
                                 },

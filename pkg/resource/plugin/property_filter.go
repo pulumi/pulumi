@@ -110,7 +110,7 @@ func ensureArchiveHashes(a *archive.Archive, wd string, path property.Path) erro
 
 func filterProperties(m property.Map, opts FilterOptions, path property.Path) (property.Map, error) {
 	out := make(map[string]property.Value, m.Len())
-	for k, v := range m.All {
+	for k, v := range m.All() {
 		if opts.SkipInternalKeys && strings.HasPrefix(k, "__") {
 			continue
 		}
@@ -143,7 +143,7 @@ func filterValue(v property.Value, opts FilterOptions, path property.Path) (prop
 	}
 
 	// Secret marker.
-	if !opts.KeepSecrets && v.Secret() {
+	if !opts.KeepSecrets && v.IsSecret() {
 		v = v.WithSecret(false)
 	}
 
@@ -212,13 +212,13 @@ func filterValue(v property.Value, opts FilterOptions, path property.Path) (prop
 		} else {
 			replacement = property.New(string(ref.URN))
 		}
-		replacement = replacement.WithSecret(v.Secret()).WithDependencies(v.Dependencies())
+		replacement = replacement.WithSecret(v.IsSecret()).WithDependencies(v.Dependencies())
 		return filterValue(replacement, opts, path)
 
 	case v.IsArray():
 		arr := v.AsArray()
 		out := make([]property.Value, 0, arr.Len())
-		for i, elem := range arr.All {
+		for i, elem := range arr.All() {
 			nv, keep, err := filterValue(elem, opts, path.AppendIndex(i))
 			if err != nil {
 				return property.Value{}, false, err

@@ -364,7 +364,7 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 				readInputs = *read.Inputs
 			}
 			newInputs := readInputs.AsMap()
-			maps.Insert(newInputs, patch.All)
+			maps.Insert(newInputs, patch.All())
 			return pc.runStatelessUpdate(cmd, res, id, read, property.NewMap(newInputs), "patch", yes)
 		},
 	}

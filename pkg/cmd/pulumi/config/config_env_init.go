@@ -246,7 +246,7 @@ func (cmd *configEnvInitCmd) getStackConfig(
 
 func (cmd *configEnvInitCmd) render(v property.Value) any {
 	switch {
-	case v.Secret():
+	case v.IsSecret():
 		return map[string]any{
 			"fn::secret": cmd.render(v.WithSecret(false)),
 		}
@@ -259,14 +259,14 @@ func (cmd *configEnvInitCmd) render(v property.Value) any {
 	case v.IsArray():
 		arrV := v.AsArray()
 		rendered := make([]any, arrV.Len())
-		for i, v := range arrV.All {
+		for i, v := range arrV.All() {
 			rendered[i] = cmd.render(v)
 		}
 		return rendered
 	case v.IsMap():
 		objV := v.AsMap()
 		rendered := make(map[string]any, objV.Len())
-		for k, v := range objV.All {
+		for k, v := range objV.All() {
 			rendered[k] = cmd.render(v)
 		}
 		return rendered

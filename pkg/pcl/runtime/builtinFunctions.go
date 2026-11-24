@@ -271,7 +271,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.False, nil
 			}
-			if pv.Secret() {
+			if pv.IsSecret() {
 				return propertyValueToCty(context.TODO(), ectx.getResource, property.New(true).WithSecret(true))
 			}
 			return cty.True, nil
@@ -484,7 +484,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				if resultPM.Len() != 1 {
 					return cty.NilVal, fmt.Errorf("expected scalar invoke result to have exactly one property, got %d", resultPM.Len())
 				}
-				for _, v := range resultPM.All {
+				for _, v := range resultPM.All() {
 					resultPV = v
 				}
 			}
@@ -674,7 +674,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 						return cty.NilVal, fmt.Errorf(
 							"invoke %q: expected a single return value, got %d", fun.Token, resultPM.Len())
 					}
-					for _, v := range resultPM.All {
+					for _, v := range resultPM.All() {
 						resultPV = v
 					}
 				} else {

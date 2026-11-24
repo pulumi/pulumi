@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Create the verbose log file in the temp directory with owner-only permissions
+time: 2026-11-19T12:00:00.000000000+00:00

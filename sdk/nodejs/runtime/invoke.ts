@@ -293,7 +293,7 @@ async function invokeAsync(
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
                 monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
-                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}`);
                     if (err) {
                         // If the monitor is unavailable, it is in the process of shutting down or has already
                         // shut down. Don't emit an error and don't do any more RPCs, just exit.
@@ -529,7 +529,7 @@ function callAsync<T>(
                         monitor.call(
                             req,
                             (err: grpc.ServiceError | null, innerResponse: providerproto.CallResponse) => {
-                                log.debug(`Call RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                                log.debug(`Call RPC finished: tok=${tok}; err: ${err}`);
                                 if (err) {
                                     // If the monitor is unavailable, it is in the process of shutting down or has already
                                     // shut down. Don't emit an error and don't do any more RPCs, just exit.

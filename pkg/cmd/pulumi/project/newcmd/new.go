@@ -541,7 +541,7 @@ func NewNewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "new [template|url]",
+		Use:        "new",
 		Aliases:    []string{"create", "setup"},
 		SuggestFor: []string{"init"},
 		Short:      "Create a new Pulumi project",

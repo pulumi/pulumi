@@ -1,0 +1,3 @@
+component: cli/env
+kind: improvement
+body: Offer to submit `pulumi env edit` changes as a change request when the environment requires approval

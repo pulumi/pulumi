@@ -68,7 +68,7 @@ func newPolicyExceptionListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManag
 	args.outputFormat = defaultPolicyExceptionListOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "list [<policy-pack>]",
+		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "[EXPERIMENTAL] List policy exceptions for an organization",
 		Long: "[EXPERIMENTAL] List policy exceptions for an organization.\n" +

@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -419,7 +420,11 @@ func decodePropertyArg(v any) any {
 	if !ok {
 		return v
 	}
-	if sv, err := logging.DecodeStructValueFromLog([]byte(s)); err == nil {
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return v
+	}
+	if sv, err := logging.DecodeStructValueFromLog(raw); err == nil {
 		return sv.AsInterface()
 	}
 	return v

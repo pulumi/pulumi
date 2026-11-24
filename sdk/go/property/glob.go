@@ -223,7 +223,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 			case splat:
 				switch {
 				case e.val.IsMap():
-					for k, v := range e.val.AsMap().AllStable {
+					for k, v := range e.val.AsMap().AllStable() {
 						expansion = append(expansion, entry{
 							path: e.path.appendKey(k),
 							val:  v,
@@ -297,7 +297,7 @@ func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {
 	case v.IsMap():
 		values := make([]Value, 0, v.AsMap().Len())
-		for _, v := range v.AsMap().AllStable {
+		for _, v := range v.AsMap().AllStable() {
 			values = append(values, v)
 		}
 		return values, nil

@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1089,12 +1090,12 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 		readResp, err := monitor.Client().ReadResource(t.Context(), readReq)
 		require.NoError(t, err)
 
-		outs, err := plugin.UnmarshalProperties(readResp.Properties, plugin.MarshalOptions{KeepUnknowns: true})
+		outs, err := propertyrpc.Unmarshal(readResp.Properties)
 		require.NoError(t, err)
 
 		// First run: the read executes for real. After the failing update, the read is skipped. Because the URN has
 		// prior state, the engine should return the previously-read outputs. Which is the same as the first run.
-		assert.Equal(t, resource.NewProperty("bar"), outs["foo"])
+		assert.Equal(t, property.New("bar"), outs.Get("foo"))
 
 		return nil
 	})

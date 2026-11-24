@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -3204,10 +3205,9 @@ func TestCall(t *testing.T) {
 			close(cancel)
 		}()
 
-		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewProperty("test-value"),
-		}, plugin.MarshalOptions{})
-		require.NoError(t, err)
+		args := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"test": property.New("test-value"),
+		}))
 
 		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
@@ -3274,10 +3274,9 @@ func TestCall(t *testing.T) {
 		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
-		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewProperty("test-value"),
-		}, plugin.MarshalOptions{})
-		require.NoError(t, err)
+		args := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"test": property.New("test-value"),
+		}))
 
 		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
@@ -3356,10 +3355,9 @@ func TestCall(t *testing.T) {
 		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
-		args, err := plugin.MarshalProperties(resource.PropertyMap{
-			"test": resource.NewProperty("test-value"),
-		}, plugin.MarshalOptions{})
-		require.NoError(t, err)
+		args := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"test": property.New("test-value"),
+		}))
 
 		res, err := mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
@@ -4031,16 +4029,11 @@ func TestValidationFailures(t *testing.T) {
 			},
 		}
 
-		props := resource.PropertyMap{
-			"testproperty": resource.NewPropertyValue("testvalue"),
-			"nested": resource.NewProperty(
-				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
-			),
-			"secretproperty": resource.MakeSecret(resource.NewPropertyValue("secretvalue")),
-		}
-
-		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{KeepSecrets: true})
-		require.NoError(t, err)
+		marshalledProps := propertyrpc.Marshal(property.NewMap(map[string]property.Value{
+			"testproperty":   property.New("testvalue"),
+			"nested":         property.New(property.NewArray([]property.Value{property.New("nestedvalue")})),
+			"secretproperty": property.New("secretvalue").WithSecret(true),
+		}))
 
 		req := &pulumirpc.RegisterResourceRequest{
 			Version: "1.0.0",
@@ -4049,7 +4042,7 @@ func TestValidationFailures(t *testing.T) {
 			Remote:  true,
 			Object:  marshalledProps,
 		}
-		_, err = rm.RegisterResource(t.Context(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "resource monitor shut down")
 		assert.Equal(t, c.expectedStderr, stderr.String())
 		assert.Equal(t, "", stdout.String())

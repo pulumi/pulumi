@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -157,22 +158,20 @@ func TestRegisterUsesOutputValuesTransforms(t *testing.T) {
 		//   second -> {b}      (lifted from both.y)
 		split, err := callbacks.Allocate(
 			TransformFunction(func(name, typ string, custom bool, parent string,
-				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
-				both := props["both"]
-				require.True(t, both.IsObject(), "both should be an object, got %v", both)
-				bothMap := both.ObjectValue()
+				props property.Map, opts *pulumirpc.TransformResourceOptions,
+			) (property.Map, *pulumirpc.TransformResourceOptions, error) {
+				both := props.Get("both")
+				require.True(t, both.IsMap(), "both should be a map, got %v", both)
+				bothMap := both.AsMap()
 
-				x, y := bothMap["x"], bothMap["y"]
-				require.True(t, x.IsOutput(), "both.x should be an OutputValue, got %v", x)
-				require.True(t, y.IsOutput(), "both.y should be an OutputValue, got %v", y)
-				assert.Equal(t, []resource.URN{respA.URN}, x.OutputValue().Dependencies,
-					"both.x OV should carry only a.URN")
-				assert.Equal(t, []resource.URN{respB.URN}, y.OutputValue().Dependencies,
-					"both.y OV should carry only b.URN")
+				x, y := bothMap.Get("x"), bothMap.Get("y")
+				assert.Equal(t, []urn.URN{respA.URN}, x.Dependencies(),
+					"both.x should carry only a.URN")
+				assert.Equal(t, []urn.URN{respB.URN}, y.Dependencies(),
+					"both.y should carry only b.URN")
 
-				props["first"] = x
-				props["second"] = y
+				props = props.Set("first", x)
+				props = props.Set("second", y)
 				return props, opts, nil
 			}))
 		require.NoError(t, err)

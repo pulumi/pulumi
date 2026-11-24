@@ -804,7 +804,7 @@ func NewImportCmd() *cobra.Command {
 	var generateResources string
 
 	cmd := &cobra.Command{
-		Use:   "import [type] [name] [id]",
+		Use:   "import",
 		Short: "Import resources into an existing stack",
 		Long: "Import resources into an existing stack.\n" +
 			"\n" +

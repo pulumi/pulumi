@@ -1,0 +1,442 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package notifications fetches, caches and prints the messages Pulumi publishes to CLI users.
+package notifications
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"maps"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+// StaticURL is where the notifications sent to every CLI user are published.
+const StaticURL = "https://www.pulumi.com/cli-notifications.json"
+
+const (
+	staticSource  = "static"
+	cacheFile     = "notifications.json"
+	dismissedFile = "dismissed-notifications.json"
+	shownFile     = "shown-notifications.json"
+	cacheTTL      = 24 * time.Hour
+	fetchTimeout  = 3 * time.Second
+	minPrefix     = 3
+	// warningInterval is how long to wait before showing a warning again.
+	warningInterval = 24 * time.Hour
+)
+
+// Notification is a single message, along with the conditions under which it should be shown.
+type Notification struct {
+	Title string `json:"title"`
+	// ID is a UUID, so that IDs from the static file and from Pulumi Cloud never collide.
+	ID       string        `json:"identifier"`
+	Overview string        `json:"overview"`
+	Severity diag.Severity `json:"severity"`
+	Where    Where         `json:"where"`
+	// SchemaVersion is the version of this Notification format. Entries with any version other
+	// than 1 are skipped, so that the format can change without older CLIs misreading it.
+	SchemaVersion uint `json:"schemaVersion"`
+}
+
+// Where holds the version ranges a user's environment must match for a notification to apply. Each
+// range uses github.com/blang/semver range syntax, such as ">=3.100.0 <3.200.0".
+type Where struct {
+	// Providers maps provider names to the range of versions the notification applies to.
+	Providers map[string]string `json:"providers,omitempty"`
+	CLI       string            `json:"cli,omitempty"`
+}
+
+// UnmarshalJSON rejects conditions this CLI doesn't know, so that it skips a notification rather than
+// showing it to users the condition would have excluded.
+func (w *Where) UnmarshalJSON(b []byte) error {
+	type where Where
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.DisallowUnknownFields()
+	return d.Decode((*where)(w))
+}
+
+type cacheEntry struct {
+	FetchedAt     time.Time      `json:"fetchedAt"`
+	Notifications []Notification `json:"notifications"`
+}
+
+// Start returns cached notifications if they are fresh, and otherwise fetches them in the background.
+// The returned function yields the notifications if they have arrived by the time it is called, and
+// nil otherwise, so it never delays the command.
+func Start(ctx context.Context, url string) func() []Notification {
+	cache := readCache()
+	if entry, ok := cache[staticSource]; ok && time.Since(entry.FetchedAt) < cacheTTL {
+		return func() []Notification { return entry.Notifications }
+	}
+
+	result := make(chan []Notification, 1)
+	go func() {
+		ns, err := refresh(ctx, url, cache)
+		if err != nil {
+			slog.InfoContext(ctx, "error fetching notifications", "err", err)
+		}
+		result <- ns
+	}()
+	return func() []Notification {
+		select {
+		case ns := <-result:
+			return ns
+		default:
+			return nil
+		}
+	}
+}
+
+// refresh fetches the notifications and, if that succeeds, caches them. Concurrent CLI processes
+// may overwrite each other's cache; the losing process's entries are simply fetched again later.
+func refresh(ctx context.Context, url string, cache map[string]cacheEntry) ([]Notification, error) {
+	contract.Requiref(cache != nil, "cache", "must not be nil")
+	ns, err := fetch(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	cache[staticSource] = cacheEntry{FetchedAt: time.Now(), Notifications: ns}
+	if err := writeJSON(cacheFile, cache); err != nil {
+		slog.InfoContext(ctx, "error caching notifications", "err", err)
+	}
+	return ns, nil
+}
+
+func fetch(ctx context.Context, url string) ([]Notification, error) {
+	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetching %s: %s", url, resp.Status)
+	}
+
+	var raw []json.RawMessage
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+	return decode(raw), nil
+}
+
+// decode skips entries it can't understand, so that one malformed or newer-format entry doesn't
+// hide the others.
+func decode(raw []json.RawMessage) []Notification {
+	ns := []Notification{}
+	for _, r := range raw {
+		var n Notification
+		if err := json.Unmarshal(r, &n); err != nil || n.SchemaVersion != 1 {
+			continue
+		}
+		ns = append(ns, n)
+	}
+	return ns
+}
+
+func readJSON(name string, v any) bool {
+	path, err := workspace.GetPulumiPath(name)
+	if err != nil {
+		return false
+	}
+	b, err := os.ReadFile(path)
+	return err == nil && json.Unmarshal(b, v) == nil
+}
+
+func writeJSON(name string, v any) error {
+	path, err := workspace.GetPulumiPath(name)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return writeAtomic(path, b)
+}
+
+func readCache() map[string]cacheEntry {
+	var cache map[string]cacheEntry
+	if !readJSON(cacheFile, &cache) || cache == nil {
+		return map[string]cacheEntry{}
+	}
+	return cache
+}
+
+// readDismissed returns the dismissed notification IDs, keyed by the source they came from.
+func readDismissed() map[string][]string {
+	var dismissed map[string][]string
+	if !readJSON(dismissedFile, &dismissed) || dismissed == nil {
+		return map[string][]string{}
+	}
+	return dismissed
+}
+
+// readShown returns when each notification was last shown, keyed by ID.
+func readShown() map[string]time.Time {
+	var shown map[string]time.Time
+	if !readJSON(shownFile, &shown) || shown == nil {
+		return map[string]time.Time{}
+	}
+	return shown
+}
+
+// commands are those whose output people read rather than capture.
+var commands = map[string]bool{
+	"pulumi up":         true,
+	"pulumi preview":    true,
+	"pulumi refresh":    true,
+	"pulumi destroy":    true,
+	"pulumi login":      true,
+	"pulumi whoami":     true,
+	"pulumi stack list": true,
+}
+
+// ShownAfter reports whether notifications are shown after the command with the given path, such as
+// "pulumi up".
+func ShownAfter(commandPath string) bool {
+	return commands[commandPath]
+}
+
+// Print writes the notifications that apply to the given CLI version, are due, and haven't been
+// dismissed, to the sink's stderr. Errors are due every time, warnings once a day, and anything else
+// only once.
+func Print(sink diag.Sink, ns []Notification, cliVersion string) {
+	dismissed := map[string]bool{}
+	for _, ids := range readDismissed() {
+		for _, id := range ids {
+			dismissed[id] = true
+		}
+	}
+	shown := readShown()
+	changed := false
+
+	// Builds without a version stamped in at link time have an empty version, which won't parse.
+	cli, err := semver.ParseTolerant(cliVersion)
+	prefixes := shortPrefixes(ns)
+	dismissible := false
+	for _, n := range ns {
+		if dismissed[n.ID] || !applies(n, cli, err == nil) || !due(n, shown) {
+			continue
+		}
+		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		// Infos are only shown once, so there is nothing to dismiss.
+		dismissible = dismissible || n.Severity == diag.Warning || n.Severity == diag.Error
+		if n.Severity != diag.Error {
+			shown[n.ID] = time.Now()
+			changed = true
+		}
+	}
+	if dismissible {
+		sink.Infoerrf(diag.RawMessage("", "\nTo hide a notification, run "+
+			colors.SpecCommand+"`pulumi notifications dismiss <ID>`"+colors.Reset+"."))
+	}
+	if !changed {
+		return
+	}
+
+	// Forget notifications that are no longer cached, which a source drops only once it has been
+	// fetched without them.
+	cached := map[string]bool{}
+	for _, entry := range readCache() {
+		for _, n := range entry.Notifications {
+			cached[n.ID] = true
+		}
+	}
+	if len(cached) > 0 {
+		maps.DeleteFunc(shown, func(id string, _ time.Time) bool { return !cached[id] })
+	}
+	if err := writeJSON(shownFile, shown); err != nil {
+		slog.Info("error recording shown notifications", "err", err)
+	}
+}
+
+func due(n Notification, shown map[string]time.Time) bool {
+	last, ok := shown[n.ID]
+	if n.Severity == diag.Error || !ok {
+		return true
+	}
+	return n.Severity == diag.Warning && time.Since(last) >= warningInterval
+}
+
+// Dismiss stops the notification whose ID starts with prefix from being shown again, and returns it.
+func Dismiss(ctx context.Context, url, prefix string) (Notification, error) {
+	if len(prefix) < minPrefix {
+		return Notification{}, fmt.Errorf("the ID prefix must be at least %d characters long", minPrefix)
+	}
+
+	cache := readCache()
+	if entry, ok := cache[staticSource]; !ok || time.Since(entry.FetchedAt) >= cacheTTL {
+		if _, err := refresh(ctx, url, cache); err != nil {
+			slog.InfoContext(ctx, "error fetching notifications", "err", err)
+		}
+	}
+
+	type match struct {
+		source       string
+		notification Notification
+	}
+	var all []Notification
+	var matches []match
+	for source, entry := range cache {
+		for _, n := range entry.Notifications {
+			all = append(all, n)
+			if strings.HasPrefix(strings.ToLower(n.ID), strings.ToLower(prefix)) {
+				matches = append(matches, match{source, n})
+			}
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return Notification{}, fmt.Errorf("no notification ID starts with %q", prefix)
+	case 1:
+	default:
+		prefixes := shortPrefixes(all)
+		slices.SortFunc(matches, func(a, b match) int {
+			return strings.Compare(a.notification.ID, b.notification.ID)
+		})
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "%q matches more than one notification:", prefix)
+		for _, m := range matches {
+			fmt.Fprintf(&msg, "\n  %s  %s", prefixes[strings.ToLower(m.notification.ID)], m.notification.Title)
+		}
+		return Notification{}, errors.New(msg.String())
+	}
+
+	m := matches[0]
+	dismissed := readDismissed()
+	if !slices.Contains(dismissed[m.source], m.notification.ID) {
+		dismissed[m.source] = append(dismissed[m.source], m.notification.ID)
+	}
+
+	// Only prune against sources we hold a successful fetch for, so that a failed fetch, or a
+	// different org, never brings a dismissed notification back.
+	for source, ids := range dismissed {
+		entry, ok := cache[source]
+		if !ok {
+			continue
+		}
+		dismissed[source] = slices.DeleteFunc(ids, func(id string) bool {
+			return !slices.ContainsFunc(entry.Notifications, func(n Notification) bool { return n.ID == id })
+		})
+	}
+
+	return m.notification, writeJSON(dismissedFile, dismissed)
+}
+
+// shortPrefixes maps each lowercased ID to its shortest prefix, of at least minPrefix characters,
+// that no other ID shares.
+func shortPrefixes(ns []Notification) map[string]string {
+	ids := make([]string, len(ns))
+	for i, n := range ns {
+		ids[i] = strings.ToLower(n.ID)
+	}
+	slices.Sort(ids)
+
+	prefixes := make(map[string]string, len(ids))
+	for i, id := range ids {
+		n := minPrefix
+		if i > 0 {
+			n = max(n, commonPrefix(id, ids[i-1])+1)
+		}
+		if i+1 < len(ids) {
+			n = max(n, commonPrefix(id, ids[i+1])+1)
+		}
+		prefixes[id] = id[:min(n, len(id))]
+	}
+	return prefixes
+}
+
+func commonPrefix(a, b string) int {
+	n := 0
+	for n < len(a) && n < len(b) && a[n] == b[n] {
+		n++
+	}
+	return n
+}
+
+func applies(n Notification, cli semver.Version, cliKnown bool) bool {
+	// We don't know the versions of the project's providers, so provider conditions never match.
+	if len(n.Where.Providers) > 0 {
+		return false
+	}
+	if n.Where.CLI == "" {
+		return true
+	}
+	inRange, err := semver.ParseRange(n.Where.CLI)
+	return err == nil && cliKnown && inRange(cli)
+}
+
+func render(n Notification, cliVersion, idPrefix string) string {
+	prefix, ok := map[diag.Severity]string{
+		diag.Warning: colors.SpecWarning + "WARNING [ID: " + idPrefix + "]:" + colors.Reset,
+		diag.Error:   colors.SpecError + "ERROR [ID: " + idPrefix + "]:" + colors.Reset,
+	}[n.Severity]
+	if !ok {
+		prefix = "INFO:"
+	}
+
+	overview := strings.ReplaceAll(resolve(n.Overview, cliVersion), "\n", "\n  ")
+	return fmt.Sprintf("\n%s %s\n\n  %s", prefix, resolve(n.Title, cliVersion), overview)
+}
+
+// resolve replaces the placeholders in a notification's text.
+func resolve(s, cliVersion string) string {
+	return strings.ReplaceAll(s, "{cli}", cliVersion)
+}
+
+// writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written
+// file. They can still overwrite each other's writes, which at worst shows a notification again.
+func writeAtomic(path string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+"-*")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(b)
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(f.Name(), path) //nolint:forbidigo // same directory, as in workspace credentials
+	}
+	if err != nil {
+		contract.IgnoreError(os.Remove(f.Name()))
+	}
+	return err
+}
