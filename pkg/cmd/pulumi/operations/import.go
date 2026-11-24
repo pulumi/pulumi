@@ -769,7 +769,7 @@ func writeGeneratedProgram(w io.Writer, files map[string][]byte) error {
 	return nil
 }
 
-func NewImportCmd() *cobra.Command {
+func NewImportCmd(hm *hints.Manager) *cobra.Command {
 	var parentSpec string
 	var providerSpec string
 	var importFilePath string
@@ -1213,7 +1213,7 @@ func NewImportCmd() *cobra.Command {
 
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:   cloudCredentialEnv,
-				HintRecorder:         hints.RecordProviderHint,
+				HintRecorder:         hm.RecordProviderHint,
 				Parallel:             parallel,
 				Debug:                debug,
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),

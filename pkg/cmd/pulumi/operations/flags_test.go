@@ -20,11 +20,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 )
 
 //nolint:paralleltest // Changes environment variables
 func TestContinueOnErrorEnvVar(t *testing.T) {
-	commands := []func() *cobra.Command{
+	commands := []func(*hints.Manager) *cobra.Command{
 		NewUpCmd,
 		NewDestroyCmd,
 	}
@@ -57,7 +59,7 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 	for _, command := range commands {
 		for _, test := range testCases {
 			t.Setenv("PULUMI_CONTINUE_ON_ERROR", test.EnvVarValue)
-			cmd := command()
+			cmd := command(nil)
 			f, err := cmd.PersistentFlags().GetBool("continue-on-error")
 			assert.Nil(t, err)
 			assert.Equal(t, test.Expected, f)
@@ -68,10 +70,10 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 //nolint:paralleltest // Changes environment variables
 func TestParallelEnvVar(t *testing.T) {
 	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4
-	commands := []func() *cobra.Command{
+	commands := []func(*hints.Manager) *cobra.Command{
 		NewUpCmd,
 		NewPreviewCmd,
-		func() *cobra.Command { return NewRefreshCmd(nil) },
+		NewRefreshCmd,
 		NewDestroyCmd,
 		NewImportCmd,
 	}
@@ -104,7 +106,7 @@ func TestParallelEnvVar(t *testing.T) {
 	for _, command := range commands {
 		for _, test := range testCases {
 			t.Setenv("PULUMI_PARALLEL", test.EnvVarValue)
-			cmd := command()
+			cmd := command(nil)
 			f, err := cmd.PersistentFlags().GetInt32("parallel")
 			assert.Nil(t, err)
 			assert.Equal(t, test.Expected, f)

@@ -196,7 +196,7 @@ func (m *Manager) Flush(w io.Writer) {
 	if firstFlush {
 		st.FirstSeen = now
 	}
-	h, ok := m.pick(pending, st, settings, now)
+	h, ok := m.pick(m.pending, st, settings, now)
 	if ok {
 		if st.LastShown == nil {
 			st.LastShown = map[string]time.Time{}
@@ -217,7 +217,7 @@ func (m *Manager) Flush(w io.Writer) {
 }
 
 // pick returns the first of pending that may be shown now, if any.
-func (m *manager) pick(pending []Hint, st state, settings settings, now time.Time) (Hint, bool) {
+func (m *Manager) pick(pending []Hint, st state, settings settings, now time.Time) (Hint, bool) {
 	isCloud := sync.OnceValue(m.isCloud)
 	for _, h := range m.pending {
 		if settings.skip[h.ID] {

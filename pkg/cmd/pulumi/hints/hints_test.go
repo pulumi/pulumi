@@ -348,7 +348,7 @@ func TestSuppressedFlushDoesNotRecordFirstSeen(t *testing.T) {
 		name  string
 		setup func(tm *testManager)
 	}{
-		{"suppressed", func(tm *testManager) { tm.suppress() }},
+		{"suppressed", func(tm *testManager) { tm.Suppress() }},
 		{"disabled", func(tm *testManager) { tm.disabled = true }},
 	}
 	for _, tt := range tests {
@@ -403,7 +403,7 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 			tm := newTestManager(t)
 			tm.local = !tt.isCloud
 			require.NoError(t, save(tm.path, state{FirstSeen: tm.now.Add(-tt.firstSeen)}))
-			tm.recordProviderHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
+			tm.RecordProviderHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
 			out := tm.run()
 			if tt.want {
 				assert.Contains(t, out, message)

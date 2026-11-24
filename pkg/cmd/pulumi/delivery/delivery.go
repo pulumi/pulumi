@@ -18,10 +18,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 )
 
-// NewDeliveryCmd returns the `pulumi delivery` command.
-func NewDeliveryCmd() *cobra.Command {
+// NewDeliveryCmd returns the `pulumi delivery` command. Its commands offer hints to hm, which may be nil.
+func NewDeliveryCmd(hm *hints.Manager) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delivery",
 		Short: "[PREVIEW] Manage Pulumi Delivery pipelines on Pulumi Cloud",
@@ -32,7 +33,7 @@ func NewDeliveryCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(newDeliveryRegisterCmd())
+	cmd.AddCommand(newDeliveryRegisterCmd(hm))
 
 	return cmd
 }

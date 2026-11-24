@@ -154,8 +154,8 @@ func allFlags(cmd *cobra.Command) map[string]*pflag.Flag {
 
 func TestRegisterHasAllFlagsOfUp(t *testing.T) {
 	t.Parallel()
-	register := allFlags(newRegisterCmd(operations.NewUpCmd(), noPrepare))
-	up := allFlags(operations.NewUpCmd())
+	register := allFlags(newRegisterCmd(operations.NewUpCmd(nil), noPrepare))
+	up := allFlags(operations.NewUpCmd(nil))
 	require.NotEmpty(t, up)
 	for name, f := range up {
 		got, ok := register[name]
@@ -167,7 +167,7 @@ func TestRegisterHasAllFlagsOfUp(t *testing.T) {
 
 func TestRegisterPassesFlagsToUp(t *testing.T) {
 	t.Parallel()
-	up := operations.NewUpCmd()
+	up := operations.NewUpCmd(nil)
 	var stack string
 	var configs []string
 	var yes, skipPreview, prepared bool
@@ -214,7 +214,7 @@ func TestRegisterPassesFlagsToUp(t *testing.T) {
 
 func TestRegisterStopsWhenPrepareFails(t *testing.T) {
 	t.Parallel()
-	up := operations.NewUpCmd()
+	up := operations.NewUpCmd(nil)
 	up.RunE = func(*cobra.Command, []string) error {
 		return errors.New("update ran")
 	}
@@ -228,7 +228,7 @@ func TestRegisterStopsWhenPrepareFails(t *testing.T) {
 
 func TestRegisterRefusesArguments(t *testing.T) {
 	t.Parallel()
-	cmd := newRegisterCmd(operations.NewUpCmd(), noPrepare)
+	cmd := newRegisterCmd(operations.NewUpCmd(nil), noPrepare)
 	cmd.RunE = func(*cobra.Command, []string) error { return nil }
 	cmd.SetArgs([]string{"some-arg"})
 	cmd.SilenceUsage = true
@@ -239,7 +239,7 @@ func TestRegisterRefusesArguments(t *testing.T) {
 
 func TestRegisterHiddenFlags(t *testing.T) {
 	t.Parallel()
-	up := operations.NewUpCmd()
+	up := operations.NewUpCmd(nil)
 	var strict bool
 	up.RunE = func(cmd *cobra.Command, _ []string) error {
 		var err error

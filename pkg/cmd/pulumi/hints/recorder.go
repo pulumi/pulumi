@@ -18,11 +18,9 @@ import "github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 
 // RecordProviderHint offers the hint that a provider reported for a failure, such as dynamic credentials. Commands
 // set it as the HintRecorder of the updates they run.
-func RecordProviderHint(h plugin.Hint) { defaultManager.recordProviderHint(h) }
-
-func (m *manager) recordProviderHint(h plugin.Hint) {
+func (m *Manager) RecordProviderHint(h plugin.Hint) {
 	if h.Kind != plugin.HintDynamicCredentials || h.Message == "" {
 		return
 	}
-	m.offer(ESCCredentials(h.Message))
+	m.Offer(ESCCredentials(h.Message))
 }

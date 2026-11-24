@@ -51,7 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewDestroyCmd() *cobra.Command {
+func NewDestroyCmd(hm *hints.Manager) *cobra.Command {
 	var runProgram bool
 	var skipConfigValidation bool
 	var debug bool
@@ -352,7 +352,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:        cloudCredentialEnv,
-				HintRecorder:              hints.RecordProviderHint,
+				HintRecorder:              hm.RecordProviderHint,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,

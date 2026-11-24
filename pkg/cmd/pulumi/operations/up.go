@@ -88,7 +88,7 @@ func defaultParallel() int32 {
 	return defaultParallel
 }
 
-func NewUpCmd() *cobra.Command {
+func NewUpCmd(hm *hints.Manager) *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
@@ -250,7 +250,7 @@ func NewUpCmd() *cobra.Command {
 		}
 		opts.Engine = engine.UpdateOptions{
 			CloudCredentialEnv:        cloudCredentialEnv,
-			HintRecorder:              hints.RecordProviderHint,
+			HintRecorder:              hm.RecordProviderHint,
 			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -548,7 +548,7 @@ func NewUpCmd() *cobra.Command {
 		}
 		opts.Engine = engine.UpdateOptions{
 			CloudCredentialEnv: cloudCredentialEnv,
-			HintRecorder:       hints.RecordProviderHint,
+			HintRecorder:       hm.RecordProviderHint,
 			ParallelDiff:       env.ParallelDiff.Value(),
 			LocalPolicyPacks:   engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:           parallel,

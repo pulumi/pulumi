@@ -350,7 +350,7 @@ func NewRefreshCmd(hm *hints.Manager) *cobra.Command {
 			}
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:        cloudCredentialEnv,
-				HintRecorder:              hints.RecordProviderHint,
+				HintRecorder:              hm.RecordProviderHint,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
