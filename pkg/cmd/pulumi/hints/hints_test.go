@@ -47,7 +47,13 @@ func newTestManager(t *testing.T) *testManager {
 		now:  time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC),
 		path: filepath.Join(t.TempDir(), stateFileName),
 	}
-	tm.Manager = &Manager{
+	tm.Manager = tm.newManager()
+	return tm
+}
+
+// newManager returns a Manager for a new command that uses tm's clock, state file and settings.
+func (tm *testManager) newManager() *Manager {
+	return &Manager{
 		now:       func() time.Time { return tm.now },
 		statePath: func() (string, error) { return tm.path, nil },
 		settings: func() settings {
@@ -58,7 +64,6 @@ func newTestManager(t *testing.T) *testManager {
 			return s
 		},
 	}
-	return tm
 }
 
 // run offers hs and flushes them, returning what was printed.
@@ -68,6 +73,8 @@ func (tm *testManager) run(hs ...Hint) string {
 	}
 	var buf bytes.Buffer
 	tm.Flush(&buf)
+	// Like the CLI, each command gets its own Manager.
+	tm.Manager = tm.newManager()
 	return buf.String()
 }
 
@@ -124,17 +131,6 @@ func TestSkippedHint(t *testing.T) {
 	assert.Empty(t, tm.run(hintA))
 }
 
-func TestFlushResetsSuppress(t *testing.T) {
-	t.Parallel()
-	tm := newTestManager(t)
-
-	tm.Suppress()
-	assert.Empty(t, tm.run(hintA))
-
-	// The next command in the same process isn't suppressed.
-	assert.Contains(t, tm.run(hintA), "hint a")
-}
-
 func TestSuppressedAndDisabled(t *testing.T) {
 	t.Parallel()
 
@@ -158,17 +154,6 @@ func TestSuppressedAndDisabled(t *testing.T) {
 			assert.Empty(t, st.LastShown)
 		})
 	}
-}
-
-func TestFlushClearsQueue(t *testing.T) {
-	t.Parallel()
-	tm := newTestManager(t)
-	tm.Offer(hintA)
-
-	var buf bytes.Buffer
-	tm.Flush(&buf)
-	tm.Flush(&buf)
-	assert.Equal(t, 1, bytes.Count(buf.Bytes(), []byte("hint a")))
 }
 
 func TestStateRoundTrip(t *testing.T) {

@@ -135,18 +135,15 @@ func (m *Manager) Suppress() {
 	m.suppressed = true
 }
 
-// Flush shows at most one of the offered hints on w and resets the hints for the next command, including any
-// [Manager.Suppress]. It never fails the command: errors reading or writing the state file are logged, and no hint is
-// shown.
+// Flush shows at most one of the offered hints on w. It never fails the command: errors reading or writing the state
+// file are logged, and no hint is shown.
 func (m *Manager) Flush(w io.Writer) {
 	if m == nil {
 		return
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	pending, suppressed := m.pending, m.suppressed
-	m.pending, m.suppressed = nil, false
-	if len(pending) == 0 || suppressed {
+	if len(m.pending) == 0 || m.suppressed {
 		return
 	}
 	settings := m.settings()
@@ -160,7 +157,7 @@ func (m *Manager) Flush(w io.Writer) {
 		return
 	}
 	now := m.now()
-	for _, h := range pending {
+	for _, h := range m.pending {
 		if settings.skip[h.ID] {
 			continue
 		}
