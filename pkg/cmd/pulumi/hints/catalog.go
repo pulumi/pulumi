@@ -40,7 +40,7 @@ var DriftDetection = Hint{
 func ESCCredentials(message string) Hint {
 	return Hint{
 		ID:               "esc-credentials",
-		Cooldown:         24 * time.Hour,
+		Cooldown:         7 * 24 * time.Hour,
 		Message:          message,
 		CloudOnly:        true,
 		HideFromNewUsers: true,
