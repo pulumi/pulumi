@@ -931,6 +931,12 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		}
 	case reflect.Struct:
 		typ := v.Type()
+		if typ == resolved.Type() && v.CanInterface() {
+			// Start from a copy of the value so that unexported fields, which can't be set
+			// below, keep their values instead of being zeroed. Exported fields are then
+			// overwritten with their resolved values.
+			resolved.Set(v)
+		}
 		getMappedField := MapStructTypes(typ, resolved.Type())
 		numFields := typ.NumField()
 		for i := range numFields {
