@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import * as path from "path";
+import * as url from "url";
 import { getStackTrace } from "../../runtime/stackTrace";
 
 describe("getStackTrace", () => {
@@ -41,5 +43,27 @@ describe("getStackTrace", () => {
 
     it("returns an empty trace when skipping beyond the stack", () => {
         assert.deepStrictEqual(getStackTrace(1000), []);
+    });
+
+    it("captures anonymous paths and file URLs", () => {
+        const filename = path.join(__dirname, "program.ts");
+        const uri = url.pathToFileURL(filename).href;
+        const prepare = Error.prepareStackTrace;
+        try {
+            Error.prepareStackTrace = () =>
+                [
+                    "Error",
+                    `    at callsites (${filename}:1:1)`,
+                    `    at getStackTrace (${filename}:2:1)`,
+                    `    at ${filename}:10:2`,
+                    `    at run (${uri}:20:3)`,
+                ].join("\n");
+            assert.deepStrictEqual(getStackTrace(0), [
+                { uri, line: 10, column: 2 },
+                { uri, line: 20, column: 3 },
+            ]);
+        } finally {
+            Error.prepareStackTrace = prepare;
+        }
     });
 });
