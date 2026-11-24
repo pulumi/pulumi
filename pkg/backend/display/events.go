@@ -75,12 +75,13 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		cleanedMsg := matchAnsiControlCodes.ReplaceAllString(p.Message, "")
 
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{
-			URN:       string(p.URN),
-			Prefix:    p.Prefix,
-			Message:   cleanedMsg,
-			Color:     string(p.Color),
-			Severity:  string(p.Severity),
-			Ephemeral: p.Ephemeral,
+			URN:           string(p.URN),
+			Prefix:        p.Prefix,
+			Message:       cleanedMsg,
+			Color:         string(p.Color),
+			Severity:      string(p.Severity),
+			Ephemeral:     p.Ephemeral,
+			SourceContext: (*apitype.DiagnosticSourceContext)(p.SourceContext),
 		}
 
 	case engine.StartDebuggingEvent:
@@ -386,12 +387,13 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.DiagnosticEvent != nil:
 		p := apiEvent.DiagnosticEvent
 		event = engine.NewEvent(engine.DiagEventPayload{
-			URN:       resource.URN(p.URN),
-			Prefix:    p.Prefix,
-			Message:   p.Message,
-			Color:     colors.Colorization(p.Color),
-			Severity:  diag.Severity(p.Severity),
-			Ephemeral: p.Ephemeral,
+			URN:           resource.URN(p.URN),
+			Prefix:        p.Prefix,
+			Message:       p.Message,
+			Color:         colors.Colorization(p.Color),
+			Severity:      diag.Severity(p.Severity),
+			Ephemeral:     p.Ephemeral,
+			SourceContext: (*diag.SourceContext)(p.SourceContext),
 		})
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{}
 
