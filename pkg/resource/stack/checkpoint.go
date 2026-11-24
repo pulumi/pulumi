@@ -19,14 +19,17 @@ import (
 	"encoding/json"
 	"fmt"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // UnmarshalVersionedCheckpointToLatestCheckpoint unmarshals a versioned checkpoint to the latest checkpoint format.
@@ -100,6 +103,16 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(
 func MarshalUntypedDeploymentToVersionedCheckpoint(
 	stack tokens.QName, deployment *apitype.UntypedDeployment,
 ) (*apitype.VersionedCheckpoint, error) {
+	return MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(encoding.JSON, stack, deployment)
+}
+
+func MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+	m encoding.Marshaler,
+	stack tokens.QName,
+	deployment *apitype.UntypedDeployment,
+) (*apitype.VersionedCheckpoint, error) {
+	contract.Requiref(deployment != nil, "deployment", "must not be nil")
+
 	chk := struct {
 		Stack  tokens.QName    `json:"stack,omitempty"`
 		Latest json.RawMessage `json:"latest,omitempty"`
@@ -108,7 +121,7 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 		Latest: deployment.Deployment,
 	}
 
-	bytes, err := encoding.JSON.Marshal(chk)
+	bytes, err := m.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
@@ -158,12 +171,22 @@ func DeploymentV3ToCheckpoint(
 	version int,
 	features []string,
 ) (*apitype.VersionedCheckpoint, error) {
+	return DeploymentV3ToCheckpointWithMarshaler(encoding.JSON, stack, deployment, version, features)
+}
+
+func DeploymentV3ToCheckpointWithMarshaler(
+	m encoding.Marshaler,
+	stack tokens.QName,
+	deployment *apitype.DeploymentV3,
+	version int,
+	features []string,
+) (*apitype.VersionedCheckpoint, error) {
 	chk := apitype.CheckpointV3{
 		Stack:  stack,
 		Latest: deployment,
 	}
 
-	b, err := encoding.JSON.Marshal(chk)
+	b, err := m.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
@@ -191,7 +214,7 @@ func DeserializeCheckpoint(
 }
 
 // GetRootStackResource returns the root stack resource from a given snapshot, or nil if not found.
-func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
+func GetRootStackResource(snap *deploy.Snapshot) (*pkgresource.State, error) {
 	if snap != nil {
 		for _, res := range snap.Resources {
 			if res.Type == resource.RootStackType && res.Parent == "" {
@@ -203,10 +226,10 @@ func GetRootStackResource(snap *deploy.Snapshot) (*resource.State, error) {
 }
 
 // CreateRootStackResource creates a new root stack resource with the given name
-func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *resource.State {
+func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageName) *pkgresource.State {
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, name)
-	return resource.NewState{
+	return pkgresource.NewState{
 		Type:                    typ,
 		URN:                     urn,
 		Custom:                  false,
@@ -237,9 +260,10 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
+		SnippetID:               "",
 	}.Make()
 }

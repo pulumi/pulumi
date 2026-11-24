@@ -15,6 +15,7 @@
 package diy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -136,6 +137,32 @@ func TestStackTagsDeletion(t *testing.T) {
 	// Test deleting non-existent tags (should not error)
 	err = b.deleteStackTags(ctx, ref)
 	require.NoError(t, err)
+}
+
+func TestStackTagsClearingLastTag(t *testing.T) {
+	t.Parallel()
+
+	b, ctx := setupTestBackend(t)
+	ref := createTestStackRef("myproject", "mystack")
+	ref.store = b.store
+
+	// Start with a single tag persisted to disk.
+	err := b.saveStackTags(ctx, ref, map[apitype.StackTagName]string{"env": "dev"})
+	require.NoError(t, err)
+
+	loadedTags, err := b.loadStackTags(ctx, ref)
+	require.NoError(t, err)
+	assert.Equal(t, map[apitype.StackTagName]string{"env": "dev"}, loadedTags)
+
+	// Removing the last tag (saving an empty map) must clear the tags on disk,
+	// not silently leave the previous tags in place. Regression test for the
+	// case where `pulumi stack tag rm` of the final tag had no effect.
+	err = b.saveStackTags(ctx, ref, map[apitype.StackTagName]string{})
+	require.NoError(t, err)
+
+	loadedTags, err = b.loadStackTags(ctx, ref)
+	require.NoError(t, err)
+	assert.Empty(t, loadedTags)
 }
 
 func TestStackTagsPath(t *testing.T) {
@@ -368,7 +395,6 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	ref := createTestStackRef("myproject", "mystack")
 	ref.store = b.store
 
-	// Save tags
 	testTags := map[apitype.StackTagName]string{
 		"env":   "dev",
 		"owner": "team-foo",
@@ -377,12 +403,10 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	err := b.saveStackTags(ctx, ref, testTags)
 	require.NoError(t, err)
 
-	// Read the raw JSON from storage and verify format
 	tagsPath := b.stackTagsPath(ref)
 	rawData, err := b.bucket.ReadAll(ctx, tagsPath)
 	require.NoError(t, err)
 
-	// Verify it's valid JSON with expected structure
 	var tagsFile stackTagsFile
 	err = json.Unmarshal(rawData, &tagsFile)
 	require.NoError(t, err)
@@ -390,10 +414,9 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	assert.Equal(t, stackTagsVersion, tagsFile.Version)
 	assert.Equal(t, testTags, tagsFile.Tags)
 
-	// Verify the JSON is properly formatted (indented)
-	assert.Contains(t, string(rawData), "    ") // Should contain indentation
-	assert.Contains(t, string(rawData), "\"version\"")
-	assert.Contains(t, string(rawData), "\"tags\"")
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, rawData))
+	assert.Equal(t, compact.String(), string(rawData))
 }
 
 func TestInvalidStackReference(t *testing.T) {
@@ -408,7 +431,7 @@ func TestInvalidStackReference(t *testing.T) {
 
 	tags := map[apitype.StackTagName]string{"test": "value"}
 	err := b.UpdateStackTags(ctx, mockStackWithRef, tags)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "invalid stack reference type")
 }
 

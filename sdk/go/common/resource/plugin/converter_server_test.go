@@ -94,6 +94,37 @@ func (c *testConverter) ConvertProgram(
 	}, nil
 }
 
+func (c *testConverter) ConvertSnippet(
+	ctx context.Context, req *ConvertSnippetRequest,
+) (*ConvertSnippetResponse, error) {
+	if req.Filename != "inputs.yaml" {
+		return nil, fmt.Errorf("unexpected Filename: %s", req.Filename)
+	}
+	if string(req.Source) != "inputs: true" {
+		return nil, fmt.Errorf("unexpected Source: %s", req.Source)
+	}
+	if req.TargetLoader != "localhost:4321" {
+		return nil, fmt.Errorf("unexpected TargetLoader: %s", req.TargetLoader)
+	}
+	if req.Token != "test:index:fn" {
+		return nil, fmt.Errorf("unexpected Token: %s", req.Token)
+	}
+
+	diags := hcl.Diagnostics{
+		{
+			Severity: hcl.DiagWarning,
+			Summary:  "test:summary",
+			Detail:   "test:detail",
+		},
+	}
+
+	return &ConvertSnippetResponse{
+		Diagnostics: diags,
+		Filename:    "inputs.pp",
+		Source:      []byte("inputs = true"),
+	}, nil
+}
+
 func TestConverterServer_State(t *testing.T) {
 	t.Parallel()
 
@@ -119,6 +150,29 @@ func TestConverterServer_State(t *testing.T) {
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)
+	assert.Equal(t, "test:summary", diag.Summary)
+	assert.Equal(t, "test:detail", diag.Detail)
+}
+
+func TestConverterServer_ConvertSnippet(t *testing.T) {
+	t.Parallel()
+
+	server := NewConverterServer(&testConverter{})
+
+	resp, err := server.ConvertSnippet(t.Context(), &pulumirpc.ConvertSnippetRequest{
+		Filename:     "inputs.yaml",
+		Source:       []byte("inputs: true"),
+		TargetLoader: "localhost:4321",
+		Token:        "test:index:fn",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "inputs.pp", resp.Filename)
+	assert.Equal(t, []byte("inputs = true"), resp.Source)
+	require.Len(t, resp.Diagnostics, 1)
+
+	diag := resp.Diagnostics[0]
+	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_WARNING, diag.Severity)
 	assert.Equal(t, "test:summary", diag.Summary)
 	assert.Equal(t, "test:detail", diag.Detail)
 }

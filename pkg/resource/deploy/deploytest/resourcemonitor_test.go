@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,9 +57,9 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 
 	_, deps, _, err := NewResourceMonitor(&client).Call(
 		"org/proj/stack:module:member",
-		resource.NewPropertyMapFromMap(map[string]any{
-			"k1": "value1",
-			"k2": "value2",
+		property.NewMap(map[string]property.Value{
+			"k1": property.New("value1"),
+			"k2": property.New("value2"),
 		}),
 		map[resource.PropertyKey][]resource.URN{
 			"k1": {"urn1", "urn2"},

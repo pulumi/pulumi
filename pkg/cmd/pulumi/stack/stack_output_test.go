@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -103,7 +105,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			t.Parallel()
 
 			snap := deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
 						Outputs: tt.outputs,
@@ -111,7 +113,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, LoadOption, display.Options,
+				string, LoadOption, display.Options, string,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -214,7 +216,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			t.Parallel()
 
 			snap := deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
 						Outputs: tt.outputs,
@@ -222,7 +224,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, LoadOption, display.Options,
+				string, LoadOption, display.Options, string,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -335,7 +337,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			t.Parallel()
 
 			snap := deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
 						Outputs: tt.outputs,
@@ -343,7 +345,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, LoadOption, display.Options,
+				string, LoadOption, display.Options, string,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -382,6 +384,7 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 	cmd := stackOutputCmd{
 		requireStack: func(
 			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager, string, LoadOption, display.Options,
+			string,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")
@@ -445,7 +448,8 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			t.Run("bash", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("bash", func(t *testing.T) {
+				t.Parallel()
 				var got bytes.Buffer
 				writer := bashStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))
@@ -454,7 +458,8 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 				assert.Equal(t, want, got.String())
 			})
 
-			t.Run("pwsh", func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+			t.Run("pwsh", func(t *testing.T) {
+				t.Parallel()
 				var got bytes.Buffer
 				writer := powershellStackOutputWriter{W: &got}
 				require.NoError(t, writer.WriteOne("myoutput", tt.give))

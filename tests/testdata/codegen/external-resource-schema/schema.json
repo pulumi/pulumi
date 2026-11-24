@@ -62,7 +62,7 @@
     "example::Workload": {
       "properties": {
         "pod": {
-          "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module:Config"
         }
       },
       "type": "object"
@@ -70,7 +70,7 @@
     "example::Component": {
       "properties": {
         "provider": {
-          "$ref": "/kubernetes/v3.7.0/schema.json#/provider"
+          "$ref": "/other/v0.1.0/schema.json#/provider"
         },
         "res": {
           "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
@@ -78,39 +78,39 @@
         "storageClasses": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/kubernetes/v3.7.0/schema.json#/resources/kubernetes:storage.k8s.io%2Fv1:StorageClass"
+            "$ref": "/other/v0.1.0/schema.json#/resources/other:index:Thing"
           }
         }
       },
       "inputProperties": {
         "metadata": {
-          "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
         },
         "requiredMetadata": {
-          "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
         },
         "metadataArray": {
           "type": "array",
           "items": {
-            "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+            "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
           }
         },
         "requiredMetadataArray": {
           "type": "array",
           "items": {
-            "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+            "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
           }
         },
         "metadataMap": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+            "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
           }
         },
         "requiredMetadataMap": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+            "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
           }
         }
       },
@@ -145,7 +145,7 @@
       "packageReferences": {
         "Pulumi": "3.71",
         "Pulumi.Goalias": "1.0.0",
-        "Pulumi.Kubernetes": "3.7.0",
+        "ThirdParty.Other": "0.1.0",
         "Pulumi.Random": "4.11.2"
       }
     },
@@ -158,7 +158,7 @@
       "dependencies": {
         "@pulumi/random": "^4.11.2",
         "@pulumi/goalias": "^1.0.0",
-        "@pulumi/kubernetes": "^3.7.0"
+        "@third-party/pulumi-other": "^0.1.0"
       }
     },
     "python": {}

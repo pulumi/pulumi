@@ -17,7 +17,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROTO_DIR="$REPO_ROOT/proto"
 cd "$PROTO_DIR"
 
-PROTOC_DIR="$(mise where protoc)"
+PROTOC_DIR="$(mise --locked where protoc)"
 PROTOC_INCLUDE="$PROTOC_DIR/include"
 
 PROTOC_VERSION=$(protoc --version | head -n1 | tr -d '\n\r')
@@ -87,7 +87,7 @@ protoc \
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.ts" -exec perl -i -pe 's|\.\./pulumi/|./|g' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.ts" -exec perl -i -pe 's|/\./|/|g' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -0777 -pe \
-    's/^var global\s*=.*?Function\(.*?this.*?\)\(\);/var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;/ms' {} \;
+    's/^var global\s*=.*?Function\(.*?this.*?\)\(\);/var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;/ms' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe "s|require\('../pulumi/|require('./|g" {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe "s|require\('../../pulumi/|require('../|g" {} \;
 

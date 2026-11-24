@@ -17,9 +17,11 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -31,21 +33,48 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var cloudURL string
 	var localMode bool
 	var all bool
+	var deleteCredentialsKey bool
 
 	cmd := &cobra.Command{
 		Use:   "logout",
-		Short: "Log out of the Pulumi Cloud",
-		Long: "Log out of the Pulumi Cloud.\n" +
+		Short: "Log out of a Pulumi state backend",
+		Long: "Log out of a Pulumi state backend.\n" +
 			"\n" +
-			"This command deletes stored credentials on the local machine for a single login.\n" +
+			"This command deletes the credentials stored on this machine for a single login. With no\n" +
+			"arguments, it logs you out of the current backend:\n" +
 			"\n" +
-			"Because you may be logged into multiple backends simultaneously, you can optionally pass\n" +
-			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
-			"If no URL is provided, you will be logged out of the current backend." +
-			"\n\n" +
-			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
-			"    $ pulumi logout --all",
+			"    $ pulumi logout\n" +
+			"\n" +
+			"You can be logged in to several backends at once. To choose one, pass its URL, written the\n" +
+			"same way you wrote it when logging in:\n" +
+			"\n" +
+			"    $ pulumi logout https://api.pulumi.acmecorp.com\n" +
+			"    $ pulumi logout s3://my-pulumi-state-bucket\n" +
+			"\n" +
+			"To log out of every backend at once, pass `--all`:\n" +
+			"\n" +
+			"    $ pulumi logout --all\n" +
+			"\n" +
+			"Stored credentials may be encrypted with a key kept in the OS credential store. That key is\n" +
+			"shared by all your credentials files, so logging out keeps it. To delete it as well, add\n" +
+			"`--delete-credentials-key` to `--all`:\n" +
+			"\n" +
+			"    $ pulumi logout --all --delete-credentials-key\n" +
+			"\n" +
+			"`--local` is a shortcut for `file://~`, matching `pulumi login --local`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logOutOfEverything := func() error {
+				if err := deleteAllAccounts(false); err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(),
+					"Removed stored credentials that could no longer be decrypted; logged out of everything")
+				return nil
+			}
+			if deleteCredentialsKey && !all {
+				return errors.New("--delete-credentials-key requires --all")
+			}
+
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
 				if cloudURL != "" || all {
@@ -64,18 +93,30 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			var err error
 			if all {
-				err = workspace.DeleteAllAccounts()
-				fmt.Println("Logged out of everything")
+				err = deleteAllAccounts(deleteCredentialsKey)
+				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
+					if err := credentialhelper.ClearConfiguration(); err != nil && !workspace.IsUndecryptableCredentials(err) {
+						return err
+					}
+					cwd, err := os.Getwd()
+					if err != nil {
+						return fmt.Errorf("getting current working directory: %w", err)
+					}
+
 					// Try to read the current project
-					project, _, err := ws.ReadProject()
+					project, _, err := ws.ReadProject(cwd)
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err
 					}
 
-					cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+					cloudURL, err = pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 					if err != nil {
+						// Removing everything does not require reading the file.
+						if workspace.IsUndecryptableCredentials(err) {
+							return logOutOfEverything()
+						}
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}
 
@@ -84,8 +125,11 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 					cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 				}
 
-				err = workspace.DeleteAccount(cloudURL)
-				fmt.Printf("Logged out of %s\n", cloudURL)
+				err = deleteAccount(cloudURL)
+				if workspace.IsUndecryptableCredentials(err) {
+					return logOutOfEverything()
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 
 			return err
@@ -100,11 +144,53 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	})
 
 	cmd.PersistentFlags().BoolVar(&all, "all", false,
-		"Logout of all backends")
+		"Log out of all backends")
+	cmd.PersistentFlags().BoolVar(&deleteCredentialsKey, "delete-credentials-key", false,
+		"Also delete the key that encrypts stored credentials from the OS credential store. "+
+			"Encrypted credentials in every other PULUMI_HOME, PULUMI_CREDENTIALS_PATH and the agent "+
+			"credentials file become unreadable. Requires --all")
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
-		"A cloud URL to log out of (defaults to current cloud)")
+		"A cloud URL to log out of (defaults to the current backend)")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false,
-		"Log out of using local mode")
+		"Log out of local-only mode (an alias for `file://~`)")
 
 	return cmd
+}
+
+// deleteAllAccounts removes user credentials and, in agent mode, any shared
+// temporary agent credentials.
+func deleteAllAccounts(deleteCredentialsKey bool) error {
+	deleteUserAccounts := workspace.DeleteAllAccounts
+	if deleteCredentialsKey {
+		deleteUserAccounts = workspace.DeleteAllAccountsAndCredentialsKey
+	}
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return deleteUserAccounts()
+	}
+	if err := deleteUserAccounts(); err != nil {
+		return workspace.DeleteAgentCredentials()
+	}
+	return workspace.DeleteAgentCredentials()
+}
+
+// deleteAccount removes credentials for a cloud URL, falling back to shared
+// temporary agent credentials when default credentials are unavailable.
+func deleteAccount(cloudURL string) error {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	creds, err := workspace.GetStoredCredentials()
+	// Tokenless backends, such as DIY backends, still belong to the default credential store.
+	if err == nil && credentialsContainAccount(creds, cloudURL) {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	return workspace.DeleteAgentAccount(cloudURL)
+}
+
+func credentialsContainAccount(creds workspace.Credentials, cloudURL string) bool {
+	if creds.Current == cloudURL {
+		return true
+	}
+	_, ok := creds.Accounts[cloudURL]
+	return ok
 }

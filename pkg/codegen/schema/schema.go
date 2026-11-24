@@ -23,11 +23,13 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"gopkg.in/yaml.v3"
@@ -44,7 +46,7 @@ type Type interface {
 	isType()
 }
 
-type primitiveType int
+type primitiveType uint16
 
 const (
 	boolType        primitiveType = 1
@@ -399,6 +401,9 @@ type Resource struct {
 	Properties []*Property
 	// StateInputs is the set of inputs used to get an existing resource, if any.
 	StateInputs *ObjectType
+	// ListInputs is the set of inputs used to list existing resources, if any. If this is unset, the resource
+	// does not declare list support in the package schema.
+	ListInputs *ObjectType
 	// Aliases is the list of aliases for the resource.
 	Aliases []*Alias
 	// DeprecationMessage indicates whether or not the resource is deprecated.
@@ -586,17 +591,40 @@ func (fun *Function) NeedsOutputVersion() bool {
 }
 
 // BaseProvider
-type BaseProvider struct {
-	// Name is the name of the provider.
+type BasePlugin struct {
+	// Name is the name of the plugin.
 	Name string
-	// Version is the version of the provider.
+	// Version is the version of the plugin.
 	Version semver.Version
 }
 
 type Parameterization struct {
-	BaseProvider BaseProvider
+	// BasePlugin is the plugin the parameterization is applied to.
+	BasePlugin BasePlugin
 	// Parameter is the parameter for the provider.
 	Parameter []byte
+}
+
+// ExtensionParameterization describes an extension applied to a base provider.
+type ExtensionParameterization struct {
+	// BaseProvider is the provider the extension is layered onto. Its Name is the
+	// namespace the extension's resource tokens live in.
+	BaseProvider BaseProvider
+	// Parameter is the extension parameter applied to the base provider.
+	Parameter []byte
+}
+
+// BaseProvider identifies the provider an extension is layered onto. When that
+// provider is itself produced by parameterizing a plugin (e.g. a dynamically
+// bridged provider), Parameterization describes how; it is nil for a plain plugin.
+type BaseProvider struct {
+	// Name is the provider's name (the resource-token namespace).
+	Name string
+	// Version is the provider's version.
+	Version semver.Version
+	// Parameterization, if set, is the replacement that produced this provider from
+	// a base plugin. Nil when the provider is itself a plain plugin.
+	Parameterization *Parameterization
 }
 
 // Package describes a Pulumi package.
@@ -634,6 +662,11 @@ type Package struct {
 	LogoURL string
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string
+	// ConfigurationDocsURL is the URL of the provider's installation and configuration documentation, if any.
+	ConfigurationDocsURL string
+	// ValidateCredentialsOnNew indicates that `pulumi new` may configure the provider after creating a project
+	// in order to validate the user's credentials.
+	ValidateCredentialsOnNew bool
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
@@ -659,12 +692,27 @@ type Package struct {
 	// Parameterization is the optional parameterization for the package, if any.
 	Parameterization *Parameterization
 
+	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
+	ExtensionParameterization *ExtensionParameterization
+
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType
 	functionTable     map[string]*Function
 	typeTable         map[string]Type
 
+	// aliases maps PCL-normalized tokens to their source-form keys in the tables above.
+	// Built lazily on first miss in a Get* call. See buildTokenAliases.
+	aliases struct {
+		once          sync.Once
+		resources     map[string]string
+		functions     map[string]string
+		types         map[string]string
+		resourceTypes map[string]string
+	}
+
 	importedLanguages map[string]struct{}
+
+	interpretPulumiRefs func(string, PulumiRefResolver, interpretRefsOptions) (string, hcl.Diagnostics)
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -885,6 +933,21 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	return nil
 }
 
+// Deprecated: use [Package.InterpretPulumiRefsWithDiagnostics].
+func (pkg *Package) InterpretPulumiRefs(tok string, resolver PulumiRefResolver) (string, error) {
+	return interpretPulumiRefsViaDiagnostics(pkg, tok, resolver)
+}
+
+// InterpretPulumiRefsWithDiagnostics interprets the refs in the given string and returns the rendered text
+// alongside any diagnostics. The resolver is also called for refs that failed to bind, with Type and Function nil;
+// returning false falls back to the default rendering, and returning true substitutes the resolver's own name.
+func (pkg *Package) InterpretPulumiRefsWithDiagnostics(
+	tok string, resolver PulumiRefResolver,
+) (string, hcl.Diagnostics) {
+	contract.Assertf(pkg.interpretPulumiRefs != nil, "interpretPulumiRefs function is not initialized")
+	return pkg.interpretPulumiRefs(tok, resolver, interpretRefsOptions{resolveUnbound: true})
+}
+
 func packageIdentity(name string, version *semver.Version) string {
 	// The package's identity is its name and version (if any) separated buy a ':'. The ':' character is not allowed
 	// in package names and so is safe to use as a separator.
@@ -904,6 +967,16 @@ func (pkg *Package) Equals(other *Package) bool {
 }
 
 var defaultModuleFormat = regexp.MustCompile("(.*)")
+
+func (pkg *Package) CanonicalizeToken(tok string) string {
+	pkgName, _, member, _ := decomposeToken(tok)
+
+	mod := pkg.TokenToModule(tok)
+	if mod != "" {
+		return fmt.Sprintf("%s:%s:%s", pkgName, mod, member)
+	}
+	return fmt.Sprintf("%s:%s", pkgName, member)
+}
 
 func (pkg *Package) TokenToModule(tok string) string {
 	// token := pkg ":" module ":" member
@@ -944,23 +1017,130 @@ func (pkg *Package) TokenToRuntimeModule(tok string) string {
 }
 
 func (pkg *Package) GetResource(token string) (*Resource, bool) {
-	r, ok := pkg.resourceTable[token]
-	return r, ok
+	return lookupToken(pkg.resourceTable, token, pkg.resourceAliases)
 }
 
 func (pkg *Package) GetFunction(token string) (*Function, bool) {
-	f, ok := pkg.functionTable[token]
-	return f, ok
+	return lookupToken(pkg.functionTable, token, pkg.functionAliases)
 }
 
 func (pkg *Package) GetResourceType(token string) (*ResourceType, bool) {
-	t, ok := pkg.resourceTypeTable[token]
-	return t, ok
+	return lookupToken(pkg.resourceTypeTable, token, pkg.resourceTypeAliases)
 }
 
 func (pkg *Package) GetType(token string) (Type, bool) {
-	t, ok := pkg.typeTable[token]
-	return t, ok
+	return lookupToken(pkg.typeTable, token, pkg.typeAliases)
+}
+
+func (pkg *Package) resourceAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.resources
+}
+
+func (pkg *Package) functionAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.functions
+}
+
+func (pkg *Package) typeAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.types
+}
+
+func (pkg *Package) resourceTypeAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.resourceTypes
+}
+
+func (pkg *Package) buildAliases() {
+	pkg.aliases.resources = buildTokenAliases(pkg.resourceTable, pkg.TokenToModule)
+	pkg.aliases.functions = buildTokenAliases(pkg.functionTable, pkg.TokenToModule)
+	pkg.aliases.types = buildTokenAliases(pkg.typeTable, pkg.TokenToModule)
+	pkg.aliases.resourceTypes = buildTokenAliases(pkg.resourceTypeTable, pkg.TokenToModule)
+}
+
+// decomposeToken splits a token of the form "pkg:mod:name", "pkg::name", or "pkg:name" into
+// its components. An empty module is returned as "index". Invalid tokens return ok=false.
+func decomposeToken(tok string) (pkg, mod, name string, ok bool) {
+	parts := strings.Split(tok, ":")
+	switch len(parts) {
+	case 2:
+		pkg, mod, name = parts[0], "index", parts[1]
+	case 3:
+		pkg, mod, name = parts[0], parts[1], parts[2]
+		if mod == "" {
+			mod = "index"
+		}
+	default:
+		return "", "", "", false
+	}
+	if pkg == "" || name == "" {
+		return "", "", "", false
+	}
+	return pkg, mod, name, true
+}
+
+// buildTokenAliases returns a map from normalized-form tokens to the source-form keys of m.
+//
+// PCL normalizes tokens before lookup in two ways that this map inverts:
+//   - module components are rewritten via tokenToModule (e.g. "pkg:mod/x:y" → "pkg:mod:y"
+//     when Meta.ModuleFormat is "(.*)(?:/[^/]*)"), and
+//   - the "index" module may be elided ("pkg:index:name" → "pkg:name" / "pkg::name").
+//
+// The shortening cannot be reversed in general — different source tokens may collide on the
+// same normalized form (e.g. both "pkg:mod/a:B" and "pkg:mod/b:B" normalize to "pkg:mod:B").
+// We drop colliding entries so an ambiguous query misses cleanly rather than silently
+// resolving to one of the candidates. Aliases also never shadow a real key in m.
+func buildTokenAliases[V any](m map[string]V, tokenToModule func(string) string) map[string]string {
+	aliases := make(map[string]string, len(m))
+	collisions := map[string]struct{}{}
+	add := func(alias, src string) {
+		if alias == "" || alias == src {
+			return
+		}
+		if _, exists := m[alias]; exists {
+			return
+		}
+		if _, ambiguous := collisions[alias]; ambiguous {
+			return
+		}
+		if existing, ok := aliases[alias]; ok && existing != src {
+			delete(aliases, alias)
+			collisions[alias] = struct{}{}
+			return
+		}
+		aliases[alias] = src
+	}
+	for tok := range m {
+		pkg, _, name, ok := decomposeToken(tok)
+		if !ok {
+			continue
+		}
+		mod := tokenToModule(tok)
+		if mod == "" {
+			mod = "index"
+		}
+		add(pkg+":"+mod+":"+name, tok)
+		if mod == "index" {
+			add(pkg+"::"+name, tok)
+			add(pkg+":"+name, tok)
+		}
+	}
+	return aliases
+}
+
+// lookupToken finds an entry in m by token, falling back to the prebuilt alias map for
+// PCL-normalized tokens.
+func lookupToken[V any](m map[string]V, token string, aliases func() map[string]string) (V, bool) {
+	v, ok := m[token]
+	if ok {
+		return v, true
+	}
+	if src, aOk := aliases()[token]; aOk {
+		v, ok = m[src]
+	}
+
+	return v, ok
 }
 
 func (pkg *Package) Reference() PackageReference {
@@ -973,11 +1153,11 @@ func (pkg *Package) Reference() PackageReference {
 func (pkg *Package) Descriptor(ctx context.Context) (workspace.PackageDescriptor, error) {
 	version := pkg.Version
 	if pkg.Parameterization != nil {
-		version = &pkg.Parameterization.BaseProvider.Version
+		version = &pkg.Parameterization.BasePlugin.Version
 	}
 	name := pkg.Name
 	if pkg.Parameterization != nil {
-		name = pkg.Parameterization.BaseProvider.Name
+		name = pkg.Parameterization.BasePlugin.Name
 	}
 	pluginSpec, err := workspace.NewPluginDescriptor(ctx, name, apitype.ResourcePlugin, version,
 		pkg.PluginDownloadURL, nil)
@@ -1002,9 +1182,9 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	var metadata *MetadataSpec
-	// Don't set support pack in meta spec if Parameterization is present because that implictly sets
-	// SupportPack when reading back in anyway.
-	supportPack := pkg.SupportPack && pkg.Parameterization == nil
+	// Don't set support pack in meta spec if Parameterization or ExtensionParameterization is present because that
+	// implictly sets SupportPack when reading back in anyway.
+	supportPack := pkg.SupportPack && (pkg.Parameterization == nil || pkg.ExtensionParameterization == nil)
 	if pkg.moduleFormat != nil || supportPack {
 		metadata = &MetadataSpec{SupportPack: supportPack}
 		if pkg.moduleFormat != nil {
@@ -1016,34 +1196,58 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	if pkg.Parameterization != nil {
 		parameterization = &ParameterizationSpec{
 			BaseProvider: BaseProviderSpec{
-				Name:    pkg.Parameterization.BaseProvider.Name,
-				Version: pkg.Parameterization.BaseProvider.Version.String(),
+				Name:    pkg.Parameterization.BasePlugin.Name,
+				Version: pkg.Parameterization.BasePlugin.Version.String(),
 			},
 			Parameter: pkg.Parameterization.Parameter,
 		}
 	}
+	var extensionParameterization *ExtensionParameterizationSpec
+	if pkg.ExtensionParameterization != nil {
+		base := pkg.ExtensionParameterization.BaseProvider
+		baseSpec := BaseProviderRefSpec{
+			Name:    base.Name,
+			Version: base.Version.String(),
+		}
+		if p := base.Parameterization; p != nil {
+			baseSpec.Parameterization = &BaseProviderParameterizationSpec{
+				BasePlugin: BaseProviderSpec{
+					Name:    p.BasePlugin.Name,
+					Version: p.BasePlugin.Version.String(),
+				},
+				Parameter: p.Parameter,
+			}
+		}
+		extensionParameterization = &ExtensionParameterizationSpec{
+			BaseProvider: baseSpec,
+			Parameter:    pkg.ExtensionParameterization.Parameter,
+		}
+	}
 
 	spec = &PackageSpec{
-		Name:                pkg.Name,
-		Version:             version,
-		DisplayName:         pkg.DisplayName,
-		Publisher:           pkg.Publisher,
-		Namespace:           pkg.Namespace,
-		Description:         pkg.Description,
-		Keywords:            pkg.Keywords,
-		Homepage:            pkg.Homepage,
-		License:             pkg.License,
-		Attribution:         pkg.Attribution,
-		Repository:          pkg.Repository,
-		LogoURL:             pkg.LogoURL,
-		PluginDownloadURL:   pkg.PluginDownloadURL,
-		Meta:                metadata,
-		Dependencies:        pkg.Dependencies,
-		Types:               map[string]ComplexTypeSpec{},
-		Resources:           map[string]ResourceSpec{},
-		Functions:           map[string]FunctionSpec{},
-		AllowedPackageNames: pkg.AllowedPackageNames,
-		Parameterization:    parameterization,
+		Name:                      pkg.Name,
+		Version:                   version,
+		DisplayName:               pkg.DisplayName,
+		Publisher:                 pkg.Publisher,
+		Namespace:                 pkg.Namespace,
+		Description:               pkg.Description,
+		Keywords:                  pkg.Keywords,
+		Homepage:                  pkg.Homepage,
+		License:                   pkg.License,
+		Attribution:               pkg.Attribution,
+		Repository:                pkg.Repository,
+		LogoURL:                   pkg.LogoURL,
+		PluginDownloadURL:         pkg.PluginDownloadURL,
+		ConfigurationDocsURL:      pkg.ConfigurationDocsURL,
+		ValidateCredentialsOnNew:  pkg.ValidateCredentialsOnNew,
+		Meta:                      metadata,
+		Dependencies:              pkg.Dependencies,
+		Types:                     map[string]ComplexTypeSpec{},
+		Resources:                 map[string]ResourceSpec{},
+		Functions:                 map[string]FunctionSpec{},
+		AllowedPackageNames:       pkg.AllowedPackageNames,
+		Parameterization:          parameterization,
+		ExtensionParameterization: extensionParameterization,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -1057,9 +1261,13 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		return nil, fmt.Errorf("marshaling package config: %w", err)
 	}
 
-	spec.Provider, err = pkg.marshalResource(pkg.Provider)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling provider: %w", err)
+	// Provider is nil for packages without one (e.g. extension parameterizations).
+	if pkg.Provider != nil {
+		providerSpec, err := pkg.marshalResource(pkg.Provider)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling provider: %w", err)
+		}
+		spec.Provider = &providerSpec
 	}
 
 	for _, t := range pkg.Types {
@@ -1196,6 +1404,15 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		stateInputs = &o.ObjectTypeSpec
 	}
 
+	var listInputs *ObjectTypeSpec
+	if r.ListInputs != nil {
+		o, err := pkg.marshalObject(r.ListInputs, false)
+		if err != nil {
+			return ResourceSpec{}, fmt.Errorf("marshaling list inputs: %w", err)
+		}
+		listInputs = &o.ObjectTypeSpec
+	}
+
 	aliases := slice.Prealloc[AliasSpec](len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
@@ -1217,6 +1434,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		InputProperties:    inputs,
 		RequiredInputs:     requiredInputs,
 		StateInputs:        stateInputs,
+		ListInputs:         listInputs,
 		Aliases:            aliases,
 		DeprecationMessage: r.DeprecationMessage,
 		IsComponent:        r.IsComponent,
@@ -1741,6 +1959,9 @@ type ResourceSpec struct {
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that may be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
 	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty" yaml:"stateInputs,omitempty"`
+	// ListInputs is an optional ObjectTypeSpec that describes inputs that may be supplied when listing resources of
+	// this type. If this is unset, the resource does not declare list support in the schema.
+	ListInputs *ObjectTypeSpec `json:"listInputs,omitempty" yaml:"listInputs,omitempty"`
 	// Aliases is the list of aliases for the resource. This can either be a list of strings or a list of objects with
 	// type fields.
 	Aliases []AliasSpec `json:"aliases,omitempty" yaml:"aliases,omitempty"`
@@ -2097,6 +2318,11 @@ type PackageInfoSpec struct {
 	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
+	// ConfigurationDocsURL is the URL of the provider's installation and configuration documentation, if any.
+	ConfigurationDocsURL string `json:"configurationDocsUrl,omitempty" yaml:"configurationDocsUrl,omitempty"`
+	// ValidateCredentialsOnNew indicates that `pulumi new` may configure the provider after creating a project
+	// in order to validate the user's credentials.
+	ValidateCredentialsOnNew bool `json:"validateCredentialsOnNew,omitempty" yaml:"validateCredentialsOnNew,omitempty"`
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
@@ -2116,6 +2342,9 @@ type PackageInfoSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	// ExtensionParameterization is the optional extension parameterization for this package.
+	ExtensionParameterization *ExtensionParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2131,6 +2360,40 @@ type ParameterizationSpec struct {
 	// The base provider to parameterize.
 	BaseProvider BaseProviderSpec `json:"baseProvider" yaml:"baseProvider"`
 	// The parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// ExtensionParameterizationSpec is the serializable description of an extension parameterization.
+type ExtensionParameterizationSpec struct {
+	// The base provider the extension is applied to. Its name is the namespace the
+	// extension's resource tokens live in.
+	BaseProvider BaseProviderRefSpec `json:"baseProvider" yaml:"baseProvider"`
+	// The extension parameter to apply to the base provider.
+	Parameter []byte `json:"parameter" yaml:"parameter"`
+}
+
+// BaseProviderRefSpec is the serializable description of the provider an extension
+// is applied to. It mirrors a top-level package header (name, version, and an
+// optional parameterization), so a base provider that is itself a parameterized
+// plugin is described the same way a package would be.
+type BaseProviderRefSpec struct {
+	// The provider's name (the extension's resource-token namespace).
+	Name string `json:"name" yaml:"name"`
+	// The provider's version.
+	Version string `json:"version" yaml:"version"`
+	// An optional replacement that produced this provider from a base plugin
+	// (e.g. a dynamically-bridged provider). Omitted when the provider is a plain plugin.
+	Parameterization *BaseProviderParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"` //nolint:lll
+}
+
+// BaseProviderParameterizationSpec is the replacement that produces a base provider
+// from a base plugin. It has the same shape as ParameterizationSpec, but because it
+// is new it can name the plugin field "basePlugin" rather than the locked
+// "baseProvider" tag the top-level ParameterizationSpec must keep.
+type BaseProviderParameterizationSpec struct {
+	// The base plugin that is parameterized to produce the base provider.
+	BasePlugin BaseProviderSpec `json:"basePlugin" yaml:"basePlugin"`
+	// The parameter applied to the base plugin.
 	Parameter []byte `json:"parameter" yaml:"parameter"`
 }
 
@@ -2164,6 +2427,11 @@ type PackageSpec struct {
 	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
+	// ConfigurationDocsURL is the URL of the provider's installation and configuration documentation, if any.
+	ConfigurationDocsURL string `json:"configurationDocsUrl,omitempty" yaml:"configurationDocsUrl,omitempty"`
+	// ValidateCredentialsOnNew indicates that `pulumi new` may configure the provider after creating a project
+	// in order to validate the user's credentials.
+	ValidateCredentialsOnNew bool `json:"validateCredentialsOnNew,omitempty" yaml:"validateCredentialsOnNew,omitempty"`
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
 	// Namespace is the namespace of the package, that's used to diambiguate the package name.
@@ -2183,8 +2451,9 @@ type PackageSpec struct {
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
-	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider,omitempty" yaml:"provider"`
+	// Provider describes the provider type for this package. It is nil for
+	// packages that have no provider of their own (e.g. extension parameterizations).
+	Provider *ResourceSpec `json:"provider,omitempty" yaml:"provider,omitempty"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
@@ -2194,28 +2463,34 @@ type PackageSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
+	ExtensionParameterization *ExtensionParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"` //nolint:lll
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {
 	return PackageInfoSpec{
-		Name:                p.Name,
-		DisplayName:         p.DisplayName,
-		Version:             p.Version,
-		Description:         p.Description,
-		Keywords:            p.Keywords,
-		Homepage:            p.Homepage,
-		License:             p.License,
-		Attribution:         p.Attribution,
-		Repository:          p.Repository,
-		LogoURL:             p.LogoURL,
-		PluginDownloadURL:   p.PluginDownloadURL,
-		Publisher:           p.Publisher,
-		Namespace:           p.Namespace,
-		Dependencies:        p.Dependencies,
-		Meta:                p.Meta,
-		AllowedPackageNames: p.AllowedPackageNames,
-		Language:            p.Language,
-		Parameterization:    p.Parameterization,
+		Name:                      p.Name,
+		DisplayName:               p.DisplayName,
+		Version:                   p.Version,
+		Description:               p.Description,
+		Keywords:                  p.Keywords,
+		Homepage:                  p.Homepage,
+		License:                   p.License,
+		Attribution:               p.Attribution,
+		Repository:                p.Repository,
+		LogoURL:                   p.LogoURL,
+		PluginDownloadURL:         p.PluginDownloadURL,
+		ConfigurationDocsURL:      p.ConfigurationDocsURL,
+		ValidateCredentialsOnNew:  p.ValidateCredentialsOnNew,
+		Publisher:                 p.Publisher,
+		Namespace:                 p.Namespace,
+		Dependencies:              p.Dependencies,
+		Meta:                      p.Meta,
+		AllowedPackageNames:       p.AllowedPackageNames,
+		Language:                  p.Language,
+		Parameterization:          p.Parameterization,
+		ExtensionParameterization: p.ExtensionParameterization,
 	}
 }
 

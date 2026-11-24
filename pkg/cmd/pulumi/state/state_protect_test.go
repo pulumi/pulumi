@@ -17,6 +17,8 @@ package state
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -33,7 +35,7 @@ func TestProtectResourceWithDeleteTrue(t *testing.T) {
 
 	// Create a snapshot with both a resource marked for deletion and a normal resource with the same URN
 	// This simulates a replacement scenario
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -54,7 +56,7 @@ func TestProtectResourceWithDeleteTrue(t *testing.T) {
 			Delete:  false, // This is the replacement resource
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect the resource
 	urns := []string{string(resourceURN)}
@@ -74,7 +76,7 @@ func TestProtectAllResourcesWithDeleteTrue(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 
 	// Create a snapshot with some resources marked for deletion
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -102,7 +104,7 @@ func TestProtectAllResourcesWithDeleteTrue(t *testing.T) {
 			Delete:  false,
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect all resources
 	urns := []string{
@@ -130,7 +132,7 @@ func TestProtectOnlyDeletedResource(t *testing.T) {
 	deletedURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "deleted")
 
 	// Create a snapshot with only a deleted resource
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -144,16 +146,18 @@ func TestProtectOnlyDeletedResource(t *testing.T) {
 			Delete:  true, // Resource is marked for deletion
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect the deleted resource
 	urns := []string{string(deletedURN)}
 	resourceCount, errs := protectResourcesInSnapshot(snap, urns)
 
-	// Should not protect the deleted resource and report it as not found
+	// Should not protect the deleted resource and report it as not found. The pending-delete resource is not
+	// eligible for the operation, so its own URN must not come back as a "Did you mean" suggestion.
 	assert.Equal(t, 0, resourceCount)
 	require.Len(t, errs, 1)
 	assert.Contains(t, errs[0].Error(), "No such resource")
+	assert.NotContains(t, errs[0].Error(), "Did you mean")
 	require.Len(t, snap.Resources, 2)
 	assert.False(t, snap.Resources[1].Protect) // Resource should remain unprotected
 }
@@ -167,7 +171,7 @@ func TestProtectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 
 	// Create a snapshot with multiple resources having the same URN
 	// but some marked for deletion (replacement scenario)
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -195,7 +199,7 @@ func TestProtectMultipleResourcesWithSameURNAndDelete(t *testing.T) {
 			Delete:  false, // The current active resource
 			Protect: false,
 		},
-	}, nil, deploy.SnapshotMetadata{})
+	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 
 	// Try to protect the resource
 	urns := []string{string(sharedURN)}

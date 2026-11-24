@@ -18,6 +18,8 @@ import (
 	"errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -35,8 +37,27 @@ const (
 	ExitNoChanges           = 7
 	ExitCancelled           = 8
 	ExitTimeout             = 9
+	ExitAwaitError          = 10 // a provider needs to await an operation
 	ExitInternalError       = 255
 )
+
+// An error that specifies it's own error code.
+type CustomExitCodeError interface {
+	error
+
+	CustomExitCode() int
+}
+
+// ConfigurationError signals that a command was called with malformed input: an unknown
+// token, bad flag combination, unparsable argument, and so on. ExitCodeFor maps it to
+// ExitConfigurationError.
+type ConfigurationError struct {
+	Message string
+}
+
+func (e ConfigurationError) Error() string {
+	return e.Message
+}
 
 // ExitCodeFor maps an error to a process exit code, based on its concrete or
 // wrapped type. This function is the single choke point for mapping errors
@@ -46,40 +67,63 @@ func ExitCodeFor(err error) int {
 		return ExitSuccess
 	}
 
+	if c, ok := err.(CustomExitCodeError); ok {
+		return c.CustomExitCode()
+	}
+
+	// `pulumi api` carries its own semantic exit code on the error so
+	// the taxonomy (ExitCodeError / ExitAuthenticationError / ExitCancelled
+	// / etc.) reaches the shell instead of collapsing to the generic bail
+	// default. Checked before the bail branch because processCmdErrors
+	// wraps these in a BailError to suppress double-printing the message.
+	if apiErr, ok := errors.AsType[*cloud.APIError](err); ok {
+		return apiErr.ExitCode
+	}
+
+	// A deployment that ended with only await failures surfaces as an AwaitError. The engine wraps
+	// this in a BailError, so peek inside before mapping. Checked before the general bail branch
+	// so that the dedicated exit code wins.
+	if _, ok := errors.AsType[*plugin.AwaitError](result.UnwrapBail(err)); ok {
+		return ExitAwaitError
+	}
+
 	// Respect bail semantics first – still a failure, but don't print anything.
 	if result.IsBail(err) {
 		return ExitCodeError
 	}
 
 	// Authentication / authorization problems.
-	switch {
-	case errors.As(err, &backenderr.LoginRequiredError{}),
-		errors.As(err, &backenderr.ForbiddenError{}),
-		errors.As(err, &backenderr.MissingEnvVarForNonInteractiveError{}):
+	if backenderr.IsAuthError(err) {
 		return ExitAuthenticationError
 	}
 
 	// Stack context problems.
+	_, isStackNotFound := errors.AsType[backenderr.StackNotFoundError](err)
+	_, isNoStacks := errors.AsType[backenderr.NoStacksError](err)
+	_, isNoStackSelected := errors.AsType[backenderr.NoStackSelectedError](err)
+	_, isStackStateNotFound := errors.AsType[backenderr.StackStateNotFoundError](err)
 	switch {
-	case errors.As(err, &backenderr.StackNotFoundError{}),
-		errors.As(err, &backenderr.NoStacksError{}),
-		errors.As(err, &backenderr.NoStackSelectedError{}),
-		errors.As(err, &backenderr.StackStateNotFoundError{}):
+	case isStackNotFound, isNoStacks, isNoStackSelected, isStackStateNotFound:
 		return ExitStackNotFound
 	}
 
 	// User-initiated cancellation.
-	if errors.As(err, &backenderr.CancelledError{}) {
+	if _, ok := errors.AsType[backenderr.CancelledError](err); ok {
 		return ExitCancelled
 	}
 
 	// Expectation / invariant failures like --expect-no-changes.
-	if errors.As(err, &backenderr.NoChangesExpectedError{}) {
+	if _, ok := errors.AsType[backenderr.NoChangesExpectedError](err); ok {
 		return ExitNoChanges
 	}
 
 	// Non-interactive mode without confirmation flags.
-	if errors.As(err, &backenderr.NoConfirmationInNonInteractiveError{}) {
+	if _, ok := errors.AsType[backenderr.NoConfirmationInNonInteractiveError](err); ok {
+		return ExitConfigurationError
+	}
+
+	// Command was invoked with malformed input
+	if _, ok := errors.AsType[ConfigurationError](err); ok {
 		return ExitConfigurationError
 	}
 

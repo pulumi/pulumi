@@ -30,7 +30,7 @@ def my_invoke_scalar(value: Optional[_builtins.str] = None,
     __ret__ = pulumi.runtime.invoke_single('simple-invoke-with-scalar-return:index:myInvokeScalar', __args__, opts=opts).value
 
     return __ret__
-def my_invoke_scalar_output(value: Optional[pulumi.Input[_builtins.str]] = None,
+def my_invoke_scalar_output(value: pulumi.Input[Optional[_builtins.str]] = None,
                             opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[bool]:
     """
     Use this data source to access information about an existing resource.

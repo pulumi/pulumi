@@ -34,11 +34,10 @@ func isMaxErrorHookRetriesReached(err error) bool {
 	return errors.Is(err, &maxErrorHookRetriesReachedError{})
 }
 
-// Retry an operation until it succeeds, encounters a non-retryable error, or hits the maximum number of retries.
+// Retry an operation until it succeeds or hits the maximum number of retries.
 func withRetries[T any](
 	maxRetries int,
 	operation func() (T, error),
-	isRetryable func(result T, err error) bool,
 	shouldRetry func(result T, failures []string) (bool, error),
 ) (T, error) {
 	failures := []string{}
@@ -47,10 +46,6 @@ func withRetries[T any](
 		result, err := operation()
 		if err == nil {
 			return result, nil
-		}
-
-		if !isRetryable(result, err) {
-			return result, err
 		}
 
 		failures = append([]string{err.Error()}, failures...)

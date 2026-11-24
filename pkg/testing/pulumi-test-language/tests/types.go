@@ -25,10 +25,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -216,7 +216,7 @@ type TestingT interface {
 
 var (
 	_ TestingT         = (*L)(nil)
-	_ require.TestingT = (TestingT)(nil) // ensure testify compatibility
+	_ require.TestingT = TestingT(nil) // ensure testify compatibility
 )
 
 type LanguageTest struct {
@@ -225,8 +225,12 @@ type LanguageTest struct {
 	// A list of provider names that should be loaded from the languages providers directory.
 	LanguageProviders []string
 
+	// AssertRuntimeErrors receives Engine.Log errors and runner stderr for the entire test case, including teardown.
+	// Tests that set it run exclusively so unattributed log messages can be captured.
+	AssertRuntimeErrors func(l *L, logs []string, stderr string)
+
 	// stackReferences specifies other stack data that this test depends on.
-	StackReferences map[string]resource.PropertyMap
+	StackReferences map[string]property.Map
 
 	// runs is a list of test runs to execute.
 	Runs []TestRun

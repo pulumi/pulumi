@@ -15,62 +15,40 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// preparePluginEnv prepares environment variables for the plugin including
-// RPC target, cloud URL, and access token from the workspace.
-func preparePluginEnv(ws pkgWorkspace.Context, grpcServer *plugin.GrpcServer) []string {
-	pluginEnv := os.Environ()
-	pluginEnv = append(pluginEnv, "PULUMI_RPC_TARGET="+grpcServer.Addr())
-
-	// Get current cloud URL from workspace
-	project, _, err := ws.ReadProject()
-	if err == nil {
-		cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
-		if err == nil {
-			cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
-			pluginEnv = append(pluginEnv, "PULUMI_API="+cloudURL)
-
-			// Get account credentials for this cloud URL
-			creds, err := ws.GetStoredCredentials()
-			if err == nil {
-				if token, ok := creds.AccessTokens[cloudURL]; ok && token != "" {
-					pluginEnv = append(pluginEnv, "PULUMI_ACCESS_TOKEN="+token)
-				}
-			}
-		}
-	}
-
-	return pluginEnv
-}
-
-func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
+func newPluginRunCmd() *cobra.Command {
 	var kind string
 
 	cmd := &cobra.Command{
-		Use:    "run",
-		Hidden: !env.Dev.Value(),
-		Short:  "Run a command on a plugin binary",
+		Use:   "run",
+		Short: "Run a command on a plugin binary",
 		Long: "[EXPERIMENTAL] Run a command on a plugin binary.\n" +
 			"\n" +
 			"Directly executes a plugin binary, if VERSION is not specified " +
@@ -81,6 +59,12 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return fmt.Errorf("unrecognized plugin kind: %s", kind)
 			}
 			kind := apitype.PluginKind(kind)
+
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
 
 			source := args[0]
 			var pluginPath string
@@ -102,13 +86,14 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 					source = fmt.Sprintf("%s@%s", source, pluginSpec.Version)
 				}
 
-				d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
+				d := diag.DefaultSink(
+					cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{Color: cmdutil.GetGlobalColorization()})
 
 				pluginPath, err = workspace.GetPluginPath(ctx, d, pluginSpec, nil)
 				if err != nil {
 					// Try to install the plugin, unless auto plugin installs are turned off.
-					var me *workspace.MissingError
-					if !errors.As(err, &me) || env.DisableAutomaticPluginAcquisition.Value() {
+					_, ok := errors.AsType[*workspace.MissingError](err)
+					if !ok || env.DisableAutomaticPluginAcquisition.Value() {
 						// Not a MissingError, return the original error.
 						return fmt.Errorf("could not get plugin path: %w", err)
 					}
@@ -117,7 +102,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 						d.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext, cloudCredentialEnv)
 					if err != nil {
 						return err
 					}
@@ -131,7 +116,16 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			pluginArgs := args[1:]
 
-			pctx, err := plugin.NewContext(ctx, nil, nil, nil, nil, ".", nil, false, nil, schema.NewLoaderServerFromHost)
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), nil, nil, nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return fmt.Errorf("could not create plugin host: %w", err)
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil, cloudCredentialEnv)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}
@@ -144,17 +138,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 			defer grpcServer.Close()
 
-			// Prepare environment variables for the plugin
-			pluginEnvStrings := preparePluginEnv(ws, grpcServer)
-			// Convert []string to env.Env
-			pluginEnvMap := make(env.MapStore)
-			for _, envVar := range pluginEnvStrings {
-				parts := strings.SplitN(envVar, "=", 2)
-				if len(parts) == 2 {
-					pluginEnvMap[parts[0]] = parts[1]
-				}
-			}
-			pluginEnv := env.NewEnv(pluginEnvMap)
+			pluginEnv := env.NewEnv(env.MapStore{"PULUMI_RPC_TARGET": grpcServer.Addr()})
 
 			plugin, err := plugin.ExecPlugin(pctx, pluginPath, source, kind, pluginArgs, "", pluginEnv, false)
 			if err != nil {
@@ -165,20 +149,21 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// For stdin, we start a copy goroutine but don't wait for it since it will block
 			// indefinitely if there's no stdin input.
 
+			stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
 			var wg sync.WaitGroup
 			wg.Add(2) // Only wait for stdout and stderr, not stdin
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(os.Stdout, plugin.Stdout)
+				_, err := io.Copy(stdout, plugin.Stdout)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading plugin stdout: %v\n", err)
+					fmt.Fprintf(stderr, "error reading plugin stdout: %v\n", err)
 				}
 			}()
 			go func() {
 				defer wg.Done()
-				_, err := io.Copy(os.Stderr, plugin.Stderr)
+				_, err := io.Copy(stderr, plugin.Stderr)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error reading plugin stderr: %v\n", err)
+					fmt.Fprintf(stderr, "error reading plugin stderr: %v\n", err)
 				}
 			}()
 			// Copy stdin in a separate goroutine but don't wait for it.
@@ -196,7 +181,7 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return fmt.Errorf("plugin %s exited with error: %w", source, err)
 			}
 			if code != 0 {
-				os.Exit(code)
+				return pluginErrorCode{source, code}
 			}
 			return nil
 		},
@@ -216,3 +201,20 @@ func newPluginRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	return cmd
 }
+
+var _ cmdCmd.CustomExitCodeError = pluginErrorCode{}
+
+type pluginErrorCode struct {
+	plugin string
+	code   int
+}
+
+func (pec pluginErrorCode) CustomExitCode() int {
+	return pec.code
+}
+
+func (pec pluginErrorCode) Error() string {
+	return fmt.Sprintf("plugin %s exited with non-zero error code %d", pec.plugin, pec.code)
+}
+
+func (pec pluginErrorCode) Unwrap() error { return result.BailError(pec) }

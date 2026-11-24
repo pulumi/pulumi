@@ -67,13 +67,10 @@ describe("output-funcs", () => {
         ]);
     });
 
-    // TODO[pulumi/pulumi#7973] Node codegen does not respect default
-    // values at the moment, otherwise "b" parameter would receive the
-    // default value from the schema.
     it("funcWithDefaultValueOutput", (done) => {
         checkTable(done, res => JSON.parse(res.r), [
             {given: sut.funcWithDefaultValueOutput({"a": pulumi.output("my-a")}),
-             expect: {"a": "my-a"}},
+             expect: {"a": "my-a", "b": "b-default"}},
             {given: sut.funcWithDefaultValueOutput({"a": pulumi.output("my-a"),
                                                     "b": pulumi.output("my-b")}),
              expect: {"a": "my-a", "b": "my-b"}}

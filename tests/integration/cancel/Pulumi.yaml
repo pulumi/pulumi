@@ -3,4 +3,4 @@ description: A simple Python Pulumi program that sleeps for 30 seconds so we can
 runtime:
   name: python
   options:
-    virtualenv: venv
+    toolchain: uv

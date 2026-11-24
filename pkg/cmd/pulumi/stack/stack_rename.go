@@ -63,6 +63,7 @@ func newStackRenameCmd() *cobra.Command {
 				stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -97,11 +98,12 @@ func newStackRenameCmd() *cobra.Command {
 			}
 
 			// Update the current workspace state to have selected the new stack.
-			if err := state.SetCurrentStack(ws, newStackRef.FullyQualifiedName().String()); err != nil {
+			backendURL := state.BackendURLKey(s.Backend())
+			if err := state.SetCurrentStack(ws, backendURL, newStackRef.FullyQualifiedName().String()); err != nil {
 				return fmt.Errorf("setting current stack: %w", err)
 			}
 
-			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
+			fmt.Fprintf(cmd.OutOrStdout(), "Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
 			return nil
 		},
 	}

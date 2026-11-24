@@ -21,11 +21,12 @@ import (
 	"github.com/blang/semver"
 	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -46,7 +47,8 @@ func newInstallPluginFunc(pctx *plugin.Context) func(string) *semver.Version {
 			Name: pluginName,
 			Kind: apitype.ResourcePlugin,
 		}
-		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		version, err := pkgWorkspace.InstallPlugin(
+			pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext, pctx.CloudCredentialEnv)
 		if err != nil {
 			log(diag.Warning, fmt.Sprintf("failed to install provider %s: %v", pluginName, err))
 			return nil
@@ -66,9 +68,9 @@ func createPluginRPCServer(
 	installPlugin := newInstallPluginFunc(pctx)
 
 	baseMapper, err := pconvert.NewBasePluginMapper(
-		pconvert.DefaultWorkspace(),
+		pluginstorage.Instance,
 		"terraform",
-		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
+		pconvert.ProviderFactoryFromHost(ctx, pctx),
 		installPlugin,
 		nil,
 	)
@@ -79,7 +81,7 @@ func createPluginRPCServer(
 	// Wrap in a caching mapper for better performance
 	mapper := pconvert.NewCachingMapper(baseMapper)
 
-	loader := schema.NewPluginLoader(pctx.Host)
+	loader := schema.NewPluginLoader(pctx)
 
 	mapperServer := pconvert.NewMapperServer(mapper)
 	loaderServer := schema.NewLoaderServer(loader)

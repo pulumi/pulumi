@@ -48,7 +48,6 @@ import (
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
 type langhost struct {
-	ctx     *Context
 	runtime string
 	plug    *Plugin
 	client  pulumirpc.LanguageRuntimeClient
@@ -113,7 +112,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 				Name: strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"),
 				Kind: apitype.LanguagePlugin,
 			},
-			host.GetProjectPlugins(),
+			ctx.ProjectPlugins(),
 		)
 		if err != nil {
 			return nil, err
@@ -148,7 +147,6 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 	contract.Assertf(plug != nil, "unexpected nil language plugin for %s", runtime)
 
 	return &langhost{
-		ctx:     ctx,
 		runtime: runtime,
 		plug:    plug,
 		client:  client,
@@ -164,7 +162,7 @@ func GetLanguageAttachPort(runtime string) (*int, error) {
 	var optAttach string
 
 	if languagesEnvVar, has := os.LookupEnv("PULUMI_DEBUG_LANGUAGES"); has {
-		for _, provider := range strings.Split(languagesEnvVar, ",") {
+		for provider := range strings.SplitSeq(languagesEnvVar, ",") {
 			parts := strings.SplitN(provider, ":", 2)
 
 			if parts[0] == runtime {
@@ -213,25 +211,26 @@ func buildArgsForNewPlugin(host Host) ([]string, error) {
 	return args, nil
 }
 
-func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.LanguageRuntimeClient) LanguageRuntime {
+func NewLanguageRuntimeClient(runtime string, client pulumirpc.LanguageRuntimeClient) LanguageRuntime {
 	return &langhost{
-		ctx:     ctx,
 		runtime: runtime,
 		client:  client,
 	}
 }
 
 // GetRequiredPackages computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error) {
+func (h *langhost) GetRequiredPackages(
+	ctx context.Context, info ProgramInfo,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) executing",
 		h.runtime, info)
 
 	minfo, err := info.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	resp, err := h.client.GetRequiredPackages(h.ctx.Request(), &pulumirpc.GetRequiredPackagesRequest{
+	resp, err := h.client.GetRequiredPackages(ctx, &pulumirpc.GetRequiredPackagesRequest{
 		Info: minfo,
 	})
 	if err != nil {
@@ -242,9 +241,9 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPackages
 		// method.  In such cases, fallback to using GetRequiredPlugins and don't report any parameterized packages.
 		if rpcError.Code() == codes.Unimplemented {
-			plugins, err := h.getRequiredPlugins(info)
+			plugins, err := h.getRequiredPlugins(ctx, info)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			packages := make([]workspace.PackageDescriptor, len(plugins))
 			for i, plugin := range plugins {
@@ -252,42 +251,53 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 					PluginDescriptor: plugin,
 				}
 			}
-			return packages, nil
+			return packages, nil, nil
 		}
 
-		return nil, rpcError
+		return nil, nil, rpcError
 	}
 
-	results := slice.Prealloc[workspace.PackageDescriptor](len(resp.Packages))
+	packageDescriptors := slice.Prealloc[workspace.PackageDescriptor](len(resp.Packages))
+	packageSpecs := slice.Prealloc[workspace.PackageSpec](len(resp.Specs))
 	for _, info := range resp.Packages {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
+				return nil, nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
 			}
 			version = &sv
 		}
 		if !apitype.IsPluginKind(info.Kind) {
-			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
+			return nil, nil, fmt.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
-		var parameterization *workspace.Parameterization
-		if info.Parameterization != nil {
-			sv, err := semver.ParseTolerant(info.Parameterization.Version)
+		unmarshal := func(p *pulumirpc.PackageParameterization) (*workspace.Parameterization, error) {
+			if p == nil {
+				return nil, nil
+			}
+			sv, err := semver.ParseTolerant(p.Version)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"illegal semver returned by language host: %s@%s: %w",
-					info.GetName(), info.Parameterization.Version, err)
+					info.GetName(), p.Version, err)
 			}
-
-			parameterization = &workspace.Parameterization{
-				Name:    info.Parameterization.Name,
+			return &workspace.Parameterization{
+				Name:    p.Name,
 				Version: sv,
-				Value:   info.Parameterization.Value,
-			}
+				Value:   p.Value,
+			}, nil
 		}
 
-		results = append(results, workspace.PackageDescriptor{
+		parameterization, err := unmarshal(info.Parameterization)
+		if err != nil {
+			return nil, nil, err
+		}
+		extensionParameterization, err := unmarshal(info.Extension)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		packageDescriptors = append(packageDescriptors, workspace.PackageDescriptor{
 			PluginDescriptor: workspace.PluginDescriptor{
 				Name:              info.Name,
 				Kind:              apitype.PluginKind(info.Kind),
@@ -295,17 +305,28 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 				PluginDownloadURL: info.Server,
 				Checksums:         info.Checksums,
 			},
-			Parameterization: parameterization,
+			Parameterization:          parameterization,
+			ExtensionParameterization: extensionParameterization,
+		})
+	}
+
+	for _, spec := range resp.Specs {
+		packageSpecs = append(packageSpecs, workspace.PackageSpec{
+			Source:            spec.GetSource(),
+			Version:           spec.GetVersion(),
+			Parameters:        spec.GetParameters(),
+			Checksums:         spec.GetChecksums(),
+			PluginDownloadURL: spec.GetServer(),
 		})
 	}
 
 	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) success: #versions=%d",
-		h.runtime, info, len(results))
-	return results, nil
+		h.runtime, info, len(packageDescriptors))
+	return packageDescriptors, packageSpecs, nil
 }
 
 // getRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescriptor, error) {
+func (h *langhost) getRequiredPlugins(ctx context.Context, info ProgramInfo) ([]workspace.PluginDescriptor, error) {
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) executing",
 		h.runtime, info)
 
@@ -316,10 +337,10 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescr
 
 	// this is deprecated and will be removed in a future release, but we use it for backcompat for now until
 	// all language hosts are update to GetRequiredPackages.
-	resp, err := h.client.GetRequiredPlugins(h.ctx.Request(), &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck
-		Project: "deprecated",
-		Pwd:     info.ProgramDirectory(),
-		Program: info.EntryPoint(),
+	resp, err := h.client.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{ //nolint:staticcheck
+		Project: "deprecated",            //nolint:staticcheck
+		Pwd:     info.ProgramDirectory(), //nolint:staticcheck
+		Program: info.EntryPoint(),       //nolint:staticcheck
 		Info:    minfo,
 	})
 	if err != nil {
@@ -367,7 +388,7 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescr
 // info.DryRun is true, the code must not assume that side-effects or final values resulting from
 // resource deployments are actually available.  If it is false, on the other hand, a real
 // deployment is occurring and it may safely depend on these.
-func (h *langhost) Run(info RunInfo) (string, bool, error) {
+func (h *langhost) Run(ctx context.Context, info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,%s,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Info, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
 	config := make(map[string]string, len(info.Config))
@@ -384,21 +405,22 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		return "", false, err
 	}
 
-	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
+	resp, err := h.client.Run(ctx, &pulumirpc.RunRequest{
 		MonitorAddress:   info.MonitorAddress,
 		Pwd:              info.Pwd,
-		Program:          info.Info.EntryPoint(),
+		Program:          info.Info.EntryPoint(), //nolint:staticcheck
 		Args:             info.Args,
 		Project:          info.Project,
 		Stack:            info.Stack,
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           info.DryRun,
-		QueryMode:        info.QueryMode,
+		QueryMode:        info.QueryMode, //nolint:staticcheck
 		Parallel:         info.Parallel,
 		Organization:     info.Organization,
 		Info:             minfo,
 		LoaderTarget:     info.LoaderAddress,
+		MapperTarget:     info.MapperAddress,
 		AttachDebugger:   info.AttachDebugger,
 	})
 	if err != nil {
@@ -416,10 +438,10 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 }
 
 // GetPluginInfo returns this plugin's information.
-func (h *langhost) GetPluginInfo() (PluginInfo, error) {
+func (h *langhost) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
 
-	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
+	resp, err := h.client.GetPluginInfo(ctx, &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
@@ -448,7 +470,7 @@ func (h *langhost) Close() error {
 	return nil
 }
 
-func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
+func (h *langhost) InstallDependencies(ctx context.Context, request InstallDependenciesRequest) (
 	io.Reader,
 	io.Reader,
 	<-chan error,
@@ -462,8 +484,8 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 		return nil, nil, nil, err
 	}
 
-	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:               request.Info.ProgramDirectory(),
+	resp, err := h.client.InstallDependencies(ctx, &pulumirpc.InstallDependenciesRequest{
+		Directory:               request.Info.ProgramDirectory(), //nolint:staticcheck
 		IsTerminal:              cmdutil.GetGlobalColorization() != colors.Never,
 		Info:                    minfo,
 		UseLanguageVersionTools: request.UseLanguageVersionTools,
@@ -543,7 +565,7 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 	return outr, errr, done, nil
 }
 
-func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error) {
+func (h *langhost) RuntimeOptionsPrompts(ctx context.Context, info ProgramInfo) ([]RuntimeOptionPrompt, error) {
 	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() executing", h.runtime)
 
 	minfo, err := info.Marshal()
@@ -551,7 +573,7 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 		return []RuntimeOptionPrompt{}, err
 	}
 
-	resp, err := h.client.RuntimeOptionsPrompts(h.ctx.Request(), &pulumirpc.RuntimeOptionsRequest{
+	resp, err := h.client.RuntimeOptionsPrompts(ctx, &pulumirpc.RuntimeOptionsRequest{
 		Info: minfo,
 	})
 	if err != nil {
@@ -577,7 +599,7 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 	return prompts, nil
 }
 
-func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) error {
+func (h *langhost) Template(ctx context.Context, info ProgramInfo, projectName tokens.PackageName) error {
 	logging.V(7).Infof("langhost[%v].Template() executing", h.runtime)
 
 	minfo, err := info.Marshal()
@@ -585,7 +607,7 @@ func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) er
 		return err
 	}
 
-	_, err = h.client.Template(h.ctx.Request(), &pulumirpc.TemplateRequest{
+	_, err = h.client.Template(ctx, &pulumirpc.TemplateRequest{
 		Info:        minfo,
 		ProjectName: string(projectName),
 	})
@@ -603,13 +625,13 @@ func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) er
 	return nil
 }
 
-func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
+func (h *langhost) About(ctx context.Context, info ProgramInfo) (AboutInfo, error) {
 	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
 	minfo, err := info.Marshal()
 	if err != nil {
 		return AboutInfo{}, err
 	}
-	resp, err := h.client.About(h.ctx.Request(), &pulumirpc.AboutRequest{
+	resp, err := h.client.About(ctx, &pulumirpc.AboutRequest{
 		Info: minfo,
 	})
 	if err != nil {
@@ -629,7 +651,9 @@ func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 	return result, nil
 }
 
-func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error) {
+func (h *langhost) GetProgramDependencies(
+	ctx context.Context, info ProgramInfo, transitiveDependencies bool,
+) ([]DependencyInfo, error) {
 	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(%s)", h.runtime, info.String())
 	minfo, err := info.Marshal()
 	if err != nil {
@@ -637,7 +661,7 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 	}
 
 	logging.V(7).Infof("%s executing", prefix)
-	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
+	resp, err := h.client.GetProgramDependencies(ctx, &pulumirpc.GetProgramDependenciesRequest{
 		TransitiveDependencies: transitiveDependencies,
 		Info:                   minfo,
 	})
@@ -749,11 +773,11 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 }
 
 func (h *langhost) GenerateProject(
-	sourceDirectory, targetDirectory, project string, strict bool,
+	ctx context.Context, sourceDirectory, targetDirectory, project string, strict bool,
 	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
-	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
+	resp, err := h.client.GenerateProject(ctx, &pulumirpc.GenerateProjectRequest{
 		SourceDirectory:   sourceDirectory,
 		TargetDirectory:   targetDirectory,
 		Project:           project,
@@ -778,12 +802,13 @@ func (h *langhost) GenerateProject(
 }
 
 func (h *langhost) GeneratePackage(
+	ctx context.Context,
 	directory string, schema string, extraFiles map[string][]byte,
 	loaderTarget string, localDependencies map[string]string,
 	local bool,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
-	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
+	resp, err := h.client.GeneratePackage(ctx, &pulumirpc.GeneratePackageRequest{
 		Directory:         directory,
 		Schema:            schema,
 		ExtraFiles:        extraFiles,
@@ -808,10 +833,10 @@ func (h *langhost) GeneratePackage(
 	return diags, nil
 }
 
-func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string, strict bool,
+func (h *langhost) GenerateProgram(ctx context.Context, program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
-	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
+	resp, err := h.client.GenerateProgram(ctx, &pulumirpc.GenerateProgramRequest{
 		Source:       program,
 		LoaderTarget: loaderTarget,
 		Strict:       strict,
@@ -833,6 +858,7 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 }
 
 func (h *langhost) Pack(
+	ctx context.Context,
 	packageDirectory string, destinationDirectory string,
 ) (string, error) {
 	label := fmt.Sprintf("langhost[%v].Pack(%s, %s)", h.runtime, packageDirectory, destinationDirectory)
@@ -848,7 +874,7 @@ func (h *langhost) Pack(
 		return "", err
 	}
 
-	req, err := h.client.Pack(h.ctx.Request(), &pulumirpc.PackRequest{
+	req, err := h.client.Pack(ctx, &pulumirpc.PackRequest{
 		PackageDirectory:     packageDirectory,
 		DestinationDirectory: destinationDirectory,
 	})
@@ -891,7 +917,7 @@ func languageHandshake(
 }
 
 func (h *langhost) Link(
-	info ProgramInfo, deps []workspace.LinkablePackageDescriptor, loaderTarget string,
+	ctx context.Context, info ProgramInfo, deps []workspace.LinkablePackageDescriptor, loaderTarget string,
 ) (string, error) {
 	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, deps)
 	logging.V(7).Infof("%s executing", label)
@@ -929,7 +955,7 @@ func (h *langhost) Link(
 		})
 	}
 
-	res, err := h.client.Link(h.ctx.Request(), &pulumirpc.LinkRequest{
+	res, err := h.client.Link(ctx, &pulumirpc.LinkRequest{
 		Info:         minfo,
 		Packages:     packages,
 		LoaderTarget: loaderTarget,
@@ -944,11 +970,11 @@ func (h *langhost) Link(
 	return res.ImportInstructions, nil
 }
 
-func (h *langhost) Cancel() error {
+func (h *langhost) Cancel(ctx context.Context) error {
 	label := fmt.Sprintf("langhost[%v].Cancel()", h.runtime)
 	logging.V(7).Infof("%s executing", label)
 
-	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
+	_, err := h.client.Cancel(ctx, &emptypb.Empty{})
 	if err != nil {
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {

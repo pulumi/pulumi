@@ -24,9 +24,9 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // LargeProvider is a test provider that exercises the provider protocol by returning really large strings, lists, and
@@ -47,10 +47,6 @@ func (p *LargeProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *LargeProvider) Pkg() tokens.Package {
-	return "large"
-}
-
 func (p *LargeProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
@@ -61,7 +57,30 @@ func (p *LargeProvider) GetSchema(
 			},
 		},
 	}
+	mapResourceInputProperties := map[string]schema.PropertySpec{
+		"value": {
+			TypeSpec: schema.TypeSpec{
+				Type: "string",
+			},
+		},
+		"depth": {
+			TypeSpec: schema.TypeSpec{
+				Type: "integer",
+			},
+		},
+	}
+	mapResourceOutputProperties := map[string]schema.PropertySpec{
+		"value": {
+			TypeSpec: schema.TypeSpec{
+				Type: "object",
+				AdditionalProperties: &schema.TypeSpec{
+					Ref: "pulumi.json#/Any",
+				},
+			},
+		},
+	}
 	resourceRequired := []string{"value"}
+	mapResourceInputRequired := []string{"value", "depth"}
 
 	pkg := schema.PackageSpec{
 		Name:    "large",
@@ -76,6 +95,15 @@ func (p *LargeProvider) GetSchema(
 				InputProperties: resourceProperties,
 				RequiredInputs:  resourceRequired,
 			},
+			"large:index:Map": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: mapResourceOutputProperties,
+					Required:   resourceRequired,
+				},
+				InputProperties: mapResourceInputProperties,
+				RequiredInputs:  mapResourceInputRequired,
+			},
 		},
 	}
 
@@ -87,20 +115,20 @@ func (p *LargeProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "version is not a string")}, nil
 	}
-	if version.StringValue() != "4.3.2" {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 4.3.2")}, nil
+	if version.AsString() != "4.3.2" {
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "version is not 4.3.2")}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -110,29 +138,42 @@ func (p *LargeProvider) CheckConfig(
 func (p *LargeProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	if req.URN.Type() != "large:index:String" {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
+	if req.URN.Type() != "large:index:String" && req.URN.Type() != "large:index:Map" {
 		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type()))}, nil
 	}
 
-	// Expect just the boolean value
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
 	if !value.IsString() {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "value is not a string")}, nil
 	}
-	if len(req.News) != 1 {
-		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News))}, nil
+
+	expectedLen := 1
+	if req.URN.Type() == "large:index:Map" {
+		expectedLen = 2
+		depth, ok := news["depth"]
+		if !ok {
+			return plugin.CheckResponse{Failures: makeCheckFailure("depth", "missing depth")}, nil
+		}
+		if !depth.IsNumber() {
+			return plugin.CheckResponse{Failures: makeCheckFailure("depth", "depth is not a number")}, nil
+		}
+	}
+	if len(news) != expectedLen {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news))}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *LargeProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if req.URN.Type() != "large:index:String" {
+	properties := resource.ToResourcePropertyMap(req.Properties)
+	if req.URN.Type() != "large:index:String" && req.URN.Type() != "large:index:Map" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
@@ -143,17 +184,42 @@ func (p *LargeProvider) Create(
 		id = ""
 	}
 
-	// Take the input value and _massively_ expand it.
-	value, ok := req.Properties["value"]
+	value, ok := properties["value"]
 	if !ok {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, errors.New("missing value")
 	}
+	// Take the input value and _massively_ expand it.
 	if !value.IsString() {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, errors.New("value is not a string")
+	}
+
+	if req.URN.Type() == "large:index:Map" {
+		depth, ok := properties["depth"]
+		if !ok || !depth.IsNumber() {
+			return plugin.CreateResponse{
+				Status: resource.StatusUnknown,
+			}, errors.New("missing or invalid depth")
+		}
+		// Build a deeply-nested map with the input value at the leaf.
+		built := resource.NewProperty(resource.PropertyMap{
+			"value": value,
+		})
+		for range int(depth.NumberValue()) {
+			built = resource.NewProperty(resource.PropertyMap{
+				"next": built,
+			})
+		}
+		return plugin.CreateResponse{
+			ID: resource.ID(id),
+			Properties: property.NewMap(map[string]property.Value{
+				"value": resource.FromResourcePropertyValue(built),
+			}),
+			Status: resource.StatusOK,
+		}, nil
 	}
 
 	// aim for 100mb of data (400mb is the size limit we normally set, but nodejs is far more limited)
@@ -164,7 +230,7 @@ func (p *LargeProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: result,
+		Properties: resource.FromResourcePropertyMap(result),
 		Status:     resource.StatusOK,
 	}, nil
 }

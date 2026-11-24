@@ -25,13 +25,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestReplacementTrigger(t *testing.T) {
@@ -51,10 +52,10 @@ func TestReplacementTrigger(t *testing.T) {
 		}),
 	}
 
-	value := resource.NewPropertyValue("first")
+	value := property.New("first")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs:             property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			ReplacementTrigger: value,
 		})
 
@@ -62,7 +63,7 @@ func TestReplacementTrigger(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	project := p.GetProject()
@@ -72,7 +73,8 @@ func TestReplacementTrigger(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
@@ -88,9 +90,10 @@ func TestReplacementTrigger(t *testing.T) {
 	assert.Equal(t, 2, len(snap.Resources))
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
-	value = resource.NewPropertyValue("second")
+	value = property.New("second")
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			operations := []display.StepOp{}
 
@@ -128,10 +131,10 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 		}),
 	}
 
-	value := resource.NewPropertyValue("first")
+	value := property.New("first")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs:             property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			ReplacementTrigger: value,
 		})
 
@@ -139,7 +142,7 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	project := p.GetProject()
@@ -150,9 +153,10 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
 	// Making this value secret should not trigger a replace, as the underlying value is still the same.
-	value = resource.MakeSecret(value)
+	value = value.WithSecret(true)
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
@@ -186,10 +190,10 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 		}),
 	}
 
-	value := resource.NewPropertyValue([]resource.PropertyValue{resource.NewPropertyValue("first")})
+	value := property.New([]property.Value{property.New("first")})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs:             property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			ReplacementTrigger: value,
 		})
 
@@ -197,7 +201,7 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	project := p.GetProject()
@@ -208,9 +212,10 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
 	// Making the inner value secret should not trigger a replace, as the underlying value is still the same.
-	value = resource.NewPropertyValue([]resource.PropertyValue{resource.MakeSecret(resource.NewPropertyValue("first"))})
+	value = property.New([]property.Value{property.New("first").WithSecret(true)})
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
@@ -245,23 +250,20 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 	}
 
 	// A known output should not trigger a replace.
-	value := resource.NewProperty(resource.Output{
-		Element:      resource.NewPropertyValue("first"),
-		Known:        true,
-		Secret:       false,
-		Dependencies: []resource.URN{},
-	})
+	value := property.New("first").WithDependencies([]resource.URN{})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs:             property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			ReplacementTrigger: value,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	project := p.GetProject()
@@ -287,12 +289,7 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
 	// Now we make it unknown...
-	value = resource.NewProperty(resource.Output{
-		Element:      resource.NewPropertyValue("first"),
-		Known:        false,
-		Secret:       false,
-		Dependencies: []resource.URN{},
-	})
+	value = property.New(property.Computed).WithDependencies([]resource.URN{})
 
 	// Unknown output values during preview runs should trigger a replace.
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
@@ -349,17 +346,19 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 		}),
 	}
 
-	value := resource.MakeComputed(resource.NewPropertyValue("first"))
+	value := property.New(property.Computed)
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs:             property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			ReplacementTrigger: value,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	project := p.GetProject()
@@ -386,7 +385,7 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 
 	require.NoError(t, err)
 
-	value = resource.MakeComputed(resource.NewPropertyValue("first"))
+	value = property.New(property.Computed)
 
 	// Unknown values during non-preview runs should trigger an error.
 	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
@@ -432,17 +431,17 @@ func TestReplacementTriggerOutputWrappedPlainValue(t *testing.T) {
 	}
 
 	// First run: plain "first" value (no output wrapper).
-	value := resource.NewPropertyValue("first")
+	value := property.New("first")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs:             property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			ReplacementTrigger: value,
 		})
 		require.NoError(t, err)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	project := p.GetProject()
@@ -450,15 +449,11 @@ func TestReplacementTriggerOutputWrappedPlainValue(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 	// The snapshot stores the plain string.
-	assert.Equal(t, resource.NewPropertyValue("first"), snap.Resources[1].ReplacementTrigger)
+	assert.Equal(t, property.New("first"), snap.Resources[1].ReplacementTrigger)
 
 	// Second run: same inner value wrapped in a known output. This should NOT trigger a replacement because the
 	// underlying value is identical.
-	value = resource.NewProperty(resource.Output{
-		Element:      resource.NewPropertyValue("first"),
-		Known:        true,
-		Dependencies: []resource.URN{},
-	})
+	value = property.New("first").WithDependencies([]resource.URN{})
 
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
@@ -473,11 +468,7 @@ func TestReplacementTriggerOutputWrappedPlainValue(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 
 	// Third run: a different value wrapped in a known output -- should trigger a replace.
-	value = resource.NewProperty(resource.Output{
-		Element:      resource.NewPropertyValue("second"),
-		Known:        true,
-		Dependencies: []resource.URN{},
-	})
+	value = property.New("second").WithDependencies([]resource.URN{})
 
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {

@@ -15,9 +15,11 @@
 package tests
 
 import (
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +44,7 @@ func init() {
 					// however with the python SDK, that is not the case, instead the default
 					// provider gets registered first. This is indicating that something might be wrong
 					// with the how python SDK registers resources
-					var stack *resource.State
+					var stack *pkgresource.State
 					for _, r := range snap.Resources {
 						if r.Type == resource.RootStackType {
 							stack = r
@@ -52,10 +54,10 @@ func init() {
 
 					require.NotNil(l, stack, "expected a stack resource")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					AssertPropertyMapMember(l, outputs, "outputInput", resource.NewProperty("Goodbye world"))
-					AssertPropertyMapMember(l, outputs, "unit", resource.NewProperty("Hello world"))
+					AssertPropertyMapMember(l, outputs, "outputInput", property.New("Goodbye world"))
+					AssertPropertyMapMember(l, outputs, "unit", property.New("Hello world"))
 				},
 			},
 		},

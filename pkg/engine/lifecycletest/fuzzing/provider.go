@@ -23,10 +23,11 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"pgregory.net/rapid"
 )
 
@@ -82,13 +83,13 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 // debugging output and error messages.
 func (ps *ProviderSpec) Pretty(indent string) string {
 	var rendered strings.Builder
-	rendered.WriteString(fmt.Sprintf("%sProvider %p", indent, ps))
+	fmt.Fprintf(&rendered, "%sProvider %p", indent, ps)
 	if len(ps.Packages) == 0 {
-		rendered.WriteString(fmt.Sprintf("\n%s  No packages", indent))
+		fmt.Fprintf(&rendered, "\n%s  No packages", indent)
 	} else {
-		rendered.WriteString(fmt.Sprintf("\n%s  Packages (%d):", indent, len(ps.Packages)))
+		fmt.Fprintf(&rendered, "\n%s  Packages (%d):", indent, len(ps.Packages))
 		for _, p := range slices.Sorted(maps.Keys(ps.Packages)) {
-			rendered.WriteString(fmt.Sprintf("\n%s    %s", indent, p))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, p)
 		}
 	}
 
@@ -105,7 +106,7 @@ func (ps *ProviderSpec) Pretty(indent string) string {
 		len(renderedUpdate) > 0
 
 	if !hasAny {
-		rendered.WriteString(fmt.Sprintf("\n%s  No modified operations", indent))
+		fmt.Fprintf(&rendered, "\n%s  No modified operations", indent)
 	} else {
 		rendered.WriteString(renderedCreate)
 		rendered.WriteString(renderedDelete)
@@ -138,15 +139,16 @@ func (pcs ProviderCreateSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sCreate:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sCreate:", indent)
 	for r, action := range pcs {
 		switch action {
 		case ProviderCreateFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a CreateF-compatible callback that implements this ProviderCreateSpec.
@@ -163,7 +165,7 @@ func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateReq
 
 		// To avoid having to randomly generate IDs here, we allow resources to specify an __id input that we'll use as the
 		// ID we return. ResourceSpec.AsResource makes use of this, for instance.
-		id := req.Properties["__id"].String()
+		id := req.Properties.Get("__id").GoString()
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
 			Properties: req.Properties,
@@ -193,15 +195,16 @@ func (pds ProviderDeleteSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sDelete:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sDelete:", indent)
 	for r, action := range pds {
 		switch action {
 		case ProviderDeleteFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s\n", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s\n", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a DeleteF-compatible callback that implements this ProviderDeleteSpec.
@@ -248,21 +251,22 @@ func (pds ProviderDiffSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sDiff:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sDiff:", indent)
 	for r, action := range pds {
 		switch action {
 		case ProviderDiffDeleteBeforeReplace:
-			rendered += fmt.Sprintf("\n%s  -+ %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  -+ %s", indent, Colored(r))
 		case ProviderDiffDeleteAfterReplace:
-			rendered += fmt.Sprintf("\n%s  +- %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  +- %s", indent, Colored(r))
 		case ProviderDiffChange:
-			rendered += fmt.Sprintf("\n%s  ~  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  ~  %s", indent, Colored(r))
 		case ProviderDiffFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a DiffF-compatible callback that implements this ProviderDiffSpec.
@@ -315,17 +319,18 @@ func (prs ProviderReadSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sRead:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sRead:", indent)
 	for r, action := range prs {
 		switch action {
 		case ProviderReadDeleted:
-			rendered += fmt.Sprintf("\n%s  -  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  -  %s", indent, Colored(r))
 		case ProviderReadFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a ReadF-compatible callback that implements this ProviderReadSpec.
@@ -342,7 +347,7 @@ func (prs ProviderReadSpec) AsReadF() func(context.Context, plugin.ReadRequest) 
 
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
-				Outputs: resource.PropertyMap{},
+				Outputs: new(property.Map{}),
 			},
 			Status: resource.StatusOK,
 		}, nil
@@ -370,15 +375,16 @@ func (pus ProviderUpdateSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sUpdate:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sUpdate:", indent)
 	for r, action := range pus {
 		switch action {
 		case ProviderUpdateFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns an UpdateF-compatible callback that implements this ProviderUpdateSpec.

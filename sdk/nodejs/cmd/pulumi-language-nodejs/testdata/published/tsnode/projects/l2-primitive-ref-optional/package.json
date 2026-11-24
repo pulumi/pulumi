@@ -1,0 +1,11 @@
+{
+	"name": "l2-primitive-ref-optional",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/optional-primitive-ref": "ROOT/artifacts/pulumi-optional-primitive-ref-40.0.0.tgz"
+	}
+}

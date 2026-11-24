@@ -28,11 +28,19 @@ import {
     containsUnknownValues,
 } from "./rpc";
 import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
+import { getParentStackTraceHandle, getStore } from "./state";
+import { getStackTrace, marshalSourcePosition, marshalStackTrace } from "./stackTrace";
+import type { SourcePosition } from "./resource";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 import { CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
-import { gatherExplicitDependencies, getAllTransitivelyReferencedResources } from "./dependsOn";
+import {
+    gatherExplicitDependencies,
+    getAllTransitivelyReferencedResourceURNs,
+    getAllTransitivelyReferencedResources,
+} from "./dependsOn";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as resourceproto from "../proto/resource_pb";
@@ -82,6 +90,8 @@ export function invoke(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
+    ensureNotInStateMigration("invoke");
+
     const optsCopy = { ...opts };
     if ("dependsOn" in optsCopy) {
         // DependsOn is only allowed for invokeOutput.
@@ -105,6 +115,8 @@ export function invokeOutput<T>(
     opts: InvokeOutputOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("invoke");
+
     const [output, resolve] = createOutput<T>(`invoke(${tok})`);
     invokeAsync(tok, props, opts, packageRef, true /* checkDependencies */)
         .then((response) => {
@@ -139,6 +151,8 @@ export function invokeSingle(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Promise<any> {
+    ensureNotInStateMigration("invoke");
+
     return invokeAsync(tok, props, opts, packageRef).then((response) => {
         // ignore secrets for plain invoke
         const { result } = response;
@@ -156,6 +170,8 @@ export function invokeSingleOutput<T>(
     opts: InvokeOptions = {},
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("invoke");
+
     const [output, resolve] = createOutput<T>(`invokeSingleOutput(${tok})`);
     invokeAsync(tok, props, opts, packageRef, true /* checkDependencies */)
         .then((response) => {
@@ -182,6 +198,9 @@ async function invokeAsync(
     containsSecrets: boolean;
     dependencies: Resource[];
 }> {
+    const stackTrace = getStackTrace(0);
+    const sourcePosition = getInvokeSourcePosition(stackTrace);
+    const parentStackTraceHandle = getParentStackTraceHandle();
     const label = `Invoking function: tok=${tok} asynchronously`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -192,8 +211,17 @@ async function invokeAsync(
     try {
         // The direct dependencies of the invoke call from the dependsOn option.
         const dependsOnDeps = await gatherExplicitDependencies(opts.dependsOn);
-        // The dependencies of the inputs to the invoke call.
-        const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        // The dependencies of the inputs to the invoke call. The output-returning invoke variants resolve a
+        // serialization failure into the returned Output rather than surfacing it, so log it here to keep it visible.
+        let serialized: Record<string, any>;
+        let deps: Map<string, Set<Resource>>;
+        try {
+            [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        } catch (err) {
+            const detail = err instanceof Error ? err.stack || err.message : String(err);
+            log.error(`Error serializing arguments for invoke ${tok}: ${detail}`);
+            throw err;
+        }
         if (containsUnknownValues(serialized)) {
             // if any of the input properties are unknown,
             // make sure the entire response is marked as unknown
@@ -210,10 +238,8 @@ async function invokeAsync(
         // these should only receive plain arguments, but this is not strictly
         // enforced, and in practice people pass in outputs. This happens to
         // work because we serialize the arguments.
+        let invokeDependsOn: Set<string> | undefined;
         if (checkDependencies) {
-            // If we depend on any CustomResources, we need to ensure that their
-            // ID is known before proceeding. If it is not known, we will return
-            // an unknown result.
             const resourcesToWaitFor = new Set<Resource>(dependsOnDeps);
             // Add the dependencies from the inputs to the set of resources to wait for.
             for (const resourceDeps of deps.values()) {
@@ -221,42 +247,53 @@ async function invokeAsync(
                     resourcesToWaitFor.add(value);
                 }
             }
-            // The expanded set of dependencies, including children of components.
-            const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
-            // Ensure that all resource IDs are known before proceeding.
-            for (const dep of expandedDeps.values()) {
-                // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
-                if (CustomResource.isInstance(dep) && dep.id) {
-                    const known = await dep.id.isKnown;
-                    if (!known) {
-                        return {
-                            result: {},
-                            isKnown: false,
-                            containsSecrets: false,
-                            dependencies: [],
-                        };
+            if (getStore().supportsInvokeDependsOn) {
+                invokeDependsOn = await getAllTransitivelyReferencedResourceURNs(resourcesToWaitFor, new Set());
+            } else {
+                // Older engines cannot gate invokes: if we depend on any CustomResources, we need to ensure
+                // that their ID is known before proceeding. If it is not known, we will return an unknown
+                // result.
+                //
+                // The expanded set of dependencies, including children of components.
+                const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
+                // Ensure that all resource IDs are known before proceeding.
+                for (const dep of expandedDeps.values()) {
+                    // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
+                    if (CustomResource.isInstance(dep) && dep.id) {
+                        const known = await dep.id.isKnown;
+                        if (!known) {
+                            return {
+                                result: {},
+                                isKnown: false,
+                                containsSecrets: false,
+                                dependencies: [],
+                            };
+                        }
                     }
                 }
             }
         }
 
         log.debug(
-            `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
+            `Invoke RPC prepared: tok=${tok}` + (excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``),
         );
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        // keep track of the the secretness of the inputs
+        // keep track of the secretness of the inputs
         // if any of the inputs are secret, the invoke response should be marked as secret
         const [plainInputs, inputsContainSecrets] = unwrapSecretValues(serialized);
-        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef);
+        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef, invokeDependsOn);
+        req.setSourceposition(marshalSourcePosition(sourcePosition));
+        req.setStacktrace(marshalStackTrace(stackTrace));
+        req.setParentstacktracehandle(parentStackTraceHandle || "");
 
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
                 monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
-                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}`);
                     if (err) {
                         // If the monitor is unavailable, it is in the process of shutting down or has already
                         // shut down. Don't emit an error and don't do any more RPCs, just exit.
@@ -287,6 +324,17 @@ async function invokeAsync(
             }
         }
 
+        // The engine declines to service an invoke whose dependencies are pending creation: the result is
+        // wholly unknown.
+        if (resp.getUnknown?.()) {
+            return {
+                result: {},
+                isKnown: false,
+                containsSecrets: false,
+                dependencies: flatDependencies,
+            };
+        }
+
         // Finally propagate any other properties that were given to us as outputs.
         const deserialized = deserializeResponse(tok, resp);
         return {
@@ -300,12 +348,32 @@ async function invokeAsync(
     }
 }
 
+function getInvokeSourcePosition(stackTrace: (SourcePosition | undefined)[]): SourcePosition | undefined {
+    // Generated SDK functions call the runtime's Invoke helpers. Walk past our internal frames (the ones in this file),
+    // then skip the SDK wrapper to select its caller in the user's program. The stack is captured in invokeAsync, so its
+    // first frame identifies this file. If the core Invoke implementation spans multiple files, we need to update this
+    // boundary detection.
+    const invokeURI = stackTrace[0]?.uri;
+    if (invokeURI === undefined) {
+        return undefined;
+    }
+    for (let index = 0; index < stackTrace.length; index++) {
+        if (stackTrace[index]?.uri === invokeURI) {
+            continue;
+        }
+        const callerIndex = index + 1; // skip the wrapper in the SDK
+        return stackTrace[callerIndex] ?? stackTrace[index];
+    }
+    return undefined;
+}
+
 async function createInvokeRequest(
     tok: string,
     serialized: any,
     provider: string | undefined,
     opts: InvokeOptions,
     packageRef?: Promise<string | undefined>,
+    dependsOn?: Set<string>,
 ) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
@@ -329,6 +397,9 @@ async function createInvokeRequest(
     req.setPlugindownloadurl(opts.pluginDownloadURL || "");
     req.setAcceptresources(!utils.disableResourceReferences);
     req.setPackageref(packageRefStr || "");
+    if (dependsOn !== undefined) {
+        req.setDependsonList(Array.from(dependsOn));
+    }
     return req;
 }
 
@@ -415,16 +486,27 @@ function callAsync<T>(
                     pluginDownloadURL = res.__pluginDownloadURL;
                 }
 
-                const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
-                    // We keep output values when serializing inputs for call.
-                    keepOutputValues: true,
-                    // We exclude resource references from 'argDependencies' when serializing inputs for call.
-                    // This way, component providers creating outputs for component inputs based on
-                    // 'argDependencies' won't create outputs for properties that only contain resource references.
-                    excludeResourceReferencesFromDependencies: true,
-                });
+                // The call variants resolve a serialization failure into the returned Output rather than
+                // surfacing it, so log it here to keep it visible.
+                let serialized: Record<string, any>;
+                let propertyDepsResources: Map<string, Set<Resource>>;
+                try {
+                    [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
+                        // We keep output values when serializing inputs for call.
+                        keepOutputValues: true,
+                        // We exclude resource references from 'argDependencies' when serializing inputs for call.
+                        // This way, component providers creating outputs for component inputs based on
+                        // 'argDependencies' won't create outputs for properties that only contain resource references.
+                        excludeResourceReferencesFromDependencies: true,
+                    });
+                } catch (err) {
+                    const detail = err instanceof Error ? err.stack || err.message : String(err);
+                    log.error(`Error serializing arguments for call ${tok}: ${detail}`);
+                    throw err;
+                }
                 log.debug(
-                    `Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
+                    `Call RPC prepared: tok=${tok}` +
+                        (excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``),
                 );
 
                 const req = await createCallRequest(
@@ -447,7 +529,7 @@ function callAsync<T>(
                         monitor.call(
                             req,
                             (err: grpc.ServiceError | null, innerResponse: providerproto.CallResponse) => {
-                                log.debug(`Call RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                                log.debug(`Call RPC finished: tok=${tok}; err: ${err}`);
                                 if (err) {
                                     // If the monitor is unavailable, it is in the process of shutting down or has already
                                     // shut down. Don't emit an error and don't do any more RPCs, just exit.
@@ -511,6 +593,8 @@ export function call<T>(
     res?: Resource,
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("call");
+
     const [output, resolve] = createOutput<T>(`call(${tok})`);
     callAsync(tok, props, res, packageRef)
         .then((response) => {
@@ -540,6 +624,8 @@ export function callSingle<T>(
     res?: Resource,
     packageRef?: Promise<string | undefined>,
 ): Output<T> {
+    ensureNotInStateMigration("call");
+
     const [output, resolve] = createOutput<T>(`callSingle(${tok})`);
     callAsync(tok, props, res, packageRef)
         .then((response) => {

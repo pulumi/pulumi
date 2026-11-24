@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"strconv"
 
 	"example.com/pulumi-primitive/sdk/go/v7/primitive"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -41,17 +42,17 @@ func main() {
 		if err != nil {
 			return err
 		}
-		idMap := map[string]interface{}{
+		idMap := pulumi.IDMap{
 			"source1Token": source1.ID(),
 			"source2Token": source2.ID(),
 		}
 		_, err = primitive.NewResource(ctx, "sink1", &primitive.ResourceArgs{
 			Boolean: pulumi.Bool(false),
-			Float:   idMap["source1Token"].(string),
-			Integer: idMap["source1Token"].(string),
-			String:  idMap["source1Token"].(string),
+			Float:   idMap["source1Token"].ToStringOutput().ApplyT(func(id string) (float64, error) { return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output),
+			Integer: idMap["source1Token"].ToStringOutput().ApplyT(strconv.Atoi).(pulumi.IntOutput),
+			String:  idMap["source1Token"],
 			NumberArray: pulumi.Float64Array{
-				idMap["source1Token"].(string),
+				idMap["source1Token"].ToStringOutput().ApplyT(func(id string) (float64, error) { return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output),
 			},
 			BooleanMap: pulumi.BoolMap{
 				"sink": pulumi.Bool(false),
@@ -61,7 +62,7 @@ func main() {
 			return err
 		}
 		sink2, err := primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
-			Boolean: idMap["source2Token"].(string),
+			Boolean: idMap["source2Token"].ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput),
 			Float:   pulumi.Float64(1),
 			Integer: pulumi.Int(2),
 			String:  pulumi.String("abc"),
@@ -69,14 +70,14 @@ func main() {
 				pulumi.Float64(3),
 			},
 			BooleanMap: pulumi.BoolMap{
-				"sink": idMap["source2Token"].(string),
+				"sink": idMap["source2Token"].ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput),
 			},
 		})
 		if err != nil {
 			return err
 		}
 		ctx.Export("ids", idMap)
-		ctx.Export("base64", sink2.ID().ApplyT(func(id string) (pulumi.String, error) {
+		ctx.Export("base64", sink2.ID().ApplyT(func(id pulumi.ID) (pulumi.String, error) {
 			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(id))), nil
 		}).(pulumi.StringOutput))
 		return nil

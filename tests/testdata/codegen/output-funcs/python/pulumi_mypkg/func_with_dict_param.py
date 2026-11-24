@@ -57,8 +57,8 @@ def func_with_dict_param(a: Optional[Mapping[str, _builtins.str]] = None,
 
     return AwaitableFuncWithDictParamResult(
         r=pulumi.get(__ret__, 'r'))
-def func_with_dict_param_output(a: Optional[pulumi.Input[Optional[Mapping[str, _builtins.str]]]] = None,
-                                b: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def func_with_dict_param_output(a: pulumi.Input[Optional[Optional[Mapping[str, _builtins.str]]]] = None,
+                                b: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                                 opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithDictParamResult]:
     """
     Check codegen of functions with a Dict<str,str> parameter.

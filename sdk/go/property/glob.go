@@ -32,17 +32,6 @@ func GlobFromSegments(segments ...GlobSegment) Glob {
 	return Glob{pathReprFromSegments(segments)}
 }
 
-// MustParseGlob parses text into a [Glob], panicking on parse errors.
-//
-// It is intended for tests and other contexts where the input is a known-good literal.
-func MustParseGlob(text string) Glob {
-	var g Glob
-	if err := g.UnmarshalText([]byte(text)); err != nil {
-		panic(err)
-	}
-	return g
-}
-
 var (
 	_ encoding.TextMarshaler   = Glob{}
 	_ encoding.TextUnmarshaler = &Glob{}
@@ -231,10 +220,10 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 			e := stack[i]
 			var expansion []entry
 			switch segment := segment.(type) {
-			case SplatSegment:
+			case splat:
 				switch {
 				case e.val.IsMap():
-					for k, v := range e.val.AsMap().AllStable {
+					for k, v := range e.val.AsMap().AllStable() {
 						expansion = append(expansion, entry{
 							path: e.path.appendKey(k),
 							val:  v,
@@ -243,7 +232,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 				case e.val.IsArray():
 					for j, v := range e.val.AsArray().AsSlice() {
 						expansion = append(expansion, entry{
-							path: e.path.appendIndex(uint64(j)), //nolint:gosec // j will always be >= 0
+							path: e.path.appendIndex(uint64(j)),
 							val:  v,
 						})
 					}
@@ -296,19 +285,19 @@ var (
 	_ GlobSegment = IndexSegment{}
 )
 
-var Splat SplatSegment
+var Splat splat
 
-type SplatSegment struct{}
+type splat struct{}
 
-func (SplatSegment) GoString() string   { return "property.Splat" }
+func (splat) GoString() string          { return "property.Splat" }
 func (s KeySegment) GoString() string   { return fmt.Sprintf("property.NewSegment(%q)", s.string) }
 func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.i) }
 
-func (SplatSegment) globApply(v Value) ([]Value, PathApplyFailure) {
+func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {
 	case v.IsMap():
 		values := make([]Value, 0, v.AsMap().Len())
-		for _, v := range v.AsMap().AllStable {
+		for _, v := range v.AsMap().AllStable() {
 			values = append(values, v)
 		}
 		return values, nil
@@ -363,7 +352,7 @@ func (g Glob) Matches(p Path) bool {
 				continue
 			}
 			return false
-		case SplatSegment:
+		case splat:
 			continue
 		default:
 			contract.Failf("invalid glob segment %T", gp)
@@ -378,4 +367,32 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 			return
 		}
 	}
+}
+
+// AppendSegment returns a new [Glob] with seg appended to its segments. The receiver
+// is not modified.
+//
+// For the common cases of appending a map key, array index, or splat, prefer
+// [Glob.AppendKey], [Glob.AppendIndex], or [Glob.AppendSplat] to avoid an explicit
+// segment construction.
+func (g Glob) AppendSegment(seg GlobSegment) Glob {
+	return Glob{g.appendGlobSegment(seg)}
+}
+
+// AppendKey returns a new [Glob] with a [KeySegment] for key appended. The receiver is
+// not modified.
+func (g Glob) AppendKey(key string) Glob {
+	return g.AppendSegment(KeySegment{key})
+}
+
+// AppendIndex returns a new [Glob] with an [IndexSegment] for i appended. The receiver
+// is not modified.
+func (g Glob) AppendIndex(i int) Glob {
+	return g.AppendSegment(IndexSegment{uint64(i)})
+}
+
+// AppendSplat returns a new [Glob] with a [Splat] segment appended. The receiver is
+// not modified.
+func (g Glob) AppendSplat() Glob {
+	return g.AppendSegment(Splat)
 }

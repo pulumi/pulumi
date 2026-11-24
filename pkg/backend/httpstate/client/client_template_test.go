@@ -22,9 +22,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -111,7 +113,7 @@ func TestStartTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -122,7 +124,7 @@ func TestStartTemplatePublish(t *testing.T) {
 			resp, err := client.StartTemplatePublish(t.Context(), tt.source, tt.publisher, tt.templateName, tt.version)
 
 			if tt.expectedError != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedError)
 				assert.Nil(t, resp)
 			} else {
@@ -195,7 +197,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -213,7 +215,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 			)
 
 			if tt.expectedError != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
 				require.NoError(t, err)
@@ -401,7 +403,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,
@@ -423,7 +425,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			err := registry.PublishTemplate(t.Context(), op)
 
 			if tt.errorMessage != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.errorMessage)
 			} else {
 				require.NoError(t, err)
@@ -589,7 +591,7 @@ func TestDownloadTemplate(t *testing.T) {
 		downloadURL := server.URL + "/api/template/download"
 
 		_, err := client.DownloadTemplate(t.Context(), downloadURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("ErrorResponseFromPresignedURL", func(t *testing.T) {
@@ -609,7 +611,7 @@ func TestDownloadTemplate(t *testing.T) {
 		presignedURL := presignedServer.URL + "/file.tar.gz?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
 		_, err := client.DownloadTemplate(t.Context(), presignedURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "HTTP 403")
 		assert.Contains(t, err.Error(), "Access denied")
 	})
@@ -624,7 +626,7 @@ func TestDownloadTemplate(t *testing.T) {
 		presignedURL := "http://127.0.0.1:1/invalid?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
 		_, err := client.DownloadTemplate(t.Context(), presignedURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("InvalidPresignedURL", func(t *testing.T) {
@@ -637,7 +639,7 @@ func TestDownloadTemplate(t *testing.T) {
 		presignedURL := "://invalid-url?X-Amz-Expires=3600&X-Amz-Signature=abc123"
 
 		_, err := client.DownloadTemplate(t.Context(), presignedURL)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -687,10 +689,10 @@ func TestListTemplates(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		// Call ListTemplates and collect results
-		searchName := "my-template"
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(t.Context(), &searchName) {
+		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
+			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
+		)) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
@@ -754,22 +756,22 @@ func TestListTemplates(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         firstPageTemplates,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
 				assert.Equal(t,
-					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-1",
+					"/api/registry/templates?continuationToken=next-page-token-1&limit=499&name=my-template",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
 					Templates:         secondPageTemplates,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
 				assert.Equal(t,
-					"/api/registry/templates?limit=499&name=my-template&continuationToken=next-page-token-2",
+					"/api/registry/templates?continuationToken=next-page-token-2&limit=499&name=my-template",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListTemplatesResponse{
@@ -785,15 +787,15 @@ func TestListTemplates(t *testing.T) {
 
 		mockClient := newMockClient(mockServer)
 
-		searchName := "my-template"
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.TemplateMetadata{}
-		for tmpl, err := range mockClient.ListTemplates(t.Context(), &searchName) {
+		for tmpl, err := range registry.Templates(mockClient.ListTemplates(
+			t.Context(), registry.ListTemplatesOptions{Name: "my-template"},
+		)) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, tmpl)
 		}
 
-		expectedTemplates := append(append(firstPageTemplates, secondPageTemplates...), thirdPageTemplates...)
+		expectedTemplates := slices.Concat(firstPageTemplates, secondPageTemplates, thirdPageTemplates)
 		assert.Equal(t, expectedTemplates, searchResults)
 		assert.Equal(t, 3, requestCount) // Ensure all three requests were made
 	})

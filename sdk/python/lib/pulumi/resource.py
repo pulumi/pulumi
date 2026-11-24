@@ -17,31 +17,33 @@
 import asyncio
 import copy
 import warnings
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import (
-    Optional,
-    Any,
-    Union,
     TYPE_CHECKING,
+    Any,
+    Optional,
+    Union,
     cast,
 )
-from collections.abc import Callable
-from collections.abc import Awaitable, Mapping, Sequence
-from . import _types
+
+from . import _types, log
+from . import urn as urn_util
+from .output import Output, _is_prompt, _map2_input, _map_input, _OutputData
 from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
+from .runtime._state_migration_context import _ensure_not_in_state_migration
 from .runtime.resource import (
     _pkg_from_type,
+    collapse_alias_to_urn,
     get_resource,
+    read_resource,
     register_resource,
     register_resource_outputs,
-    read_resource,
-    collapse_alias_to_urn,
+)
+from .runtime.resource import (
     create_urn as create_urn_internal,
 )
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, _map2_input, Output
-from . import urn as urn_util
-from . import log
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -51,7 +53,7 @@ if TYPE_CHECKING:
 class CustomTimeouts:
     """
     CustomTimeouts allows specifying custom timeouts for resource operations. Timeouts can
-    be specified separately for create, update, and delete operations.
+    be specified separately for create, update, delete, and read operations.
     """
 
     create: Optional[str]
@@ -69,15 +71,22 @@ class CustomTimeouts:
     delete is the optional delete timout represented as a string e.g. 5m, 40s, 1d.
     """
 
+    read: Optional[str]
+    """
+    read is the optional read timout represented as a string e.g. 5m, 40s, 1d.
+    """
+
     def __init__(
         self,
         create: Optional[str] = None,
         update: Optional[str] = None,
         delete: Optional[str] = None,
+        read: Optional[str] = None,
     ) -> None:
         self.create = create
         self.update = update
         self.delete = delete
+        self.read = read
 
 
 ROOT_STACK_RESOURCE = None
@@ -334,6 +343,91 @@ this indicates that the resource will not be transformed.
 """
 
 
+class StateMigrationArgs:
+    """
+    Arguments passed to a state migration callback, containing the prior state of the resource
+    and its descendants in `checkpoint resource format
+    <https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state>`__.
+
+    This API is experimental and may change.
+    """
+
+    urn: str
+    """
+    The URN of the resource being registered. This may differ from its URN in `old_state`
+    when the prior resource is matched through an alias.
+    """
+
+    old_state: list[dict[str, Any]]
+    """
+    The prior state of the resource and its descendants in `checkpoint resource format
+    <https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state>`__,
+    with the resource itself first. For subsequent callbacks, this includes changes made by
+    earlier callbacks in the chain.
+    """
+
+    def __init__(self, urn: str, old_state: list[dict[str, Any]]) -> None:
+        self.urn = urn
+        self.old_state = old_state
+
+
+class StateMigrationResult:
+    """
+    StateMigrationResult is the result that must be returned by a state migration callback when
+    it changes the state. Every resource present in the old state must either be returned in
+    `new_state` under the same URN or have an entry in `successors`, but not both.
+
+    This API is experimental and may change.
+    """
+
+    new_state: list[dict[str, Any]]
+    """
+    The complete migrated subtree in `checkpoint resource format
+    <https://pulumi-developer-docs.readthedocs.io/latest/docs/references/deployment-schema.html#pulumi-resource-state>`__,
+    including unchanged resources. This replaces `old_state`.
+    """
+
+    successors: Optional[dict[str, str]]
+    """
+    Maps each old URN removed from the state to the URN in `new_state` that succeeds it. Multiple
+    old URNs may map to the same successor. A resource cannot be removed without a successor.
+    The engine uses these mappings to rewrite resource references.
+    """
+
+    def __init__(
+        self,
+        new_state: list[dict[str, Any]],
+        successors: Optional[dict[str, str]] = None,
+    ) -> None:
+        self.new_state = new_state
+        self.successors = successors
+
+
+StateMigration = Callable[
+    [StateMigrationArgs],
+    Optional[Union[Awaitable[Optional[StateMigrationResult]], StateMigrationResult]],
+]
+"""
+StateMigration is the callback signature for the :attr:`pulumi.ResourceOptions.state_migrations` resource option.
+
+This API is experimental and may change.
+
+A callback receives the prior state of the resource and its descendants, and may return a
+replacement subtree for the engine to use before diffing those resources. Returning None leaves
+the callback's input state unchanged and allows later callbacks to run. Callbacks may be synchronous
+or asynchronous and must be idempotent.
+
+Migrations run during updates and previews when prior state exists, including state matched
+through aliases. Migrations rewrite state only, they do not create, import, or modify physical
+resources.
+
+The callback receives plaintext secret values and must not log or otherwise expose them. It must
+not perform Pulumi runtime operations or await unresolved Outputs. Every resource omitted from the
+returned state must identify a returned successor. Provider resource states must remain unchanged,
+and custom resources must preserve their physical identity and lifecycle safety flags.
+"""
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -425,8 +519,15 @@ class ResourceOptions:
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
     parents walking from the resource up to the stack.
+    """
 
-    This is experimental.
+    state_migrations: Optional[list[StateMigration]]
+    """
+    Optional list of state migrations to apply to this resource's prior state and its descendants.
+    The migrations are applied in order, each receiving the state produced by earlier callbacks.
+    See :obj:`pulumi.StateMigration` for the callback contract and safety restrictions.
+
+    This API is experimental and may change.
     """
 
     hooks: Optional[ResourceHookBinding]
@@ -474,7 +575,8 @@ class ResourceOptions:
     deleted_with: Optional["Resource"]
     """
     If set, the providers Delete method will not be called for this resource
-    if specified resource is being deleted as well.
+    if specified resource is being deleted as well. If the named resource is
+    being replaced, this resource will be replaced as well.
     """
 
     replace_with: Optional[list["Resource"]]
@@ -528,6 +630,7 @@ class ResourceOptions:
         replace_with: Optional[list["Resource"]] = None,
         hide_diffs: Optional[list[str]] = None,
         env_var_mappings: Optional[Mapping[str, str]] = None,
+        state_migrations: Optional[list[StateMigration]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -571,10 +674,14 @@ class ResourceOptions:
                rarely be used.
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
-               if specified resource is being deleted as well.
+               if specified resource is being deleted as well. If the named resource is being replaced, this resource
+               will be replaced as well.
         :param Optional[List[Resource]] replace_with: If set, this resource will also be replaced whenever any of the provided resources are replaced.
         :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
                 invoked during certain step of the lifecycle of the resource.
+        :param Optional[List[StateMigration]] state_migrations: Optional list of state migrations to apply to this
+                resource's prior state and its descendants, in order. See :obj:`pulumi.StateMigration` for the callback contract
+                and safety restrictions. This API is experimental and may change.
         """
 
         self.parent = parent
@@ -592,6 +699,7 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.transforms = transforms
+        self.state_migrations = state_migrations
         self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
@@ -737,6 +845,9 @@ class ResourceOptions:
             dest.transformations, source.transformations
         )
         dest.transforms = _merge_lists(dest.transforms, source.transforms)
+        dest.state_migrations = _merge_lists(
+            dest.state_migrations, source.state_migrations
+        )
         dest.hooks = ResourceHookBinding.merge(dest.hooks, source.hooks)
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
@@ -908,6 +1019,8 @@ class Resource:
             self._childResources = set()
             return
 
+        _ensure_not_in_state_migration("resource construction")
+
         if props is None:
             props = {}
         if not t:
@@ -1043,65 +1156,11 @@ class Resource:
         self, t: str, pkg: Optional[str], opts: ResourceOptions
     ) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
         """
-        Fetches the correct provider and providers for this resource.
-
-        provider is the first option that does not return none
-            1. opts.provider
-            2. a matching provider in opts.providers
-            3. a matching provider inherited from opts.parent
-
-        providers is found by combining (in descending order of priority)
-            1. opts_providers
-            2. self_providers
-            3. provider
+        Fetches the correct provider and providers for this resource. See `_select_providers`.
 
         Does not mutate self.
         """
-        if isinstance(opts.providers, Sequence):
-            opts_providers = {p.package: p for p in opts.providers}
-        elif opts.providers:
-            opts_providers = {**opts.providers}
-        else:
-            opts_providers = {}
-
-        # The provider provided by opts.providers
-        ambient_provider: Optional[ProviderResource] = None
-        if pkg and pkg in opts_providers:
-            ambient_provider = opts_providers[pkg]
-
-        # The provider supplied by the parent
-
-        # Cast is safe because the `and` will resolve to only None or the result
-        # of get_provider (which is Optional[ProviderResource]). This holds as
-        # long as Resource does not impliment __bool__.
-        parent_provider = cast(
-            Optional[ProviderResource], opts.parent and opts.parent.get_provider(t)
-        )
-
-        provider = ambient_provider or parent_provider
-        if opts.provider:
-            # If an explicit provider was passed in,
-            # its package may or may not match the package we're looking for.
-            provider_pkg = opts.provider.package
-            if pkg == provider_pkg:
-                # Explicit provider takes precedence over parent or ambient providers.
-                provider = opts.provider
-
-            # Regardless of whether it matches,
-            # we still want to keep the provider in the
-            # providers map, so that it can be used for child resources.
-            if provider_pkg in opts_providers:
-                message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
-                deprecation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
-                warnings.warn(f"{message} for resource {t}. " + deprecation)
-                log.warn(f"{message}. {deprecation}", resource=self)
-            else:
-                opts_providers[provider_pkg] = opts.provider
-
-        # opts_providers takes priority over self._providers
-        providers = {**self._providers, **opts_providers}
-
-        return provider, providers
+        return _select_providers(t, pkg, opts, self._providers, self)
 
     @property
     def pulumi_resource_type(self) -> str:
@@ -1308,13 +1367,11 @@ class DependencyResource(CustomResource):
     def __init__(self, urn: str) -> None:
         super().__init__(t="", name="", props={}, opts=None, dependency=True)
 
-        urn_future: asyncio.Future[str] = asyncio.Future()
-        urn_known: asyncio.Future[bool] = asyncio.Future()
-        urn_secret: asyncio.Future[bool] = asyncio.Future()
-        urn_future.set_result(urn)
-        urn_known.set_result(True)
-        urn_secret.set_result(False)
-        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+        urn_data: asyncio.Future[_OutputData[str]] = asyncio.Future()
+        urn_data.set_result(
+            _OutputData(resources={self}, value=urn, is_known=True, is_secret=False)
+        )
+        self.__dict__["urn"] = Output._from_data(urn_data)
 
 
 class DependencyProviderResource(ProviderResource):
@@ -1333,21 +1390,17 @@ class DependencyProviderResource(ProviderResource):
 
         super().__init__(pkg=pkg, name="", props={}, opts=None, dependency=True)
 
-        urn_future: asyncio.Future[str] = asyncio.Future()
-        urn_known: asyncio.Future[bool] = asyncio.Future()
-        urn_secret: asyncio.Future[bool] = asyncio.Future()
-        urn_future.set_result(ref_urn)
-        urn_known.set_result(True)
-        urn_secret.set_result(False)
-        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+        urn_data: asyncio.Future[_OutputData[str]] = asyncio.Future()
+        urn_data.set_result(
+            _OutputData(resources={self}, value=ref_urn, is_known=True, is_secret=False)
+        )
+        self.__dict__["urn"] = Output._from_data(urn_data)
 
-        id_future: asyncio.Future[str] = asyncio.Future()
-        id_known: asyncio.Future[bool] = asyncio.Future()
-        id_secret: asyncio.Future[bool] = asyncio.Future()
-        id_future.set_result(ref_id)
-        id_known.set_result(True)
-        id_secret.set_result(False)
-        self.__dict__["id"] = Output({self}, id_future, id_known, id_secret)
+        id_data: asyncio.Future[_OutputData[str]] = asyncio.Future()
+        id_data.set_result(
+            _OutputData(resources={self}, value=ref_id, is_known=True, is_secret=False)
+        )
+        self.__dict__["id"] = Output._from_data(id_data)
 
 
 def export(name: str, value: Any):
@@ -1357,6 +1410,8 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
+    _ensure_not_in_state_migration("export stack output")
+
     res = cast("Stack", get_root_resource())
     if known_types.is_stack(res):
         res.output(name, value)
@@ -1388,3 +1443,70 @@ def _parse_resource_reference(ref: str) -> tuple[str, str]:
     ref_urn = ref[:last_sep]
     ref_id = ref[last_sep + 2 :]
     return (ref_urn, ref_id)
+
+
+def _select_providers(
+    t: str,
+    pkg: Optional[str],
+    opts: ResourceOptions,
+    inherited_providers: Mapping[str, "ProviderResource"],
+    resource: Optional[Resource] = None,
+) -> tuple[Optional["ProviderResource"], Mapping[str, "ProviderResource"]]:
+    """
+    Fetches the correct provider and providers for a resource of type `t`.
+
+    provider is the first option that does not return none
+        1. opts.provider
+        2. a matching provider in opts.providers
+        3. a matching provider inherited from opts.parent
+
+    providers is found by combining (in descending order of priority)
+        1. opts_providers
+        2. inherited_providers
+        3. provider
+    """
+    if isinstance(opts.providers, Sequence):
+        opts_providers = {p.package: p for p in opts.providers}
+    elif opts.providers:
+        opts_providers = {**opts.providers}
+    else:
+        opts_providers = {}
+
+    # The provider provided by opts.providers
+    ambient_provider: Optional[ProviderResource] = None
+    if pkg and pkg in opts_providers:
+        ambient_provider = opts_providers[pkg]
+
+    # The provider supplied by the parent
+
+    # Cast is safe because the `and` will resolve to only None or the result
+    # of get_provider (which is Optional[ProviderResource]). This holds as
+    # long as Resource does not impliment __bool__.
+    parent_provider = cast(
+        Optional[ProviderResource], opts.parent and opts.parent.get_provider(t)
+    )
+
+    provider = ambient_provider or parent_provider
+    if opts.provider:
+        # If an explicit provider was passed in,
+        # its package may or may not match the package we're looking for.
+        provider_pkg = opts.provider.package
+        if pkg == provider_pkg:
+            # Explicit provider takes precedence over parent or ambient providers.
+            provider = opts.provider
+
+        # Regardless of whether it matches,
+        # we still want to keep the provider in the
+        # providers map, so that it can be used for child resources.
+        if provider_pkg in opts_providers:
+            message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
+            deprecation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+            warnings.warn(f"{message} for resource {t}. " + deprecation)
+            log.warn(f"{message}. {deprecation}", resource=resource)
+        else:
+            opts_providers[provider_pkg] = opts.provider
+
+    # opts_providers takes priority over inherited_providers
+    providers = {**inherited_providers, **opts_providers}
+
+    return provider, providers

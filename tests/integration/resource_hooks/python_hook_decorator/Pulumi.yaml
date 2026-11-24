@@ -1,3 +1,6 @@
 name: resource_hooks_python_hook_decorator
 description: A program with a resource hook for hook decorator testing
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

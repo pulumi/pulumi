@@ -17,23 +17,25 @@ package deploy
 import (
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func resourceOptionsFromState(state *resource.State) *pulumirpc.ResourceOptions {
+func resourceOptionsFromState(state *pkgresource.State) *pulumirpc.ResourceOptions {
 	if state == nil {
 		return nil
 	}
 
 	resourceOptions := &pulumirpc.ResourceOptions{
 		DependsOn:        urnsToStrings(state.Dependencies),
-		IgnoreChanges:    globsToStrings(state.IgnoreChanges),
-		ReplaceOnChanges: globsToStrings(state.ReplaceOnChanges),
+		IgnoreChanges:    append([]string(nil), state.IgnoreChanges...),
+		ReplaceOnChanges: append([]string(nil), state.ReplaceOnChanges...),
 		Provider:         state.Provider,
 		DeletedWith:      string(state.DeletedWith),
 		Import:           string(state.ImportID),
-		HideDiff:         globsToStrings(state.HideDiff),
+		HideDiff:         propertyPathsToStrings(state.HideDiff),
 		ReplaceWith:      urnsToStrings(state.ReplaceWith),
 		Hooks:            hookBindingsToProto(state.ResourceHooks),
 		Parent:           string(state.Parent),
@@ -53,6 +55,7 @@ func resourceOptionsFromState(state *resource.State) *pulumirpc.ResourceOptions 
 			Create: secondsToDurationString(state.CustomTimeouts.Create),
 			Update: secondsToDurationString(state.CustomTimeouts.Update),
 			Delete: secondsToDurationString(state.CustomTimeouts.Delete),
+			Read:   secondsToDurationString(state.CustomTimeouts.Read),
 		}
 	}
 
@@ -93,6 +96,17 @@ func urnsToStrings(urns []resource.URN) []string {
 	values := make([]string, 0, len(urns))
 	for _, urn := range urns {
 		values = append(values, string(urn))
+	}
+	return values
+}
+
+func propertyPathsToStrings(paths []resource.PropertyPath) []string {
+	if len(paths) == 0 {
+		return nil
+	}
+	values := make([]string, 0, len(paths))
+	for _, path := range paths {
+		values = append(values, path.String())
 	}
 	return values
 }

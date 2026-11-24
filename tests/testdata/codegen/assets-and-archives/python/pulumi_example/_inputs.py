@@ -22,7 +22,7 @@ __all__ = [
 class TypeWithAssetsArgsDict(TypedDict):
     asset: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]
     plain_archive: pulumi.Archive
-    archive: NotRequired[pulumi.Input[pulumi.Archive]]
+    archive: NotRequired[pulumi.Input[Optional[pulumi.Archive]]]
     plain_asset: NotRequired[Union[pulumi.Asset, pulumi.Archive]]
 
 @pulumi.input_type
@@ -30,7 +30,7 @@ class TypeWithAssetsArgs:
     def __init__(__self__, *,
                  asset: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]],
                  plain_archive: pulumi.Archive,
-                 archive: Optional[pulumi.Input[pulumi.Archive]] = None,
+                 archive: pulumi.Input[Optional[pulumi.Archive]] = None,
                  plain_asset: Optional[Union[pulumi.Asset, pulumi.Archive]] = None):
         pulumi.set(__self__, "asset", asset)
         pulumi.set(__self__, "plain_archive", plain_archive)
@@ -59,11 +59,11 @@ class TypeWithAssetsArgs:
 
     @_builtins.property
     @pulumi.getter
-    def archive(self) -> Optional[pulumi.Input[pulumi.Archive]]:
+    def archive(self) -> pulumi.Input[Optional[pulumi.Archive]]:
         return pulumi.get(self, "archive")
 
     @archive.setter
-    def archive(self, value: Optional[pulumi.Input[pulumi.Archive]]):
+    def archive(self, value: pulumi.Input[Optional[pulumi.Archive]]):
         pulumi.set(self, "archive", value)
 
     @_builtins.property

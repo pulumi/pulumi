@@ -15,16 +15,141 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestFilesystem_WriteFileOverrideDivertsWrites verifies that, when
+// WriteFileOverride is set, the mutating methods commit through it instead of
+// touching disk. This is the seam the Neo ACP adapter uses to forward writes
+// to the editor.
+func TestFilesystem_WriteFileOverrideDivertsWrites(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	type captured struct {
+		path    string
+		content string
+	}
+	var writes []captured
+	fs.WriteFileOverride = func(_ context.Context, path, content string) error {
+		writes = append(writes, captured{path: path, content: content})
+		return nil
+	}
+
+	target := filepath.Join(root, "new.txt")
+	_, err = fs.Invoke(t.Context(), "write",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"hello"}`, target)))
+	require.NoError(t, err)
+
+	// resolve canonicalizes the path (symlink-evaluated root), so the override
+	// sees the resolved absolute path rather than the raw temp path.
+	realRoot, err := filepath.EvalSymlinks(root)
+	require.NoError(t, err)
+	require.Len(t, writes, 1)
+	assert.Equal(t, filepath.Join(realRoot, "new.txt"), writes[0].path)
+	assert.Equal(t, "hello", writes[0].content)
+
+	// The override owns the write; nothing was created on disk.
+	_, statErr := os.Stat(target)
+	assert.True(t, os.IsNotExist(statErr), "expected no file on disk, stat err: %v", statErr)
+}
+
+// TestFilesystem_EditThroughOverridesEditsBufferOnlyFile verifies that edit
+// derives existence from ReadFileOverride rather than a local stat: a file
+// that exists only in the editor (nothing on disk) is edited in place through
+// the overrides.
+func TestFilesystem_EditThroughOverridesEditsBufferOnlyFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	buffer := "hello world\n"
+	fs.ReadFileOverride = func(_ context.Context, _ string) (string, error) {
+		return buffer, nil
+	}
+	var wrote string
+	fs.WriteFileOverride = func(_ context.Context, _, content string) error {
+		wrote = content
+		return nil
+	}
+
+	target := filepath.Join(root, "buffer-only.txt")
+	res := editResult(t, fs, "edit", fmt.Sprintf(
+		`{"file_path":%q,"old_string":"world","new_string":"there"}`, target))
+	assert.Contains(t, res, "Successfully edited file")
+	assert.Equal(t, "hello there\n", wrote)
+
+	_, statErr := os.Stat(target)
+	assert.True(t, os.IsNotExist(statErr), "edit must not touch disk when overrides are set")
+}
+
+// TestFilesystem_EditCreationThroughOverrides verifies creation mode with
+// overrides set: ReadFileOverride reporting fs.ErrNotExist plus an empty
+// old_string creates the file through WriteFileOverride.
+func TestFilesystem_EditCreationThroughOverrides(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	fs.ReadFileOverride = func(_ context.Context, path string) (string, error) {
+		return "", fmt.Errorf("editor: %q: %w", path, iofs.ErrNotExist)
+	}
+	var wrote string
+	fs.WriteFileOverride = func(_ context.Context, _, content string) error {
+		wrote = content
+		return nil
+	}
+
+	target := filepath.Join(root, "new.txt")
+	res := editResult(t, fs, "edit", fmt.Sprintf(
+		`{"file_path":%q,"old_string":"","new_string":"seeded"}`, target))
+	assert.Contains(t, res, "Successfully created file")
+	assert.Equal(t, "seeded", wrote)
+}
+
+// TestFilesystem_EditReadOverrideGenericErrorDoesNotCreate verifies that only
+// fs.ErrNotExist enables creation mode: any other read failure surfaces as an
+// error instead of clobbering a file whose contents simply couldn't be read.
+func TestFilesystem_EditReadOverrideGenericErrorDoesNotCreate(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	readErr := errors.New("editor went away")
+	fs.ReadFileOverride = func(_ context.Context, _ string) (string, error) {
+		return "", readErr
+	}
+	fs.WriteFileOverride = func(_ context.Context, _, _ string) error {
+		t.Fatal("a failed read must not trigger a write")
+		return nil
+	}
+
+	_, err = fs.Invoke(t.Context(), "edit", json.RawMessage(fmt.Sprintf(
+		`{"file_path":%q,"old_string":"","new_string":"seeded"}`,
+		filepath.Join(root, "new.txt"))))
+	require.ErrorIs(t, err, readErr)
+}
 
 func TestFilesystem_WriteThenReadAbsolutePath(t *testing.T) {
 	t.Parallel()
@@ -46,7 +171,7 @@ func TestFilesystem_WriteThenReadAbsolutePath(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
 	require.NoError(t, err)
-	assert.Equal(t, "hello", res.(map[string]any)["content"])
+	assert.Equal(t, "hello", res.(readResult).Content)
 }
 
 func TestFilesystem_DirectoryTreeShallow(t *testing.T) {
@@ -62,10 +187,10 @@ func TestFilesystem_DirectoryTreeShallow(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "directory_tree",
 		json.RawMessage(fmt.Sprintf(`{"path":%q}`, root)))
 	require.NoError(t, err)
-	entries := res.(map[string]any)["entries"].([]map[string]any)
+	entries := res.(directoryTreeResult).Entries
 	require.Len(t, entries, 2)
-	assert.Equal(t, "a.txt", entries[0]["name"])
-	assert.Equal(t, "sub", entries[1]["name"])
+	assert.Equal(t, "a.txt", entries[0].Name)
+	assert.Equal(t, "sub", entries[1].Name)
 }
 
 func TestFilesystem_RejectsAbsolutePathOutsideRoot(t *testing.T) {
@@ -80,8 +205,8 @@ func TestFilesystem_RejectsAbsolutePathOutsideRoot(t *testing.T) {
 
 	_, err = fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestFilesystem_RejectsRelativeEscape(t *testing.T) {
@@ -91,8 +216,8 @@ func TestFilesystem_RejectsRelativeEscape(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = fs.Invoke(t.Context(), "read", json.RawMessage(`{"file_path":"../etc/passwd"}`))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
@@ -110,8 +235,8 @@ func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
 
 	_, err = fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, filepath.Join(root, "escape", "passwd"))))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestFilesystem_ReadOffsetBeyondFileReturnsEmpty(t *testing.T) {
@@ -127,7 +252,7 @@ func TestFilesystem_ReadOffsetBeyondFileReturnsEmpty(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"offset":999}`, target)))
 	require.NoError(t, err)
-	assert.Equal(t, "", res.(map[string]any)["content"])
+	assert.Equal(t, "", res.(readResult).Content)
 }
 
 func TestFilesystem_UnimplementedMethodsReturnClearError(t *testing.T) {
@@ -136,9 +261,9 @@ func TestFilesystem_UnimplementedMethodsReturnClearError(t *testing.T) {
 	fs, err := NewFilesystem(t.TempDir())
 	require.NoError(t, err)
 
-	for _, method := range []string{"grep", "grep_ast", "content_replace"} {
+	for _, method := range []string{"grep_ast"} {
 		_, err := fs.Invoke(t.Context(), method, json.RawMessage(`{}`))
-		require.Error(t, err, method)
+		require.Error(t, err, method) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "not yet implemented", method)
 	}
 }
@@ -147,7 +272,7 @@ func TestNewFilesystem_RejectsMissingRoot(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewFilesystem(filepath.Join(t.TempDir(), "nope"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestNewFilesystem_RejectsFileRoot(t *testing.T) {
@@ -159,7 +284,7 @@ func TestNewFilesystem_RejectsFileRoot(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, nil, 0o600))
 
 	_, err := NewFilesystem(file)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not a directory")
 }
 
@@ -170,7 +295,7 @@ func TestFilesystem_UnknownMethodReturnsError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = fs.Invoke(t.Context(), "delete", json.RawMessage(`{}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "unknown filesystem method")
 }
 
@@ -180,9 +305,9 @@ func TestFilesystem_InvokeRejectsMalformedArgs(t *testing.T) {
 	fs, err := NewFilesystem(t.TempDir())
 	require.NoError(t, err)
 
-	for _, method := range []string{"read", "write", "directory_tree", "edit"} {
+	for _, method := range []string{"read", "write", "directory_tree", "edit", "grep", "content_replace"} {
 		_, err := fs.Invoke(t.Context(), method, json.RawMessage(`{`))
-		require.Error(t, err, method)
+		require.Error(t, err, method) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "decoding", method)
 	}
 }
@@ -197,7 +322,7 @@ func TestFilesystem_InvokeRejectsEmptyPath(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = fs.Invoke(t.Context(), "read", json.RawMessage(`{"file_path":""}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "path is required")
 }
 
@@ -214,7 +339,7 @@ func TestFilesystem_ReadWithLimit(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"limit":2}`, target)))
 	require.NoError(t, err)
-	assert.Equal(t, "a\nb", res.(map[string]any)["content"])
+	assert.Equal(t, "a\nb", res.(readResult).Content)
 }
 
 func TestFilesystem_ReadWithOffsetAndLimit(t *testing.T) {
@@ -230,21 +355,26 @@ func TestFilesystem_ReadWithOffsetAndLimit(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"offset":1,"limit":2}`, target)))
 	require.NoError(t, err)
-	assert.Equal(t, "b\nc", res.(map[string]any)["content"])
+	assert.Equal(t, "b\nc", res.(readResult).Content)
 }
 
 func TestFilesystem_ReadMissingFileReturnsError(t *testing.T) {
 	t.Parallel()
 
 	// Inside the sandbox, but the file itself doesn't exist — os.ReadFile should
-	// surface a clear error (not a silent empty-content result).
+	// surface a clear error (not a silent empty-content result). On the error
+	// path Invoke must also return a nil value: a zero readResult boxed into
+	// any is non-nil, so Session.invokeToolCall would keep it as Content and
+	// drop the err.Error() fallback that conveys the failure reason to the
+	// agent.
 	root := t.TempDir()
 	fs, err := NewFilesystem(root)
 	require.NoError(t, err)
 
-	_, err = fs.Invoke(t.Context(), "read",
+	value, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, filepath.Join(root, "missing.txt"))))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Nil(t, value, "Invoke must return a nil value on error so session.go's err.Error() fallback fires")
 }
 
 func TestFilesystem_WriteRejectsPathOutsideRoot(t *testing.T) {
@@ -256,8 +386,8 @@ func TestFilesystem_WriteRejectsPathOutsideRoot(t *testing.T) {
 	outside := filepath.Join(t.TempDir(), "evil.txt")
 	_, err = fs.Invoke(t.Context(), "write",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"x"}`, outside)))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 
 	_, statErr := os.Stat(outside)
 	assert.True(t, os.IsNotExist(statErr), "rejected write must not touch the filesystem")
@@ -279,11 +409,11 @@ func TestFilesystem_DirectoryTreeDepthTwo(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "directory_tree",
 		json.RawMessage(fmt.Sprintf(`{"path":%q,"depth":2}`, root)))
 	require.NoError(t, err)
-	entries := res.(map[string]any)["entries"].([]map[string]any)
+	entries := res.(directoryTreeResult).Entries
 
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		names = append(names, e["name"].(string))
+		names = append(names, e.Name)
 	}
 	assert.Contains(t, names, "a")
 	assert.Contains(t, names, filepath.Join("a", "b"))
@@ -302,7 +432,7 @@ func TestFilesystem_DirectoryTreeMissingPathReturnsError(t *testing.T) {
 
 	_, err = fs.Invoke(t.Context(), "directory_tree",
 		json.RawMessage(fmt.Sprintf(`{"path":%q}`, filepath.Join(root, "nope"))))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestFilesystem_WriteRelativePathResolvesAgainstRoot(t *testing.T) {
@@ -475,7 +605,7 @@ func TestFilesystem_EditMissingFileWithNonEmptyOldString(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "edit", json.RawMessage(fmt.Sprintf(
 		`{"file_path":%q,"old_string":"x","new_string":"y"}`,
 		filepath.Join(root, "nope.txt"))))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestFilesystem_EditRejectsBinaryFile(t *testing.T) {
@@ -532,8 +662,8 @@ func TestFilesystem_EditRejectsPathOutsideRoot(t *testing.T) {
 
 	_, err = fs.Invoke(t.Context(), "edit", json.RawMessage(fmt.Sprintf(
 		`{"file_path":%q,"old_string":"x","new_string":"y"}`, outside)))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 
 	// Sanity-check the untouched file so we know the sandbox caught it before the write.
 	got, err := os.ReadFile(outside)
@@ -557,4 +687,380 @@ func TestFilesystem_EditReturnsUnifiedDiff(t *testing.T) {
 	assert.Contains(t, res, "+++ "+target+" (modified)")
 	assert.Contains(t, res, "@@")
 	assert.Contains(t, res, "```diff")
+}
+
+func TestFilesystem_ExtraRootAllowsWriteThenRead(t *testing.T) {
+	t.Parallel()
+
+	// Two unrelated directories: cwd is the primary root, scratch is an extra root
+	// outside of it. Without the extra root the agent can't touch scratch; with it,
+	// absolute paths under scratch round-trip just like paths under cwd.
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	fs, err := NewFilesystem(cwd, scratch)
+	require.NoError(t, err)
+
+	target := filepath.Join(scratch, "sub", "note.txt")
+	_, err = fs.Invoke(t.Context(), "write",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"scratch ok"}`, target)))
+	require.NoError(t, err)
+
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "scratch ok", string(got))
+
+	res, err := fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
+	require.NoError(t, err)
+	assert.Equal(t, "scratch ok", res.(readResult).Content)
+}
+
+func TestFilesystem_RejectsPathOutsideRootAndExtras(t *testing.T) {
+	t.Parallel()
+
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	fs, err := NewFilesystem(cwd, scratch)
+	require.NoError(t, err)
+
+	// Sibling temp dir that's neither cwd nor an extra root. Even with extras
+	// configured, paths outside every allowed root must still be rejected.
+	other := t.TempDir()
+	target := filepath.Join(other, "passwd")
+	require.NoError(t, os.WriteFile(target, nil, 0o600))
+
+	_, err = fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "outside the allowed roots")
+}
+
+func TestNewFilesystem_RejectsMissingExtraRoot(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "nope")
+	_, err := NewFilesystem(t.TempDir(), missing)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "extra root")
+}
+
+func TestNewFilesystem_RejectsExtraRootThatIsAFile(t *testing.T) {
+	t.Parallel()
+
+	// An extra root that points at a file (not a directory) must be rejected. Otherwise
+	// containment checks would treat the file's parent path as an allowed root.
+	notADir := filepath.Join(t.TempDir(), "regular-file")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+
+	_, err := NewFilesystem(t.TempDir(), notADir)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "is not a directory")
+}
+
+func TestFilesystem_Grep_FindsMatchesWithLineNumbers(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	a := filepath.Join(root, "a.go")
+	b := filepath.Join(root, "b.go")
+	require.NoError(t, os.WriteFile(a, []byte("alpha\nbeta\nTODO: one\n"), 0o600))
+	require.NoError(t, os.WriteFile(b, []byte("TODO: two\nunrelated\nTODO: three\n"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "grep",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"TODO","path":%q}`, root)))
+	require.NoError(t, err)
+	content := res.(grepResult).Content
+	assert.Contains(t, content, "Found 3 matches in 2 file(s)")
+	assert.Contains(t, content, a+":3: TODO: one")
+	assert.Contains(t, content, b+":1: TODO: two")
+	assert.Contains(t, content, b+":3: TODO: three")
+}
+
+func TestFilesystem_Grep_RespectsIncludeGlob(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "match.go"), []byte("needle\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "skip.txt"), []byte("needle\n"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "grep",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"needle","path":%q,"include":"*.go"}`, root)))
+	require.NoError(t, err)
+	content := res.(grepResult).Content
+	assert.Contains(t, content, "match.go")
+	assert.NotContains(t, content, "skip.txt")
+}
+
+func TestFilesystem_Grep_DefaultPathUsesRoot(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "f.txt"), []byte("hit\n"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	// Omitting path should default to Root.
+	res, err := fs.Invoke(t.Context(), "grep", json.RawMessage(`{"pattern":"hit"}`))
+	require.NoError(t, err)
+	assert.Contains(t, res.(grepResult).Content, "f.txt:1: hit")
+}
+
+func TestFilesystem_Grep_EmptyPatternRejected(t *testing.T) {
+	t.Parallel()
+
+	fs, err := NewFilesystem(t.TempDir())
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "grep", json.RawMessage(`{"pattern":""}`))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "pattern is required")
+}
+
+func TestFilesystem_Grep_InvalidRegexRejected(t *testing.T) {
+	t.Parallel()
+
+	fs, err := NewFilesystem(t.TempDir())
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "grep", json.RawMessage(`{"pattern":"["}`))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "invalid regex")
+}
+
+func TestFilesystem_Grep_InvalidIncludeGlobRejected(t *testing.T) {
+	t.Parallel()
+
+	fs, err := NewFilesystem(t.TempDir())
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "grep",
+		json.RawMessage(`{"pattern":"x","include":"["}`))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "invalid include glob")
+}
+
+func TestFilesystem_Grep_SkipsBinaryFiles(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	// Text file has a match; binary has the literal bytes but contains a NUL.
+	require.NoError(t, os.WriteFile(filepath.Join(root, "text.txt"), []byte("secret\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "bin"), []byte("secret\x00data"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "grep",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"secret","path":%q}`, root)))
+	require.NoError(t, err)
+	content := res.(grepResult).Content
+	assert.Contains(t, content, "text.txt")
+	assert.NotContains(t, content, filepath.Join(root, "bin"))
+	assert.Contains(t, content, "Found 1 matches in 1 file(s)")
+}
+
+func TestFilesystem_Grep_SkipsHiddenDirs(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	gitDir := filepath.Join(root, ".git")
+	require.NoError(t, os.MkdirAll(gitDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("secret\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "visible.txt"), []byte("secret\n"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "grep",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"secret","path":%q}`, root)))
+	require.NoError(t, err)
+	content := res.(grepResult).Content
+	assert.Contains(t, content, "visible.txt")
+	assert.NotContains(t, content, ".git")
+	assert.Contains(t, content, "Found 1 matches in 1 file(s)")
+}
+
+func TestFilesystem_Grep_NoMatchesReturnsFriendlyText(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("nothing here\n"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "grep",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"absent","path":%q}`, root)))
+	require.NoError(t, err)
+	assert.Equal(t, "No matches found.", res.(grepResult).Content)
+}
+
+func TestFilesystem_Grep_RejectsPathOutsideRoot(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "grep", json.RawMessage(`{"pattern":"x","path":"/etc"}`))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+}
+
+func TestFilesystem_ContentReplace_ReplacesAcrossFiles(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	a := filepath.Join(root, "a.txt")
+	b := filepath.Join(root, "b.txt")
+	require.NoError(t, os.WriteFile(a, []byte("foo foo bar"), 0o600))
+	require.NoError(t, os.WriteFile(b, []byte("bar foo baz"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"foo","replacement":"qux","path":%q}`, root)))
+	require.NoError(t, err)
+	m := res.(contentReplaceResult)
+	assert.Equal(t, 3, m.ReplacementsMade)
+	assert.Equal(t, 2, m.FilesModified)
+	assert.False(t, m.DryRun)
+	assert.Contains(t, m.Content, "Made 3 replacements")
+
+	aBytes, _ := os.ReadFile(a)
+	bBytes, _ := os.ReadFile(b)
+	assert.Equal(t, "qux qux bar", string(aBytes))
+	assert.Equal(t, "bar qux baz", string(bBytes))
+}
+
+func TestFilesystem_ContentReplace_DryRunDoesNotWrite(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	a := filepath.Join(root, "a.txt")
+	require.NoError(t, os.WriteFile(a, []byte("foo foo"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"foo","replacement":"bar","path":%q,"dry_run":true}`, root)))
+	require.NoError(t, err)
+	m := res.(contentReplaceResult)
+	assert.True(t, m.DryRun)
+	assert.True(t, strings.HasPrefix(m.Content, "Dry run:"))
+
+	got, _ := os.ReadFile(a)
+	assert.Equal(t, "foo foo", string(got), "dry run must not modify files")
+}
+
+func TestFilesystem_ContentReplace_RespectsFilePattern(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	keep := filepath.Join(root, "a.go")
+	skip := filepath.Join(root, "a.txt")
+	require.NoError(t, os.WriteFile(keep, []byte("foo"), 0o600))
+	require.NoError(t, os.WriteFile(skip, []byte("foo"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(
+			`{"pattern":"foo","replacement":"bar","path":%q,"file_pattern":"*.go"}`, root)))
+	require.NoError(t, err)
+
+	goBytes, _ := os.ReadFile(keep)
+	txtBytes, _ := os.ReadFile(skip)
+	assert.Equal(t, "bar", string(goBytes))
+	assert.Equal(t, "foo", string(txtBytes))
+}
+
+func TestFilesystem_ContentReplace_SinglePathArgument(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	a := filepath.Join(root, "a.txt")
+	other := filepath.Join(root, "b.txt")
+	require.NoError(t, os.WriteFile(a, []byte("xx"), 0o600))
+	require.NoError(t, os.WriteFile(other, []byte("xx"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"xx","replacement":"yy","path":%q}`, a)))
+	require.NoError(t, err)
+
+	aBytes, _ := os.ReadFile(a)
+	otherBytes, _ := os.ReadFile(other)
+	assert.Equal(t, "yy", string(aBytes))
+	assert.Equal(t, "xx", string(otherBytes), "only the single passed file should change")
+}
+
+func TestFilesystem_ContentReplace_NoMatchesReturnsError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), []byte("unrelated"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"missing","replacement":"x","path":%q}`, root)))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestFilesystem_ContentReplace_SkipsBinaryFiles(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	txt := filepath.Join(root, "a.txt")
+	bin := filepath.Join(root, "b.bin")
+	require.NoError(t, os.WriteFile(txt, []byte("foo"), 0o600))
+	require.NoError(t, os.WriteFile(bin, []byte("foo\x00"), 0o600))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"foo","replacement":"bar","path":%q}`, root)))
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.(contentReplaceResult).FilesModified)
+
+	binBytes, _ := os.ReadFile(bin)
+	assert.Equal(t, "foo\x00", string(binBytes), "binary files must not be modified")
+}
+
+func TestFilesystem_ContentReplace_EmptyPatternRejected(t *testing.T) {
+	t.Parallel()
+
+	fs, err := NewFilesystem(t.TempDir())
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(`{"pattern":"","replacement":"x","path":"."}`))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "pattern is required")
+}
+
+func TestFilesystem_ContentReplace_RejectsPathOutsideRoot(t *testing.T) {
+	t.Parallel()
+
+	fs, err := NewFilesystem(t.TempDir())
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(`{"pattern":"x","replacement":"y","path":"/etc"}`))
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }

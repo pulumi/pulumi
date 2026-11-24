@@ -17,9 +17,9 @@ container.details.apply(rangeBody => {
     }
 });
 // A resource that ranges over a computed map
-const mapOutput: nestedobject.Target[] = [];
+const mapOutput: {[key: string]: nestedobject.Target} = {};
 mapContainer.tags.apply(rangeBody => {
     for (const range of Object.entries(rangeBody).sort().map(([k, v]) => ({key: k, value: v}))) {
-        mapOutput.push(new nestedobject.Target(`mapOutput-${range.key}`, {name: `${range.key}=>${range.value}`}));
+        mapOutput[range.key] = new nestedobject.Target(`mapOutput-${range.key}`, {name: `${range.key}=>${range.value}`});
     }
 });

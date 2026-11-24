@@ -20,8 +20,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 )
 
 type BuiltinInfoComponentProvider struct {
@@ -32,10 +31,6 @@ var _ plugin.Provider = (*BuiltinInfoComponentProvider)(nil)
 
 func (p *BuiltinInfoComponentProvider) Close() error {
 	return nil
-}
-
-func (p *BuiltinInfoComponentProvider) Pkg() tokens.Package {
-	return "builtin-info-component"
 }
 
 func (p *BuiltinInfoComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

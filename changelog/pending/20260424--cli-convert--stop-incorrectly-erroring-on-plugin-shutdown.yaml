@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/convert
-  description: Stop incorrectly erroring on plugin shutdown

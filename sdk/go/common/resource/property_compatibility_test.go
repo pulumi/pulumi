@@ -38,8 +38,9 @@ import (
 func TestRoundTripConvert(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		propertyValue := resource.ToResourcePropertyValue(source)
 		roundTripped := resource.FromResourcePropertyValue(propertyValue)
 
@@ -54,6 +55,7 @@ func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepOutputValues: true,
+		KeepByteString:   true,
 	}
 
 	mm, err := plugin.MarshalPropertyValue("", rm, marshalOpts)
@@ -81,8 +83,9 @@ func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
 func TestConversionThroughGRPCRapid(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		testRoundTripThroughGRPC(t, source)
 	})
 }
@@ -108,42 +111,52 @@ func TestConversionThroughGRPC(t *testing.T) {
 	}
 }
 
-func TestPropertyPathConvert(t *testing.T) {
+func TestDiffCompatibility(t *testing.T) {
 	t.Parallel()
 
-	// property.Glob to PropertyPath
-	//
-	// This is information preserving as long as there are no keys of "*"
 	rapid.Check(t, func(t *rapid.T) {
-		glob := pTest.Glob().Filter(func(p property.Glob) bool {
-			for s := range p.Segments {
-				if s, ok := s.(property.KeySegment); ok && s.Key() == "*" {
-					return false
-				}
-			}
-			return true
-		}).Draw(t, "source")
-		propertyPath := resource.ToResourcePropertyPath(glob)
-		glob2 := resource.FromResourcePropertyPath(propertyPath)
+		a := pTest.Map(10).Draw(t, "round-trip value a")
+		b := pTest.Map(10).Draw(t, "round-trip value b")
 
-		assert.Equal(t, glob, glob2, "intermediary path: %#v", propertyPath)
+		assert.Equal(t,
+			resource.ToResourceObjectDiff(a.Diff(b)),
+			resource.ToResourcePropertyMap(a).Diff(resource.ToResourcePropertyMap(b)))
 	})
+}
 
-	// PropertyPath to property.Glob
-	//
-	// This should always be information preserving.
-	rapid.Check(t, func(t *rapid.T) {
-		propertyPath := resource.PropertyPath(rapid.SliceOf(rapid.OneOf(
-			rapid.Map(rapid.String(), func(s string) any { return s }),
-			rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), func(i int) any { return i }),
-		)).Draw(t, "source"))
-		if len(propertyPath) == 0 {
-			propertyPath = nil
-		}
+func TestDiffCompatibilityWrappedValues(t *testing.T) {
+	t.Parallel()
 
-		glob := resource.FromResourcePropertyPath(propertyPath)
-		propertyPath2 := resource.ToResourcePropertyPath(glob)
+	tests := []struct {
+		name string
+		a, b property.Map
+	}{
+		{
+			"secret arrays",
+			property.NewMap(map[string]property.Value{
+				"k": property.New([]property.Value{property.New(1.0)}).WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"k": property.New([]property.Value{property.New(2.0)}).WithSecret(true),
+			}),
+		},
+		{
+			"secret maps with null values",
+			property.NewMap(map[string]property.Value{
+				"k": property.New(map[string]property.Value{"n": property.New(property.Null)}).WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"k": property.New(property.Map{}).WithSecret(true),
+			}),
+		},
+	}
 
-		assert.Equal(t, propertyPath, propertyPath2, "intermediary path: %#v", glob)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t,
+				resource.ToResourceObjectDiff(tt.a.Diff(tt.b)),
+				resource.ToResourcePropertyMap(tt.a).Diff(resource.ToResourcePropertyMap(tt.b)))
+		})
+	}
 }

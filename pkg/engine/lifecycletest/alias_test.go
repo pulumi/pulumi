@@ -26,15 +26,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -43,7 +44,7 @@ type Resource struct {
 	t                   tokens.Type
 	name                string
 	children            []Resource
-	props               resource.PropertyMap
+	props               property.Map
 	aliasURNs           []resource.URN
 	aliases             []resource.Alias
 	dependencies        []resource.URN
@@ -184,7 +185,7 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 			err := registerResources(t, monitor, resources)
 			return err
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
@@ -214,8 +215,8 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 								assert.Subset(t, allowedOps, []display.StepOp{entry.Step.Op()})
 							case TestJournalEntryFailure:
 								assert.Fail(t, "unexpected failure in journal")
-							case TestJournalEntryBegin:
-							case TestJournalEntryOutputs:
+							case TestJournalEntryBegin, TestJournalEntryOutputs, TestJournalEntrySnippets,
+								TestJournalEntryStateMigration:
 							}
 						}
 
@@ -237,8 +238,8 @@ func TestAliases(t *testing.T) {
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := req.OldOutputs["forcesReplacement"]
-					new, hasNew := req.NewInputs["forcesReplacement"]
+					old, hasOld := req.OldOutputs.GetOk("forcesReplacement")
+					new, hasNew := req.NewInputs.GetOk("forcesReplacement")
 					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
 						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}
@@ -338,9 +339,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t4",
 		name: "n2",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(42.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(42.0),
+		}),
 		aliases: []resource.Alias{
 			{Type: "pkgA:othermod:t3", Name: "n1"},
 		},
@@ -350,9 +351,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t5",
 		name: "n3",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(1000.0),
+		}),
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t4", Name: "n2"},
 		},
@@ -362,9 +363,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t6",
 		name: "n4",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1000.0),
+		}),
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t5", Name: "n3"},
 		},
@@ -375,9 +376,9 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t7",
 		name: "n5",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(999.0),
+		}),
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t6", Name: "n4"},
@@ -388,9 +389,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:            "pkgA:index:t2",
@@ -401,9 +402,9 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t1", Name: "n1"},
@@ -422,9 +423,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:      "pkgA:index:t2",
@@ -435,9 +436,9 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t1", Name: "n1"},
@@ -537,15 +538,15 @@ func TestAliases(t *testing.T) {
 
 	// Now change n1's name and type and n2's type, but also add a load of aliases and pre-multiply them out
 	// before sending to the engine
-	n1Aliases := make([]resource.Alias, 0)
-	n2Aliases := make([]resource.Alias, 0)
-	n3Aliases := make([]resource.Alias, 0)
-	for i := 0; i < 100; i++ {
+	n1Aliases := make([]resource.Alias, 0, 100)
+	n2Aliases := make([]resource.Alias, 0, 1000)
+	n3Aliases := make([]resource.Alias, 0, 1000)
+	for i := range 100 {
 		n1Aliases = append(n1Aliases, resource.Alias{URN: resource.URN(
 			fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d::n1", i),
 		)})
 
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			n2Aliases = append(n2Aliases, resource.Alias{
 				URN: resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j)),
 			})
@@ -776,8 +777,8 @@ func TestAliasURNs(t *testing.T) {
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := req.OldOutputs["forcesReplacement"]
-					new, hasNew := req.NewInputs["forcesReplacement"]
+					old, hasOld := req.OldOutputs.GetOk("forcesReplacement")
+					new, hasNew := req.NewInputs.GetOk("forcesReplacement")
 					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
 						replaceKeys = append(replaceKeys, "forcesReplacement")
 					}
@@ -878,9 +879,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t4",
 		name: "n2",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(42.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(42.0),
+		}),
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 		},
@@ -890,9 +891,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t5",
 		name: "n3",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(1000.0),
+		}),
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
 		},
@@ -902,9 +903,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t6",
 		name: "n4",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1000.0),
+		}),
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
 		},
@@ -915,9 +916,9 @@ func TestAliasURNs(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t7",
 		name: "n5",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(999.0),
+		}),
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t6::n4",
@@ -928,9 +929,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:            "pkgA:index:t2",
@@ -941,9 +942,9 @@ func TestAliasURNs(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
@@ -962,9 +963,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:      "pkgA:index:t2",
@@ -975,9 +976,9 @@ func TestAliasURNs(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
@@ -1077,14 +1078,14 @@ func TestAliasURNs(t *testing.T) {
 
 	// Now change n1's name and type and n2's type, but also add a load of aliases and pre-multiply them out
 	// before sending to the engine
-	n1Aliases := make([]resource.URN, 0)
-	n2Aliases := make([]resource.URN, 0)
-	n3Aliases := make([]resource.URN, 0)
-	for i := 0; i < 100; i++ {
+	n1Aliases := make([]resource.URN, 0, 100)
+	n2Aliases := make([]resource.URN, 0, 1000)
+	n3Aliases := make([]resource.URN, 0, 1000)
+	for i := range 100 {
 		n1Aliases = append(n1Aliases, resource.URN(
 			fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d::n1", i)))
 
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			n2Aliases = append(n2Aliases, resource.URN(
 				fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j)))
 
@@ -1268,7 +1269,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 						makeSpecAlias("resA", "", "", ""),
 					},
 				})
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		case 2:
 			// Second test case, try and create a new B that aliases to A. First make the B with an alias...
@@ -1289,11 +1290,11 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1311,7 +1312,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Set mode to try and create A then a B that aliases to it, this should fail
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1319,7 +1320,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Set mode to try and create B first then a A, this should fail
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	// Because we made the B first that's what should end up in the state file
@@ -1396,7 +1397,7 @@ func TestCorrectResourceChosen(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1457,8 +1458,8 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	insA := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createA := func(monitor *deploytest.ResourceMonitor) {
 		_, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
@@ -1471,7 +1472,7 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		createA(monitor)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1583,7 +1584,7 @@ func TestParentAlias(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1659,7 +1660,7 @@ func TestEmptyParentAlias(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1781,7 +1782,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1808,7 +1809,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	// registered.
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	require.Len(t, snap.Resources, 4)
@@ -1913,7 +1914,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1942,7 +1943,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// resAX at this point because we're not being sent aliases.
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	require.Len(t, snap.Resources, 3)
@@ -1999,7 +2000,7 @@ func TestAliasesInProvidersAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2057,7 +2058,7 @@ func TestAliasesInProvidersAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -2114,7 +2115,7 @@ func TestAliasesInDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2170,7 +2171,7 @@ func TestAliasesInDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -2227,7 +2228,7 @@ func TestAliasesInPropertyDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2283,7 +2284,7 @@ func TestAliasesInPropertyDependenciesAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,
@@ -2340,7 +2341,7 @@ func TestAliasesInDeletedWithAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, loaders...)
+	setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, loaders...)
 	setupOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: setupHostF,
@@ -2396,7 +2397,7 @@ func TestAliasesInDeletedWithAreNormalized(t *testing.T) {
 		return nil
 	})
 
-	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, loaders...)
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, loaders...)
 	reproOpts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: reproHostF,

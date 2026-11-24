@@ -41,11 +41,10 @@ class Custom(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.str]] = None,
+                 value: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         A custom resource that supports method calls
-
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
@@ -58,7 +57,6 @@ class Custom(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A custom resource that supports method calls
-
 
         :param str resource_name: The name of the resource.
         :param CustomArgs args: The arguments to use to populate this resource's properties.
@@ -75,7 +73,7 @@ class Custom(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.str]] = None,
+                 value: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -112,6 +110,12 @@ class Custom(pulumi.CustomResource):
 
         __props__.__dict__["value"] = None
         return Custom(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'call:index:Custom', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

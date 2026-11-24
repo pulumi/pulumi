@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/blang/semver"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +37,7 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploads,
+					Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 					Configuration: json.RawMessage(`{}`),
 				},
 			},
@@ -51,7 +53,7 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploads,
+					Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes": 1024}`),
 				},
 			},
@@ -69,7 +71,7 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploadsV2,
+					Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploadsV2,
 					Version:       2,
 					Configuration: json.RawMessage("{}"),
 				},
@@ -86,7 +88,7 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeltaCheckpointUploadsV2,
+					Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploadsV2,
 					Version:       2,
 					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes": 1024}`),
 				},
@@ -104,7 +106,7 @@ func TestCapabilities(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
-				{Capability: BatchEncrypt},
+				{Capability: cloudapitype.AppAPICapabilityBatchEncrypt},
 			},
 		}
 		actual, err := response.Parse()
@@ -118,7 +120,7 @@ func TestCapabilities(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
-				{Capability: CopilotSummarizeError, Version: 1},
+				{Capability: cloudapitype.AppAPICapabilityCopilotSummarizeError, Version: 1},
 			},
 		}
 		actual, err := response.Parse()
@@ -132,7 +134,7 @@ func TestCapabilities(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
-				{Capability: CopilotSummarizeError, Version: 2},
+				{Capability: cloudapitype.AppAPICapabilityCopilotSummarizeError, Version: 2},
 			},
 		}
 		actual, err := response.Parse()
@@ -145,7 +147,7 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    DeploymentSchemaVersion,
+					Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 					Version:       1,
 					Configuration: json.RawMessage(`{"version": 4}`),
 				},
@@ -163,7 +165,7 @@ func TestCapabilities(t *testing.T) {
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability: StackPolicyPacks,
+					Capability: cloudapitype.AppAPICapabilityStackPolicyPacks,
 					Version:    1,
 				},
 			},
@@ -172,6 +174,266 @@ func TestCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
 			StackPolicyPacks: true,
+		}, actual)
+	})
+
+	t.Run("parse stack outputs", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability: cloudapitype.AppAPICapabilityStackOutputs,
+					Version:    1,
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			StackOutputs: true,
+		}, actual)
+	})
+
+	t.Run("parse coherence windows", func(t *testing.T) {
+		t.Parallel()
+		for _, version := range []int{1, 2} {
+			response := CapabilitiesResponse{
+				Capabilities: []APICapabilityConfig{
+					{
+						Capability: cloudapitype.AppAPICapabilityCoherenceWindows,
+						Version:    version,
+					},
+				},
+			}
+			actual, err := response.Parse()
+			require.NoError(t, err)
+			assert.Equal(t, Capabilities{
+				CoherenceWindowsVersion: version,
+			}, actual)
+		}
+	})
+
+	t.Run("parse api version v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityAPIVersion,
+					Version:       1,
+					Configuration: json.RawMessage(`{"maxVersion":9,"minVersion":3,"defaultVersion":8}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			APIVersion: &APIVersionCapabilityConfig{
+				MaxVersion:     9,
+				MinVersion:     3,
+				DefaultVersion: 8,
+			},
+		}, actual)
+	})
+
+	t.Run("parse api version with newer version ignored", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityAPIVersion,
+					Version:       2,
+					Configuration: json.RawMessage(`{"maxVersion":9,"minVersion":3,"defaultVersion":8}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{}, actual)
+	})
+
+	t.Run("parse response from older server without api version capability", func(t *testing.T) {
+		t.Parallel()
+		// A server that predates the api-version capability still emits other capabilities.
+		// Parse must leave Capabilities.APIVersion nil rather than synthesizing a value.
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: cloudapitype.AppAPICapabilityBatchEncrypt},
+				{Capability: cloudapitype.AppAPICapabilityStackPolicyPacks, Version: 1},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Nil(t, actual.APIVersion)
+		assert.Equal(t, Capabilities{
+			BatchEncryption:  true,
+			StackPolicyPacks: true,
+		}, actual)
+	})
+
+	t.Run("parse api version rejects malformed payloads", func(t *testing.T) {
+		t.Parallel()
+		cases := []struct {
+			name   string
+			config string
+			errSub string
+		}{
+			{
+				name:   "invalid json",
+				config: `{"maxVersion":`,
+				errSub: "decoding APIVersionCapabilityConfig",
+			},
+			{
+				name:   "empty object (missing fields default to zero)",
+				config: `{}`,
+				errSub: "minVersion must be >= 1",
+			},
+			{
+				name:   "zero minVersion",
+				config: `{"maxVersion":9,"minVersion":0,"defaultVersion":0}`,
+				errSub: "minVersion must be >= 1",
+			},
+			{
+				name:   "negative minVersion",
+				config: `{"maxVersion":9,"minVersion":-1,"defaultVersion":9}`,
+				errSub: "minVersion must be >= 1",
+			},
+			{
+				name:   "maxVersion less than minVersion",
+				config: `{"maxVersion":3,"minVersion":5,"defaultVersion":3}`,
+				errSub: "maxVersion (3) must be >= minVersion (5)",
+			},
+			{
+				name:   "defaultVersion below range",
+				config: `{"maxVersion":9,"minVersion":5,"defaultVersion":3}`,
+				errSub: "defaultVersion (3) must be in [minVersion, maxVersion] = [5, 9]",
+			},
+			{
+				name:   "defaultVersion above range",
+				config: `{"maxVersion":9,"minVersion":5,"defaultVersion":10}`,
+				errSub: "defaultVersion (10) must be in [minVersion, maxVersion] = [5, 9]",
+			},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				response := CapabilitiesResponse{
+					Capabilities: []APICapabilityConfig{
+						{
+							Capability:    cloudapitype.AppAPICapabilityAPIVersion,
+							Version:       1,
+							Configuration: json.RawMessage(tc.config),
+						},
+					},
+				}
+				_, err := response.Parse()
+				require.Error(t, err) //nolint:forbidigo // pre-existing
+				assert.Contains(t, err.Error(), tc.errSub)
+			})
+		}
+	})
+
+	t.Run("parse neo-cli-mode v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityNeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{"minCliVersion":"3.250.0"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		want := semver.MustParse("3.250.0")
+		assert.Equal(t, Capabilities{
+			NeoCLIMode: &NeoCLIModeConfig{MinCLIVersion: &want},
+		}, actual)
+	})
+
+	t.Run("parse neo-cli-mode v1 with invalid semver errors", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityNeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{"minCliVersion":"not-a-semver"}`),
+				},
+			},
+		}
+		_, err := response.Parse()
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+	})
+
+	t.Run("parse neo-cli-mode with newer version ignored", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityNeoCLIMode,
+					Version:       2,
+					Configuration: json.RawMessage(`{"minCliVersion":"3.250.0"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{}, actual)
+	})
+
+	t.Run("parse neo-cli-mode with empty config", func(t *testing.T) {
+		t.Parallel()
+		// Empty config still parses to a non-nil NeoCLIMode so callers can distinguish
+		// "advertised but no minimum" from "not advertised".
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityNeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			NeoCLIMode: &NeoCLIModeConfig{},
+		}, actual)
+	})
+
+	t.Run("parse response without neo-cli-mode capability leaves NeoCLIMode nil", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: cloudapitype.AppAPICapabilityBatchEncrypt},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Nil(t, actual.NeoCLIMode)
+	})
+
+	t.Run("parse api version accepts min equals max equals default", func(t *testing.T) {
+		t.Parallel()
+		// Boundary case: a server that only speaks one API version.
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    cloudapitype.AppAPICapabilityAPIVersion,
+					Version:       1,
+					Configuration: json.RawMessage(`{"maxVersion":5,"minVersion":5,"defaultVersion":5}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			APIVersion: &APIVersionCapabilityConfig{
+				MaxVersion:     5,
+				MinVersion:     5,
+				DefaultVersion: 5,
+			},
 		}, actual)
 	})
 }

@@ -1,0 +1,662 @@
+{
+    "syntax": {
+        "object": [
+            {
+                "key": {
+                    "literal": "null-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 1,
+                            "Byte": 19
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 11,
+                            "Byte": 29
+                        }
+                    }
+                },
+                "value": {
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 2,
+                            "Column": 15,
+                            "Byte": 33
+                        },
+                        "End": {
+                            "Line": 2,
+                            "Column": 19,
+                            "Byte": 37
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "boolean-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 3,
+                            "Column": 1,
+                            "Byte": 38
+                        },
+                        "End": {
+                            "Line": 3,
+                            "Column": 14,
+                            "Byte": 51
+                        }
+                    }
+                },
+                "value": {
+                    "literal": true,
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 3,
+                            "Column": 16,
+                            "Byte": 53
+                        },
+                        "End": {
+                            "Line": 3,
+                            "Column": 20,
+                            "Byte": 57
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "integer-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 4,
+                            "Column": 1,
+                            "Byte": 58
+                        },
+                        "End": {
+                            "Line": 4,
+                            "Column": 14,
+                            "Byte": 71
+                        }
+                    }
+                },
+                "value": {
+                    "literal": 42,
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 4,
+                            "Column": 16,
+                            "Byte": 73
+                        },
+                        "End": {
+                            "Line": 4,
+                            "Column": 18,
+                            "Byte": 75
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "number-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 5,
+                            "Column": 1,
+                            "Byte": 76
+                        },
+                        "End": {
+                            "Line": 5,
+                            "Column": 13,
+                            "Byte": 88
+                        }
+                    }
+                },
+                "value": {
+                    "literal": 3.14,
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 5,
+                            "Column": 15,
+                            "Byte": 90
+                        },
+                        "End": {
+                            "Line": 5,
+                            "Column": 19,
+                            "Byte": 94
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "string-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 6,
+                            "Column": 1,
+                            "Byte": 95
+                        },
+                        "End": {
+                            "Line": 6,
+                            "Column": 13,
+                            "Byte": 107
+                        }
+                    }
+                },
+                "value": {
+                    "literal": "hello, world",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 6,
+                            "Column": 15,
+                            "Byte": 109
+                        },
+                        "End": {
+                            "Line": 6,
+                            "Column": 27,
+                            "Byte": 121
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "array-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 7,
+                            "Column": 1,
+                            "Byte": 122
+                        },
+                        "End": {
+                            "Line": 7,
+                            "Column": 12,
+                            "Byte": 133
+                        }
+                    }
+                },
+                "value": {
+                    "array": [
+                        {
+                            "literal": "some",
+                            "range": {
+                                "Filename": "basic",
+                                "Start": {
+                                    "Line": 8,
+                                    "Column": 5,
+                                    "Byte": 139
+                                },
+                                "End": {
+                                    "Line": 8,
+                                    "Column": 9,
+                                    "Byte": 143
+                                }
+                            }
+                        },
+                        {
+                            "literal": "array",
+                            "range": {
+                                "Filename": "basic",
+                                "Start": {
+                                    "Line": 9,
+                                    "Column": 5,
+                                    "Byte": 148
+                                },
+                                "End": {
+                                    "Line": 9,
+                                    "Column": 10,
+                                    "Byte": 153
+                                }
+                            }
+                        },
+                        {
+                            "literal": "entries",
+                            "range": {
+                                "Filename": "basic",
+                                "Start": {
+                                    "Line": 10,
+                                    "Column": 5,
+                                    "Byte": 158
+                                },
+                                "End": {
+                                    "Line": 10,
+                                    "Column": 12,
+                                    "Byte": 165
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 8,
+                            "Column": 3,
+                            "Byte": 137
+                        },
+                        "End": {
+                            "Line": 10,
+                            "Column": 12,
+                            "Byte": 165
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "object-value",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 13,
+                            "Column": 1,
+                            "Byte": 190
+                        },
+                        "End": {
+                            "Line": 13,
+                            "Column": 13,
+                            "Byte": 202
+                        }
+                    }
+                },
+                "value": {
+                    "object": [
+                        {
+                            "key": {
+                                "literal": "foo",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 14,
+                                        "Column": 3,
+                                        "Byte": 206
+                                    },
+                                    "End": {
+                                        "Line": 14,
+                                        "Column": 6,
+                                        "Byte": 209
+                                    }
+                                }
+                            },
+                            "value": {
+                                "literal": "bar",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 14,
+                                        "Column": 8,
+                                        "Byte": 211
+                                    },
+                                    "End": {
+                                        "Line": 14,
+                                        "Column": 11,
+                                        "Byte": 214
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "key": {
+                                "literal": "baz",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 15,
+                                        "Column": 3,
+                                        "Byte": 217
+                                    },
+                                    "End": {
+                                        "Line": 15,
+                                        "Column": 6,
+                                        "Byte": 220
+                                    }
+                                }
+                            },
+                            "value": {
+                                "literal": "qux",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 15,
+                                        "Column": 8,
+                                        "Byte": 222
+                                    },
+                                    "End": {
+                                        "Line": 15,
+                                        "Column": 11,
+                                        "Byte": 225
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "key": {
+                                "literal": "nested-object",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 16,
+                                        "Column": 3,
+                                        "Byte": 228
+                                    },
+                                    "End": {
+                                        "Line": 16,
+                                        "Column": 16,
+                                        "Byte": 241
+                                    }
+                                }
+                            },
+                            "value": {
+                                "object": [
+                                    {
+                                        "key": {
+                                            "literal": "alpha",
+                                            "range": {
+                                                "Filename": "basic",
+                                                "Start": {
+                                                    "Line": 17,
+                                                    "Column": 5,
+                                                    "Byte": 247
+                                                },
+                                                "End": {
+                                                    "Line": 17,
+                                                    "Column": 10,
+                                                    "Byte": 252
+                                                }
+                                            }
+                                        },
+                                        "value": {
+                                            "literal": "beta",
+                                            "range": {
+                                                "Filename": "basic",
+                                                "Start": {
+                                                    "Line": 17,
+                                                    "Column": 12,
+                                                    "Byte": 254
+                                                },
+                                                "End": {
+                                                    "Line": 17,
+                                                    "Column": 16,
+                                                    "Byte": 258
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "key": {
+                                            "literal": "gamma",
+                                            "range": {
+                                                "Filename": "basic",
+                                                "Start": {
+                                                    "Line": 18,
+                                                    "Column": 5,
+                                                    "Byte": 263
+                                                },
+                                                "End": {
+                                                    "Line": 18,
+                                                    "Column": 10,
+                                                    "Byte": 268
+                                                }
+                                            }
+                                        },
+                                        "value": {
+                                            "array": [
+                                                {
+                                                    "literal": "delta",
+                                                    "range": {
+                                                        "Filename": "basic",
+                                                        "Start": {
+                                                            "Line": 19,
+                                                            "Column": 9,
+                                                            "Byte": 278
+                                                        },
+                                                        "End": {
+                                                            "Line": 19,
+                                                            "Column": 14,
+                                                            "Byte": 283
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "literal": "epslion",
+                                                    "range": {
+                                                        "Filename": "basic",
+                                                        "Start": {
+                                                            "Line": 20,
+                                                            "Column": 9,
+                                                            "Byte": 312
+                                                        },
+                                                        "End": {
+                                                            "Line": 20,
+                                                            "Column": 16,
+                                                            "Byte": 319
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "range": {
+                                                "Filename": "basic",
+                                                "Start": {
+                                                    "Line": 19,
+                                                    "Column": 7,
+                                                    "Byte": 276
+                                                },
+                                                "End": {
+                                                    "Line": 20,
+                                                    "Column": 16,
+                                                    "Byte": 319
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 17,
+                                        "Column": 5,
+                                        "Byte": 247
+                                    },
+                                    "End": {
+                                        "Line": 20,
+                                        "Column": 16,
+                                        "Byte": 319
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 14,
+                            "Column": 3,
+                            "Byte": 206
+                        },
+                        "End": {
+                            "Line": 20,
+                            "Column": 16,
+                            "Byte": 319
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "flow-array",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 22,
+                            "Column": 1,
+                            "Byte": 321
+                        },
+                        "End": {
+                            "Line": 22,
+                            "Column": 11,
+                            "Byte": 331
+                        }
+                    }
+                },
+                "value": {
+                    "array": [
+                        {
+                            "literal": 1,
+                            "range": {
+                                "Filename": "basic",
+                                "Start": {
+                                    "Line": 22,
+                                    "Column": 15,
+                                    "Byte": 335
+                                },
+                                "End": {
+                                    "Line": 22,
+                                    "Column": 16,
+                                    "Byte": 336
+                                }
+                            }
+                        },
+                        {
+                            "literal": 2,
+                            "range": {
+                                "Filename": "basic",
+                                "Start": {
+                                    "Line": 22,
+                                    "Column": 18,
+                                    "Byte": 338
+                                },
+                                "End": {
+                                    "Line": 22,
+                                    "Column": 19,
+                                    "Byte": 339
+                                }
+                            }
+                        },
+                        {
+                            "literal": 3,
+                            "range": {
+                                "Filename": "basic",
+                                "Start": {
+                                    "Line": 22,
+                                    "Column": 21,
+                                    "Byte": 341
+                                },
+                                "End": {
+                                    "Line": 22,
+                                    "Column": 22,
+                                    "Byte": 342
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 22,
+                            "Column": 13,
+                            "Byte": 333
+                        },
+                        "End": {
+                            "Line": 22,
+                            "Column": 22,
+                            "Byte": 342
+                        }
+                    }
+                }
+            },
+            {
+                "key": {
+                    "literal": "flow-object",
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 23,
+                            "Column": 1,
+                            "Byte": 345
+                        },
+                        "End": {
+                            "Line": 23,
+                            "Column": 12,
+                            "Byte": 356
+                        }
+                    }
+                },
+                "value": {
+                    "object": [
+                        {
+                            "key": {
+                                "literal": "hello",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 23,
+                                        "Column": 16,
+                                        "Byte": 360
+                                    },
+                                    "End": {
+                                        "Line": 23,
+                                        "Column": 21,
+                                        "Byte": 365
+                                    }
+                                }
+                            },
+                            "value": {
+                                "literal": "world",
+                                "range": {
+                                    "Filename": "basic",
+                                    "Start": {
+                                        "Line": 23,
+                                        "Column": 23,
+                                        "Byte": 367
+                                    },
+                                    "End": {
+                                        "Line": 23,
+                                        "Column": 28,
+                                        "Byte": 372
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "range": {
+                        "Filename": "basic",
+                        "Start": {
+                            "Line": 23,
+                            "Column": 14,
+                            "Byte": 358
+                        },
+                        "End": {
+                            "Line": 23,
+                            "Column": 28,
+                            "Byte": 372
+                        }
+                    }
+                }
+            }
+        ],
+        "range": {
+            "Filename": "basic",
+            "Start": {
+                "Line": 2,
+                "Column": 1,
+                "Byte": 19
+            },
+            "End": {
+                "Line": 23,
+                "Column": 28,
+                "Byte": 372
+            }
+        }
+    }
+}

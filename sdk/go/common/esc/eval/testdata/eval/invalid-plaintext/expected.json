@@ -1,0 +1,960 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "secret values must be string literals",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-plaintext",
+                "Start": {
+                    "Line": 3,
+                    "Column": 17,
+                    "Byte": 31
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 29,
+                    "Byte": 43
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.foo[\"fn::secret\"]"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "bar": {
+                "range": {
+                    "environment": "invalid-plaintext",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 57
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 17,
+                        "byte": 82
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "valid"
+                        },
+                        "object": {
+                            "type": "string",
+                            "const": "here"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "object"
+                    ]
+                },
+                "keyRanges": {
+                    "a": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 57
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 6,
+                            "byte": 58
+                        }
+                    },
+                    "object": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 11,
+                            "byte": 76
+                        }
+                    }
+                },
+                "object": {
+                    "a": {
+                        "range": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 5,
+                                "column": 8,
+                                "byte": 60
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 65
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "valid"
+                        },
+                        "literal": "valid"
+                    },
+                    "object": {
+                        "range": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 6,
+                                "column": 13,
+                                "byte": 78
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 17,
+                                "byte": 82
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "here"
+                        },
+                        "literal": "here"
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "invalid-plaintext",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 19
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 29,
+                        "byte": 43
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": ""
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 19
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 29
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": ""
+                        },
+                        "literal": ""
+                    }
+                }
+            }
+        },
+        "properties": {
+            "bar": {
+                "value": {
+                    "a": {
+                        "value": "valid",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-plaintext",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 60
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 65
+                                }
+                            }
+                        }
+                    },
+                    "object": {
+                        "value": "here",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-plaintext",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 13,
+                                    "byte": 78
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 82
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 57
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 17,
+                            "byte": 82
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "bar": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "valid"
+                        },
+                        "object": {
+                            "type": "string",
+                            "const": "here"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "object"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": ""
+                }
+            },
+            "type": "object",
+            "required": [
+                "bar",
+                "foo"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-plaintext",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-plaintext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-plaintext",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-plaintext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-plaintext",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-plaintext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-plaintext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-plaintext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "bar": {
+            "a": "valid",
+            "object": "here"
+        },
+        "foo": "[secret]"
+    },
+    "eval": {
+        "exprs": {
+            "bar": {
+                "range": {
+                    "environment": "invalid-plaintext",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 57
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 17,
+                        "byte": 82
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "valid"
+                        },
+                        "object": {
+                            "type": "string",
+                            "const": "here"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "object"
+                    ]
+                },
+                "keyRanges": {
+                    "a": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 57
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 6,
+                            "byte": 58
+                        }
+                    },
+                    "object": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 11,
+                            "byte": 76
+                        }
+                    }
+                },
+                "object": {
+                    "a": {
+                        "range": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 5,
+                                "column": 8,
+                                "byte": 60
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 13,
+                                "byte": 65
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "valid"
+                        },
+                        "literal": "valid"
+                    },
+                    "object": {
+                        "range": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 6,
+                                "column": 13,
+                                "byte": 78
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 17,
+                                "byte": 82
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "here"
+                        },
+                        "literal": "here"
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "invalid-plaintext",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 19
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 29,
+                        "byte": 43
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": ""
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 19
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 15,
+                            "byte": 29
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": ""
+                        },
+                        "literal": ""
+                    }
+                }
+            }
+        },
+        "properties": {
+            "bar": {
+                "value": {
+                    "a": {
+                        "value": "valid",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-plaintext",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 60
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 65
+                                }
+                            }
+                        }
+                    },
+                    "object": {
+                        "value": "here",
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-plaintext",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 13,
+                                    "byte": 78
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 82
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 57
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 17,
+                            "byte": 82
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "invalid-plaintext",
+                        "begin": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "bar": {
+                    "properties": {
+                        "a": {
+                            "type": "string",
+                            "const": "valid"
+                        },
+                        "object": {
+                            "type": "string",
+                            "const": "here"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "a",
+                        "object"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": ""
+                }
+            },
+            "type": "object",
+            "required": [
+                "bar",
+                "foo"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-plaintext",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-plaintext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-plaintext",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-plaintext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-plaintext",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-plaintext",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-plaintext",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-plaintext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-plaintext"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "bar": {
+            "a": "valid",
+            "object": "here"
+        },
+        "foo": "[secret]"
+    },
+    "evalJSONRevealed": {
+        "bar": {
+            "a": "valid",
+            "object": "here"
+        },
+        "foo": ""
+    }
+}

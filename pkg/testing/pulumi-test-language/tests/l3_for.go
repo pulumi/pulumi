@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,35 +33,35 @@ func init() {
 				Assert: func(l *L, res AssertArgs) {
 					require.NoError(l, res.Err)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					assert.Equal(l, resource.PropertyMap{
-						"greetings": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("Hello, a!"),
-							resource.NewProperty("Hello, b!"),
-							resource.NewProperty("Hello, c!"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"greetings": property.New([]property.Value{
+							property.New("Hello, a!"),
+							property.New("Hello, b!"),
+							property.New("Hello, c!"),
 						}),
-						"numbered": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("0-a"),
-							resource.NewProperty("1-b"),
-							resource.NewProperty("2-c"),
+						"numbered": property.New([]property.Value{
+							property.New("0-a"),
+							property.New("1-b"),
+							property.New("2-c"),
 						}),
-						"tagList": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("app=web"),
-							resource.NewProperty("env=prod"),
+						"tagList": property.New([]property.Value{
+							property.New("app=web"),
+							property.New("env=prod"),
 						}),
-						"greetingMap": resource.NewProperty(resource.PropertyMap{
-							"a": resource.NewProperty("Hello, a!"),
-							"b": resource.NewProperty("Hello, b!"),
-							"c": resource.NewProperty("Hello, c!"),
+						"greetingMap": property.New(map[string]property.Value{
+							"a": property.New("Hello, a!"),
+							"b": property.New("Hello, b!"),
+							"c": property.New("Hello, c!"),
 						}),
-						"filteredList": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("a"),
-							resource.NewProperty("c"),
+						"filteredList": property.New([]property.Value{
+							property.New("a"),
+							property.New("c"),
 						}),
-						"filteredMap": resource.NewProperty(resource.PropertyMap{
-							"a": resource.NewProperty("Hello, a!"),
-							"c": resource.NewProperty("Hello, c!"),
+						"filteredMap": property.New(map[string]property.Value{
+							"a": property.New("Hello, a!"),
+							"c": property.New("Hello, c!"),
 						}),
-					}, stack.Outputs)
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

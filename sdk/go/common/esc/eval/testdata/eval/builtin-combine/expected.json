@@ -1,0 +1,2567 @@
+{
+    "check": {
+        "exprs": {
+            "builtins": {
+                "range": {
+                    "environment": "builtin-combine",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 103
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 46,
+                        "byte": 303
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 105
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 53,
+                                "byte": 151
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 9,
+                                    "byte": 107
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 115
+                                }
+                            },
+                            "argSchema": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 19,
+                                        "byte": 117
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 53,
+                                        "byte": 151
+                                    }
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-combine",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 20,
+                                                "byte": 118
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 21,
+                                                "byte": 119
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": ","
+                                        },
+                                        "literal": ","
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-combine",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 25,
+                                                "byte": 123
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 53,
+                                                "byte": 151
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "hunter2"
+                                                },
+                                                true
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 27,
+                                                        "byte": 125
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 38,
+                                                        "byte": 136
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "hunter2"
+                                                },
+                                                "symbol": [
+                                                    {
+                                                        "key": "password",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 5,
+                                                                "column": 13,
+                                                                "byte": 63
+                                                            },
+                                                            "end": {
+                                                                "line": 5,
+                                                                "column": 34,
+                                                                "byte": 84
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 42,
+                                                        "byte": 140
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 53,
+                                                        "byte": 151
+                                                    }
+                                                },
+                                                "schema": true,
+                                                "symbol": [
+                                                    {
+                                                        "key": "open",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 3,
+                                                                "column": 5,
+                                                                "byte": 20
+                                                            },
+                                                            "end": {
+                                                                "line": 4,
+                                                                "column": 15,
+                                                                "byte": 50
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "foo",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 7,
+                                                                "column": 42,
+                                                                "byte": 140
+                                                            },
+                                                            "end": {
+                                                                "line": 7,
+                                                                "column": 53,
+                                                                "byte": 151
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 166
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 46,
+                                "byte": 205
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 9,
+                                    "byte": 168
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            },
+                            "argSchema": {
+                                "type": "string"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 23,
+                                        "byte": 182
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 46,
+                                        "byte": 205
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "interpolate": [
+                                    {
+                                        "value": [
+                                            {
+                                                "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 13,
+                                                        "byte": 63
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 34,
+                                                        "byte": 84
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "text": " ",
+                                        "value": [
+                                            {
+                                                "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 8,
+                                                        "column": 23,
+                                                        "byte": 182
+                                                    },
+                                                    "end": {
+                                                        "line": 8,
+                                                        "column": 46,
+                                                        "byte": 205
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 216
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 44,
+                                "byte": 253
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toJSON",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 218
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 19,
+                                    "byte": 228
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 21,
+                                        "byte": 230
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 44,
+                                        "byte": 253
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "interpolate": [
+                                    {
+                                        "value": [
+                                            {
+                                                "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 13,
+                                                        "byte": 63
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 34,
+                                                        "byte": 84
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "text": " ",
+                                        "value": [
+                                            {
+                                                "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 9,
+                                                        "column": 21,
+                                                        "byte": 230
+                                                    },
+                                                    "end": {
+                                                        "line": 9,
+                                                        "column": 44,
+                                                        "byte": 253
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 264
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 46,
+                                "byte": 303
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toString",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 9,
+                                    "byte": 266
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 278
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 23,
+                                        "byte": 280
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 46,
+                                        "byte": 303
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "interpolate": [
+                                    {
+                                        "value": [
+                                            {
+                                                "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 13,
+                                                        "byte": 63
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 34,
+                                                        "byte": 84
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "text": " ",
+                                        "value": [
+                                            {
+                                                "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 10,
+                                                        "column": 23,
+                                                        "byte": 280
+                                                    },
+                                                    "end": {
+                                                        "line": 10,
+                                                        "column": 46,
+                                                        "byte": 303
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "open": {
+                "range": {
+                    "environment": "builtin-combine",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 20
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 15,
+                        "byte": 50
+                    }
+                },
+                "schema": true,
+                "builtin": {
+                    "name": "fn::open::test",
+                    "nameRange": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 19,
+                            "byte": 34
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 42
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 15,
+                                "byte": 50
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "keyRanges": {
+                            "foo": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 10,
+                                    "byte": 45
+                                }
+                            }
+                        },
+                        "object": {
+                            "foo": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 12,
+                                        "byte": 47
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 15,
+                                        "byte": 50
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "bar"
+                                },
+                                "literal": "bar"
+                            }
+                        }
+                    }
+                }
+            },
+            "password": {
+                "range": {
+                    "environment": "builtin-combine",
+                    "begin": {
+                        "line": 5,
+                        "column": 13,
+                        "byte": 63
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 34,
+                        "byte": 84
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hunter2"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 5,
+                            "column": 15,
+                            "byte": 65
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 25,
+                            "byte": 75
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 5,
+                                "column": 27,
+                                "byte": 77
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 34,
+                                "byte": 84
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hunter2"
+                        },
+                        "literal": "hunter2"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "builtins": {
+                "value": [
+                    {
+                        "secret": true,
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 105
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 53,
+                                    "byte": 151
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "secret": true,
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 166
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 46,
+                                    "byte": 205
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "secret": true,
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 216
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 44,
+                                    "byte": 253
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "secret": true,
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 264
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 46,
+                                    "byte": 303
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 103
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 46,
+                            "byte": 303
+                        }
+                    }
+                }
+            },
+            "open": {
+                "unknown": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 15,
+                            "byte": 50
+                        }
+                    }
+                }
+            },
+            "password": {
+                "value": "hunter2",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 5,
+                            "column": 27,
+                            "byte": 77
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 34,
+                            "byte": 84
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "builtins": {
+                    "prefixItems": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "open": true,
+                "password": {
+                    "type": "string",
+                    "const": "hunter2"
+                }
+            },
+            "type": "object",
+            "required": [
+                "builtins",
+                "open",
+                "password"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-combine",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-combine",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-combine",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-combine"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-combine"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "builtins": [
+            "[secret]",
+            "[secret]",
+            "[secret]",
+            "[secret]"
+        ],
+        "open": "[unknown]",
+        "password": "[secret]"
+    },
+    "eval": {
+        "exprs": {
+            "builtins": {
+                "range": {
+                    "environment": "builtin-combine",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 103
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 46,
+                        "byte": 303
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 105
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 53,
+                                "byte": 151
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::join",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 9,
+                                    "byte": 107
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 115
+                                }
+                            },
+                            "argSchema": {
+                                "prefixItems": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                ],
+                                "items": false,
+                                "type": "array"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 19,
+                                        "byte": 117
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 53,
+                                        "byte": 151
+                                    }
+                                },
+                                "list": [
+                                    {
+                                        "range": {
+                                            "environment": "builtin-combine",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 20,
+                                                "byte": 118
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 21,
+                                                "byte": 119
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": ","
+                                        },
+                                        "literal": ","
+                                    },
+                                    {
+                                        "range": {
+                                            "environment": "builtin-combine",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 25,
+                                                "byte": 123
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 53,
+                                                "byte": 151
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "hunter2"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "bar"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 27,
+                                                        "byte": 125
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 38,
+                                                        "byte": 136
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "hunter2"
+                                                },
+                                                "symbol": [
+                                                    {
+                                                        "key": "password",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 5,
+                                                                "column": 13,
+                                                                "byte": 63
+                                                            },
+                                                            "end": {
+                                                                "line": 5,
+                                                                "column": 34,
+                                                                "byte": 84
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 42,
+                                                        "byte": 140
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 53,
+                                                        "byte": 151
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "bar"
+                                                },
+                                                "symbol": [
+                                                    {
+                                                        "key": "open",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 3,
+                                                                "column": 5,
+                                                                "byte": 20
+                                                            },
+                                                            "end": {
+                                                                "line": 4,
+                                                                "column": 15,
+                                                                "byte": 50
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "key": "foo",
+                                                        "range": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            },
+                                                            "end": {
+                                                                "line": 0,
+                                                                "column": 0,
+                                                                "byte": 0
+                                                            }
+                                                        },
+                                                        "value": {
+                                                            "environment": "builtin-combine",
+                                                            "begin": {
+                                                                "line": 3,
+                                                                "column": 5,
+                                                                "byte": 20
+                                                            },
+                                                            "end": {
+                                                                "line": 4,
+                                                                "column": 15,
+                                                                "byte": 50
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 166
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 46,
+                                "byte": 205
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toBase64",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 9,
+                                    "byte": 168
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            },
+                            "argSchema": {
+                                "type": "string"
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 23,
+                                        "byte": 182
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 46,
+                                        "byte": 205
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "interpolate": [
+                                    {
+                                        "value": [
+                                            {
+                                                "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 13,
+                                                        "byte": 63
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 34,
+                                                        "byte": 84
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "text": " ",
+                                        "value": [
+                                            {
+                                                "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 216
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 44,
+                                "byte": 253
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toJSON",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 218
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 19,
+                                    "byte": 228
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 21,
+                                        "byte": 230
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 44,
+                                        "byte": 253
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "interpolate": [
+                                    {
+                                        "value": [
+                                            {
+                                                "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 13,
+                                                        "byte": 63
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 34,
+                                                        "byte": 84
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "text": " ",
+                                        "value": [
+                                            {
+                                                "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 264
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 46,
+                                "byte": 303
+                            }
+                        },
+                        "schema": {
+                            "type": "string"
+                        },
+                        "builtin": {
+                            "name": "fn::toString",
+                            "nameRange": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 9,
+                                    "byte": 266
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 278
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 23,
+                                        "byte": 280
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 46,
+                                        "byte": 303
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "interpolate": [
+                                    {
+                                        "value": [
+                                            {
+                                                "key": "password",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 5,
+                                                        "column": 13,
+                                                        "byte": 63
+                                                    },
+                                                    "end": {
+                                                        "line": 5,
+                                                        "column": 34,
+                                                        "byte": 84
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "text": " ",
+                                        "value": [
+                                            {
+                                                "key": "open",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "key": "foo",
+                                                "range": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 0,
+                                                        "column": 0,
+                                                        "byte": 0
+                                                    }
+                                                },
+                                                "value": {
+                                                    "environment": "builtin-combine",
+                                                    "begin": {
+                                                        "line": 3,
+                                                        "column": 5,
+                                                        "byte": 20
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 15,
+                                                        "byte": 50
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "open": {
+                "range": {
+                    "environment": "builtin-combine",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 20
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 15,
+                        "byte": 50
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "builtin": {
+                    "name": "fn::open::test",
+                    "nameRange": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 19,
+                            "byte": 34
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 42
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 15,
+                                "byte": 50
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "foo"
+                            ]
+                        },
+                        "keyRanges": {
+                            "foo": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 10,
+                                    "byte": 45
+                                }
+                            }
+                        },
+                        "object": {
+                            "foo": {
+                                "range": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 12,
+                                        "byte": 47
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 15,
+                                        "byte": 50
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "bar"
+                                },
+                                "literal": "bar"
+                            }
+                        }
+                    }
+                }
+            },
+            "password": {
+                "range": {
+                    "environment": "builtin-combine",
+                    "begin": {
+                        "line": 5,
+                        "column": 13,
+                        "byte": 63
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 34,
+                        "byte": 84
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hunter2"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 5,
+                            "column": 15,
+                            "byte": 65
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 25,
+                            "byte": 75
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 5,
+                                "column": 27,
+                                "byte": 77
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 34,
+                                "byte": 84
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hunter2"
+                        },
+                        "literal": "hunter2"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "builtins": {
+                "value": [
+                    {
+                        "value": "hunter2,bar",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 105
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 53,
+                                    "byte": 151
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "aHVudGVyMiBiYXI=",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 166
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 46,
+                                    "byte": 205
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "\"hunter2 bar\"",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 216
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 44,
+                                    "byte": 253
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "hunter2 bar",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 264
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 46,
+                                    "byte": 303
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 103
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 46,
+                            "byte": 303
+                        }
+                    }
+                }
+            },
+            "open": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-combine",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 15,
+                                    "byte": 50
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 15,
+                            "byte": 50
+                        }
+                    }
+                }
+            },
+            "password": {
+                "value": "hunter2",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "builtin-combine",
+                        "begin": {
+                            "line": 5,
+                            "column": 27,
+                            "byte": 77
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 34,
+                            "byte": 84
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "builtins": {
+                    "prefixItems": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "open": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "password": {
+                    "type": "string",
+                    "const": "hunter2"
+                }
+            },
+            "type": "object",
+            "required": [
+                "builtins",
+                "open",
+                "password"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-combine",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-combine",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-combine",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-combine",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-combine",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-combine"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-combine"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "builtins": [
+            "[secret]",
+            "[secret]",
+            "[secret]",
+            "[secret]"
+        ],
+        "open": {
+            "foo": "bar"
+        },
+        "password": "[secret]"
+    },
+    "evalJSONRevealed": {
+        "builtins": [
+            "hunter2,bar",
+            "aHVudGVyMiBiYXI=",
+            "\"hunter2 bar\"",
+            "hunter2 bar"
+        ],
+        "open": {
+            "foo": "bar"
+        },
+        "password": "hunter2"
+    }
+}

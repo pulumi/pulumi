@@ -15,7 +15,6 @@
 package bun
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -29,7 +28,7 @@ func TestBunCallbacks(t *testing.T) {
 		Dir:          "callbacks",
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
@@ -46,7 +45,7 @@ func TestBun(t *testing.T) {
 		Dir:          "simple",
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			isBun := stack.Outputs["isBun"].(bool)

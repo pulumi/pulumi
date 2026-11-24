@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import subprocess
 import sys
 import json
@@ -19,8 +20,24 @@ def main():
 
     version = sys.argv[1]
 
+    if version.startswith("v"):
+        print("Version should not start with v")
+        sys.exit(1)
+
     with open("sdk/.version", "w+") as f:
         f.write(version + "\n")
+
+    gomods = subprocess.run(["git", "ls-files", "*go.mod"], check=True, capture_output=True, text=True).stdout.split()
+    for path in gomods:
+        gomod = open(path).read()
+        if path != "pkg/go.mod" and not re.search(r"github\.com/pulumi/pulumi/pkg/v3 => \.", gomod):
+            continue
+        gomod, n = re.subn(r"^((?:require)?\s+github\.com/pulumi/pulumi/sdk/v3) v\S+$", rf"\g<1> v{version}", gomod, flags=re.M)
+        if n > 1 or (n == 0 and path == "pkg/go.mod"):
+            print(f"Expected one github.com/pulumi/pulumi/sdk/v3 requirement in {path}, found {n}")
+            sys.exit(1)
+        with open(path, "w") as f:
+            f.write(gomod)
 
     node = open("sdk/nodejs/package.json").readlines()
     replace_line(node, "    \"version\":", f'    "version": "{version}",\n')
@@ -31,6 +48,11 @@ def main():
     replace_line(node, "export const version = ", f'export const version = "{version}";\n')
     with open("sdk/nodejs/version.ts", "w") as f:
         f.write("".join(node))
+
+    npm = open("npm/package.json").readlines()
+    replace_line(npm, "    \"version\":", f'    "version": "{version}",\n')
+    with open("npm/package.json", "w") as f:
+        f.write("".join(npm))
 
     python = open("sdk/python/lib/pulumi/_version.py").readlines()
     replace_line(python, "_VERSION = ", f'_VERSION = "{version}"\n')

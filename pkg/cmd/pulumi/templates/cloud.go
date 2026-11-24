@@ -23,23 +23,22 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -50,20 +49,18 @@ type TemplateMatchable interface {
 	GetPublisher() string
 }
 
-func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, error) {
+// parseTemplateURL parses a template name/URL into a URLInfo structure.
+// Returns nil URLInfo (not an error) for plain names that should fall back to name matching.
+func parseTemplateURL(templateName string) (*registry.URLInfo, error) {
 	if templateName == "" {
-		return func(TemplateMatchable) bool { return true }, nil
+		return nil, nil
 	}
-
-	var urlInfo *registry.URLInfo
-	var err error
 
 	// 1. Try parsing as a strict registry:// URL
 	if registry.IsRegistryURL(templateName) {
-		urlInfo, err = registry.ParseRegistryURL(templateName)
+		urlInfo, err := registry.ParseRegistryURL(templateName)
 		if err != nil {
-			var invalidRegistryURL *registry.InvalidRegistryURLError
-			if errors.As(err, &invalidRegistryURL) {
+			if invalidRegistryURL, ok := errors.AsType[*registry.InvalidRegistryURLError](err); ok {
 				// Wrap this particular error reason because formats other than the
 				// full registry:// URL format are supported by `pulumi new`.
 				if strings.Contains(invalidRegistryURL.Reason, "expected format") {
@@ -76,30 +73,29 @@ func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, erro
 		if urlInfo.ResourceType() != "templates" {
 			return nil, fmt.Errorf("resource type '%s' is not valid for templates", urlInfo.ResourceType())
 		}
-	} else {
-		// 2. Try parsing as a partial registry URL
-		urlInfo, err = registry.ParsePartialRegistryURL(templateName, "templates")
-		if err != nil {
-			var missingVersion *registry.MissingVersionAfterAtSignError
-			if errors.As(err, &missingVersion) {
-				return nil, err
-			}
+		return urlInfo, nil
+	}
 
-			// Structural errors: fall back to name matching
-			urlInfo = nil
+	// 2. Try parsing as a partial registry URL
+	urlInfo, err := registry.ParsePartialRegistryURL(templateName, "templates")
+	if err != nil {
+		if _, ok := errors.AsType[*registry.MissingVersionAfterAtSignError](err); ok {
+			return nil, err
 		}
-	}
 
-	// Validation: versions other than "latest" are not yet supported because the
-	// list endpoint used by `pulumi new` only returns the latest version.
-	if urlInfo != nil && urlInfo.Version() != nil {
-		return nil, &registry.UnsupportedVersionError{Version: urlInfo.Version().String()}
+		// Structural errors: fall back to name matching
+		return nil, nil
 	}
-
-	return matcherFromURLInfo(urlInfo, templateName), nil
+	return urlInfo, nil
 }
 
-func matcherFromURLInfo(urlInfo *registry.URLInfo, templateName string) func(TemplateMatchable) bool {
+// NewTemplateMatcher creates a matcher function from parsed URL info.
+func NewTemplateMatcher(urlInfo *registry.URLInfo, templateName string) func(TemplateMatchable) bool {
+	// Empty template name matches everything
+	if templateName == "" {
+		return func(TemplateMatchable) bool { return true }
+	}
+
 	if urlInfo == nil {
 		return func(t TemplateMatchable) bool {
 			return t.GetRegistryName() == templateName || t.GetTemplateName() == templateName
@@ -120,58 +116,119 @@ func matcherFromURLInfo(urlInfo *registry.URLInfo, templateName string) func(Tem
 	}
 }
 
-func (s *Source) getCloudTemplates(
-	ctx context.Context, templateName string,
-	wg *sync.WaitGroup, e env.Env,
-) {
-	if !e.GetBool(env.DisableRegistryResolve) {
-		s.getRegistryTemplates(ctx, e, templateName)
-		return
-	}
-
-	// Use the old org templates based API.
-	//
-	// This path can be removed when we are confident in registry resolution. We will
-	// always need to maintain a way to access templates without the service, but we
-	// should only need to maintain one way to access templates through the service.
-	s.getOrgTemplates(ctx, templateName, wg, e)
+// Sharing one registry across fetches costs one backend lookup, not one per fetch.
+func defaultRegistry(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, e env.Env,
+) registry.Registry {
+	return cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), e)
 }
 
-func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
-	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
+func (f *fetch) listRegistry(
+	ctx context.Context, r registry.Registry, opts registry.ListTemplatesOptions, c *cleanup,
+) {
+	f.listRegistryMatching(ctx, r, opts, func(TemplateMatchable) bool { return true }, c)
+}
 
-	matches, err := NewTemplateMatcher(templateName)
+func (f *fetch) resolveRegistryName(
+	ctx context.Context, r registry.Registry, templateName string, c *cleanup,
+) {
+	urlInfo, err := parseTemplateURL(templateName)
 	if err != nil {
-		s.addError(err)
+		f.addError(err)
 		return
 	}
+	if urlInfo != nil && urlInfo.Version() != nil {
+		f.resolveRegistryVersion(ctx, r, urlInfo, c)
+		return
+	}
+	f.listRegistryMatching(ctx, r, registry.ListTemplatesOptions{}, NewTemplateMatcher(urlInfo, templateName), c)
+}
 
-	var nameFilter *string
-	for template, err := range r.ListTemplates(ctx, nameFilter) {
+func (f *fetch) listRegistryMatching(
+	ctx context.Context, r registry.Registry, opts registry.ListTemplatesOptions,
+	matches func(TemplateMatchable) bool, c *cleanup,
+) {
+	for page, err := range r.ListTemplates(ctx, opts) {
 		if err != nil {
-			s.addError(fmt.Errorf("could not get template: %w", err))
+			f.addError(fmt.Errorf("could not get template: %w", err))
 			return
 		}
 
-		if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
-			// These template are maintained using https://github.com/pulumi/templates, and are
-			// ingested without going through the Pulumi Cloud.
-			continue
-		}
+		f.addVcsOrgs(page.VcsTemplateSourceTotals)
 
-		t := registryTemplate{template, r, s}
-		if !matches(t) {
-			continue
-		}
+		for _, template := range page.Templates {
+			if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
+				// These templates are maintained using https://github.com/pulumi/templates, and are
+				// ingested without going through the Pulumi Cloud.
+				continue
+			}
 
-		s.addTemplate(t)
+			t := registryTemplate{template, r, c}
+			if !matches(t) {
+				continue
+			}
+
+			f.addTemplate(t)
+		}
 	}
+}
+
+func (f *fetch) resolveRegistryVersion(
+	ctx context.Context,
+	r registry.Registry,
+	urlInfo *registry.URLInfo,
+	c *cleanup,
+) {
+	version := urlInfo.Version()
+	displayName := buildResolveName(urlInfo)
+
+	var template apitype.TemplateMetadata
+	var err error
+	if urlInfo.Source() != "" && urlInfo.Publisher() != "" {
+		// Use direct GetTemplate to preserve names containing '/' (VCS paths),
+		// which ResolveTemplateFromName would split on.
+		template, err = r.GetTemplate(ctx, urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), version)
+	} else {
+		template, err = registry.ResolveTemplateFromName(ctx, r, displayName, version)
+	}
+
+	if err != nil {
+		if errors.Is(err, registry.ErrNotFound) {
+			f.addError(fmt.Errorf("template '%s' version '%s' not found",
+				displayName, version.String()))
+			return
+		}
+		f.addError(fmt.Errorf("could not resolve template: %w", err))
+		return
+	}
+
+	if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
+		f.addError(fmt.Errorf(
+			"template '%s' is VCS-backed and does not support specific versions",
+			displayName,
+		))
+		return
+	}
+
+	f.addTemplate(registryTemplate{template, r, c})
+}
+
+func buildResolveName(u *registry.URLInfo) string {
+	parts := make([]string, 0, 3)
+	if u.Source() != "" {
+		parts = append(parts, u.Source())
+	}
+	if u.Publisher() != "" {
+		parts = append(parts, u.Publisher())
+	}
+	parts = append(parts, u.Name())
+	return strings.Join(parts, "/")
 }
 
 type registryTemplate struct {
 	t        apitype.TemplateMetadata
 	registry registry.Registry
-	source   *Source
+	cleanup  *cleanup
 }
 
 var _ Template = registryTemplate{}
@@ -217,29 +274,31 @@ func (r registryTemplate) Description() string {
 
 func (r registryTemplate) Error() error { return nil }
 
-func (r registryTemplate) Download(ctx context.Context) (workspace.Template, error) {
+func (r registryTemplate) Publisher() string { return r.GetPublisher() }
+
+func (r registryTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
 	if err != nil {
-		return workspace.Template{}, fmt.Errorf("failed to download from %q: %w", r.t.DownloadURL, err)
+		return ProjectTemplate{}, fmt.Errorf("failed to download from %q: %w", r.t.DownloadURL, err)
 	}
 	defer contract.IgnoreClose(templateBytes)
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {
-		return workspace.Template{}, fmt.Errorf("failed to make temporary directory: %w", err)
+		return ProjectTemplate{}, fmt.Errorf("failed to make temporary directory: %w", err)
 	}
 	// Having created a template directory, we now add it to the list of directories to close.
-	r.source.addCloser(func() error { return os.RemoveAll(templateDir) })
+	r.cleanup.add(func() error { return os.RemoveAll(templateDir) })
 	tarReader, err := createTarReader(templateBytes)
 	if err != nil {
-		return workspace.Template{}, fmt.Errorf("failed to create tar reader: %w", err)
+		return ProjectTemplate{}, fmt.Errorf("failed to create tar reader: %w", err)
 	}
 	defer tarReader.Close()
 
 	if err := writeTar(ctx, tar.NewReader(tarReader), templateDir); err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 
-	template, err := workspace.LoadTemplate(templateDir)
+	template, err := LoadTemplate(templateDir)
 	return template, err
 }
 
@@ -248,54 +307,59 @@ func (r registryTemplate) GetTemplateName() string { return r.Name() }
 func (r registryTemplate) GetSource() string       { return r.t.Source }
 func (r registryTemplate) GetPublisher() string    { return r.t.Publisher }
 
-func (s *Source) getOrgTemplates(
-	ctx context.Context, templateName string,
-	wg *sync.WaitGroup, e env.Env,
+func (f *fetch) listOrgTemplates(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	templateName string, e env.Env, c *cleanup,
 ) {
-	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		f.addError(fmt.Errorf("getting current working directory: %w", err))
+		return
+	}
+
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		s.addError(fmt.Errorf("could not read the current project: %w", err))
+		f.addError(fmt.Errorf("could not read the current project: %w", err))
 		return
 	}
 
 	url, err := pkgWorkspace.GetCurrentCloudURL(ws, e, project)
 	if err != nil {
-		s.addError(fmt.Errorf("could not get current cloud url: %w", err))
+		f.addError(fmt.Errorf("could not get current cloud url: %w", err))
 		return
 	}
 
-	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
+	b, err := lm.Current(ctx, ws, cmdutil.Diag(), url, project, false)
 	if err != nil {
 		if !errors.Is(err, backenderr.MissingEnvVarForNonInteractiveError{}) {
-			s.addError(fmt.Errorf("could not get the current backend: %w", err))
+			f.addError(fmt.Errorf("could not get the current backend: %w", err))
 		}
-		logging.Infof("could not get a backend for org templates")
+		slog.InfoContext(ctx, "could not get a backend for org templates")
 		return
 	} else if b == nil {
-		logging.Infof("no current logged in user")
+		slog.InfoContext(ctx, "no current logged in user")
 		return
 	}
 
 	// Attempt to retrieve the current user
 	if _, _, _, err := b.CurrentUser(); err != nil {
 		if errors.Is(err, backenderr.ErrLoginRequired) {
-			logging.Infof("user is not logged in")
+			slog.InfoContext(ctx, "user is not logged in")
 			return // No current user - so don't proceed
 		}
-		s.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
+		f.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
 		return
 	}
 
 	if !b.SupportsTemplates() {
-		logging.Infof("%s does not support Org Templates", b.Name())
+		slog.InfoContext(ctx, "does not support Org Templates", "backend", b.Name())
 		return
 	}
 
-	logging.Infof("Listing Org Templates from the cloud")
+	slog.InfoContext(ctx, "Listing Org Templates from the cloud")
 	user, orgs, _, err := b.CurrentUser()
 	if err != nil {
-		s.addError(fmt.Errorf("could not get the current user: %w", err))
+		f.addError(fmt.Errorf("could not get the current user: %w", err))
 		return
 	} else if user == "" {
 		return // No current user - so don't proceed.
@@ -304,32 +368,33 @@ func (s *Source) getOrgTemplates(
 	alreadySeenSourceURLs := map[string]struct{}{}
 
 	handleOrg := func(org string) {
-		defer wg.Done()
-		logging.Infof("Checking for templates from %q", org)
+		slog.InfoContext(ctx, "Checking for templates", "org", org)
 		orgTemplates, err := b.ListTemplates(ctx, org)
-		if apiError := new(apitype.ErrorResponse); errors.As(err, &apiError) {
+		if apiError, ok := errors.AsType[*apitype.ErrorResponse](err); ok {
 			// This is what happens when we try to access org templates for an org that hasn't enabled org templates.
 			if apiError.Code == 402 {
-				logging.Infof("%q does not have access to org templates (code=%d)", org, apiError.Code)
+				slog.InfoContext(ctx, "does not have access to org templates", "org", org, "code", apiError.Code)
 				return
 			}
 		} else if err != nil {
-			s.addError(fmt.Errorf("list templates: %w", err))
-			logging.Warningf("Failed to get templates from %q: %s", org, err.Error())
+			f.addError(fmt.Errorf("list templates: %w", err))
+			slog.WarnContext(ctx, "Failed to get templates", "org", org, "err", err.Error())
 			return
 		} else if orgTemplates.HasAccessError {
-			logging.Warningf("Failed to get templates from %q: Access Denied\n"+
-				"Please check that %s can access all template sources", org, b.Name())
+			slog.WarnContext(ctx,
+				"Failed to get templates: access denied; check that the backend can access all template sources",
+				"org", org, "backend", b.Name())
 			return
 		} else if orgTemplates.HasUpstreamError {
 			// This is a catch-all error indicating only that *something* went
 			// wrong with fetching templates for an org.
-			logging.Warningf("Failed to get templates from %q: %s could not download the template", org, b.Name())
+			slog.WarnContext(ctx, "Failed to get templates: the backend could not download the template",
+				"org", org, "backend", b.Name())
 			return
 		}
 
 		for source, sourceTemplates := range orgTemplates.Templates {
-			logging.Infof("sourcing templates from %q", source)
+			slog.InfoContext(ctx, "sourcing templates", "source", source)
 			for _, template := range sourceTemplates {
 				// These template are maintained using https://github.com/pulumi/templates, and are
 				// ingested without going through the Pulumi Cloud.
@@ -349,15 +414,15 @@ func (s *Source) getOrgTemplates(
 				// If we are searching for a template of a specific name,
 				// only match templates of that name.
 				if templateName != "" && templateName != template.Name {
-					logging.V(10).Infof("skipping template %q", template.Name)
+					slog.DebugContext(ctx, "skipping template", "template", template.Name)
 					continue
 				}
 
-				logging.V(10).Infof("adding template %q", template.Name)
-				s.addTemplate(orgTemplate{
+				slog.DebugContext(ctx, "adding template", "template", template.Name)
+				f.addTemplate(orgTemplate{
 					t:       template,
 					org:     org,
-					source:  s,
+					cleanup: c,
 					backend: b,
 				})
 			}
@@ -365,15 +430,14 @@ func (s *Source) getOrgTemplates(
 	}
 
 	for _, org := range orgs {
-		wg.Add(1)
-		go handleOrg(org)
+		f.wg.Go(func() { handleOrg(org) })
 	}
 }
 
 type orgTemplate struct {
 	t       *apitype.PulumiTemplateRemote
 	org     string
-	source  *Source
+	cleanup *cleanup
 	backend backend.Backend
 }
 
@@ -383,27 +447,28 @@ func (t orgTemplate) Name() string        { return t.t.Name }
 func (t orgTemplate) DisplayName() string { return t.t.Name }
 func (t orgTemplate) Description() string { return t.t.Description }
 func (t orgTemplate) Error() error        { return nil }
-func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
+func (t orgTemplate) Publisher() string   { return t.org }
+func (t orgTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 	// Having created a template directory, we now add it to the list of directories to close.
-	t.source.addCloser(func() error { return os.RemoveAll(templateDir) })
+	t.cleanup.add(func() error { return os.RemoveAll(templateDir) })
 
 	tarReader, err := t.backend.DownloadTemplate(ctx, t.org, t.t.TemplateURL)
 	if err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 	if err := errors.Join(
 		writeTar(ctx, tarReader.Tar(), templateDir),
 		tarReader.Close(),
 	); err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
-	logging.Infof("downloaded %q into %q", t.t.Name, templateDir)
+	slog.InfoContext(ctx, "downloaded template", "template", t.t.Name, "dir", templateDir)
 
-	return workspace.LoadTemplate(templateDir)
+	return LoadTemplate(templateDir)
 }
 
 const maxDecompressedSize = 100 << 20 // 100MB
@@ -452,7 +517,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 			return err
 		}
 
-		logging.V(8).Infof("Decompressing %q", header.Name)
+		slog.InfoContext(ctx, "Decompressing", "name", header.Name)
 
 		path := filepath.Clean(header.Name)
 		if !filepath.IsLocal(path) {
@@ -472,7 +537,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)
 			err := os.Mkdir(target, fileMode)
 			if err != nil && !errors.Is(err, fs.ErrExist) {
 				return err
@@ -483,7 +548,7 @@ func writeTar(ctx context.Context, reader *tar.Reader, dst string) error {
 				return fmt.Errorf("invalid file mode for %q: %02x", header.Name, header.Mode)
 			}
 
-			fileMode := os.FileMode(header.Mode) //nolint:gosec // We checked the overflow
+			fileMode := os.FileMode(header.Mode)
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, fileMode)
 			if err != nil {
 				return err

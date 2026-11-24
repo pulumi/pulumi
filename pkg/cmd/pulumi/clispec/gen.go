@@ -17,6 +17,7 @@ package clispec
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 )
 
 // A single CLI flag.
@@ -254,7 +256,9 @@ func buildStructure(
 ) any {
 	// Before doing any work, check if this command should be excluded by any
 	// matching scope. Exclusion applies to this command and, when the scope's
-	// Propagate is true, its entire subtree.
+	// Propagate is true, its entire subtree. Excluding only a menu keeps its
+	// subcommands but makes the menu itself non-executable.
+	excludeSelf := false
 	if overrides != nil && len(overrides.Scopes) > 0 {
 		for _, scope := range overrides.Scopes {
 			if len(scope.Path) > len(breadcrumbs) {
@@ -276,6 +280,10 @@ func buildStructure(
 				continue
 			}
 			if scope.Exclude {
+				if len(scope.Path) == len(breadcrumbs) && !scope.Propagate && cmd.HasSubCommands() {
+					excludeSelf = true
+					continue
+				}
 				return nil
 			}
 		}
@@ -286,18 +294,14 @@ func buildStructure(
 
 	// Accumulated flags for children = inherited + this node's local flags (unmodified).
 	childInherited := make(map[string]Flag, len(inherited)+len(localFlags))
-	for k, v := range inherited {
-		childInherited[k] = v
-	}
-	for k, v := range merged {
-		childInherited[k] = v
-	}
+	maps.Copy(childInherited, inherited)
+	maps.Copy(childInherited, merged)
 
 	subcommands := cmd.Commands()
 	if len(subcommands) > 0 {
 		menu := Menu{
 			Type:       "menu",
-			Executable: isExecutable(cmd),
+			Executable: isExecutable(cmd) && !excludeSelf,
 			Flags:      merged,
 		}
 
@@ -375,6 +379,12 @@ func isFlagRequired(flag *pflag.Flag) bool {
 
 func isExecutable(cmd *cobra.Command) bool {
 	if cmd == nil {
+		return false
+	}
+
+	// A synthetic run function installed by rattler only prints help and
+	// fails, so it does not make the command executable.
+	if rattler.HasSyntheticRun(cmd) {
 		return false
 	}
 

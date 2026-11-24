@@ -174,7 +174,7 @@ func TestListPackagesBunLockb(t *testing.T) {
 	writeFile(t, dir+"/bun.lockb", "")
 
 	_, err = bun.ListPackages(t.Context(), dir, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "bun.lockb")
 	assert.Contains(t, err.Error(), "upgrade to bun >= 1.2")
 }

@@ -61,7 +61,7 @@ class ResourceMonitorStub:
 
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
+        pulumi.resource_pb2.ResourceInvokeResponse,
     ]
 
     Call: grpc.UnaryUnaryMultiCallable[
@@ -72,6 +72,11 @@ class ResourceMonitorStub:
     ReadResource: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ReadResourceRequest,
         pulumi.resource_pb2.ReadResourceResponse,
+    ]
+
+    ExistsResource: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ExistsResourceRequest,
+        pulumi.resource_pb2.ExistsResourceResponse,
     ]
 
     RegisterResource: grpc.UnaryUnaryMultiCallable[
@@ -158,7 +163,7 @@ class ResourceMonitorAsyncStub:
 
     Invoke: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
+        pulumi.resource_pb2.ResourceInvokeResponse,
     ]
 
     Call: grpc.aio.UnaryUnaryMultiCallable[
@@ -169,6 +174,11 @@ class ResourceMonitorAsyncStub:
     ReadResource: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ReadResourceRequest,
         pulumi.resource_pb2.ReadResourceResponse,
+    ]
+
+    ExistsResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ExistsResourceRequest,
+        pulumi.resource_pb2.ExistsResourceResponse,
     ]
 
     RegisterResource: grpc.aio.UnaryUnaryMultiCallable[
@@ -262,7 +272,7 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.resource_pb2.ResourceInvokeRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.provider_pb2.InvokeResponse, collections.abc.Awaitable[pulumi.provider_pb2.InvokeResponse]]: ...
+    ) -> typing.Union[pulumi.resource_pb2.ResourceInvokeResponse, collections.abc.Awaitable[pulumi.resource_pb2.ResourceInvokeResponse]]: ...
 
     
     def Call(
@@ -277,6 +287,13 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.ReadResourceRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.resource_pb2.ReadResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ReadResourceResponse]]: ...
+
+    
+    def ExistsResource(
+        self,
+        request: pulumi.resource_pb2.ExistsResourceRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.ExistsResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ExistsResourceResponse]]: ...
 
     
     def RegisterResource(

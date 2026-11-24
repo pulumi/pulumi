@@ -17,6 +17,8 @@ package apitype
 import (
 	"encoding/json"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -40,6 +42,21 @@ type UpdateProgramRequest struct {
 	Config map[string]ConfigValue `json:"config"`
 
 	Metadata UpdateMetadata `json:"metadata"`
+
+	CoherenceWindow string `json:"coherenceWindow,omitempty"`
+
+	// Environment pins the managed ESC environment revision the update was evaluated against.
+	Environment *UpdateProgramEnvironment `json:"environment,omitempty"`
+}
+
+// UpdateProgramEnvironment identifies the managed ESC environment content an update was evaluated against.
+type UpdateProgramEnvironment struct {
+	// BaseRevision is the environment revision the stack's definition was compared with.
+	BaseRevision int `json:"baseRevision"`
+	// ChangeRequestID is the change request of the draft created when the definition differed.
+	ChangeRequestID string `json:"changeRequestID,omitempty"`
+	// DraftRevision is the draft revision that was evaluated. Meaningful only with ChangeRequestID; 0 is valid.
+	DraftRevision int `json:"draftRevision"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update.
@@ -111,6 +128,10 @@ type UpdateProgramResponse struct {
 	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
 }
 
+// LatestJournalVersion is the maximum journal version supported by this version of the code. Version 1 is the
+// initial journaling protocol; version 2 adds state migration entries.
+const LatestJournalVersion int64 = 2
+
 // StartUpdateRequest requests that an update starts getting applied to a stack.
 type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
@@ -158,19 +179,19 @@ type UpdateEvent struct {
 }
 
 // UpdateStatus is an enum describing the current state during the lifecycle of an update.
-type UpdateStatus string
+type UpdateStatus = cloudapitype.AppUpdateStatus
 
 const (
 	// StatusNotStarted is returned when the Update has been created but not applied.
-	StatusNotStarted UpdateStatus = "not started"
+	StatusNotStarted = cloudapitype.AppUpdateStatusNotStarted
 	// StatusRequested is returned when the Update application has been requested but not started.
-	StatusRequested UpdateStatus = "requested"
+	StatusRequested = cloudapitype.AppUpdateStatusRequested
 	// StatusRunning is returned when the Update is in progress.
-	StatusRunning UpdateStatus = "running"
+	StatusRunning = cloudapitype.AppUpdateStatusRunning
 	// StatusFailed is returned when the update has failed.
-	StatusFailed UpdateStatus = "failed"
+	StatusFailed = cloudapitype.AppUpdateStatusFailed
 	// StatusSucceeded is returned when the update has succeeded.
-	StatusSucceeded UpdateStatus = "succeeded"
+	StatusSucceeded = cloudapitype.AppUpdateStatusSucceeded
 )
 
 // UpdateResults returns a series of events and the current status of an update. The events can be filtered. See
@@ -235,16 +256,19 @@ type RenewUpdateLeaseResponse struct {
 
 const (
 	// UpdateStatusSucceeded indicates that an update completed successfully.
-	UpdateStatusSucceeded UpdateStatus = "succeeded"
+	UpdateStatusSucceeded = cloudapitype.AppUpdateStatusSucceeded
 	// UpdateStatusFailed indicates that an update completed with one or more failures.
-	UpdateStatusFailed UpdateStatus = "failed"
+	UpdateStatusFailed = cloudapitype.AppUpdateStatusFailed
 	// UpdateStatusCancelled indicates that an update completed due to cancellation.
-	UpdateStatusCancelled UpdateStatus = "cancelled"
+	UpdateStatusCancelled = cloudapitype.AppUpdateStatusCancelled
 )
 
 // CompleteUpdateRequest defines the body of a request to the update completion endpoint of the service API.
 type CompleteUpdateRequest struct {
 	Status UpdateStatus `json:"status"`
+
+	Outputs          map[string]any      `json:"outputs,omitempty"`
+	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
 }
 
 // PatchUpdateCheckpointRequest defines the body of a request to the patch update checkpoint endpoint of the service
@@ -302,4 +326,24 @@ type AppendUpdateLogEntryRequest struct {
 type StackRenameRequest struct {
 	NewName    string `json:"newName"`
 	NewProject string `json:"newProject"`
+}
+
+// BeginUpdateRequest is the combined request for creating and starting an update.
+// This endpoint combines the functionality of CreateUpdate and StartUpdate into a single
+// API call to reduce latency during startup.
+type BeginUpdateRequest struct {
+	UpdateKind UpdateKind           `json:"updateKind"`
+	Program    UpdateProgramRequest `json:"program"`
+	StartUpdateRequest
+}
+
+// BeginUpdateResponse is the combined response from creating and starting an update.
+// It includes all data needed to begin the engine execution, including the deployment
+// and stack metadata, eliminating the need for separate API calls.
+type BeginUpdateResponse struct {
+	StartUpdateResponse
+	UpdateProgramResponse
+	// Deployment may be omitted by the service; the client then fetches it separately.
+	Deployment *UntypedDeployment `json:"deployment,omitempty"`
+	Stack      Stack              `json:"stack"`
 }

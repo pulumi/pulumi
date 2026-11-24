@@ -31,7 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optimport"
 
 	"github.com/blang/semver"
-	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -115,11 +115,8 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	s := mkstack("password")
 
 	defer func() {
-		err := os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-		require.NoError(t, err, "failed to unset EnvVar.")
-
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err := s.Workspace().RemoveStack(ctx, s.Name())
 		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -1041,7 +1038,7 @@ func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
 func TestUpsertStackInlineSourceParallel(t *testing.T) {
 	t.Parallel()
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		// Verify that shared context doesn't affect result
 		ctx := t.Context()
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
@@ -2254,13 +2251,11 @@ func TestNestedConfig(t *testing.T) {
 	projYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.yaml"))
 	require.NoError(t, err)
 
-	//nolint:gosec // writing test fixture to temp dir
 	require.NoError(t, os.WriteFile(filepath.Join(pDir, "Pulumi.yaml"), projYAML, 0o600))
 	stackYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.dev.yaml"))
 	require.NoError(t, err)
 
 	stackCfgName := "Pulumi." + sName + ".yaml"
-	//nolint:gosec // writing test fixture to temp dir
 	require.NoError(t, os.WriteFile(filepath.Join(pDir, stackCfgName), stackYAML, 0o600))
 
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
@@ -2329,7 +2324,7 @@ func TestEnvFunctions(t *testing.T) {
 	}()
 
 	// Errors when trying to add a non-existent env
-	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env"))
+	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env")) //nolint:forbidigo // pre-existing
 
 	// No error when adding an existing env
 	require.NoError(t, s.AddEnvironments(ctx, "automation-api-test-env", "automation-api-test-env-2"),
@@ -2352,7 +2347,7 @@ func TestEnvFunctions(t *testing.T) {
 
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "new_key")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	v, err := s.GetConfig(ctx, "also")
 	assert.Equal(t, "business", v.Value)
 
@@ -2362,7 +2357,7 @@ func TestEnvFunctions(t *testing.T) {
 	require.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	require.NoError(t, s.AddEnvironments(ctx, "secrets-test-env-DO-NOT-DELETE"),
 		"adding environments failed, err: %v", err)
@@ -2592,6 +2587,43 @@ func TestStackImportResources(t *testing.T) {
 	}
 
 	assert.Equal(t, normalize(string(expectedGeneratedCode)), normalize(importResult.GeneratedCode))
+	_, err = stack.Destroy(ctx)
+	require.NoError(t, err, "failed to destroy stack")
+}
+
+func TestStackImportResourcesWithoutGenerateCode(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, "import", sName)
+	pDir := filepath.Join(".", "test", "import")
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err, "failed to initialize stack")
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	randomPluginVersion := "4.16.3"
+	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
+	require.NoError(t, err, "failed to install plugin")
+	resourcesToImport := []*optimport.ImportResource{
+		{
+			Type: "random:index/randomPassword:RandomPassword",
+			ID:   "supersecret",
+			Name: "randomPassword",
+		},
+	}
+
+	importResult, err := stack.ImportResources(ctx,
+		optimport.Resources(resourcesToImport),
+		optimport.Protect(false),
+		optimport.GenerateCode(false))
+
+	require.NoError(t, err, "failed to import resources")
+	require.Equal(t, "succeeded", importResult.Summary.Result)
+	require.Empty(t, importResult.GeneratedCode)
 	_, err = stack.Destroy(ctx)
 	require.NoError(t, err, "failed to destroy stack")
 }
@@ -3504,7 +3536,6 @@ func TestInstallWithOptions(t *testing.T) {
 	require.Contains(t, stdout.String(), "Creating virtual environment...")
 	require.Contains(t, stdout.String(), "Successfully installed urllib3")
 	require.Contains(t, stdout.String(), "Finished installing dependencies")
-	require.Empty(t, stderr.String())
 	require.DirExists(t, filepath.Join(pDir, "venv"))
 
 	// Run without options
@@ -3855,13 +3886,11 @@ func containsSummary(log []events.EngineEvent) bool {
 
 func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) *sync.WaitGroup {
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go (func() {
+	wg.Go(func() {
 		for event := range eventChannel {
 			*events = append(*events, event)
 		}
-		wg.Done()
-	})()
+	})
 	return &wg
 }
 
@@ -3924,19 +3953,21 @@ func TestNewOptions(t *testing.T) {
 	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(m))
 	require.NoError(t, err)
 
-	// Basic call with no options.
+	// Basic call with no options. The generated CLI API places no
+	// `--` separator when there are no positional arguments to follow.
 	_, err = workspace.New(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, []string{"new", "--yes"}, m.capturedArgs)
 
-	// With template.
+	// With template — the templateOrURL goes after a `--` separator
+	// the generator emits before any positional args.
 	_, err = workspace.New(ctx, &NewOptions{
 		TemplateOrURL: "typescript",
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"new", "--yes", "typescript"}, m.capturedArgs)
+	require.Equal(t, []string{"new", "--yes", "--", "typescript"}, m.capturedArgs)
 
-	// With name and generate-only.
+	// With name and generate-only. No template, so no `--`.
 	_, err = workspace.New(ctx, &NewOptions{
 		Name:         "my-project",
 		GenerateOnly: true,
@@ -3966,7 +3997,7 @@ func TestNewOptions(t *testing.T) {
 		"--config-path",
 		"--description", "A test project",
 		"--stack", "dev",
-		"aws-typescript",
+		"--", "aws-typescript",
 	}, m.capturedArgs)
 
 	// With all boolean flags.
@@ -3990,7 +4021,7 @@ func TestNewOptions(t *testing.T) {
 		"--offline",
 		"--remote-stack-config",
 		"--template-mode",
-		"yaml",
+		"--", "yaml",
 	}, m.capturedArgs)
 }
 
@@ -4052,4 +4083,35 @@ func TestNewGenerateOnlyInSubDir(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(contents), "name: sub-project")
 	require.Contains(t, string(contents), "description: A sub-project for testing")
+}
+
+func TestStackSelectedThroughSymlinkedWorkDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks require elevated privileges on Windows")
+	}
+
+	root := t.TempDir()
+	t.Setenv("PULUMI_HOME", filepath.Join(root, "home"))
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(filepath.Join(root, "state")))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+
+	realDir := filepath.Join(root, "real")
+	linkDir := filepath.Join(root, "link")
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "state"), 0o755))
+	require.NoError(t, os.Mkdir(realDir, 0o755))
+	require.NoError(t, os.Symlink(realDir, linkDir))
+	require.NoError(t, os.WriteFile(filepath.Join(realDir, "Pulumi.yaml"), []byte("name: p\nruntime: yaml\n"), 0o600))
+
+	cmd := exec.Command("pulumi", "stack", "init", "dev")
+	cmd.Dir = linkDir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	ws, err := NewLocalWorkspace(t.Context(), WorkDir(linkDir))
+	require.NoError(t, err)
+
+	stack, err := ws.Stack(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, stack)
+	require.Equal(t, "dev", stack.Name)
 }

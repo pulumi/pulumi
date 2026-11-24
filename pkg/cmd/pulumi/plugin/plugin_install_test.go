@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"os"
 	"path/filepath"
@@ -25,10 +26,11 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -99,7 +101,7 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, file string,
-			_ diag.Sink, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Empty(t, file)
@@ -117,6 +119,37 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 
 	err := cmd.Run(t.Context(), []string{"resource", "aws@1000.78.0"})
 	require.NoError(t, err)
+}
+
+func TestInstallKnownLanguageRuntime(t *testing.T) {
+	// An empty plugin cache, so the install is not skipped because the runtime is already present.
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	var pluginWasInstalled bool
+	cmd := &pluginInstallCmd{
+		diag: diagtest.LogSink(t),
+		pluginGetLatestVersion: func(ps workspace.PluginDescriptor, ctx context.Context) (*semver.Version, error) {
+			assert.Fail(t, "GetLatestVersion should not have been called")
+			return nil, nil
+		},
+		installPluginSpec: func(
+			_ context.Context, _ string,
+			install workspace.PluginDescriptor, file string,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
+		) error {
+			pluginWasInstalled = true
+			assert.Empty(t, file)
+			assert.Equal(t, "opa", install.Name)
+			assert.Equal(t, apitype.LanguagePlugin, install.Kind)
+			require.NotNil(t, install.Version)
+			assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", install.PluginDownloadURL)
+			return nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), []string{"language", "opa"})
+	require.NoError(t, err)
+	assert.True(t, pluginWasInstalled, "installPluginSpec should have been called")
 }
 
 func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
@@ -156,7 +189,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Equal(t, workspace.PluginDescriptor{
@@ -220,7 +253,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Equal(t, workspace.PluginDescriptor{
@@ -315,7 +348,7 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, file string,
-			sink diag.Sink, color colors.Colorization, reinstall bool,
+			sink diag.Sink, _ io.Writer, _ *progress.Group, color colors.Colorization, reinstall bool,
 		) error {
 			wasInstalled = true
 			assert.Equal(t, "./pulumi-resource-some-file.tar.gz", file)
@@ -363,7 +396,7 @@ packages:
 		},
 		installPluginSpec: func(
 			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			require.Equal(t, "./my-provider", install.Name)
 			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
@@ -415,7 +448,7 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 		},
 		installPluginSpec: func(
 			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			assert.Fail(t, "installPluginSpec should not have been called")
 			return nil

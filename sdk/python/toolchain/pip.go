@@ -72,6 +72,29 @@ func (p *pip) InstallDependencies(ctx context.Context, cwd string, useLanguageVe
 		errorWriter)
 }
 
+func (p *pip) InstallPackage(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
+	infoWriter io.Writer, errorWriter io.Writer,
+) error {
+	if err := p.EnsureVenv(ctx, cwd, useLanguageVersionTools, showOutput, infoWriter, errorWriter); err != nil {
+		return fmt.Errorf("creating virtual environment: %w", err)
+	}
+
+	// InstallDependencies installs only the dependencies that requirements.txt lists, so pip must install the
+	// package itself.
+	cmd, err := p.ModuleCommand(ctx, "pip", "install", cwd)
+	if err != nil {
+		return fmt.Errorf("preparing pip install command: %w", err)
+	}
+	if showOutput {
+		cmd.Stdout = infoWriter
+		cmd.Stderr = errorWriter
+		err = cmd.Run()
+	} else {
+		_, err = cmd.Output()
+	}
+	return errutil.ErrorWithStderr(err, "installing package")
+}
+
 func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) error {
 	logging.V(9).Infof("pip linking %s", packages)
 	fPath := filepath.Join(p.root, "requirements.txt")
@@ -338,7 +361,7 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 		}
 		if err != nil {
 			return "", "", fmt.Errorf(
-				"failed to locate any of %q on your PATH. Have you installed Python 3.6 or greater?",
+				"failed to locate any of %q on your PATH. Have you installed Python 3.10 or greater?",
 				pythonCmds)
 		}
 	}
@@ -370,7 +393,7 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
 	exts := []string{""}
 	x := os.Getenv(`PATHEXT`)
 	if x != "" {
-		for _, e := range strings.Split(strings.ToLower(x), `;`) {
+		for e := range strings.SplitSeq(strings.ToLower(x), `;`) {
 			if e == "" {
 				continue
 			}
@@ -482,32 +505,52 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	runPipInstall := func(errorMsg string, arg ...string) error {
 		args := append([]string{"-m", "pip", "install"}, arg...)
 
-		var pipCmd *exec.Cmd
-		if venvDir == "" {
-			var err error
-			pipCmd, err = Command(ctx, args...)
-			if err != nil {
-				return err
+		// Retry up to 3 times to handle transient PyPI issues (e.g. CDN
+		// returning unexpected Content-Type responses).
+		const maxAttempts = 3
+		var lastErr error
+		for attempt := range maxAttempts {
+			var pipCmd *exec.Cmd
+			if venvDir == "" {
+				var err error
+				pipCmd, err = Command(ctx, args...)
+				if err != nil {
+					return err
+				}
+			} else {
+				pipCmd = VirtualEnvCommand(venvDir, "python", args...)
 			}
-		} else {
-			pipCmd = VirtualEnvCommand(venvDir, "python", args...)
-		}
-		pipCmd.Dir = cwd
-		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+			pipCmd.Dir = cwd
+			pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
-		if showOutput {
-			// Show stdout/stderr output.
-			pipCmd.Stdout = infoWriter
-			pipCmd.Stderr = errorWriter
+			var stderrBuf bytes.Buffer
+			if showOutput {
+				// Show stdout/stderr output.
+				pipCmd.Stdout = infoWriter
+				pipCmd.Stderr = io.MultiWriter(errorWriter, &stderrBuf)
+			} else {
+				pipCmd.Stderr = &stderrBuf
+			}
 			if err := pipCmd.Run(); err != nil {
-				return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
+				stderr := strings.TrimSpace(stderrBuf.String())
+				if stderr != "" {
+					lastErr = fmt.Errorf("%s via '%s': %w: %s", errorMsg, strings.Join(pipCmd.Args, " "), err, stderr)
+				} else {
+					lastErr = fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
+				}
 			}
-		} else {
-			if _, err := pipCmd.Output(); err != nil {
-				return errutil.ErrorWithStderr(err, strings.Join(pipCmd.Args, " "))
+			if lastErr == nil {
+				return nil
 			}
+			if attempt < maxAttempts-1 && pipErrorIsTransient(stderrBuf.String()) {
+				if showOutput {
+					fmt.Fprintf(errorWriter, "Retrying (%d/%d)...\n", attempt+1, maxAttempts)
+				}
+				continue
+			}
+			return lastErr
 		}
-		return nil
+		return lastErr
 	}
 
 	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
@@ -537,6 +580,20 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	printmsg("Finished installing dependencies")
 
 	return nil
+}
+
+// pipErrorIsTransient returns true if pip's stderr output suggests a transient
+// upstream issue that is worth retrying.
+func pipErrorIsTransient(stderr string) bool {
+	transientPatterns := []string{
+		"because the GET request got Content-Type",
+	}
+	for _, pattern := range transientPatterns {
+		if strings.Contains(stderr, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *pip) PrepareProject(

@@ -49,7 +49,7 @@ func NewExampleComponent(
 	password, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-password", name), &random.RandomPasswordArgs{
 		Length:          pulumi.Int(16),
 		Special:         pulumi.Bool(true),
-		OverrideSpecial: pulumi.String(args.Input),
+		OverrideSpecial: args.Input,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
 		return nil, err
@@ -100,6 +100,6 @@ func NewExampleComponent(
 	if err != nil {
 		return nil, err
 	}
-	componentResource.Result = password.Result
+	componentResource.Result = pulumi.Any(password.Result)
 	return &componentResource, nil
 }

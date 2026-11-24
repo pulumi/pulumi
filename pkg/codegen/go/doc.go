@@ -158,6 +158,47 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 	return funcName + "Result"
 }
 
+// ResolveDocRef renders a single doc ref as a Go name. It honours package-level renames and
+// import aliases by consulting the package context map (built and cached on d by
+// GeneratePackagesMap; rebuilt on the fly for pkgs the helper has not seen).
+func (d DocLanguageHelper) ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error) {
+	packages := d.packages
+	goInfo := d.goPkgInfo
+	if packages == nil || d.topLevelPkg == nil || d.topLevelPkg.Name() != pkg.Name() {
+		if i, err := pkg.Language("go"); err == nil {
+			goInfo, _ = i.(GoPackageInfo)
+		}
+		var err error
+		packages, err = generatePackageContextMap("", pkg, goInfo, nil)
+		if err != nil {
+			return "", false, err
+		}
+	}
+
+	// Pick a representative context for non-resolver fields and synthesise a pkgContext whose
+	// module is set to a sentinel that cannot match any real module. This guarantees that every
+	// ref resolves to a fully-qualified cross-module name, while still routing through the
+	// shared packages map for rename/alias handling.
+	var template *pkgContext
+	for _, c := range packages {
+		template = c
+		break
+	}
+	if template == nil {
+		return "", false, nil
+	}
+	ctx := &pkgContext{
+		pkg:              pkg,
+		mod:              "\x00docrefresolver",
+		packages:         packages,
+		modToPkg:         goInfo.ModuleToPackage,
+		pkgImportAliases: goInfo.PackageImportAliases,
+		importBasePath:   template.importBasePath,
+	}
+	name, ok := ctx.docRefResolver(selfRef)(ref)
+	return name, ok, nil
+}
+
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }

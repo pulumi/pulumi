@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,11 +28,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -44,6 +44,7 @@ func parseAndSaveConfigArray(
 	s backend.Stack,
 	configArray []string,
 	path bool,
+	configFile string,
 ) error {
 	if len(configArray) == 0 {
 		return nil
@@ -53,7 +54,7 @@ func parseAndSaveConfigArray(
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig, configFile); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil
@@ -65,7 +66,7 @@ func parseAndSaveConfigArray(
 // client address is present, the returned project will always have the runtime set to "client"
 // with the address option set to the client address.
 func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*workspace.Project, string, error) {
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		oerr := err
 		if errors.Is(err, workspace.ErrProjectNotFound) {
@@ -115,7 +116,7 @@ func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (back
 	}
 }
 
-func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
+func GetRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
 	// refresh is assigned the empty string by default to distinguish the difference between
 	// when the user actually interacted with the cli argument (`NoOptDefVal`)
@@ -153,12 +154,12 @@ func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *d
 	} else {
 		showNeoFeatures = env.NeoEnabled.Value()
 	}
-	logging.V(7).Infof("neo flag=%v, PULUMI_NEO=%v, using value=%v",
-		neoEnabledFlag, env.NeoEnabled.Value(), showNeoFeatures)
+	slog.Info("neo flag configuration",
+		"neo-flag", neoEnabledFlag, "PULUMI_NEO", env.NeoEnabled.Value(), "show-neo-features", showNeoFeatures)
 
 	// Do not enable any Neo features if we are using a DIY backend
 	if showNeoFeatures && isDIYBackend {
-		logging.Warningf("Neo features are not available with DIY backends.")
+		slog.Warn("Neo features are not available with DIY backends.")
 		return
 	}
 
@@ -172,7 +173,7 @@ func configureNeoTaskOption(neoTaskOnFailureFlag bool, cmd *cobra.Command, displ
 	isDIYBackend bool,
 ) {
 	if neoTaskOnFailureFlag && isDIYBackend {
-		logging.Warningf("Neo task creation is not available with DIY backends.")
+		slog.Warn("Neo task creation is not available with DIY backends.")
 		return
 	}
 

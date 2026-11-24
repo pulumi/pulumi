@@ -18,13 +18,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Like PrimitiveProvider but with all fields optional in schema and defaults specified there.
@@ -43,10 +43,6 @@ func (p *PrimitiveDefaultsProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *PrimitiveDefaultsProvider) Pkg() tokens.Package {
-	return "primitive-defaults"
 }
 
 func (p *PrimitiveDefaultsProvider) GetSchema(
@@ -93,26 +89,26 @@ func (p *PrimitiveDefaultsProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "8.0.0" {
+	if version.AsString() != "8.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 8.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 8.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -122,6 +118,7 @@ func (p *PrimitiveDefaultsProvider) CheckConfig(
 func (p *PrimitiveDefaultsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "primitive-defaults:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -137,9 +134,7 @@ func (p *PrimitiveDefaultsProvider) Check(
 
 	// Start with user-provided values.
 	props := resource.PropertyMap{}
-	for k, v := range req.News {
-		props[k] = v
-	}
+	maps.Copy(props, news)
 
 	// For each optional property: assert it is present and validate its type.
 	assertPresentAndType := func(
@@ -149,16 +144,14 @@ func (p *PrimitiveDefaultsProvider) Check(
 	) *plugin.CheckResponse {
 		v, ok := props[key]
 		if !ok {
-			resp := plugin.CheckResponse{
+			return new(plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing required property"),
-			}
-			return &resp
+			})
 		}
 		if !assertType(unsecret(v)) {
-			resp := plugin.CheckResponse{
+			return new(plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "value is not a "+typeName),
-			}
-			return &resp
+			})
 		}
 		return nil
 	}
@@ -176,12 +169,13 @@ func (p *PrimitiveDefaultsProvider) Check(
 		return *resp, nil
 	}
 
-	return plugin.CheckResponse{Properties: props}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(props)}, nil
 }
 
 func (p *PrimitiveDefaultsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "primitive-defaults:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -195,7 +189,7 @@ func (p *PrimitiveDefaultsProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

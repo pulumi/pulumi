@@ -1,10 +1,10 @@
 {
     "resources": [
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:autoscaling/group:Group::Group",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:autoscaling/group:Group::Group",
 			"custom": true,
-			"type": "aws:autoscaling/group:Group",
+			"type": "importer:autoscaling/group:Group",
 			"inputs": {
 				"availabilityZones": [
 					"foobar",
@@ -26,40 +26,40 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudformation/stack:Stack::Stack",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudformation/stack:Stack::Stack",
 			"custom": true,
-			"type": "aws:cloudformation/stack:Stack",
+			"type": "importer:cloudformation/stack:Stack",
 			"inputs": {
 				"name": "foobar",
 				"templateBody": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/dashboard:Dashboard::Dashboard",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/dashboard:Dashboard::Dashboard",
 			"custom": true,
-			"type": "aws:cloudwatch/dashboard:Dashboard",
+			"type": "importer:cloudwatch/dashboard:Dashboard",
 			"inputs": {
 				"dashboardBody": "foobar",
 				"dashboardName": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/logGroup:LogGroup::LogGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/logGroup:LogGroup::LogGroup",
 			"custom": true,
-			"type": "aws:cloudwatch/logGroup:LogGroup",
+			"type": "importer:cloudwatch/logGroup:LogGroup",
 			"inputs": {
 				"name": "foobar",
 				"retentionInDays": 42
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/logMetricFilter:LogMetricFilter::LogMetricFilter",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/logMetricFilter:LogMetricFilter::LogMetricFilter",
 			"custom": true,
-			"type": "aws:cloudwatch/logMetricFilter:LogMetricFilter",
+			"type": "importer:cloudwatch/logMetricFilter:LogMetricFilter",
 			"inputs": {
 				"logGroupName": "foobar",
 				"metricTransformation": {
@@ -72,10 +72,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
 			"custom": true,
-			"type": "aws:cloudwatch/metricAlarm:MetricAlarm",
+			"type": "importer:cloudwatch/metricAlarm:MetricAlarm",
 			"inputs": {
 				"actionsEnabled": true,
 				"alarmActions": [
@@ -97,10 +97,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
 			"custom": true,
-			"type": "aws:cloudwatch/metricAlarm:MetricAlarm",
+			"type": "importer:cloudwatch/metricAlarm:MetricAlarm",
 			"inputs": {
 				"actionsEnabled": true,
 				"alarmActions": [
@@ -122,10 +122,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
 			"custom": true,
-			"type": "aws:cloudwatch/metricAlarm:MetricAlarm",
+			"type": "importer:cloudwatch/metricAlarm:MetricAlarm",
 			"inputs": {
 				"actionsEnabled": true,
 				"alarmActions": [
@@ -147,10 +147,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
 			"custom": true,
-			"type": "aws:cloudwatch/metricAlarm:MetricAlarm",
+			"type": "importer:cloudwatch/metricAlarm:MetricAlarm",
 			"inputs": {
 				"actionsEnabled": true,
 				"alarmActions": [
@@ -173,10 +173,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
 			"custom": true,
-			"type": "aws:cloudwatch/metricAlarm:MetricAlarm",
+			"type": "importer:cloudwatch/metricAlarm:MetricAlarm",
 			"inputs": {
 				"actionsEnabled": true,
 				"alarmActions": [
@@ -195,19 +195,19 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/eip:Eip::Eip",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/eip:Eip::Eip",
 			"custom": true,
-			"type": "aws:ec2/eip:Eip",
+			"type": "importer:ec2/eip:Eip",
 			"inputs": {
 				"vpc": true
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/flowLog:FlowLog::FlowLog",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/flowLog:FlowLog::FlowLog",
 			"custom": true,
-			"type": "aws:ec2/flowLog:FlowLog",
+			"type": "importer:ec2/flowLog:FlowLog",
 			"inputs": {
 				"iamRoleArn": "foobar",
 				"logDestination": "foobar",
@@ -218,19 +218,19 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/internetGateway:InternetGateway::InternetGateway",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/internetGateway:InternetGateway::InternetGateway",
 			"custom": true,
-			"type": "aws:ec2/internetGateway:InternetGateway",
+			"type": "importer:ec2/internetGateway:InternetGateway",
 			"inputs": {
 				"vpcId": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/launchConfiguration:LaunchConfiguration::LaunchConfiguration",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/launchConfiguration:LaunchConfiguration::LaunchConfiguration",
 			"custom": true,
-			"type": "aws:ec2/launchConfiguration:LaunchConfiguration",
+			"type": "importer:ec2/launchConfiguration:LaunchConfiguration",
 			"inputs": {
 				"associatePublicIpAddress": false,
 				"ebsBlockDevices": [
@@ -259,10 +259,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/launchConfiguration:LaunchConfiguration::LaunchConfiguration",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/launchConfiguration:LaunchConfiguration::LaunchConfiguration",
 			"custom": true,
-			"type": "aws:ec2/launchConfiguration:LaunchConfiguration",
+			"type": "importer:ec2/launchConfiguration:LaunchConfiguration",
 			"inputs": {
 				"associatePublicIpAddress": true,
 				"enableMonitoring": true,
@@ -276,20 +276,20 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/natGateway:NatGateway::NatGateway",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/natGateway:NatGateway::NatGateway",
 			"custom": true,
-			"type": "aws:ec2/natGateway:NatGateway",
+			"type": "importer:ec2/natGateway:NatGateway",
 			"inputs": {
 				"allocationId": "foobar",
 				"subnetId": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/routeTable:RouteTable::RouteTable",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/routeTable:RouteTable::RouteTable",
 			"custom": true,
-			"type": "aws:ec2/routeTable:RouteTable",
+			"type": "importer:ec2/routeTable:RouteTable",
 			"inputs": {
 				"routes": [
 					{
@@ -301,20 +301,20 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/routeTableAssociation:RouteTableAssociation::RouteTableAssociation",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/routeTableAssociation:RouteTableAssociation::RouteTableAssociation",
 			"custom": true,
-			"type": "aws:ec2/routeTableAssociation:RouteTableAssociation",
+			"type": "importer:ec2/routeTableAssociation:RouteTableAssociation",
 			"inputs": {
 				"routeTableId": "foobar",
 				"subnetId": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/securityGroup:SecurityGroup::SecurityGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/securityGroup:SecurityGroup::SecurityGroup",
 			"custom": true,
-			"type": "aws:ec2/securityGroup:SecurityGroup",
+			"type": "importer:ec2/securityGroup:SecurityGroup",
 			"inputs": {
 				"description": "foobar",
 				"egress": [
@@ -345,10 +345,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/securityGroup:SecurityGroup::SecurityGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/securityGroup:SecurityGroup::SecurityGroup",
 			"custom": true,
-			"type": "aws:ec2/securityGroup:SecurityGroup",
+			"type": "importer:ec2/securityGroup:SecurityGroup",
 			"inputs": {
 				"description": "foobar",
 				"egress": [
@@ -388,10 +388,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/securityGroup:SecurityGroup::SecurityGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/securityGroup:SecurityGroup::SecurityGroup",
 			"custom": true,
-			"type": "aws:ec2/securityGroup:SecurityGroup",
+			"type": "importer:ec2/securityGroup:SecurityGroup",
 			"inputs": {
 				"description": "foobar",
 				"egress": [
@@ -431,10 +431,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/securityGroup:SecurityGroup::SecurityGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/securityGroup:SecurityGroup::SecurityGroup",
 			"custom": true,
-			"type": "aws:ec2/securityGroup:SecurityGroup",
+			"type": "importer:ec2/securityGroup:SecurityGroup",
 			"inputs": {
 				"description": "foobar",
 				"ingress": [
@@ -463,10 +463,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/subnet:Subnet::Subnet",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/subnet:Subnet::Subnet",
 			"custom": true,
-			"type": "aws:ec2/subnet:Subnet",
+			"type": "importer:ec2/subnet:Subnet",
 			"inputs": {
 				"assignIpv6AddressOnCreation": false,
 				"availabilityZone": "foobar",
@@ -476,10 +476,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/subnet:Subnet::Subnet",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/subnet:Subnet::Subnet",
 			"custom": true,
-			"type": "aws:ec2/subnet:Subnet",
+			"type": "importer:ec2/subnet:Subnet",
 			"inputs": {
 				"assignIpv6AddressOnCreation": false,
 				"availabilityZone": "foobar",
@@ -489,19 +489,19 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/vpc:Vpc::Vpc",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/vpc:Vpc::Vpc",
 			"custom": true,
-			"type": "aws:ec2/vpc:Vpc",
+			"type": "importer:ec2/vpc:Vpc",
             "inputs": {
                 "cidrBlock": ""
             }
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ec2/vpc:Vpc::Vpc",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ec2/vpc:Vpc::Vpc",
 			"custom": true,
-			"type": "aws:ec2/vpc:Vpc",
+			"type": "importer:ec2/vpc:Vpc",
 			"inputs": {
 				"assignGeneratedIpv6CidrBlock": false,
 				"cidrBlock": "foobar",
@@ -515,19 +515,19 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ecs/cluster:Cluster::Cluster",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ecs/cluster:Cluster::Cluster",
 			"custom": true,
-			"type": "aws:ecs/cluster:Cluster",
+			"type": "importer:ecs/cluster:Cluster",
 			"inputs": {
 				"name": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ecs/service:Service::Service",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ecs/service:Service::Service",
 			"custom": true,
-			"type": "aws:ecs/service:Service",
+			"type": "importer:ecs/service:Service",
 			"inputs": {
 				"cluster": "foobar",
 				"deploymentMaximumPercent": 42,
@@ -555,10 +555,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:ecs/taskDefinition:TaskDefinition::TaskDefinition",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:ecs/taskDefinition:TaskDefinition::TaskDefinition",
 			"custom": true,
-			"type": "aws:ecs/taskDefinition:TaskDefinition",
+			"type": "importer:ecs/taskDefinition:TaskDefinition",
 			"inputs": {
 				"containerDefinitions": "foobar",
 				"family": "foobar",
@@ -567,10 +567,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:elasticloadbalancingv2/listener:Listener::Listener",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:elasticloadbalancingv2/listener:Listener::Listener",
 			"custom": true,
-			"type": "aws:elasticloadbalancingv2/listener:Listener",
+			"type": "importer:elasticloadbalancingv2/listener:Listener",
 			"inputs": {
 				"certificateArn": "foobar",
 				"defaultActions": [
@@ -590,10 +590,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:elasticloadbalancingv2/listener:Listener::Listener",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:elasticloadbalancingv2/listener:Listener::Listener",
 			"custom": true,
-			"type": "aws:elasticloadbalancingv2/listener:Listener",
+			"type": "importer:elasticloadbalancingv2/listener:Listener",
 			"inputs": {
 				"defaultActions": [
 					{
@@ -611,10 +611,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:elasticloadbalancingv2/listenerRule:ListenerRule::ListenerRule",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:elasticloadbalancingv2/listenerRule:ListenerRule::ListenerRule",
 			"custom": true,
-			"type": "aws:elasticloadbalancingv2/listenerRule:ListenerRule",
+			"type": "importer:elasticloadbalancingv2/listenerRule:ListenerRule",
 			"inputs": {
 				"actions": [
 					{
@@ -641,10 +641,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:elasticloadbalancingv2/loadBalancer:LoadBalancer::LoadBalancer",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:elasticloadbalancingv2/loadBalancer:LoadBalancer::LoadBalancer",
 			"custom": true,
-			"type": "aws:elasticloadbalancingv2/loadBalancer:LoadBalancer",
+			"type": "importer:elasticloadbalancingv2/loadBalancer:LoadBalancer",
 			"inputs": {
 				"accessLogs": {
 					"bucket": "foobar",
@@ -669,10 +669,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:elasticloadbalancingv2/targetGroup:TargetGroup::TargetGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:elasticloadbalancingv2/targetGroup:TargetGroup::TargetGroup",
 			"custom": true,
-			"type": "aws:elasticloadbalancingv2/targetGroup:TargetGroup",
+			"type": "importer:elasticloadbalancingv2/targetGroup:TargetGroup",
 			"inputs": {
 				"deregistrationDelay": 42,
 				"healthCheck": {
@@ -697,10 +697,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:elasticloadbalancingv2/targetGroup:TargetGroup::TargetGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:elasticloadbalancingv2/targetGroup:TargetGroup::TargetGroup",
 			"custom": true,
-			"type": "aws:elasticloadbalancingv2/targetGroup:TargetGroup",
+			"type": "importer:elasticloadbalancingv2/targetGroup:TargetGroup",
 			"inputs": {
 				"deregistrationDelay": 42,
 				"lambdaMultiValueHeadersEnabled": false,
@@ -714,10 +714,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:iam/instanceProfile:InstanceProfile::InstanceProfile",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:iam/instanceProfile:InstanceProfile::InstanceProfile",
 			"custom": true,
-			"type": "aws:iam/instanceProfile:InstanceProfile",
+			"type": "importer:iam/instanceProfile:InstanceProfile",
 			"inputs": {
 				"name": "foobar",
 				"path": "foobar",
@@ -725,10 +725,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:iam/role:Role::Role",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:iam/role:Role::Role",
 			"custom": true,
-			"type": "aws:iam/role:Role",
+			"type": "importer:iam/role:Role",
 			"inputs": {
 				"assumeRolePolicy": "foobar",
 				"forceDetachPolicies": false,
@@ -738,10 +738,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:iam/rolePolicy:RolePolicy::RolePolicy",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:iam/rolePolicy:RolePolicy::RolePolicy",
 			"custom": true,
-			"type": "aws:iam/rolePolicy:RolePolicy",
+			"type": "importer:iam/rolePolicy:RolePolicy",
 			"inputs": {
 				"name": "foobar",
 				"policy": "foobar",
@@ -749,29 +749,29 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:iam/rolePolicyAttachment:RolePolicyAttachment::RolePolicyAttachment",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:iam/rolePolicyAttachment:RolePolicyAttachment::RolePolicyAttachment",
 			"custom": true,
-			"type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+			"type": "importer:iam/rolePolicyAttachment:RolePolicyAttachment",
 			"inputs": {
 				"policyArn": "foobar",
 				"role": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:iam/serviceLinkedRole:ServiceLinkedRole::ServiceLinkedRole",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:iam/serviceLinkedRole:ServiceLinkedRole::ServiceLinkedRole",
 			"custom": true,
-			"type": "aws:iam/serviceLinkedRole:ServiceLinkedRole",
+			"type": "importer:iam/serviceLinkedRole:ServiceLinkedRole",
 			"inputs": {
 				"awsServiceName": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:kms/key:Key::Key",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:kms/key:Key::Key",
 			"custom": true,
-			"type": "aws:kms/key:Key",
+			"type": "importer:kms/key:Key",
 			"inputs": {
 				"customerMasterKeySpec": "foobar",
 				"enableKeyRotation": true,
@@ -781,10 +781,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:rds/cluster:Cluster::Cluster",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:rds/cluster:Cluster::Cluster",
 			"custom": true,
-			"type": "aws:rds/cluster:Cluster",
+			"type": "importer:rds/cluster:Cluster",
 			"inputs": {
 				"backupRetentionPeriod": 42,
 				"copyTagsToSnapshot": false,
@@ -806,10 +806,10 @@
 			"protect": true
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:rds/clusterInstance:ClusterInstance::ClusterInstance",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:rds/clusterInstance:ClusterInstance::ClusterInstance",
 			"custom": true,
-			"type": "aws:rds/clusterInstance:ClusterInstance",
+			"type": "importer:rds/clusterInstance:ClusterInstance",
 			"inputs": {
 				"autoMinorVersionUpgrade": true,
 				"clusterIdentifier": "foobar",
@@ -824,10 +824,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:rds/parameterGroup:ParameterGroup::ParameterGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:rds/parameterGroup:ParameterGroup::ParameterGroup",
 			"custom": true,
-			"type": "aws:rds/parameterGroup:ParameterGroup",
+			"type": "importer:rds/parameterGroup:ParameterGroup",
 			"inputs": {
 				"description": "foobar",
 				"family": "foobar",
@@ -862,10 +862,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:rds/subnetGroup:SubnetGroup::SubnetGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:rds/subnetGroup:SubnetGroup::SubnetGroup",
 			"custom": true,
-			"type": "aws:rds/subnetGroup:SubnetGroup",
+			"type": "importer:rds/subnetGroup:SubnetGroup",
 			"inputs": {
 				"description": "foobar",
 				"name": "foobar",
@@ -876,10 +876,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:route53/record:Record::Record",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:route53/record:Record::Record",
 			"custom": true,
-			"type": "aws:route53/record:Record",
+			"type": "importer:route53/record:Record",
 			"inputs": {
 				"aliases": [
 					{
@@ -894,10 +894,10 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:route53/record:Record::Record",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:route53/record:Record::Record",
 			"custom": true,
-			"type": "aws:route53/record:Record",
+			"type": "importer:route53/record:Record",
 			"inputs": {
 				"name": "foobar",
 				"records": [
@@ -909,16 +909,16 @@
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:route53/zone:Zone::Zone",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:route53/zone:Zone::Zone",
 			"custom": true,
-			"type": "aws:route53/zone:Zone"
+			"type": "importer:route53/zone:Zone"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:s3/bucket:Bucket::Bucket",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:s3/bucket:Bucket::Bucket",
 			"custom": true,
-			"type": "aws:s3/bucket:Bucket",
+			"type": "importer:s3/bucket:Bucket",
 			"inputs": {
 				"acl": "foobar",
 				"bucket": "foobar",
@@ -927,10 +927,10 @@
 			"protect": true
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:s3/bucket:Bucket::Bucket",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:s3/bucket:Bucket::Bucket",
 			"custom": true,
-			"type": "aws:s3/bucket:Bucket",
+			"type": "importer:s3/bucket:Bucket",
 			"inputs": {
 				"acl": "foobar",
 				"bucket": "foobar",
@@ -955,27 +955,27 @@
 			"protect": true
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::aws:s3/bucketPolicy:BucketPolicy::BucketPolicy",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::importer:s3/bucketPolicy:BucketPolicy::BucketPolicy",
 			"custom": true,
-			"type": "aws:s3/bucketPolicy:BucketPolicy",
+			"type": "importer:s3/bucketPolicy:BucketPolicy",
 			"inputs": {
 				"bucket": "foobar",
 				"policy": "foobar"
 			}
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:acm/certificate:Certificate::Certificate",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:acm/certificate:Certificate::Certificate",
 			"custom": true,
-			"type": "aws:acm/certificate:Certificate",
+			"type": "importer:acm/certificate:Certificate",
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:cloudwatch/eventRule:EventRule::EventRule",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:cloudwatch/eventRule:EventRule::EventRule",
 			"custom": true,
-			"type": "aws:cloudwatch/eventRule:EventRule",
+			"type": "importer:cloudwatch/eventRule:EventRule",
 			"inputs": {
 				"description": "foobar",
 				"isEnabled": true,
@@ -985,10 +985,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:cloudwatch/eventTarget:EventTarget::EventTarget",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:cloudwatch/eventTarget:EventTarget::EventTarget",
 			"custom": true,
-			"type": "aws:cloudwatch/eventTarget:EventTarget",
+			"type": "importer:cloudwatch/eventTarget:EventTarget",
 			"inputs": {
 				"arn": "foobar",
 				"ecsTarget": {
@@ -1013,10 +1013,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:cloudwatch/logGroup:LogGroup::LogGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:cloudwatch/logGroup:LogGroup::LogGroup",
 			"custom": true,
-			"type": "aws:cloudwatch/logGroup:LogGroup",
+			"type": "importer:cloudwatch/logGroup:LogGroup",
 			"inputs": {
 				"name": "foobar",
 				"retentionInDays": 42
@@ -1024,10 +1024,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:cloudwatch/metricAlarm:MetricAlarm::MetricAlarm",
 			"custom": true,
-			"type": "aws:cloudwatch/metricAlarm:MetricAlarm",
+			"type": "importer:cloudwatch/metricAlarm:MetricAlarm",
 			"inputs": {
 				"actionsEnabled": true,
 				"alarmActions": [
@@ -1051,10 +1051,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ec2/securityGroup:SecurityGroup::SecurityGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ec2/securityGroup:SecurityGroup::SecurityGroup",
 			"custom": true,
-			"type": "aws:ec2/securityGroup:SecurityGroup",
+			"type": "importer:ec2/securityGroup:SecurityGroup",
 			"inputs": {
 				"description": "foobar",
 				"name": "foobar",
@@ -1064,17 +1064,17 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ec2/securityGroup:SecurityGroup::SecurityGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ec2/securityGroup:SecurityGroup::SecurityGroup",
 			"custom": true,
-			"type": "aws:ec2/securityGroup:SecurityGroup",
+			"type": "importer:ec2/securityGroup:SecurityGroup",
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
 			"custom": true,
-			"type": "aws:ec2/securityGroupRule:SecurityGroupRule",
+			"type": "importer:ec2/securityGroupRule:SecurityGroupRule",
 			"inputs": {
 				"cidrBlocks": [
 					"foobar"
@@ -1090,10 +1090,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
 			"custom": true,
-			"type": "aws:ec2/securityGroupRule:SecurityGroupRule",
+			"type": "importer:ec2/securityGroupRule:SecurityGroupRule",
 			"inputs": {
 				"cidrBlocks": [
 					"foobar"
@@ -1108,10 +1108,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
 			"custom": true,
-			"type": "aws:ec2/securityGroupRule:SecurityGroupRule",
+			"type": "importer:ec2/securityGroupRule:SecurityGroupRule",
 			"inputs": {
 				"cidrBlocks": [
 					"foobar",
@@ -1127,10 +1127,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ec2/securityGroupRule:SecurityGroupRule::SecurityGroupRule",
 			"custom": true,
-			"type": "aws:ec2/securityGroupRule:SecurityGroupRule",
+			"type": "importer:ec2/securityGroupRule:SecurityGroupRule",
 			"inputs": {
 				"fromPort": 42,
 				"protocol": "foobar",
@@ -1142,10 +1142,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecr/lifecyclePolicy:LifecyclePolicy::LifecyclePolicy",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecr/lifecyclePolicy:LifecyclePolicy::LifecyclePolicy",
 			"custom": true,
-			"type": "aws:ecr/lifecyclePolicy:LifecyclePolicy",
+			"type": "importer:ecr/lifecyclePolicy:LifecyclePolicy",
 			"inputs": {
 				"policy": "foobar",
 				"repository": "foobar"
@@ -1153,10 +1153,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecr/repository:Repository::Repository",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecr/repository:Repository::Repository",
 			"custom": true,
-			"type": "aws:ecr/repository:Repository",
+			"type": "importer:ecr/repository:Repository",
 			"inputs": {
 				"imageTagMutability": "foobar",
 				"name": "foobar"
@@ -1164,20 +1164,20 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecs/cluster:Cluster::Cluster",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecs/cluster:Cluster::Cluster",
 			"custom": true,
-			"type": "aws:ecs/cluster:Cluster",
+			"type": "importer:ecs/cluster:Cluster",
 			"inputs": {
 				"name": "foobar"
 			},
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecs/service:Service::Service",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecs/service:Service::Service",
 			"custom": true,
-			"type": "aws:ecs/service:Service",
+			"type": "importer:ecs/service:Service",
 			"inputs": {
 				"cluster": "foobar",
 				"deploymentMaximumPercent": 42,
@@ -1209,10 +1209,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecs/service:Service::Service",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecs/service:Service::Service",
 			"custom": true,
-			"type": "aws:ecs/service:Service",
+			"type": "importer:ecs/service:Service",
 			"inputs": {
 				"cluster": "foobar",
 				"deploymentMaximumPercent": 42,
@@ -1245,10 +1245,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecs/taskDefinition:TaskDefinition::TaskDefinition",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecs/taskDefinition:TaskDefinition::TaskDefinition",
 			"custom": true,
-			"type": "aws:ecs/taskDefinition:TaskDefinition",
+			"type": "importer:ecs/taskDefinition:TaskDefinition",
 			"inputs": {
 				"containerDefinitions": "foobar",
 				"cpu": "foobar",
@@ -1264,10 +1264,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:ecs/taskDefinition:TaskDefinition::TaskDefinition",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:ecs/taskDefinition:TaskDefinition::TaskDefinition",
 			"custom": true,
-			"type": "aws:ecs/taskDefinition:TaskDefinition",
+			"type": "importer:ecs/taskDefinition:TaskDefinition",
 			"inputs": {
 				"containerDefinitions": {
 					"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
@@ -1295,10 +1295,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:elasticsearch/domain:Domain::Domain",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:elasticsearch/domain:Domain::Domain",
 			"custom": true,
-			"type": "aws:elasticsearch/domain:Domain",
+			"type": "importer:elasticsearch/domain:Domain",
 			"inputs": {
 				"accessPolicies": "foobar",
 				"clusterConfig": {
@@ -1333,10 +1333,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:iam/policy:Policy::Policy",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:iam/policy:Policy::Policy",
 			"custom": true,
-			"type": "aws:iam/policy:Policy",
+			"type": "importer:iam/policy:Policy",
 			"inputs": {
 				"name": "foobar",
 				"path": "foobar",
@@ -1346,10 +1346,10 @@
 			"protect": true
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:iam/policyAttachment:PolicyAttachment::PolicyAttachment",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:iam/policyAttachment:PolicyAttachment::PolicyAttachment",
 			"custom": true,
-			"type": "aws:iam/policyAttachment:PolicyAttachment",
+			"type": "importer:iam/policyAttachment:PolicyAttachment",
 			"inputs": {
 				"name": "foobar",
 				"policyArn": "foobar",
@@ -1361,10 +1361,10 @@
 			"protect": true
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:iam/role:Role::Role",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:iam/role:Role::Role",
 			"custom": true,
-			"type": "aws:iam/role:Role",
+			"type": "importer:iam/role:Role",
 			"inputs": {
 				"assumeRolePolicy": "foobar",
 				"forceDetachPolicies": false,
@@ -1375,10 +1375,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:iam/role:Role::Role",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:iam/role:Role::Role",
 			"custom": true,
-			"type": "aws:iam/role:Role",
+			"type": "importer:iam/role:Role",
 			"inputs": {
 				"assumeRolePolicy": "foobar",
 				"forceDetachPolicies": false,
@@ -1390,10 +1390,10 @@
 			"protect": true
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:iam/rolePolicy:RolePolicy::RolePolicy",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:iam/rolePolicy:RolePolicy::RolePolicy",
 			"custom": true,
-			"type": "aws:iam/rolePolicy:RolePolicy",
+			"type": "importer:iam/rolePolicy:RolePolicy",
 			"inputs": {
 				"name": "foobar",
 				"policy": "foobar",
@@ -1402,10 +1402,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:iam/rolePolicyAttachment:RolePolicyAttachment::RolePolicyAttachment",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:iam/rolePolicyAttachment:RolePolicyAttachment::RolePolicyAttachment",
 			"custom": true,
-			"type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+			"type": "importer:iam/rolePolicyAttachment:RolePolicyAttachment",
 			"inputs": {
 				"policyArn": "foobar",
 				"role": "foobar"
@@ -1413,10 +1413,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lambda/function:Function::Function",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lambda/function:Function::Function",
 			"custom": true,
-			"type": "aws:lambda/function:Function",
+			"type": "importer:lambda/function:Function",
 			"inputs": {
 				"code": "archive",
 				"handler": "foobar",
@@ -1431,10 +1431,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lambda/permission:Permission::Permission",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lambda/permission:Permission::Permission",
 			"custom": true,
-			"type": "aws:lambda/permission:Permission",
+			"type": "importer:lambda/permission:Permission",
 			"inputs": {
 				"action": "foobar",
 				"function": "foobar",
@@ -1445,10 +1445,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lb/listener:Listener::Listener",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lb/listener:Listener::Listener",
 			"custom": true,
-			"type": "aws:lb/listener:Listener",
+			"type": "importer:lb/listener:Listener",
 			"inputs": {
 				"certificateArn": "foobar",
 				"defaultActions": [
@@ -1465,10 +1465,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lb/listener:Listener::Listener",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lb/listener:Listener::Listener",
 			"custom": true,
-			"type": "aws:lb/listener:Listener",
+			"type": "importer:lb/listener:Listener",
 			"inputs": {
 				"defaultActions": [
 					{
@@ -1483,10 +1483,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lb/loadBalancer:LoadBalancer::LoadBalancer",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lb/loadBalancer:LoadBalancer::LoadBalancer",
 			"custom": true,
-			"type": "aws:lb/loadBalancer:LoadBalancer",
+			"type": "importer:lb/loadBalancer:LoadBalancer",
 			"inputs": {
 				"dropInvalidHeaderFields": false,
 				"enableCrossZoneLoadBalancing": false,
@@ -1512,10 +1512,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lb/loadBalancer:LoadBalancer::LoadBalancer",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lb/loadBalancer:LoadBalancer::LoadBalancer",
 			"custom": true,
-			"type": "aws:lb/loadBalancer:LoadBalancer",
+			"type": "importer:lb/loadBalancer:LoadBalancer",
 			"inputs": {
 				"dropInvalidHeaderFields": false,
 				"enableCrossZoneLoadBalancing": false,
@@ -1541,10 +1541,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lb/targetGroup:TargetGroup::TargetGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lb/targetGroup:TargetGroup::TargetGroup",
 			"custom": true,
-			"type": "aws:lb/targetGroup:TargetGroup",
+			"type": "importer:lb/targetGroup:TargetGroup",
 			"inputs": {
 				"deregistrationDelay": 42,
 				"healthCheck": {
@@ -1574,10 +1574,10 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:lb/targetGroup:TargetGroup::TargetGroup",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:lb/targetGroup:TargetGroup::TargetGroup",
 			"custom": true,
-			"type": "aws:lb/targetGroup:TargetGroup",
+			"type": "importer:lb/targetGroup:TargetGroup",
 			"inputs": {
 				"deregistrationDelay": 42,
 				"lambdaMultiValueHeadersEnabled": false,
@@ -1595,9 +1595,9 @@
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"urn": "urn:pulumi:stack::project::my$aws:s3/bucket:Bucket::Bucket",
+			"urn": "urn:pulumi:stack::project::my$importer:s3/bucket:Bucket::Bucket",
 			"custom": true,
-			"type": "aws:s3/bucket:Bucket",
+			"type": "importer:s3/bucket:Bucket",
 			"inputs": {
 				"acl": "foobar",
 				"bucket": "foobar",
@@ -1612,20 +1612,20 @@
 			"provider": "urn:pulumi:stack::project::pulumi:providers:pkg::provider::id"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:sns/topic:Topic::Topic",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:sns/topic:Topic::Topic",
 			"custom": true,
-			"type": "aws:sns/topic:Topic",
+			"type": "importer:sns/topic:Topic",
 			"inputs": {
 				"name": "foobar"
 			},
 			"parent": "urn:pulumi:stack::project::my::parent::parent"
 		},
 		{
-			"provider": "urn:pulumi:stack::project::pulumi:providers:aws::default_123::123",
-			"urn": "urn:pulumi:stack::project::my$aws:sns/topicSubscription:TopicSubscription::TopicSubscription",
+			"provider": "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
+			"urn": "urn:pulumi:stack::project::my$importer:sns/topicSubscription:TopicSubscription::TopicSubscription",
 			"custom": true,
-			"type": "aws:sns/topicSubscription:TopicSubscription",
+			"type": "importer:sns/topicSubscription:TopicSubscription",
 			"inputs": {
 				"confirmationTimeoutInMinutes": 42,
 				"endpoint": "foobar",

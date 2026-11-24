@@ -46,6 +46,56 @@ func (i DataArgs) ToDataOutputWithContext(ctx context.Context) DataOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DataOutput)
 }
 
+// DataArrayInput is an input type that accepts DataArray and DataArrayOutput values.
+// You can construct a concrete instance of `DataArrayInput` via:
+//
+//	DataArray{ DataArgs{...} }
+type DataArrayInput interface {
+	pulumi.Input
+
+	ToDataArrayOutput() DataArrayOutput
+	ToDataArrayOutputWithContext(context.Context) DataArrayOutput
+}
+
+type DataArray []DataInput
+
+func (DataArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Data)(nil)).Elem()
+}
+
+func (i DataArray) ToDataArrayOutput() DataArrayOutput {
+	return i.ToDataArrayOutputWithContext(context.Background())
+}
+
+func (i DataArray) ToDataArrayOutputWithContext(ctx context.Context) DataArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DataArrayOutput)
+}
+
+// DataMapInput is an input type that accepts DataMap and DataMapOutput values.
+// You can construct a concrete instance of `DataMapInput` via:
+//
+//	DataMap{ "key": DataArgs{...} }
+type DataMapInput interface {
+	pulumi.Input
+
+	ToDataMapOutput() DataMapOutput
+	ToDataMapOutputWithContext(context.Context) DataMapOutput
+}
+
+type DataMap map[string]DataInput
+
+func (DataMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Data)(nil)).Elem()
+}
+
+func (i DataMap) ToDataMapOutput() DataMapOutput {
+	return i.ToDataMapOutputWithContext(context.Background())
+}
+
+func (i DataMap) ToDataMapOutputWithContext(ctx context.Context) DataMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DataMapOutput)
+}
+
 type DataOutput struct{ *pulumi.OutputState }
 
 func (DataOutput) ElementType() reflect.Type {
@@ -68,7 +118,51 @@ func (o DataOutput) Public() pulumi.StringOutput {
 	return o.ApplyT(func(v Data) string { return v.Public }).(pulumi.StringOutput)
 }
 
+type DataArrayOutput struct{ *pulumi.OutputState }
+
+func (DataArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Data)(nil)).Elem()
+}
+
+func (o DataArrayOutput) ToDataArrayOutput() DataArrayOutput {
+	return o
+}
+
+func (o DataArrayOutput) ToDataArrayOutputWithContext(ctx context.Context) DataArrayOutput {
+	return o
+}
+
+func (o DataArrayOutput) Index(i pulumi.IntInput) DataOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Data {
+		return vs[0].([]Data)[vs[1].(int)]
+	}).(DataOutput)
+}
+
+type DataMapOutput struct{ *pulumi.OutputState }
+
+func (DataMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Data)(nil)).Elem()
+}
+
+func (o DataMapOutput) ToDataMapOutput() DataMapOutput {
+	return o
+}
+
+func (o DataMapOutput) ToDataMapOutputWithContext(ctx context.Context) DataMapOutput {
+	return o
+}
+
+func (o DataMapOutput) MapIndex(k pulumi.StringInput) DataOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Data {
+		return vs[0].(map[string]Data)[vs[1].(string)]
+	}).(DataOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DataInput)(nil)).Elem(), DataArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DataArrayInput)(nil)).Elem(), DataArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DataMapInput)(nil)).Elem(), DataMap{})
 	pulumi.RegisterOutputType(DataOutput{})
+	pulumi.RegisterOutputType(DataArrayOutput{})
+	pulumi.RegisterOutputType(DataMapOutput{})
 }

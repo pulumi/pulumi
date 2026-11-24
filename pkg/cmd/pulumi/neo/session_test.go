@@ -18,12 +18,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -56,7 +60,9 @@ func newFakeStreamer() *fakeStreamer {
 	}
 }
 
-func (f *fakeStreamer) StreamNeoTaskEvents(_ context.Context, _, _ string) (<-chan client.NeoStreamEvent, error) {
+func (f *fakeStreamer) StreamNeoTaskEvents(
+	_ context.Context, _, _, _ string,
+) (<-chan client.NeoStreamEvent, error) {
 	return f.stream, nil
 }
 
@@ -174,6 +180,108 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 	assert.NotContains(t, asMap, "timestamp")
 }
 
+func TestSession_UIToolCompletedCarriesResult(t *testing.T) {
+	t.Parallel()
+
+	// Regression guard: runBatch must attach the marshalled invokeToolCall
+	// result to UIToolCompleted, otherwise the ctrl+o overlay goes blank.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "payload"}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range events {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "session must emit UIToolCompleted for the cli call")
+	assert.Equal(t, "filesystem__read", completed.Name)
+	assert.False(t, completed.IsError)
+	require.NotEmpty(t, completed.Result, "UIToolCompleted.Result must carry the marshalled tool output")
+	assert.JSONEq(t, `{"content":"payload"}`, string(completed.Result))
+}
+
+func TestSession_UIToolCompletedSurfacesMarshalError(t *testing.T) {
+	t.Parallel()
+
+	// A handler that returns an unmarshallable value (channels aren't JSON) —
+	// the overlay should still get a non-empty Result containing the
+	// marshal_error stub so the user sees why.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"ch": make(chan int)}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range collectUIEvents(uiCh) {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found)
+	require.NotEmpty(t, completed.Result, "marshal failure must still surface a Result for the overlay")
+	assert.Contains(t, string(completed.Result), "marshal_error")
+}
+
 func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	t.Parallel()
 
@@ -198,7 +306,7 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 }
 
 // collectUIEvents drains a UIEvents channel until it is closed, returning everything seen.
-// Use with a Session that sets s.UIEvents — Run closes the channel when it exits.
+// Tests own the channel and must close it after Run returns before calling this.
 func collectUIEvents(ch <-chan UIEvent) []UIEvent {
 	var out []UIEvent
 	for evt := range ch {
@@ -238,9 +346,129 @@ func TestSession_FinalAssistantMessageWithoutCliCallsEmitsTaskIdle(t *testing.T)
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.True(t, hasUIEvent[UITaskIdle](events), "expected UITaskIdle after final assistant_message with no cli calls")
+}
+
+func TestSession_OutputWritesFinalContentAndReturnsCleanly(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// Note: the stream is intentionally NOT closed. Output mode has to terminate
+	// itself; the server keeps the SSE channel open waiting for more user input.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "the final answer",
+		IsFinal: true,
+	})}
+
+	var out strings.Builder
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		Output:   &out,
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Run did not return after the final assistant message — " +
+			"Output mode must terminate without relying on the server to close the stream")
+	}
+
+	assert.Equal(t, "the final answer\n", out.String())
+}
+
+func TestSession_OutputSkipsEmptyContent(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+	})}
+
+	var out strings.Builder
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		Output:   &out,
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Run did not return after a final empty assistant message")
+	}
+
+	assert.Empty(t, out.String())
+}
+
+func TestSession_OutputRunsCliCallsThenWritesFinal(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// First message has a CLI tool call; the agent only resumes once the CLI
+	// posts a tool_result. The second message is the real final answer.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID:    "call-1",
+			Name:          "filesystem__read",
+			Args:          json.RawMessage(`{"file_path":"x"}`),
+			ExecutionMode: toolExecutionModeCLI,
+		}},
+	})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "done.",
+		IsFinal: true,
+	})}
+
+	var out strings.Builder
+	s := &Session{
+		Client: streamer,
+		Handlers: map[string]ToolHandler{
+			"filesystem": &fakeHandler{wantMethod: "read", result: map[string]string{"text": "hi"}},
+		},
+		OrgName: "o",
+		TaskID:  "t",
+		Output:  &out,
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Run did not return after the final assistant message")
+	}
+
+	assert.Equal(t, "done.\n", out.String(), "Output must carry the final message's Content only")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 2, "expected exec_tool_call then tool_result")
 }
 
 func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
@@ -264,6 +492,7 @@ func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITaskIdle](events), "streaming chunks must not emit UITaskIdle")
@@ -298,9 +527,96 @@ func TestSession_FinalAssistantMessageWithCliCallsDoesNotEmitTaskIdle(t *testing
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITaskIdle](events), "pending cli tool calls must not emit UITaskIdle")
+}
+
+func TestSession_ForwardsTodoWriteToolCallAsUITodoList(t *testing.T) {
+	t.Parallel()
+
+	// todo__TodoWrite is cloud-marked: the agent runs it server-side, so it
+	// must never reach the CLI dispatch loop. It does, however, carry the
+	// task list the TUI wants to render — forwardToUI peeks at the args and
+	// emits a UITodoList alongside the regular UIAssistantMessage.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID: "tc1",
+			Name:       toolNameTodoWrite,
+			Args: json.RawMessage(`{"todos":[
+				{"content":"first","index":0,"priority":"high","status":"pending"},
+				{"content":"second","index":1,"priority":"medium","status":"in_progress"},
+				{"content":"third","index":2,"priority":"low","status":"completed"}
+			]}`),
+		}},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	require.True(t, hasUIEvent[UITodoList](events), "todo__TodoWrite must emit UITodoList")
+
+	// Verify the parsed payload preserves the wire content, ordering, and
+	// status strings so the renderer has everything it needs.
+	var got UITodoList
+	for _, e := range events {
+		if list, ok := e.(UITodoList); ok {
+			got = list
+			break
+		}
+	}
+	require.Len(t, got.Items, 3)
+	assert.Equal(t, "first", got.Items[0].Content)
+	assert.Equal(t, "pending", got.Items[0].Status)
+	assert.Equal(t, "high", got.Items[0].Priority)
+	assert.Equal(t, 0, got.Items[0].Index)
+	assert.Equal(t, "in_progress", got.Items[1].Status)
+	assert.Equal(t, "completed", got.Items[2].Status)
+
+	// Cloud-marked TodoWrite must never trigger CLI dispatch — no exec or
+	// tool_result posts should leave the session.
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Empty(t, streamer.posted, "cloud-marked todo__TodoWrite must not produce CLI posts")
+}
+
+func TestSession_TodoWriteWithMalformedArgsEmitsNoTodoList(t *testing.T) {
+	t.Parallel()
+
+	// A malformed args payload must be silently skipped rather than crashing
+	// the forwarder. The session must keep going and process subsequent
+	// events normally.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID: "tc1",
+			Name:       toolNameTodoWrite,
+			Args:       json.RawMessage(`{"todos":"not-an-array"}`),
+		}},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t", UIEvents: uiCh}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITodoList](events), "malformed todos payload must not emit UITodoList")
 }
 
 func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing.T) {
@@ -367,7 +683,7 @@ func TestSession_ExecToolCallPostFailureAbortsBatch(t *testing.T) {
 
 	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
 	err := s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "exec_tool_call")
 	assert.Contains(t, err.Error(), "network down")
 
@@ -457,11 +773,64 @@ func TestSession_InvokeToolCallHandlerError(t *testing.T) {
 	assert.Equal(t, "boom", item.Content.(map[string]string)["error"])
 }
 
+func TestSession_InvokeToolCallHandlerErrorWithPartialValue(t *testing.T) {
+	t.Parallel()
+
+	// Mirrors the shell-timeout case: the handler returns a partial result map
+	// AND a non-nil error. The dispatch layer must flip IsError (so the TUI
+	// shows the failure marker) but keep the partial result as Content so the
+	// agent can still read whatever stdout/stderr was captured before the
+	// deadline fired.
+	partial := map[string]any{"stdout": "hi\n", "timed_out": true, "exit_code": -1}
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"shell": &fakeHandler{
+				wantMethod: "shell_execute",
+				result:     partial,
+				err:        errors.New("shell command timed out after 100ms"),
+			},
+		},
+	}
+	item := s.invokeToolCall(t.Context(), apitype.AgentBackendEventToolCall{ToolCallID: "c", Name: "shell__shell_execute"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, partial, item.Content)
+}
+
+// structResult stands in for pulumiResult — a non-map struct returned by a
+// handler — without pulling in the cross-package dependency.
+type structResult struct {
+	Status string
+	Logs   string
+}
+
+func TestSession_InvokeToolCallStructValueErrorPreservesContent(t *testing.T) {
+	t.Parallel()
+
+	// A struct returned alongside an error must reach the agent verbatim; the
+	// pulumi tool's failedResult strategy depends on it.
+	result := structResult{Status: "failed", Logs: "error: stack not found\n"}
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"pulumi": &fakeHandler{
+				wantMethod: "pulumi_preview",
+				result:     result,
+				err:        errors.New("pulumi preview: stack not found"),
+			},
+		},
+	}
+	item := s.invokeToolCall(t.Context(),
+		apitype.AgentBackendEventToolCall{ToolCallID: "c", Name: "pulumi__pulumi_preview"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, result, item.Content)
+}
+
 // errStreamer fails at StreamNeoTaskEvents so the Run loop returns immediately.
 type errStreamer struct{ err error }
 
 func (e *errStreamer) StreamNeoTaskEvents(
-	context.Context, string, string,
+	context.Context, string, string, string,
 ) (<-chan client.NeoStreamEvent, error) {
 	return nil, e.err
 }
@@ -475,7 +844,7 @@ func TestSession_RunWrapsStreamOpenError(t *testing.T) {
 
 	s := &Session{Client: &errStreamer{err: errors.New("boom")}, OrgName: "o", TaskID: "t"}
 	err := s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "opening event stream")
 	assert.Contains(t, err.Error(), "boom")
 }
@@ -491,9 +860,215 @@ func TestSession_RunReturnsStreamError(t *testing.T) {
 	require.EqualError(t, err, "stream died")
 }
 
-func TestSession_RunHonorsContextCancel(t *testing.T) {
+// reconnectStreamer hands out a fresh channel on each StreamNeoTaskEvents call and
+// records the lastEventID it was given. Drives the reconnect path in tests.
+type reconnectStreamer struct {
+	mu      sync.Mutex
+	streams []chan client.NeoStreamEvent
+	lastIDs []string
+}
+
+var reconnectTuningTestMu sync.Mutex
+
+func overrideReconnectTuningForTest(t *testing.T, override func()) {
+	t.Helper()
+
+	reconnectTuningTestMu.Lock()
+	initial := reconnectInitialBackoff
+	maxBackoff := reconnectMaxBackoff
+	budget := reconnectTotalBudget
+	override()
+
+	t.Cleanup(func() {
+		reconnectInitialBackoff = initial
+		reconnectMaxBackoff = maxBackoff
+		reconnectTotalBudget = budget
+		reconnectTuningTestMu.Unlock()
+	})
+}
+
+func (r *reconnectStreamer) StreamNeoTaskEvents(
+	_ context.Context, _, _, lastEventID string,
+) (<-chan client.NeoStreamEvent, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.lastIDs = append(r.lastIDs, lastEventID)
+	if idx := len(r.lastIDs) - 1; idx < len(r.streams) {
+		return r.streams[idx], nil
+	}
+	// Out of configured streams: hand back a never-closed channel so the session
+	// blocks until ctx cancellation rather than tight-looping.
+	ch := make(chan client.NeoStreamEvent)
+	r.streams = append(r.streams, ch)
+	return ch, nil
+}
+
+func (r *reconnectStreamer) PostNeoTaskUserEvent(context.Context, string, string, any) error {
+	return nil
+}
+
+func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
 	t.Parallel()
 
+	// A connection-reset mid-stream must reopen the stream with the last seen
+	// event ID so the service can replay missed events losslessly.
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 1 * time.Millisecond
+	})
+
+	stream1 := make(chan client.NeoStreamEvent, 2)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2}}
+
+	stream1 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	stream1 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e2",
+	}
+	close(stream2)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "e1"}, streamer.lastIDs,
+		"second open must pass the last seen event ID so the service replays missed events")
+}
+
+func TestSession_ReconnectsAfterHTTP2InternalStreamError(t *testing.T) {
+	t.Parallel()
+
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 1 * time.Millisecond
+	})
+
+	stream1 := make(chan client.NeoStreamEvent, 2)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2}}
+
+	stream1 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	stream1 <- client.NeoStreamEvent{Err: http2.StreamError{
+		StreamID: 1,
+		Code:     http2.ErrCodeInternal,
+	}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e2",
+	}
+	close(stream2)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "e1"}, streamer.lastIDs,
+		"HTTP/2 stream resets must reconnect with the last seen event ID")
+}
+
+func TestSession_KeepAliveResetsReconnectBudget(t *testing.T) {
+	t.Parallel()
+
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 10 * time.Millisecond
+		reconnectMaxBackoff = 10 * time.Millisecond
+		reconnectTotalBudget = 5 * time.Millisecond
+	})
+
+	stream1 := make(chan client.NeoStreamEvent, 1)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	stream3 := make(chan client.NeoStreamEvent, 1)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2, stream3}}
+
+	stream1 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{KeepAlive: true}
+	stream2 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream2)
+
+	stream3 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	close(stream3)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "", ""}, streamer.lastIDs)
+}
+
+func TestSession_StartsFromInitialLastEventID(t *testing.T) {
+	t.Parallel()
+
+	stream := make(chan client.NeoStreamEvent)
+	close(stream)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream}}
+
+	s := &Session{
+		Client:      streamer,
+		OrgName:     "o",
+		TaskID:      "t",
+		LastEventID: "tail-event",
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"tail-event"}, streamer.lastIDs)
+}
+
+func TestSession_PropagatesNonTransientStreamError(t *testing.T) {
+	t.Parallel()
+
+	// An unrecognised error (e.g. a handler bug or service-side application
+	// error) must propagate — silent reconnect would mask real failures.
+	streamer := &reconnectStreamer{
+		streams: []chan client.NeoStreamEvent{make(chan client.NeoStreamEvent, 1)},
+	}
+	streamer.streams[0] <- client.NeoStreamEvent{Err: errors.New("application error: rate limited")}
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	err := s.Run(t.Context())
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "rate limited")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, 1, len(streamer.lastIDs), "must not retry on a non-transient error")
+}
+
+func TestSession_RunReturnsNilOnContextCancel(t *testing.T) {
+	t.Parallel()
+
+	// Caller-initiated cancellation (e.g. TUI quit) must be treated as a clean
+	// shutdown — returning context.Canceled here causes cobra to print
+	// "error: context canceled" on a normal `pulumi neo` quit.
 	streamer := newFakeStreamer() // stream is never closed, never fed
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -501,7 +1076,7 @@ func TestSession_RunHonorsContextCancel(t *testing.T) {
 
 	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
 	err := s.Run(ctx)
-	assert.ErrorIs(t, err, context.Canceled)
+	require.NoError(t, err)
 }
 
 func TestSession_MalformedConsoleEventIsIgnored(t *testing.T) {
@@ -567,7 +1142,7 @@ func TestSession_AssistantMessageBodyShapeMismatchReturnsError(t *testing.T) {
 
 	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
 	err = s.Run(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "decoding assistantMessage")
 }
 
@@ -726,6 +1301,26 @@ func TestSession_ForwardToUI_EmitsAllEventTypes(t *testing.T) {
 					m.Message == "Run pulumi up?" && m.Sensitivity == "high"
 			},
 		},
+		{
+			// context.tool_name must reach the TUI so it can dispatch
+			// ask-user tools to question rendering.
+			"user_approval_request_forwards_tool_name",
+			map[string]any{
+				"type":          backendEventUserApprovalRequest,
+				"id":            "appr_q",
+				"message":       "Which region?",
+				"approval_type": "general",
+				"context": map[string]any{
+					"tool_name":    "ux__ask_user",
+					"tool_call_id": "call_1",
+				},
+			},
+			func(e UIEvent) bool {
+				m, ok := e.(UIApprovalRequest)
+				return ok && m.ApprovalID == "appr_q" &&
+					m.ApprovalType == "general" && m.ToolName == "ux__ask_user"
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -790,7 +1385,10 @@ func TestSession_ForwardUserInputToUI_EmitsUserMessage(t *testing.T) {
 
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": "hello there"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hello there",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -809,7 +1407,10 @@ func TestSession_ForwardUserInputToUI_EmptyContentDropped(t *testing.T) {
 	// UIUserMessage would draw an empty user bubble in the TUI.
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": ""})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -820,9 +1421,76 @@ func TestSession_ForwardUserInputToUI_NilChannelIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	s := &Session{UIEvents: nil}
-	body, err := json.Marshal(map[string]any{"content": "hi"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hi",
+	})
 	require.NoError(t, err)
 	s.forwardUserInputToUI(body) // must not panic
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationEmitsResolved(t *testing.T) {
+	t.Parallel()
+
+	// The cloud emits a user_confirmation event on the userInput side of the
+	// stream — both as an echo of our own confirmation and (synthetically)
+	// when ApprovalMode=auto/balanced auto-resolves a request. Either way the
+	// TUI needs UIApprovalResolved so it can clear the pending prompt.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-abc",
+		"ok":                  true,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res, ok := events[0].(UIApprovalResolved)
+	require.Truef(t, ok, "expected UIApprovalResolved, got %T", events[0])
+	assert.Equal(t, "sys-approval-abc", res.ApprovalID)
+	assert.True(t, res.Approved, "ok=true must round-trip as Approved=true")
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationDeniedRoundTrips(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: today's cloud never auto-denies, but the wire format supports
+	// ok=false (manual deny path), and the TUI's renderApprovalAuto branches
+	// on Approved. Make sure the wire flag rides through unchanged.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-xyz",
+		"ok":                  false,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res := events[0].(UIApprovalResolved)
+	assert.False(t, res.Approved)
+}
+
+func TestSession_ForwardUserInputToUI_UnknownTypeDropped(t *testing.T) {
+	t.Parallel()
+
+	// An unknown user-input subtype must not panic, must not emit an event.
+	// The cloud has historically added new userInput types (tool_result, etc.)
+	// that the TUI has no rendering for.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"type": "tool_result"})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+	assert.Empty(t, drainUIEvents(ch))
 }
 
 func TestSession_ForwardUserInputToUI_MalformedJSONIgnored(t *testing.T) {
@@ -842,7 +1510,10 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 	// 92.9% coverage) and the path the TUI depends on to show what the user
 	// typed — if this regresses, the user's own messages vanish from the log.
 	streamer := newFakeStreamer()
-	inner, err := json.Marshal(map[string]any{"content": "typed by user"})
+	inner, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "typed by user",
+	})
 	require.NoError(t, err)
 	envelope, err := json.Marshal(apitype.AgentConsoleEvent{
 		Type:      consoleEventUserInput,
@@ -862,7 +1533,516 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	require.True(t, hasUIEvent[UIUserMessage](events), "userInput envelope must emit UIUserMessage")
+}
+
+// Regression test for pulumi/pulumi-service#42773.
+func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 4)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	require.NotPanics(t, func() {
+		sendUI(uiCh, UIWarning{Message: "x"})
+	})
+}
+
+// probeHandler delegates Invoke to a closure so tests can observe or control
+// tool execution.
+type probeHandler struct {
+	invoke func(ctx context.Context) (any, error)
+}
+
+func (h *probeHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
+	return h.invoke(ctx)
+}
+
+// TestSession_CancelledEventDeliveredWhileLocalToolRuns is a regression test
+// for pulumi/pulumi-service#44059: a cancelled backend event must reach the
+// TUI even while a local tool call is executing.
+func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	// Deliberately ignores ctx: events must flow even while a tool keeps running.
+	bh := &probeHandler{invoke: func(_ context.Context) (any, error) {
+		close(started)
+		<-release
+		return map[string]any{"ok": true}, nil
+	}}
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"shell": bh},
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- s.Run(ctx) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "shell__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tool handler never started")
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventCancelled{
+		Type: backendEventCancelled,
+	})}
+
+	gotCancelled := func() bool {
+		for {
+			select {
+			case ev := <-uiCh:
+				if _, ok := ev.(UICancelled); ok {
+					return true
+				}
+			default:
+				return false
+			}
+		}
+	}
+	require.Eventually(t, gotCancelled, 2*time.Second, 20*time.Millisecond,
+		"cancelled event must be delivered while a local tool call is still executing")
+
+	close(release)
+	close(streamer.stream)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+}
+
+// TestSession_CancelledEventCancelsInFlightBatchContext verifies that a
+// server-side cancelled event cancels the running tool's context, that the
+// cancelled turn still posts an error tool_result for the interrupted call,
+// and that the next turn's batch runs with a fresh context.
+func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	started := make(chan struct{})
+	finished := make(chan error, 1)
+	first := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		close(started)
+		<-ctx.Done()
+		finished <- ctx.Err()
+		return nil, ctx.Err()
+	}}
+	secondCtxErr := make(chan error, 1)
+	second := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		secondCtxErr <- ctx.Err()
+		return map[string]any{"ok": true}, nil
+	}}
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"blocking": first, "probe": second},
+		OrgName:  "org",
+		TaskID:   "task",
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "blocking__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tool handler never started")
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventCancelled{
+		Type: backendEventCancelled,
+	})}
+	select {
+	case err := <-finished:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(5 * time.Second):
+		t.Fatal("cancelled event did not cancel the in-flight tool context")
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case err := <-secondCtxErr:
+		require.NoError(t, err, "batch after a cancelled turn must get a fresh context")
+	case <-time.After(5 * time.Second):
+		t.Fatal("second tool call never ran")
+	}
+
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+
+	// Both turns post exec_tool_call and a tool_result; the cancelled one is
+	// flagged as an error so the agent doesn't treat it as completed.
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	var execNames []string
+	var resultIDs []string
+	var errorIDs []string
+	for _, p := range streamer.posted {
+		switch evt := p.(type) {
+		case apitype.AgentUserEventExecToolCall:
+			execNames = append(execNames, evt.Name)
+		case apitype.AgentUserEventToolResult:
+			for _, item := range evt.ToolResults {
+				resultIDs = append(resultIDs, item.ToolCallID)
+				if item.IsError {
+					errorIDs = append(errorIDs, item.ToolCallID)
+				}
+			}
+		}
+	}
+	assert.Equal(t, []string{"blocking__run", "probe__run"}, execNames)
+	assert.Equal(t, []string{"c1", "c2"}, resultIDs)
+	assert.Equal(t, []string{"c1"}, errorIDs)
+}
+
+func mustUserInputEnvelope(t *testing.T, inner any) []byte {
+	t.Helper()
+	body, err := json.Marshal(inner)
+	require.NoError(t, err)
+	out, err := json.Marshal(apitype.AgentConsoleEvent{
+		Type:      consoleEventUserInput,
+		ID:        "evt-2",
+		EventBody: body,
+	})
+	require.NoError(t, err)
+	return out
+}
+
+// TestSession_UserCancelEventCancelsInFlightBatch verifies that a user_cancel
+// echoed on the stream (from ESC, the console, or the API) stops the running
+// local tool immediately and posts a tool_result marking every call in the
+// batch cancelled, so the runtime can end the turn without waiting for its
+// parked-cancel grace period.
+func TestSession_UserCancelEventCancelsInFlightBatch(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	started := make(chan struct{})
+	blocking := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		close(started)
+		<-ctx.Done()
+		return map[string]any{"stdout": "partial"}, ctx.Err()
+	}}
+	secondRan := make(chan struct{}, 1)
+	second := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		secondRan <- struct{}{}
+		return map[string]any{"ok": true}, nil
+	}}
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"blocking": blocking, "probe": second},
+		OrgName:  "org",
+		TaskID:   "task",
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "blocking__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+			{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case <-started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tool handler never started")
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventCancel{Type: userEventUserCancel})}
+
+	var result apitype.AgentUserEventToolResult
+	require.Eventually(t, func() bool {
+		streamer.mu.Lock()
+		defer streamer.mu.Unlock()
+		for _, p := range streamer.posted {
+			if r, ok := p.(apitype.AgentUserEventToolResult); ok {
+				result = r
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 10*time.Millisecond, "user_cancel must produce a tool_result promptly")
+
+	require.Len(t, result.ToolResults, 2)
+	assert.Equal(t, "c1", result.ToolResults[0].ToolCallID)
+	assert.True(t, result.ToolResults[0].IsError)
+	assert.Equal(t, map[string]any{"stdout": "partial"}, result.ToolResults[0].Content,
+		"partial output captured before the cancel must reach the agent")
+	assert.Equal(t, "c2", result.ToolResults[1].ToolCallID)
+	assert.True(t, result.ToolResults[1].IsError)
+	assert.Equal(t, cancelledContent(), result.ToolResults[1].Content)
+	select {
+	case <-secondRan:
+		t.Fatal("a call queued behind the cancelled one must not start")
+	default:
+	}
+
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+}
+
+// TestSession_OwnToolEchoesNotForwardedToUI verifies that the service's echo
+// of this session's own exec_tool_call/tool_result posts does not reach the
+// TUI (which already rendered the call from runBatch), while the same events
+// from another client still do.
+func TestSession_OwnToolEchoesNotForwardedToUI(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"probe": &fakeHandler{wantMethod: "run", result: map[string]any{"ok": true}}},
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	require.Eventually(t, func() bool {
+		streamer.mu.Lock()
+		defer streamer.mu.Unlock()
+		return len(streamer.posted) == 2
+	}, 2*time.Second, 10*time.Millisecond)
+
+	// Echoes of our own posts, then the same events from a foreign client.
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventExecToolCall{Type: userEventExecToolCall, ToolCallID: "c1", Name: "probe__run"})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t, apitype.AgentUserEventToolResult{
+		Type:        userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{{ToolCallID: "c1", Name: "probe__run", Content: "x"}},
+	})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t,
+		apitype.AgentUserEventExecToolCall{Type: userEventExecToolCall, ToolCallID: "other", Name: "foreign__run"})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustUserInputEnvelope(t, apitype.AgentUserEventToolResult{
+		Type:        userEventToolResult,
+		ToolResults: []apitype.AgentUserEventToolResultItem{{ToolCallID: "other", Name: "foreign__run", Content: "y"}},
+	})}
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+	close(uiCh)
+
+	var names []string
+	for ev := range uiCh {
+		switch e := ev.(type) {
+		case UIToolStarted:
+			names = append(names, "start:"+e.Name)
+		case UIToolCompleted:
+			names = append(names, "done:"+e.Name)
+		}
+	}
+	assert.Equal(t, []string{"start:probe__run", "done:probe__run", "start:foreign__run", "done:foreign__run"}, names)
+}
+
+// TestSession_BatchesRunSeriallyAcrossAssistantMessages locks down that tool
+// batches never run concurrently: tools/pulumi.go's process-global os.Chdir
+// depends on serialized dispatch.
+func TestSession_BatchesRunSeriallyAcrossAssistantMessages(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	var mu sync.Mutex
+	var active, maxActive int
+	ran := make(chan struct{}, 2)
+	handler := &probeHandler{invoke: func(_ context.Context) (any, error) {
+		mu.Lock()
+		active++
+		if active > maxActive {
+			maxActive = active
+		}
+		mu.Unlock()
+		time.Sleep(20 * time.Millisecond)
+		mu.Lock()
+		active--
+		mu.Unlock()
+		ran <- struct{}{}
+		return map[string]any{"ok": true}, nil
+	}}
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"shell": handler},
+		OrgName:  "org",
+		TaskID:   "task",
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	for _, id := range []string{"c1", "c2"} {
+		streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+			ToolCalls: []apitype.AgentBackendEventToolCall{
+				{ToolCallID: id, Name: "shell__" + id, Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+			},
+		})}
+	}
+	for range 2 {
+		select {
+		case <-ran:
+		case <-time.After(5 * time.Second):
+			t.Fatal("tool call never completed")
+		}
+	}
+
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, 1, maxActive, "tool batches must not run concurrently")
+
+	// Posted order must be exec(c1), result(c1), exec(c2), result(c2).
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 4)
+	exec1, ok := streamer.posted[0].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	assert.Equal(t, "c1", exec1.ToolCallID)
+	res1, ok := streamer.posted[1].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, res1.ToolResults, 1)
+	assert.Equal(t, "c1", res1.ToolResults[0].ToolCallID)
+	exec2, ok := streamer.posted[2].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	assert.Equal(t, "c2", exec2.ToolCallID)
+	res2, ok := streamer.posted[3].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, res2.ToolResults, 1)
+	assert.Equal(t, "c2", res2.ToolResults[0].ToolCallID)
+}
+
+// cancellingStreamer cancels the batch context from inside the first
+// exec_tool_call post and reports that post as failed, mimicking a request
+// torn down by the user's cancel mid-flight.
+type cancellingStreamer struct {
+	fakeStreamer
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (c *cancellingStreamer) PostNeoTaskUserEvent(ctx context.Context, org, task string, body any) error {
+	if _, ok := body.(apitype.AgentUserEventExecToolCall); ok {
+		var cancelled bool
+		c.once.Do(func() {
+			c.cancel()
+			cancelled = true
+		})
+		if cancelled {
+			_ = c.fakeStreamer.PostNeoTaskUserEvent(ctx, org, task, body)
+			return errors.New("connection reset")
+		}
+	}
+	return c.fakeStreamer.PostNeoTaskUserEvent(ctx, org, task, body)
+}
+
+// TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult pins the
+// behaviour of a failed exec_tool_call post when the failure is caused by the
+// batch being cancelled: the batch must not abort, both calls are reported
+// cancelled, and a single tool_result covering every call is still posted so
+// the parked runtime can end the turn.
+func TestSession_ExecToolCallPostFailureUnderCancelStillPostsToolResult(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	streamer := &cancellingStreamer{fakeStreamer: *newFakeStreamer(), cancel: cancel}
+	ran := false
+	handlers := map[string]ToolHandler{
+		"probe": &probeHandler{invoke: func(context.Context) (any, error) {
+			ran = true
+			return map[string]any{"ok": true}, nil
+		}},
+	}
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
+
+	err := s.runBatch(ctx, []apitype.AgentBackendEventToolCall{
+		{ToolCallID: "c1", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+	})
+	require.NoError(t, err, "a cancel-induced exec_tool_call failure must not be session-fatal")
+	assert.False(t, ran, "no handler may run once the batch context is cancelled")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 2, "one failed exec_tool_call, then the tool_result")
+	_, ok := streamer.posted[0].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	result, ok := streamer.posted[1].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, result.ToolResults, 2)
+	for _, item := range result.ToolResults {
+		assert.True(t, item.IsError, "%s must be reported as an error", item.ToolCallID)
+		assert.Equal(t, cancelledContent(), item.Content)
+	}
 }

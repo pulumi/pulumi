@@ -25,7 +25,7 @@ def invoke_map(value: Optional[_builtins.str] = None,
     __ret__ = pulumi.runtime.invoke_single('scalar-returns:index:invokeMap', __args__, opts=opts).value
 
     return __ret__
-def invoke_map_output(value: Optional[pulumi.Input[_builtins.str]] = None,
+def invoke_map_output(value: pulumi.Input[Optional[_builtins.str]] = None,
                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[dict]:
     """
     Use this data source to access information about an existing resource.

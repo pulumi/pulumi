@@ -6,7 +6,7 @@ import builtins as _builtins
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 from . import _utilities
 
 __all__ = [
@@ -34,7 +34,7 @@ class VariantOne(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal['variant1'],
                  field1: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant1')
         if field1 is not None:
@@ -42,7 +42,7 @@ class VariantOne(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal['variant1']:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -71,7 +71,7 @@ class VariantTwo(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal['variant2'],
                  field2: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant2')
         if field2 is not None:
@@ -79,7 +79,7 @@ class VariantTwo(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal['variant2']:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property

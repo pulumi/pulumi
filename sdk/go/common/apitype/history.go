@@ -14,7 +14,11 @@
 
 package apitype
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+)
 
 // UpdateKind is an enum for the type of update performed.
 //
@@ -44,17 +48,17 @@ const (
 //
 // Should generally mirror backend.UpdateResult, but we clone it in this package to add
 // flexibility in case there is a breaking change in the backend-type.
-type UpdateResult string
+type UpdateResult = cloudapitype.AppUpdateResult
 
 const (
 	// NotStartedResult is for updates that have not started.
-	NotStartedResult UpdateResult = "not-started"
+	NotStartedResult = cloudapitype.AppUpdateResultNotStarted
 	// InProgressResult is for updates that have not yet completed.
-	InProgressResult UpdateResult = "in-progress"
+	InProgressResult = cloudapitype.AppUpdateResultInProgress
 	// SucceededResult is for updates that completed successfully.
-	SucceededResult UpdateResult = "succeeded"
+	SucceededResult = cloudapitype.AppUpdateResultSucceeded
 	// FailedResult is for updates that have failed.
-	FailedResult UpdateResult = "failed"
+	FailedResult = cloudapitype.AppUpdateResultFailed
 )
 
 // OpType describes the type of operation performed to a resource managed by Pulumi.
@@ -121,4 +125,15 @@ type UpdateInfo struct {
 // a stack's history.
 type GetHistoryResponse struct {
 	Updates []UpdateInfo `json:"updates"`
+}
+
+// StackPreview describes a single preview operation on a stack. Previews are tracked separately
+// from update history and carry their own opaque UpdateID — the UUID in the console preview URL.
+type StackPreview struct {
+	UpdateID string `json:"updateID"`
+}
+
+// GetLatestStackPreviewsResponse is the Pulumi Service response for a stack's most recent previews.
+type GetLatestStackPreviewsResponse struct {
+	Updates []StackPreview `json:"updates"`
 }

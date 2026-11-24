@@ -16,11 +16,15 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
 
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -227,6 +231,18 @@ func getOptions(t *testing.T, name, cwd string) toolchain.PythonOptions {
 // addPackage installs a package using the specified toolchain.
 func addPackage(t *testing.T, opts toolchain.PythonOptions, name string) {
 	t.Helper()
+
+	// If name is a local source directory, copy it into a per-call tempdir. Otherwise concurrent
+	// installs from the same source race on <source>/build/ — legacy setuptools (no pyproject.toml)
+	// writes its build artifacts in place, which manifests as e.g.
+	// "Directory not empty: 'build/bdist.linux-x86_64/wheel'" under pip and as a wheel missing data
+	// files (e.g. pulumi-plugin.json) under poetry/uv.
+	if info, err := os.Stat(name); err == nil && info.IsDir() {
+		dest := filepath.Join(t.TempDir(), filepath.Base(name))
+		require.NoError(t, os.CopyFS(dest, os.DirFS(name)))
+		name = dest
+	}
+
 	switch opts.Toolchain {
 	case toolchain.Pip, toolchain.Auto:
 		tc, err := toolchain.ResolveToolchain(opts)
@@ -305,23 +321,41 @@ build-backend = "poetry.core.masonry.api"
 	}
 }
 
-// pulumiWheel searches for the built pulumi wheel in the sdk/python/dist directory
-// and returns its path.
-func pulumiWheel(t *testing.T) string {
-	dir, err := filepath.Abs(filepath.Join("..", "..", "build"))
-	require.NoError(t, err)
-	files, err := os.ReadDir(dir)
-	require.NoError(t, err)
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".whl" {
-			return filepath.Join(dir, file.Name())
-		}
+var buildPulumiWheel = sync.OnceValues(func() (string, error) {
+	coreSDK, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		return "", err
 	}
-	t.Fatalf("could not find wheel in %s", dir)
-	return ""
+	dest, err := os.MkdirTemp("", "pulumi-core-sdk-")
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("uv", "build", coreSDK, "--wheel", "-o", dest)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("uv build %s: %w\n%s", coreSDK, err, out)
+	}
+	wheels, err := filepath.Glob(filepath.Join(dest, "*.whl"))
+	if err != nil {
+		return "", err
+	}
+	if len(wheels) != 1 {
+		return "", fmt.Errorf("expected exactly one wheel in %s, found %v", dest, wheels)
+	}
+	return wheels[0], nil
+})
+
+func pulumiWheel(t *testing.T) string {
+	t.Helper()
+	wheel, err := buildPulumiWheel()
+	require.NoError(t, err)
+	return wheel
 }
 
 func TestListPulumiPackageInfos(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping package-manager integration test in short mode")
+	}
+
 	t.Parallel()
 
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {
@@ -473,4 +507,38 @@ func TestListPulumiPackageInfos(t *testing.T) {
 			assert.Empty(t, infos)
 		})
 	}
+}
+
+func TestRuntimeOptionsPromptsToolchainChoices(t *testing.T) {
+	toolchainChoices := func(t *testing.T) []string {
+		host := &pythonLanguageHost{}
+		resp, err := host.RuntimeOptionsPrompts(t.Context(), &pulumirpc.RuntimeOptionsRequest{
+			Info: &pulumirpc.ProgramInfo{},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Prompts, 1)
+		require.Equal(t, "toolchain", resp.Prompts[0].Key)
+		require.Equal(t, "pip", resp.Prompts[0].Default.StringValue)
+		names := make([]string, 0, len(resp.Prompts[0].Choices))
+		for _, choice := range resp.Prompts[0].Choices {
+			names = append(names, choice.DisplayName)
+		}
+		return names
+	}
+
+	t.Run("only pip when no other toolchain is found", func(t *testing.T) {
+		t.Setenv("PATH", t.TempDir())
+		require.Equal(t, []string{"pip"}, toolchainChoices(t))
+	})
+
+	t.Run("all toolchains when another one is found", func(t *testing.T) {
+		dir := t.TempDir()
+		name := "uv"
+		if runtime.GOOS == "windows" {
+			name = "uv.exe"
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte{}, 0o755)) //nolint:gosec
+		t.Setenv("PATH", dir)
+		require.Equal(t, []string{"pip", "uv", "poetry [not found]"}, toolchainChoices(t))
+	})
 }

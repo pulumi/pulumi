@@ -45,6 +45,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -78,6 +79,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -176,7 +178,8 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */)
+			host := newLanguageHost(context.Background(),
+				engineAddress, runtimeName, tracing, otelEndpoint, false /* forceTsc */, "" /* installCacheDir */)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -262,6 +265,13 @@ type nodeLanguageHost struct {
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
+
+	// installCacheDir, when non-empty, makes InstallDependencies share
+	// installed node_modules trees between projects with identical dependency
+	// manifests. Used by language conformance tests; see installcache.go for
+	// why it must stay disabled for real projects.
+	installCacheDir   string
+	installCacheLocks gsync.Map[string, *sync.Mutex]
 }
 
 type nodeOptions struct {
@@ -274,6 +284,8 @@ type nodeOptions struct {
 	// The packagemanger to use to install dependencies.
 	// One of auto, npm, yarn, pnpm or bun, defaults to auto.
 	packagemanager npm.PackageManagerType
+	// Skip devDependencies when installing dependencies.
+	production bool
 }
 
 func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
@@ -303,6 +315,14 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 			nodeOptions.nodeargs = args
 		} else {
 			return nodeOptions, errors.New("nodeargs option must be a string")
+		}
+	}
+
+	if production, ok := options["production"]; ok {
+		if prod, ok := production.(bool); ok {
+			nodeOptions.production = prod
+		} else {
+			return nodeOptions, errors.New("production option must be a boolean")
 		}
 	}
 
@@ -356,17 +376,19 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 }
 
 func newLanguageHost(
-	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
+	ctx context.Context,
+	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool, installCacheDir string,
 ) pulumirpc.LanguageRuntimeServer {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	return &nodeLanguageHost{
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		otelEndpoint:  otelEndpoint,
-		forceTsc:      forceTsc,
-		runtime:       runtime,
-		cancelCtx:     ctx,
-		cancelFunc:    cancel,
+		engineAddress:   engineAddress,
+		tracing:         tracing,
+		otelEndpoint:    otelEndpoint,
+		forceTsc:        forceTsc,
+		installCacheDir: installCacheDir,
+		runtime:         runtime,
+		cancelCtx:       ctx,
+		cancelFunc:      cancel,
 	}
 }
 
@@ -617,12 +639,21 @@ func getPackagesFromDir(
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
+				var extension *pulumirpc.PackageParameterization
+				if info.Pulumi.ExtensionParameterization != nil {
+					extension = &pulumirpc.PackageParameterization{
+						Name:    info.Pulumi.ExtensionParameterization.Name,
+						Version: info.Pulumi.ExtensionParameterization.Version,
+						Value:   info.Pulumi.ExtensionParameterization.Value,
+					}
+				}
 				packages = append(packages, &pulumirpc.PackageDependency{
 					Name:             name,
 					Kind:             "resource",
 					Version:          version,
 					Server:           server,
 					Parameterization: parameterization,
+					Extension:        extension,
 				})
 			}
 		}
@@ -1189,7 +1220,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
-	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
+	err = host.installShared(ctx, opts.packagemanager, workspaceRoot, req.IsPlugin, opts.production, stdout, stderr)
 	if err != nil {
 		return err
 	}
@@ -1282,8 +1313,9 @@ func installNodeVersion(cwd string, stdout io.Writer) error {
 	// within a shell. Version switching is managed by setting the default
 	// version of nodejs below.
 	if os.Getenv("FNM_MULTISHELL_PATH") == "" {
-		installCmd = exec.Command("bash", "-c", fmt.Sprintf("eval \"$(fnm env --shell bash)\";"+
-			"fnm use '%s' --install-if-missing", version)) // #nosec G204
+		installCmd = exec.Command("bash", "-c",
+			`eval "$(fnm env --shell bash)"; fnm use "$1" --install-if-missing`,
+			"pulumi-fnm", version) // #nosec G204
 	}
 	out, err := installCmd.CombinedOutput()
 	if err != nil {
@@ -1309,14 +1341,34 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	if host.runtime != "bun" {
 		rawOpts := req.Info.Options.AsMap()
 		if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
+			choices := plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun")
+			// Installed package managers keep their plain name, the others carry a `[not found]` suffix.
+			var installed []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue
+			for _, choice := range choices {
+				if choice.DisplayName == choice.StringValue {
+					installed = append(installed, choice)
+				}
+			}
+			defaultPackageManager := "npm"
+			if len(installed) == 1 {
+				// A prompt with a single choice is answered without asking the user.
+				choices = installed
+				defaultPackageManager = installed[0].StringValue
+			} else {
+				for _, choice := range installed {
+					if choice.StringValue == "npm" {
+						choice.DisplayName = "npm (recommended)"
+					}
+				}
+			}
 			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 				Key:         "packagemanager",
 				Description: "The package manager to use for installing dependencies",
 				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-				Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
+				Choices:     choices,
 				Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 					PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-					StringValue: "npm",
+					StringValue: defaultPackageManager,
 				},
 			})
 		}
@@ -1330,6 +1382,24 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *nodeLanguageHost) Template(ctx context.Context,
 	req *pulumirpc.TemplateRequest,
 ) (*pulumirpc.TemplateResponse, error) {
+	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.packagemanager == npm.PnpmPackageManager {
+		workspacePath := filepath.Join(req.Info.ProgramDirectory, "pnpm-workspace.yaml")
+		if _, err := os.Stat(workspacePath); os.IsNotExist(err) {
+			content := "# Don't run protobufjs's unnecessary install script (pnpm 11 fails install unless it's listed here).\n" +
+				"# https://github.com/protobufjs/protobuf.js/pull/2299\n" +
+				"allowBuilds:\n" +
+				"  protobufjs: false\n"
+			if err := os.WriteFile(workspacePath, []byte(content), 0o600); err != nil {
+				return nil, fmt.Errorf("writing pnpm-workspace.yaml: %w", err)
+			}
+		}
+	}
+
 	return &pulumirpc.TemplateResponse{}, nil
 }
 
@@ -1355,7 +1425,7 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		return nil, fmt.Errorf("could not find executable %q: %w", runtimeExec, err)
 	}
 
-	var runtimeVersion, pmVersion string
+	var runtimeVersion, pmVersion, tsVersion string
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -1378,6 +1448,22 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		pmVersion = version.String()
 		return nil
 	})
+	g.Go(func() error {
+		// Report the TypeScript version the program would load. We resolve it via the runtime's
+		// module resolution from the program directory, since that is how it is loaded at run
+		// time; a `tsc` on PATH may be a different installation. Reading package.json avoids
+		// loading the whole compiler.
+		cmd := exec.CommandContext(ctx, runtimeExec, "-e",
+			"console.log(require('typescript/package.json').version)")
+		cmd.Dir = req.Info.ProgramDirectory
+		out, err := cmd.Output()
+		if err != nil {
+			// Don't fail if we could not determine the typescript version
+			return nil
+		}
+		tsVersion = strings.TrimSpace(string(out))
+		return nil
+	})
 
 	if err := g.Wait(); err != nil {
 		return &pulumirpc.AboutResponse{
@@ -1388,13 +1474,18 @@ func (host *nodeLanguageHost) About(ctx context.Context,
 		}, nil
 	}
 
+	metadata := map[string]string{
+		"packagemanager":        pm.Name(),
+		"packagemanagerVersion": pmVersion,
+	}
+	if tsVersion != "" {
+		metadata["typescriptVersion"] = tsVersion
+	}
+
 	return &pulumirpc.AboutResponse{
 		Executable: runtimeExecutable,
 		Version:    runtimeVersion,
-		Metadata: map[string]string{
-			"packagemanager":        pm.Name(),
-			"packagemanagerVersion": pmVersion,
-		},
+		Metadata:   metadata,
 	}, nil
 }
 
@@ -1413,7 +1504,7 @@ func (host *nodeLanguageHost) Handshake(ctx context.Context,
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
@@ -1536,7 +1627,7 @@ func startDebugging(
 
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+) (err error) {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
 	ctx := server.Context()
 
@@ -1643,6 +1734,11 @@ func (host *nodeLanguageHost) RunPlugin(
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
+		defer func() {
+			if err != nil {
+				policyPackServer.Abort(err)
+			}
+		}()
 
 		config, err := policyPackServer.AwaitConfiguration(ctx)
 		if err != nil {
@@ -1715,8 +1811,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	if err := run(); err != nil {
-		var exiterr *exec.ExitError
-		if errors.As(err, &exiterr) {
+		if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
 			// The program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
@@ -1806,7 +1901,6 @@ func (host *nodeLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for nodejs, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1815,7 +1909,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), bindOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1939,29 +2033,31 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
 		// so we don't need this special case.
 
-		yarn, err := executable.FindExecutable("yarn")
+		npm, err := executable.FindExecutable("npm")
 		if err != nil {
-			return nil, fmt.Errorf("find yarn: %w", err)
+			return nil, fmt.Errorf("find npm: %w", err)
 		}
 
-		err = writeString("$ yarn install --frozen-lockfile\n")
+		err = writeString("$ npm ci\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
-		yarnInstallCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn install: %w", err)
+		npmInstallCmd := exec.Command(npm, "ci")
+		npmInstallCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("npm ci: %w", err)
 		}
 
-		err = writeString("$ yarn run tsc\n")
+		// Run tsc via npx: it resolves the project-local node_modules/.bin ahead of any
+		// globally-installed TypeScript, and --no-install keeps it from fetching tsc from the registry.
+		err = writeString("$ npx --no-install tsc\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
-		yarnTscCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		tscCmd := exec.Command("npx", "--no-install", "tsc")
+		tscCmd.Dir = req.PackageDirectory
+		if err := runWithOutput(tscCmd, os.Stdout, os.Stderr); err != nil {
+			return nil, fmt.Errorf("tsc: %w", err)
 		}
 
 		// "tsc" doesn't copy in the "proto" and "vendor" directories.
@@ -2222,9 +2318,9 @@ func (host *nodeLanguageHost) Link(
 
 		importName := cgstrings.Camel(pkgRef.Name())
 		if usesModuleSyntax {
-			imports.WriteString(fmt.Sprintf("  import * as %s from \"%s\";\n", importName, packageName))
+			fmt.Fprintf(&imports, "  import * as %s from \"%s\";\n", importName, packageName)
 		} else {
-			imports.WriteString(fmt.Sprintf("  const %s = require(\"%s\");\n", importName, packageName))
+			fmt.Fprintf(&imports, "  const %s = require(\"%s\");\n", importName, packageName)
 		}
 	}
 	instructions += imports.String()
@@ -2259,5 +2355,6 @@ func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
 		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
 		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
 		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
+		attribute.Bool("nodeOptions.production", opts.production),
 	}
 }

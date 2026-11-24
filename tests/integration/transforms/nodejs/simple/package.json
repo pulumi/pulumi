@@ -1,8 +1,5 @@
 {
     "name": "transforms",
-    "devDependencies": {
-        "typescript": "2.9.2"
-    },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
     }

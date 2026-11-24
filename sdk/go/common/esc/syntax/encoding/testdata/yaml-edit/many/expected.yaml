@@ -1,0 +1,18 @@
+object:
+    foo: baz
+    bar: qux
+array:
+    - 1
+    - nested: 2
+dotted.property:
+    - list
+    - of
+    - strings
+environmentVariables:
+    HELLO: world
+deeply.nested:
+    path:
+        with:
+            an:
+                '"array[]"':
+                    - neat

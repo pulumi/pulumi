@@ -24,8 +24,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -45,26 +45,22 @@ func (p *OutputProvider) Close() error {
 func (p *OutputProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	elide, has := req.Inputs["elideUnknowns"]
+	elide, has := req.Inputs.GetOk("elideUnknowns")
 	if has {
 		if elide.IsBool() {
-			p.elideUnknowns = elide.BoolValue()
+			p.elideUnknowns = elide.AsBool()
 		} else if elide.IsString() {
-			parsed, err := strconv.ParseBool(elide.StringValue())
+			parsed, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
-				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.StringValue())
+				return plugin.ConfigureResponse{}, fmt.Errorf("invalid value for elideUnknowns: %v", elide.AsString())
 			}
 			p.elideUnknowns = parsed
 		} else {
-			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide.TypeString())
+			return plugin.ConfigureResponse{}, fmt.Errorf("invalid type for elideUnknowns: %v", elide)
 		}
 	}
 
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *OutputProvider) Pkg() tokens.Package {
-	return "output"
 }
 
 func (p *OutputProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -80,7 +76,7 @@ func (p *OutputProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    "output",
 		Version: "23.0.0",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"elideUnknowns": {
 					TypeSpec: schema.TypeSpec{
@@ -104,8 +100,14 @@ func (p *OutputProvider) GetSchema(
 								Type: "string",
 							},
 						},
+						"secretOutput": {
+							Secret: true,
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
 					},
-					Required: []string{"value", "output"},
+					Required: []string{"value", "output", "secretOutput"},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"value": {
@@ -185,44 +187,44 @@ func (p *OutputProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "23.0.0" {
+	if version.AsString() != "23.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 23.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 23.0.0"),
 		}, nil
 	}
 
-	elide, hasElide := req.News["elideUnknowns"]
+	elide, hasElide := req.News.GetOk("elideUnknowns")
 	if hasElide {
 		if elide.IsString() {
-			_, err := strconv.ParseBool(elide.StringValue())
+			_, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
 				return plugin.CheckConfigResponse{
-					Failures: makeCheckFailure("elideUnknowns",
-						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.StringValue())),
+					Failures: makeCheckConfigFailure("elideUnknowns",
+						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.AsString())),
 				}, nil
 			}
 		} else if !elide.IsBool() {
 			return plugin.CheckConfigResponse{
-				Failures: makeCheckFailure("elideUnknowns",
-					fmt.Sprintf("elideUnknowns is not a boolean: %v", elide.TypeString())),
+				Failures: makeCheckConfigFailure("elideUnknowns",
+					"elideUnknowns is not a boolean"),
 			}, nil
 		}
 	}
 
-	if (!hasElide && len(req.News) != 1) || (hasElide && len(req.News) != 2) {
+	if (!hasElide && req.News.Len() != 1) || (hasElide && req.News.Len() != 2) {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -232,6 +234,7 @@ func (p *OutputProvider) CheckConfig(
 func (p *OutputProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -239,7 +242,7 @@ func (p *OutputProvider) Check(
 	}
 
 	// Expect just the number value
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
@@ -250,18 +253,19 @@ func (p *OutputProvider) Check(
 			Failures: makeCheckFailure("value", "value is not a number"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *OutputProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -273,11 +277,11 @@ func (p *OutputProvider) Create(
 		id = ""
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.Properties, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), inputs, req.Preview)
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -291,10 +295,10 @@ func (p *OutputProvider) Update(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	properties := p.makeOutputs(req.URN.Type(), req.NewInputs, req.Preview)
+	properties := p.makeOutputs(req.URN.Type(), resource.ToResourcePropertyMap(req.NewInputs), req.Preview)
 
 	return plugin.UpdateResponse{
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -330,7 +334,7 @@ func (p *OutputProvider) Diff(
 
 	changes := plugin.DiffNone
 	var changedKeys []resource.PropertyKey
-	if !req.OldInputs["value"].DeepEquals(req.NewInputs["value"]) {
+	if !req.OldInputs.Get("value").Equals(req.NewInputs.Get("value")) {
 		changes = plugin.DiffSome
 		changedKeys = append(changedKeys, "value")
 	}
@@ -357,8 +361,8 @@ func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
+			Inputs:  &req.Inputs,
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil
@@ -378,6 +382,7 @@ func (p *OutputProvider) makeOutputs(
 		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
 			properties["output"] = resource.NewProperty(output)
+			properties["secretOutput"] = resource.NewProperty(output)
 		case "output:index:ComplexResource":
 			properties["outputArray"] = resource.NewProperty([]resource.PropertyValue{
 				resource.NewProperty(output),
@@ -398,6 +403,7 @@ func (p *OutputProvider) makeOutputs(
 		switch typ { //nolint:exhaustive
 		case "output:index:Resource":
 			properties["output"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+			properties["secretOutput"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 		case "output:index:ComplexResource":
 			properties["outputArray"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 			properties["outputMap"] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})

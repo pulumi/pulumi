@@ -1,10 +1,10 @@
 {
     "name": "foo",
     "allowedPackageNames": [
-        "kubernetes"
+        "tls"
     ],
     "types": {
-        "kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfig": {
+        "tls:crd.k8s.amazonaws.com/v1alpha1:ENIConfig": {
             "properties": {
                 "apiVersion": {
                     "type": "string",
@@ -16,12 +16,12 @@
                 },
                 "spec": {
                     "type": "object",
-                    "$ref": "#/types/kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
+                    "$ref": "#/types/tls:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
                 }
             },
             "type": "object"
         },
-        "kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec": {
+        "tls:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec": {
             "properties": {
                 "securityGroups": {
                     "type": "array",
@@ -43,24 +43,24 @@
                 "eniConfig": {
                     "type": "object",
                     "additionalProperties": {
-                        "$ref": "#/types/kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
+                        "$ref": "#/types/tls:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
                     }
                 },
                 "pod": {
                     "type": "object",
-                    "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+                    "$ref": "/tls/v4.10.0/schema.json#/types/tls:index%2FCertRequestSubject:CertRequestSubject"
                 }
             },
             "properties": {
                 "eniConfig": {
                     "type": "object",
                     "additionalProperties": {
-                        "$ref": "#/types/kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
+                        "$ref": "#/types/tls:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
                     }
                 },
                 "pod": {
                     "type": "object",
-                    "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+                    "$ref": "/tls/v4.10.0/schema.json#/types/tls:index%2FCertRequestSubject:CertRequestSubject"
                 }
             }
         }
@@ -69,7 +69,7 @@
         "csharp": {
             "packageReferences": {
                 "Pulumi": "3.*",
-                "Pulumi.Kubernetes": "3.*"
+                "Pulumi.Tls": "4.*"
             },
             "namespaces": {
                 "foo": "Foo"
@@ -80,7 +80,7 @@
         },
         "nodejs": {
             "dependencies": {
-                "@pulumi/kubernetes": "^3.0.0"
+                "@pulumi/tls": "^4.10.0"
             },
             "devDependencies": {
                 "typescript": "^4.3.5"
@@ -89,7 +89,7 @@
         "python": {
             "requires": {
                 "pulumi": ">=3.0.0,<4.0.0",
-                "pulumi-kubernetes": ">=3.0.0,<4.0.0"
+                "pulumi-tls": ">=4.0.0,<5.0.0"
             }
         }
     }

@@ -15,8 +15,11 @@
 package tests
 
 import (
+	"maps"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,15 +30,15 @@ func init() {
 		config.MustMakeKey("l1-builtin-list", "aString"): config.NewObjectValue(`"foo-bar-baz"`),
 	}
 
-	commonOutputs := resource.PropertyMap{
-		"elementOutput1": resource.NewProperty("bar"),
-		"elementOutput2": resource.NewProperty("baz"),
-		"joinOutput":     resource.NewProperty("foo|bar|baz"),
-		"lengthOutput":   resource.NewProperty(3.0),
-		"splitOutput": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("foo"),
-			resource.NewProperty("bar"),
-			resource.NewProperty("baz"),
+	commonOutputs := map[string]property.Value{
+		"elementOutput1": property.New("bar"),
+		"elementOutput2": property.New("baz"),
+		"joinOutput":     property.New("foo|bar|baz"),
+		"lengthOutput":   property.New(3.0),
+		"splitOutput": property.New([]property.Value{
+			property.New("foo"),
+			property.New("bar"),
+			property.New("baz"),
 		}),
 	}
 
@@ -46,9 +49,7 @@ func init() {
 				// Run 1: singleOrNone with a single-element list returns that element.
 				Config: func() config.Map {
 					cfg := config.Map{}
-					for k, v := range commonConfig {
-						cfg[k] = v
-					}
+					maps.Copy(cfg, commonConfig)
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`["single"]`)
 					return cfg
 				}(),
@@ -56,38 +57,31 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					want := resource.PropertyMap{}
-					for k, v := range commonOutputs {
-						want[k] = v
-					}
-					want["singleOrNoneOutput"] = resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("single"),
+					want := map[string]property.Value{}
+					maps.Copy(want, commonOutputs)
+					want["singleOrNoneOutput"] = property.New([]property.Value{
+						property.New("single"),
 					})
 
-					assert.Equal(l, want, stack.Outputs)
+					assert.Equal(l, property.NewMap(want), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 			{
 				// Run 2: singleOrNone with a multi-element list errors at runtime.
 				Config: func() config.Map {
 					cfg := config.Map{}
-					for k, v := range commonConfig {
-						cfg[k] = v
-					}
+					maps.Copy(cfg, commonConfig)
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`["a","b"]`)
 					return cfg
 				}(),
-				Assert: func(l *L, res AssertArgs) {
-					require.Error(l, res.Err)
-				},
+				AssertPreview: func(l *L, res AssertPreviewArgs) { require.Error(l, res.Err) }, //nolint:forbidigo // pre-existing
+				Assert:        func(l *L, res AssertArgs) { require.Error(l, res.Err) },        //nolint:forbidigo // pre-existing
 			},
 			{
 				// Run 3: singleOrNone with an empty list returns null.
 				Config: func() config.Map {
 					cfg := config.Map{}
-					for k, v := range commonConfig {
-						cfg[k] = v
-					}
+					maps.Copy(cfg, commonConfig)
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`[]`)
 					return cfg
 				}(),
@@ -95,15 +89,13 @@ func init() {
 					require.NoError(l, res.Err)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					want := resource.PropertyMap{}
-					for k, v := range commonOutputs {
-						want[k] = v
-					}
-					want["singleOrNoneOutput"] = resource.NewProperty([]resource.PropertyValue{
-						resource.NewNullProperty(),
+					want := map[string]property.Value{}
+					maps.Copy(want, commonOutputs)
+					want["singleOrNoneOutput"] = property.New([]property.Value{
+						property.New(property.Null),
 					})
 
-					assert.Equal(l, want, stack.Outputs)
+					assert.Equal(l, property.NewMap(want), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

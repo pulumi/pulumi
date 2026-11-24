@@ -20,11 +20,12 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +39,7 @@ func TestReplaceWith(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -65,17 +66,19 @@ func TestReplaceWith(t *testing.T) {
 	}
 
 	// Any old value that we can change later to trigger a replace.
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: ins})
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		require.NoError(t, err)
 
 		// When we replace A, we should also replace B.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 			ReplaceWith: []resource.URN{respA.URN},
 		})
 		require.NoError(t, err)
@@ -83,7 +86,7 @@ func TestReplaceWith(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -107,7 +110,7 @@ func TestReplaceWith(t *testing.T) {
 	require.Len(t, deleted, 0)
 
 	// Change the property on A, trigger a replacement of A and B.
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
@@ -136,7 +139,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -163,7 +166,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	inputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 	numberOfRuns := 0
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -171,7 +174,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 
 		if numberOfRuns == 0 {
 			respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]any{}),
+				Inputs: property.Map{},
 			})
 
 			require.NoError(t, err)
@@ -186,7 +189,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 		urnC = respC.URN
 
 		opts := deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{}),
+			Inputs:      property.Map{},
 			ReplaceWith: []resource.URN{urnC},
 		}
 
@@ -201,7 +204,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -222,7 +225,7 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 	require.Equal(t, snap.Resources[3].DeletedWith, snap.Resources[1].URN)
 	require.Contains(t, snap.Resources[3].ReplaceWith, snap.Resources[2].URN)
 
-	inputs["foo"] = resource.NewProperty("baz") // Trigger replacement of C
+	inputs = inputs.Set("foo", property.New("baz")) // Trigger replacement of C
 	// B doesn't exist for the second update, so deletedWith should be triggered.
 
 	created = []resource.URN{}
@@ -254,7 +257,7 @@ func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -282,17 +285,19 @@ func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 	}
 
 	// Any old value that we can change later to trigger a replace.
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: ins})
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		require.NoError(t, err)
 
 		// When we replace A, we should also replace B.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 			ReplaceWith: []resource.URN{respA.URN},
 		})
 		require.NoError(t, err)
@@ -300,7 +305,7 @@ func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -324,7 +329,7 @@ func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 	require.Len(t, deleted, 0)
 
 	// Change the property on A, trigger a replacement of A and B.
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 

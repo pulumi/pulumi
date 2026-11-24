@@ -19,13 +19,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// In the tests below we use temporary directories and then expect DetectProjectAndPath to return a path to
-// that directory. However DetectProjectAndPath will do symlink resolution, while t.TempDir() normally does
+// In the tests below we use temporary directories and then expect detectProjectAndPath to return a path to
+// that directory. However detectProjectAndPath will do symlink resolution, while t.TempDir() normally does
 // not. This can lead to asserts especially on macos where TmpDir will have returned /var/folders/XX, but
 // after sym link resolution that is /private/var/folders/XX.
 func mkTempDir(t *testing.T) string {
@@ -46,12 +47,52 @@ func TestDetectProjectAndPath(t *testing.T) {
 	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
 	require.NoError(t, err)
 
-	project, path, err := DetectProjectAndPath()
+	project, path, err := detectProjectAndPath()
 	require.NoError(t, err)
 	assert.Equal(t, yamlPath, path)
 	assert.Equal(t, tokens.PackageName("some_project"), project.Name)
 	assert.Equal(t, "Some project", *project.Description)
 	assert.Equal(t, "nodejs", project.Runtime.name)
+}
+
+func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
+	agentDir := ptesting.IsolateCredentials(t).AgentDir
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	badHome := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(badHome, []byte("not a directory"), 0o600))
+
+	dir, err := pulumiHomeDirForPath(badHome)
+	require.NoError(t, err)
+	assert.Equal(t, agentDir, dir)
+}
+
+func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
+
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	home := filepath.Join(t.TempDir(), BookkeepingDir)
+	dir, err := pulumiHomeDirForPath(home)
+	require.NoError(t, err)
+	assert.Equal(t, home, dir)
+}
+
+func TestPulumiHomeDirForPathKeepsExplicitPath(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv(PulumiHomeEnvVar, filepath.Join(t.TempDir(), "explicit-home"))
+
+	badHome := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(badHome, []byte("not a directory"), 0o600))
+
+	dir, err := pulumiHomeDirForPath(badHome)
+	require.NoError(t, err)
+	assert.Equal(t, badHome, dir)
 }
 
 //nolint:paralleltest // Theses test use and change the current working directory
@@ -97,7 +138,8 @@ func TestProjectStackPath(t *testing.T) {
 			err := os.WriteFile(
 				filepath.Join(tmpDir, "Pulumi.yaml"),
 				[]byte(tt.yamlContents),
-				0o600)
+				0o600,
+			)
 			require.NoError(t, err)
 
 			_, path, err := DetectProjectStackPath("my_stack")
@@ -127,33 +169,8 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	t.Chdir(currentDir)
 	require.NoError(t, err)
 
-	_, _, err = DetectProjectAndPath()
+	_, _, err = detectProjectAndPath()
 	assert.ErrorIs(t, err, ErrProjectNotFound)
-}
-
-//nolint:paralleltest // These tests use and change the current working directory
-func TestDetectProjectStackDeploymentPath(t *testing.T) {
-	tmpDir := mkTempDir(t)
-	t.Chdir(tmpDir)
-
-	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
-	yamlContents := `
-name: some_project
-description: Some project
-runtime: nodejs`
-
-	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
-	require.NoError(t, err)
-
-	yamlDeployPath := filepath.Join(tmpDir, "Pulumi.stack.deploy.yaml")
-	yamlDeployContents := ""
-
-	err = os.WriteFile(yamlDeployPath, []byte(yamlDeployContents), 0o600)
-	require.NoError(t, err)
-
-	path, err := DetectProjectStackDeploymentPath("stack")
-	require.NoError(t, err)
-	assert.Equal(t, yamlDeployPath, path)
 }
 
 func TestDetectPolicyPackPathAt(t *testing.T) {
@@ -225,4 +242,18 @@ func TestDetectProjectPathFrom(t *testing.T) {
 	negative, err := DetectProjectPathFrom(d1)
 	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
 	assert.Equal(t, "", negative)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25125. Searching from a relative directory,
+// including the empty one that many commands pass for the current directory, names that directory in the
+// error.
+func TestDetectProjectPathFromRelativeDir(t *testing.T) { //nolint:paralleltest
+	tmpDir := mkTempDir(t)
+	t.Chdir(tmpDir)
+
+	for _, dir := range []string{"", "."} {
+		negative, err := DetectProjectPathFrom(dir)
+		assert.ErrorContains(t, err, "no Pulumi.yaml project file found (searching upwards from "+tmpDir+")")
+		assert.Equal(t, "", negative)
+	}
 }

@@ -20,6 +20,16 @@ export class Component extends pulumi.CustomResource {
         return new Component(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Component resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example:mod:Component", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'example:mod:Component';
 
@@ -59,6 +69,6 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    local?: pulumi.Input<Component2>;
-    main?: pulumi.Input<MainComponent>;
+    local?: pulumi.Input<Component2 | undefined>;
+    main?: pulumi.Input<MainComponent | undefined>;
 }

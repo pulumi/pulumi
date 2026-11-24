@@ -8,4 +8,4 @@ export const dynamic = any_type_function.dynListToDynOutput({
         localValue,
         {},
     ],
-}).apply(invoke => invoke.result);
+}).result;

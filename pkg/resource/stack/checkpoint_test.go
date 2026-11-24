@@ -15,10 +15,13 @@
 package stack
 
 import (
+	"bytes"
 	"encoding/json"
 	"math"
 	"os"
 	"testing"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -26,6 +29,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
+
+type compactJSONMarshaler struct{}
+
+func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSpace(buf.Bytes()), nil
+}
+
+func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
+}
 
 func TestLoadV0Checkpoint(t *testing.T) {
 	t.Parallel()
@@ -105,13 +124,13 @@ func TestSerializeCheckpoint(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		resources        []*resource.State
+		resources        []*pkgresource.State
 		expectedVersion  int
 		expectedFeatures []string
 	}{
 		{
 			name: "v3 deployment with no features",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -121,7 +140,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with refreshBeforeUpdate",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:                 "urn1",
 					RefreshBeforeUpdate: true,
@@ -132,7 +151,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with views",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 				},
@@ -147,7 +166,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with hooks",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN: "urn1",
 					ResourceHooks: map[resource.HookType][]string{
@@ -160,7 +179,7 @@ func TestSerializeCheckpoint(t *testing.T) {
 		},
 		{
 			name: "v4 deployment with taint",
-			resources: []*resource.State{
+			resources: []*pkgresource.State{
 				{
 					URN:   "urn1",
 					Taint: true,
@@ -186,13 +205,43 @@ func TestSerializeCheckpoint(t *testing.T) {
 	}
 }
 
+func TestMarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(t *testing.T) {
+	t.Parallel()
+
+	deployment := &apitype.UntypedDeployment{
+		Version: 4,
+		Features: []string{
+			"refreshBeforeUpdate",
+		},
+		Deployment: json.RawMessage(`{
+			"big": 100000000000000000000000000000000000000000,
+			"duplicate": 1,
+			"duplicate": 2,
+			"resources": []
+		}`),
+	}
+
+	checkpoint, err := MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		compactJSONMarshaler{},
+		"stack",
+		deployment,
+	)
+	require.NoError(t, err)
+	require.Equal(t, deployment.Version, checkpoint.Version)
+	require.Equal(t, deployment.Features, checkpoint.Features)
+	require.Equal(t,
+		`{"stack":"stack","latest":{"big":100000000000000000000000000000000000000000,`+
+			`"duplicate":1,"duplicate":2,"resources":[]}}`,
+		string(checkpoint.Checkpoint))
+}
+
 // TestRoundtripCheckpoint tests that various values survive a roundtrip of serialization
 // and deserialization.
 func TestRoundtripCheckpoint(t *testing.T) {
 	t.Parallel()
 
 	originalSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:     "pulumi:stack::project::pulumi:root::project-stack",
 				Type:    resource.RootStackType,
@@ -238,7 +287,7 @@ func TestRoundtripNanCheckpoint(t *testing.T) {
 	t.Parallel()
 
 	originalSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:  "pulumi:stack::project::pulumi:root::project-stack",
 				Type: resource.RootStackType,

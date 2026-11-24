@@ -21,7 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -44,31 +46,38 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/delivery"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/notifications"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -76,11 +85,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
+	backendlogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -113,7 +124,7 @@ func (c *commandGroup) commandWidth() int {
 	return width
 }
 
-func displayCommands(cgs []commandGroup) {
+func displayCommands(w io.Writer, cgs []commandGroup) {
 	width := 0
 	for _, cg := range cgs {
 		newWidth := cg.commandWidth()
@@ -126,15 +137,15 @@ func displayCommands(cgs []commandGroup) {
 		if cg.commandWidth() == 0 {
 			continue
 		}
-		fmt.Printf("%s:\n", cg.Name)
+		fmt.Fprintf(w, "%s:\n", cg.Name)
 		for _, com := range cg.Commands {
 			if com.Hidden {
 				continue
 			}
 			spacing := strings.Repeat(" ", width-len(com.Name()))
-			fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
+			fmt.Fprintln(w, "  "+com.Name()+spacing+strings.Repeat(" ", 8)+com.Short)
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 }
 
@@ -146,43 +157,57 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 	}
 
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		w := c.OutOrStdout()
 		header := c.Long
 		if header == "" {
 			header = c.Short
 		}
 
 		if header != "" {
-			fmt.Println(strings.TrimSpace(header))
-			fmt.Println()
+			fmt.Fprintln(w, strings.TrimSpace(header))
+			fmt.Fprintln(w)
 		}
 
 		if c != cmd.Root() {
-			fmt.Print(c.UsageString())
+			fmt.Fprint(w, c.UsageString())
 			return
 		}
 
-		fmt.Println("Usage:")
-		fmt.Println("  pulumi [command]")
-		fmt.Println()
+		fmt.Fprintln(w, "Usage:")
+		fmt.Fprintln(w, "  pulumi [command]")
+		fmt.Fprintln(w)
 
-		displayCommands(rootCgs)
+		displayCommands(w, rootCgs)
 
-		fmt.Println("Flags:")
-		fmt.Println(cmd.Flags().FlagUsages())
+		fmt.Fprintln(w, "Flags:")
+		fmt.Fprintln(w, cmd.Flags().FlagUsages())
 
-		fmt.Println("Use `pulumi [command] --help` for more information about a command.")
+		fmt.Fprintln(w, "Use `pulumi [command] --help` for more information about a command.")
 	})
 }
 
 type loggingWriter struct{}
 
 func (loggingWriter) Write(bytes []byte) (int, error) {
-	logging.Infof("%s", string(bytes))
+	slog.Info(string(bytes))
 	return len(bytes), nil
+}
+
+func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
+	pf := pflag.NewFlagSet("", pflag.ContinueOnError)
+	pf.ParseErrorsAllowlist.UnknownFlags = true
+	pf.AddFlagSet(rootPersistent)
+	// pflag aborts Parse with ErrHelp on an undeclared --help/-h, dropping every flag after it.
+	// Declaring help keeps parsing going so e.g. `--help --otel-traces ...` still sees --otel-traces.
+	if pf.Lookup("help") == nil {
+		pf.BoolP("help", "h", false, "")
+	}
+	_ = pf.Parse(args)
 }
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() (*cobra.Command, func()) {
+	helpers := cmdBackend.DefaultLoginManager.CredentialHelperSession()
 	var cwd string
 	var logFlow bool
 	var logToStderr bool
@@ -194,12 +219,19 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var color string
 	var memProfileRate int
 	var rootSpan oteltrace.Span
+	var autoLogger *backendlogging.Logger
 
 	processStartTime := time.Now()
 
 	updateCheckResult := make(chan *updateCheckResult)
+	pendingNotifications := func() []notifications.Notification { return nil }
 
+	var cmd *cobra.Command
 	cleanup := func() {
+		// Logger.Close is a no-op when autoLogger is nil.
+		if err := autoLogger.Close(); err != nil {
+			slog.Info("automatic log close error", "err", err)
+		}
 		logging.Flush()
 		cmdutil.CloseTracing()
 
@@ -211,16 +243,16 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		if logging.Verbose > 0 && !logging.LogToStderr {
 			logFile, err := logging.GetLogfilePath()
 			if err != nil {
-				logging.Warningf("could not find the log file: %s", err)
+				slog.Warn("could not find the log file", "err", err)
 				logging.Flush()
 			} else {
-				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
+				fmt.Fprintf(cmd.ErrOrStderr(), "The log file for this run is at %s\n", logFile)
 			}
 		}
 
 		if profiling != "" {
 			if err := cmdutil.CloseProfiling(profiling); err != nil {
-				logging.Warningf("could not close profiling: %v", err)
+				slog.Warn("could not close profiling", "err", err)
 			}
 		}
 	}
@@ -229,9 +261,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// to understand ANSI escape codes.
 	_, _, _ = term.StdStreams()
 
-	cmd := &cobra.Command{
+	cmd = &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
+		Version:       version.Version,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Long: "Pulumi - Modern Infrastructure as Code\n" +
@@ -260,6 +293,20 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}()
 
+			// Commands like `pulumi do` set DisableFlagParsing on themselves so they can
+			// build a dynamic flag tree from a provider's schema. cobra skips flag parsing
+			// entirely for such commands, which means our root persistent flag variables
+			// (--color, --cwd, --tracing, --otel-traces, ...) are still at their defaults
+			// when this PersistentPreRunE runs, so all the flag-dependent init below is
+			// skipped. Parse what we can ourselves before continuing.
+			if cmd.DisableFlagParsing {
+				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
+			}
+
+			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
+			client.SetUserAgentCommand(commandPath)
+			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))
+
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
 			// get DisplayOptions passed in.
@@ -278,10 +325,21 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
+
+			// Start automatic logging. At this point we don't have a stack
+			// or secrets manager, so logs will be gzip-compressed (not
+			// encrypted). Engine operations may upgrade to encrypted logging
+			// when a secrets manager becomes available.
+			var logErr error
+			autoLogger, logErr = backendlogging.StartLogging(cmd.Context(), nil /* sm */, commandPath)
+			if logErr != nil {
+				slog.Info("automatic logging unavailable", "err", logErr)
+			}
+
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelTracesFlag); err != nil {
-				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag, &backendlogging.SlogLogExporter{}); err != nil {
+				slog.Info("failed to initialize OTLP receiver", "err", err)
 			}
 
 			ctx := cmd.Context()
@@ -304,7 +362,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			metadata := getCLIMetadata(cmd, os.Environ(), args)
-			logging.V(9).Infof("CLI Metadata: %v", metadata)
+			slog.InfoContext(ctx, "CLI Metadata", "metadata", metadata)
 
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
@@ -326,12 +384,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
+			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
+			ctx = httpstate.ContextWithCommandName(ctx, cmd.CommandPath())
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
 
 			if logging.Verbose >= 11 {
-				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
+				slog.Warn("log level 11 will print sensitive information such as api tokens and request headers")
 			}
 
 			// The gocloud drivers use the log package to write logs, which by default just writes to stdout. This overrides
@@ -341,19 +401,19 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			ver, err := semver.ParseTolerant(version.Version)
 			if err != nil {
-				logging.V(3).Infof("error parsing current version: %s", err)
+				slog.InfoContext(ctx, "error parsing current version", "err", err)
 			} else {
-				logging.V(3).Info("Pulumi " + ver.String())
+				slog.Info("Pulumi", "version", ver.String())
 			}
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
-					logging.Warningf("could not initialize profiling: %v", err)
+					slog.WarnContext(ctx, "could not initialize profiling", "err", err)
 				}
 			}
 
 			if env.SkipUpdateCheck.Value() {
-				logging.V(5).Infof("skipping update check")
+				slog.InfoContext(ctx, "skipping update check")
 			} else {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
@@ -364,9 +424,16 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}()
 			}
 
+			if !env.HideNotifications.Value() && !cmdutil.DisableInteractive &&
+				notifications.ShownAfter(cmd.CommandPath()) {
+				pendingNotifications = notifications.Start(ctx, notifications.StaticURL)
+			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			agentauth.MaybePrintClaimWarning(cmd.Context(), cmd.ErrOrStderr())
+
 			// Before exiting, if there is a new version of the CLI available, print it out.
 			jsonFlag := cmd.Flag("json")
 			isJSON := jsonFlag != nil && jsonFlag.Value.String() == "true"
@@ -378,15 +445,19 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 						cmdutil.Diag().Warningf(result.diag)
 						err := cacheVersionInfo(result.versionInfo)
 						if err != nil {
-							logging.V(3).Infof("failed to cache version info: %s", err)
+							slog.Info("failed to cache version info", "err", err)
 						}
 					}
 				default:
 					// The version didn't make it in time, so don't block the user
 				}
+
+				notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version)
 			}
 		},
 	}
+
+	cmd.SetVersionTemplate("{{.Version}}\n")
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")
@@ -406,7 +477,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&otelTracesFlag, "otel-traces", "",
 		"Export OpenTelemetry traces to the specified endpoint. "+
-			"Use file:// for local JSON files, grpc:// for remote collectors")
+			"Use file:// for local JSON files, grpc:// or https:// for remote collectors")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
@@ -443,18 +514,23 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Environment Commands",
 			Commands: []*cobra.Command{
-				cmdEnv.NewEnvCmd(),
+				cmdEnv.NewEnvCmd(helpers),
 			},
 		},
 		{
 			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
-				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
+				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global()),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
+				delivery.NewDeliveryCmd(),
+				cloud.NewAPICmd(),
+				insights.NewInsightsCmd(),
+				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance,
+					nil, nil, nil, cmdDo.DefaultRunStatefulUpdate),
 			},
 		},
 		{
@@ -469,7 +545,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
-				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
@@ -478,6 +553,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
+				notifications.NewNotificationsCmd(),
 			},
 		},
 
@@ -494,9 +570,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				convert.NewConvertCmd(pkgWorkspace.Instance),
-				operations.NewWatchCmd(),
+				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -511,12 +587,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
-		// AI Commands relating to specifically the Pulumi AI service
-		//     and its related features
 		{
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
-				ai.NewAICommand(),
 				neo.NewNeoCmd(),
 			},
 		},
@@ -538,10 +611,15 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// With all the commands registered, we can walk the tree to build the
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
+
+	// Patch commands so that invalid invocations exit non-zero with
+	// suggestions for closely-matching commands.
+	rattler.Install(cmd)
+
 	return cmd, cleanup
 }
 
-// haveNewerDevVersion checks whethere we have a newer dev version available.
+// haveNewerDevVersion checks whether we have a newer dev version available.
 func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) bool {
 	if devVersion.Major != curVersion.Major {
 		return devVersion.Major > curVersion.Major
@@ -589,7 +667,7 @@ type updateCheckResult struct {
 func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]string) *updateCheckResult {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
-		logging.V(3).Infof("error parsing current version: %s", err)
+		slog.InfoContext(ctx, "error parsing current version", "err", err)
 	}
 
 	// We don't care about warning about updates if this is a locally-compiled version
@@ -602,8 +680,8 @@ func checkForUpdate(ctx context.Context, cloudURL string, metadata map[string]st
 
 	latestVer, oldestAllowedVer, devVer, err := getCLIVersionInfo(ctx, cloudURL, metadata)
 	if err != nil {
-		logging.V(3).Infof("error fetching latest version information "+
-			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
+		slog.InfoContext(ctx, fmt.Sprintf("error fetching latest version information; set %s to true to skip update checks",
+			env.SkipUpdateCheck.Var().Name()), "err", err)
 	}
 
 	willPrompt := canPrompt &&
@@ -656,7 +734,24 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 	if command == "pulumi plugin run" {
 		if len(args) > 0 {
-			command += " " + args[0]
+			positionals := positionalArgs(cmd, args)
+			if len(positionals) > 0 {
+				command += " " + positionals[0]
+			}
+		}
+	}
+
+	if command == "pulumi do" {
+		positionals := positionalArgs(cmd, args)
+		// Include the resource/function token
+		if len(positionals) > 0 {
+			command += " " + positionals[0]
+		}
+		if len(positionals) > 1 {
+			switch positionals[1] {
+			case "create", "read", "patch", "delete", "list":
+				command += " " + positionals[1]
+			}
 		}
 	}
 
@@ -678,6 +773,32 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 	return metadata
 }
 
+// positionalArgs extracts positional arguments from a raw argument list,
+// filtering out flags. This is used for commands with DisableFlagParsing
+// where args contains everything including flags. Known flags from the
+// command are registered so pflag can skip over their values correctly;
+// unknown flags are also tolerated.
+func positionalArgs(cmd *cobra.Command, args []string) []string {
+	fs := pflag.NewFlagSet("telemetry", pflag.ContinueOnError)
+	fs.ParseErrorsAllowlist.UnknownFlags = true
+	// Register the command's own flags so pflag can correctly skip their
+	// values (e.g. --package "foo" should not treat "foo" as positional).
+	// Visit both Flags() and PersistentFlags() to cover all defined flags;
+	// cobra merges them during Execute(), but we may run before that merge.
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		fs.AddFlag(f)
+	})
+	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if fs.Lookup(f.Name) == nil {
+			fs.AddFlag(f)
+		}
+	})
+	// Silence any output from parsing errors.
+	fs.SetOutput(io.Discard)
+	_ = fs.Parse(args)
+	return fs.Args()
+}
+
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
 // allowed without warning, as well as the amount of time to cache this information.
 func getCLIVersionInfo(
@@ -686,7 +807,7 @@ func getCLIVersionInfo(
 	metadata map[string]string,
 ) (semver.Version, semver.Version, semver.Version, error) {
 	creds, err := workspace.GetStoredCredentials()
-	apiToken := creds.AccessTokens[creds.Current]
+	apiToken := creds.Accounts[creds.Current].AccessToken
 
 	if err != nil || creds.Current != cloudURL {
 		apiToken = ""
@@ -703,7 +824,7 @@ func getCLIVersionInfo(
 
 	brewLatest, isBrew, err := getLatestBrewFormulaVersion()
 	if err != nil {
-		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+		slog.InfoContext(ctx, "error determining if the running executable was installed with brew", "err", err)
 	}
 	if isBrew {
 		// When consulting Homebrew for version info, we just use the latest version as the oldest allowed.
@@ -716,7 +837,7 @@ func getCLIVersionInfo(
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
 func cacheVersionInfo(info cachedVersionInfo) error {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return err
 	}
@@ -732,7 +853,7 @@ func cacheVersionInfo(info cachedVersionInfo) error {
 
 // readVersionInfo reads version information from the cache file.
 func readVersionInfo() (cachedVersionInfo, error) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return cachedVersionInfo{}, err
 	}
@@ -758,7 +879,7 @@ func readVersionInfo() (cachedVersionInfo, error) {
 // If we can't read the cached versions file, we return true and a zero time,
 // indicating that we want to possibly prompt the user for an upgrade.
 func checkVersionPrompt(devVersion bool) (bool, int64) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return true, 0
 	}
@@ -835,7 +956,7 @@ func diffMinorVersions(v1 semver.Version, v2 semver.Version) int64 {
 		return 0
 	}
 
-	return (int64)(v2.Minor - v1.Minor) //nolint:gosec
+	return int64(v2.Minor - v1.Minor)
 }
 
 // getUpgradeCommand returns a command that will upgrade the CLI to the newest version. If we can not determine how
@@ -853,7 +974,7 @@ func getUpgradeCommand(isDevVersion bool) string {
 
 	isBrew, err := isBrewInstall(exe)
 	if err != nil {
-		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
+		slog.Info("error determining if the running executable was installed with brew", "err", err)
 	}
 	if isBrew {
 		return "$ brew update && brew upgrade pulumi"
@@ -1037,7 +1158,7 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 			for _, v := range csv {
 				_ = f.Value.Set(v)
 			}
-		case "string", "int":
+		case "string", "int", "int32", "int64", "duration", "Delimiter":
 			_ = f.Value.Set(value)
 		default:
 			// Hello! If you're reading this, you've found a new CLI type and we don't

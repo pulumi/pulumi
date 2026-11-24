@@ -149,8 +149,7 @@ func (lss diyStackSummary) LastUpdate() *time.Time {
 
 func (lss diyStackSummary) ResourceCount() *int {
 	if lss.chk != nil && lss.chk.Latest != nil {
-		count := len(lss.chk.Latest.Resources)
-		return &count
+		return new(len(lss.chk.Latest.Resources))
 	}
 	return nil
 }

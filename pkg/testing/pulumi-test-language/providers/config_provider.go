@@ -22,9 +22,9 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Config provider is a small provider to test things related to provider configuration and explicit provider resources.
@@ -33,6 +33,10 @@ type ConfigProvider struct {
 	plugin.UnimplementedProvider
 
 	prefix string
+
+	// name is the "name" configuration this instance was configured with. getConfig echoes it back,
+	// which is how a program can observe which provider instance served an invoke.
+	name string
 }
 
 var _ plugin.Provider = (*ConfigProvider)(nil)
@@ -42,13 +46,12 @@ func (p *ConfigProvider) Close() error {
 }
 
 func (p *ConfigProvider) Configure(
-	context.Context, plugin.ConfigureRequest,
+	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
+	if name, ok := req.Inputs.GetOk("name"); ok && name.IsString() {
+		p.name = name.AsString()
+	}
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *ConfigProvider) Pkg() tokens.Package {
-	return "config"
 }
 
 func (p *ConfigProvider) GetSchema(
@@ -84,7 +87,7 @@ func (p *ConfigProvider) GetSchema(
 			Required:  []string{"name"},
 		},
 		PluginDownloadURL: "http://example.com",
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type: "object",
 				Properties: map[string]schema.PropertySpec{
@@ -100,6 +103,24 @@ func (p *ConfigProvider) GetSchema(
 			},
 			InputProperties: providerProperties,
 			RequiredInputs:  []string{"name"},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			// Returns the text given, prefixed with the "name" configuration of the provider that served
+			// the invoke.
+			"config:index:getConfig": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type:       "object",
+						Properties: resourceProperties,
+						Required:   resourceRequired,
+					},
+				},
+			},
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"config:index:Resource": {
@@ -123,24 +144,24 @@ func (p *ConfigProvider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	// We should have the version but also name and pluginDownloadURL
 
-	check := func(required bool, key resource.PropertyKey, expected string) *plugin.CheckConfigResponse {
-		value, ok := req.News[key]
+	check := func(required bool, key string, expected string) *plugin.CheckConfigResponse {
+		value, ok := req.News.GetOk(key)
 		if !ok {
 			if required {
 				return &plugin.CheckConfigResponse{
-					Failures: makeCheckFailure(key, fmt.Sprintf("missing %s", key)),
+					Failures: makeCheckConfigFailure(resource.PropertyKey(key), "missing "+key),
 				}
 			}
 			return nil
 		}
 		if !value.IsString() {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("%s is not a string", key)),
+				Failures: makeCheckConfigFailure(resource.PropertyKey(key), key+" is not a string"),
 			}
 		}
-		if expected != "" && value.StringValue() != expected {
+		if expected != "" && value.AsString() != expected {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("%s is not %s", key, expected)),
+				Failures: makeCheckConfigFailure(resource.PropertyKey(key), fmt.Sprintf("%s is not %s", key, expected)),
 			}
 		}
 		return nil
@@ -161,18 +182,45 @@ func (p *ConfigProvider) CheckConfig(
 		return *ok, nil
 	}
 
-	if len(req.News) > 3 {
+	if req.News.Len() > 3 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
+func (p *ConfigProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "config:index:getConfig" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+
+	text, ok := req.Args.GetOk("text")
+	if !ok {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("text", "missing text"),
+		}, nil
+	}
+	if !text.IsString() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("text", "text is not a string"),
+		}, nil
+	}
+
+	return plugin.InvokeResponse{
+		Properties: property.NewMap(map[string]property.Value{
+			"text": property.New(p.name + ": " + text.AsString()),
+		}),
+	}, nil
+}
+
 func (p *ConfigProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "config:index:Resource"
 	if req.URN.Type() != "config:index:Resource" {
 		return plugin.CheckResponse{
@@ -181,7 +229,7 @@ func (p *ConfigProvider) Check(
 	}
 
 	// Expect just the text string value
-	value, ok := req.News["text"]
+	value, ok := news["text"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("text", "missing text"),
@@ -192,18 +240,19 @@ func (p *ConfigProvider) Check(
 			Failures: makeCheckFailure("text", "text is not a string"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConfigProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "config:index:Resource"
 	if req.URN.Type() != "config:index:Resource" {
 		return plugin.CreateResponse{
@@ -218,7 +267,7 @@ func (p *ConfigProvider) Create(
 
 	// Check should have already checked this, good practice would be to check again but for tests we can just panic
 	// here.
-	text := req.Properties["text"].StringValue()
+	text := properties["text"].StringValue()
 
 	props := resource.PropertyMap{
 		"text": resource.NewProperty(p.prefix + ": " + text),
@@ -226,7 +275,7 @@ func (p *ConfigProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: props,
+		Properties: resource.FromResourcePropertyMap(props),
 		Status:     resource.StatusOK,
 	}, nil
 }

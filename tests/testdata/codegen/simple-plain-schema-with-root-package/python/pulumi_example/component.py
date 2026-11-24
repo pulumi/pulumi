@@ -29,7 +29,7 @@ class ComponentArgs:
                  baz: Optional[Sequence[pulumi.Input['FooArgs']]] = None,
                  d: Optional[_builtins.int] = None,
                  f: Optional[_builtins.str] = None,
-                 foo: Optional[pulumi.Input['FooArgs']] = None):
+                 foo: pulumi.Input[Optional['FooArgs']] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -123,11 +123,11 @@ class ComponentArgs:
 
     @_builtins.property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['FooArgs']]:
+    def foo(self) -> pulumi.Input[Optional['FooArgs']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['FooArgs']]):
+    def foo(self, value: pulumi.Input[Optional['FooArgs']]):
         pulumi.set(self, "foo", value)
 
 
@@ -139,13 +139,13 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[_builtins.bool] = None,
                  b: Optional[_builtins.bool] = None,
-                 bar: Optional[Union['FooArgs', 'FooArgsDict']] = None,
-                 baz: Optional[Sequence[pulumi.Input[Union['FooArgs', 'FooArgsDict']]]] = None,
+                 bar: Optional[Union['FooArgs', 'FooArgsDict', 'outputs.Foo']] = None,
+                 baz: Optional[Sequence[pulumi.Input[Union['FooArgs', 'FooArgsDict', 'outputs.Foo']]]] = None,
                  c: Optional[_builtins.int] = None,
                  d: Optional[_builtins.int] = None,
                  e: Optional[_builtins.str] = None,
                  f: Optional[_builtins.str] = None,
-                 foo: Optional[pulumi.Input[Union['FooArgs', 'FooArgsDict']]] = None,
+                 foo: pulumi.Input[Optional[Union['FooArgs', 'FooArgsDict', 'outputs.Foo']]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -179,13 +179,13 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[_builtins.bool] = None,
                  b: Optional[_builtins.bool] = None,
-                 bar: Optional[Union['FooArgs', 'FooArgsDict']] = None,
-                 baz: Optional[Sequence[pulumi.Input[Union['FooArgs', 'FooArgsDict']]]] = None,
+                 bar: Optional[Union['FooArgs', 'FooArgsDict', 'outputs.Foo']] = None,
+                 baz: Optional[Sequence[pulumi.Input[Union['FooArgs', 'FooArgsDict', 'outputs.Foo']]]] = None,
                  c: Optional[_builtins.int] = None,
                  d: Optional[_builtins.int] = None,
                  e: Optional[_builtins.str] = None,
                  f: Optional[_builtins.str] = None,
-                 foo: Optional[pulumi.Input[Union['FooArgs', 'FooArgsDict']]] = None,
+                 foo: pulumi.Input[Optional[Union['FooArgs', 'FooArgsDict', 'outputs.Foo']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

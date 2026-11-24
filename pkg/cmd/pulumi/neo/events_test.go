@@ -42,3 +42,18 @@ func TestHasPendingCLIToolCalls(t *testing.T) {
 		{ExecutionMode: toolExecutionModeCLI},
 	}))
 }
+
+func TestIsAskUserToolName(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, isAskUserToolName("ask_user"))
+	assert.True(t, isAskUserToolName("ux__ask_user"))
+	assert.True(t, isAskUserToolName("anything__ask_user"))
+
+	assert.False(t, isAskUserToolName(""))
+	assert.False(t, isAskUserToolName("ask_user_other"))
+	assert.False(t, isAskUserToolName("filesystem__read"))
+	assert.False(t, isAskUserToolName("ux__notify"))
+	// Suffix means the full method, not a substring.
+	assert.False(t, isAskUserToolName("ux__ask_user_v2"))
+}

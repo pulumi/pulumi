@@ -21,7 +21,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -67,8 +69,19 @@ func TestSanitizedPkg(t *testing.T) {
 	v3 := getSanitizedModulePath("github.com/pulumi/pulumi-aws/sdk/v3")
 	assert.Equal(t, "github.com/pulumi/pulumi-aws/sdk", v3)
 
+	v10 := getSanitizedModulePath("github.com/pulumi/pulumi-gcp/sdk/v10")
+	assert.Equal(t, "github.com/pulumi/pulumi-gcp/sdk", v10)
+
+	v123 := getSanitizedModulePath("github.com/pulumi/pulumi-gcp/sdk/v123")
+	assert.Equal(t, "github.com/pulumi/pulumi-gcp/sdk", v123)
+
 	nonVersion := getSanitizedModulePath("github.com/pulumi/pulumi-auth/sdk")
 	assert.Equal(t, "github.com/pulumi/pulumi-auth/sdk", nonVersion)
+
+	// Only a trailing major version element is stripped, never a lookalike
+	// element in the middle of the path.
+	embedded := getSanitizedModulePath("github.com/pulumi/v2fly/sdk")
+	assert.Equal(t, "github.com/pulumi/v2fly/sdk", embedded)
 }
 
 func TestDepRootCalc(t *testing.T) {
@@ -93,6 +106,12 @@ func TestDepRootCalc(t *testing.T) {
 
 	dep = getRewritePath("github.com/pulumi/pulumi-auth0/sdk", "gopath", "/my-go-src")
 	assert.Equal(t, "/my-go-src/pulumi-auth0/sdk", filepath.ToSlash(dep))
+
+	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v10", "/gopath", "/my-go-src")
+	assert.Equal(t, "/my-go-src/pulumi-gcp/sdk", filepath.ToSlash(dep))
+
+	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v10", "/gopath", "")
+	assert.Equal(t, "/gopath/src/github.com/pulumi/pulumi-gcp/sdk", filepath.ToSlash(dep))
 }
 
 func TestGoModEdits(t *testing.T) {
@@ -102,9 +121,14 @@ func TestGoModEdits(t *testing.T) {
 	require.NoError(t, err)
 
 	repoRoot := filepath.Clean(filepath.Join(cwd, "../../.."))
-	depRoot := filepath.Clean(filepath.Join(repoRoot, ".."))
-	// NOTE: this path may not point to the directory that contains the current worktree.
+
+	depRoot := t.TempDir()
 	pulumiRepo := filepath.Join(depRoot, "pulumi")
+	require.NoError(t, os.MkdirAll(filepath.Join(pulumiRepo, "sdk"), 0o700))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(pulumiRepo, "sdk", "go.mod"),
+		[]byte("module github.com/pulumi/pulumi/sdk/v3\n"),
+		0o600))
 
 	gopath, err := GoPath()
 	require.NoError(t, err)
@@ -200,4 +224,35 @@ func TestGoModEdits(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDefaultPrepareProjectNoOpRuntimes(t *testing.T) {
+	t.Parallel()
+
+	for _, rt := range []string{YAMLRuntime, JavaRuntime, HCLRuntime, PCLRuntime} {
+		t.Run(rt, func(t *testing.T) {
+			t.Parallel()
+			pt := &ProgramTester{t: t, opts: &ProgramTestOptions{}}
+			projinfo := &engine.Projinfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo(rt, nil),
+				},
+			}
+			require.NoError(t, pt.defaultPrepareProject(projinfo))
+		})
+	}
+}
+
+func TestDefaultPrepareProjectUnknownRuntime(t *testing.T) {
+	t.Parallel()
+
+	pt := &ProgramTester{t: t, opts: &ProgramTestOptions{}}
+	projinfo := &engine.Projinfo{
+		Proj: &workspace.Project{
+			Runtime: workspace.NewProjectRuntimeInfo("not-a-real-runtime", nil),
+		},
+	}
+	err := pt.defaultPrepareProject(projinfo)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Contains(t, err.Error(), "unrecognized project runtime")
 }

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,6 +30,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -82,7 +85,6 @@ type provider struct {
 	NotForwardCompatibleProvider
 
 	ctx                    *Context                         // a plugin context for caching, etc.
-	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
 	plug                   *Plugin                          // the actual plugin process wrapper.
 	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
@@ -115,6 +117,9 @@ type pluginProtocol struct {
 
 	// True if this plugin supports custom autonaming configuration.
 	supportsAutonamingConfiguration bool
+
+	// True if this plugin accepts strings containing bytes that are not valid UTF-8.
+	acceptsByteString bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -145,7 +150,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 	var optAttach string
 
 	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
-		for _, provider := range strings.Split(providersEnvVar, ",") {
+		for provider := range strings.SplitSeq(providersEnvVar, ",") {
 			parts := strings.SplitN(provider, ":", 2)
 
 			if parts[0] == pkg.String() {
@@ -185,6 +190,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	prefix := fmt.Sprintf("%v (resource)", pkg)
+	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
 
 	if attachPort != nil {
 		port := *attachPort
@@ -201,6 +209,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				MapperTarget:                mapperAddr,
+				LoaderTarget:                loaderAddr,
+				ResolverTarget:              resolverAddr,
+				AcceptsByteString:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -220,7 +232,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, host.GetProjectPlugins())
+		path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, ctx.ProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
@@ -264,6 +276,10 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				MapperTarget:                mapperAddr,
+				LoaderTarget:                loaderAddr,
+				ResolverTarget:              resolverAddr,
+				AcceptsByteString:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -271,7 +287,8 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		plug, handshakeRes, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			apitype.ResourcePlugin, []string{host.ServerAddr()}, e,
 			handshake, providerPluginDialOptions(ctx, pkg, ""),
-			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
+			!ctx.DisableProviderDebugging() &&
+				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: spec.Name}))
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +305,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 
 	p := &provider{
 		ctx:                    ctx,
-		pkg:                    pkg,
 		plug:                   plug,
 		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
 		disableProviderPreview: disableProviderPreview,
@@ -304,6 +320,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptsByteString:               handshakeRes.AcceptsByteString,
 		}
 	}
 
@@ -316,6 +333,33 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 	}
 
 	return p, nil
+}
+
+// mapperTarget returns the context's mapper address as an optional handshake field, nil when the context has no
+// mapper service.
+func mapperTarget(ctx *Context) *string {
+	if addr := ctx.MapperAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
+// loaderTarget returns the context's loader address as an optional handshake field, nil when the context has no
+// loader service.
+func loaderTarget(ctx *Context) *string {
+	if addr := ctx.LoaderAddr(); addr != "" {
+		return &addr
+	}
+	return nil
+}
+
+// resolverTarget returns the context's resolver address as an optional handshake field, nil when the context has no
+// resolver service.
+func resolverTarget(ctx *Context) *string {
+	if addr := ctx.ResolverAddr(); addr != "" {
+		return &addr
+	}
+	return nil
 }
 
 func handshake(
@@ -334,6 +378,10 @@ func handshake(
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -351,6 +399,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptsByteString:               res.GetAcceptsByteString(),
 	}, nil
 }
 
@@ -379,7 +428,10 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+	mapperAddr := mapperTarget(ctx)
+	loaderAddr := loaderTarget(ctx)
+	resolverAddr := resolverTarget(ctx)
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*ProviderHandshakeResponse, error) {
@@ -392,6 +444,10 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
+			MapperTarget:                mapperAddr,
+			LoaderTarget:                loaderAddr,
+			ResolverTarget:              resolverAddr,
+			AcceptsByteString:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -399,7 +455,8 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
 		apitype.ResourcePlugin, []string{host.ServerAddr()}, env.Global(),
 		handshake, providerPluginDialOptions(ctx, "", path),
-		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
+		!ctx.DisableProviderDebugging() &&
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +470,6 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
 		legacyPreview: legacyPreview,
 		configSource:  &promise.CompletionSource[pluginConfig]{},
-		pkg:           pkg,
 	}
 
 	if handshakeRes != nil {
@@ -423,6 +479,7 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptsByteString:               handshakeRes.AcceptsByteString,
 		}
 	}
 
@@ -433,41 +490,39 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 			return nil, err
 		}
 	}
-	return &cancelOnCloseProvider{Provider: p}, nil
+	return &cancelOnCloseProvider{provider: p}, nil
 }
 
 // cancelOnCloseProvider wraps a Provider so that Close sends a Cancel RPC before shutting down the plugin process. This
 // is used for providers created via NewProviderFromPath, which are not managed by a Host and therefore don't get Cancel
 // via the host's close sequence.
 type cancelOnCloseProvider struct {
-	Provider
+	*provider
 }
 
 func (p *cancelOnCloseProvider) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(p.requestContext()), 5*time.Second)
 	defer cancel()
 	contract.IgnoreError(p.SignalCancellation(ctx))
-	return p.Provider.Close()
+	return p.provider.Close()
 }
 
-func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+func NewProviderWithClient(ctx *Context, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool,
 ) Provider {
 	return &provider{
 		ctx:                    ctx,
-		pkg:                    pkg,
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
 	}
 }
 
-func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+func NewProviderWithVersionOverride(ctx *Context, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool, version *semver.Version,
 ) Provider {
 	return &provider{
 		ctx:                    ctx,
-		pkg:                    pkg,
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
@@ -475,11 +530,9 @@ func NewProviderWithVersionOverride(ctx *Context, pkg tokens.Package, client pul
 	}
 }
 
-func (p *provider) Pkg() tokens.Package { return p.pkg }
-
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
-	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
+	return fmt.Sprintf("Provider[%p]", p)
 }
 
 func (p *provider) requestContext() context.Context {
@@ -523,9 +576,24 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Handshaking is how capabilities are negotiated, so record the provider's answers just as we do when
+	// handshaking at plugin spawn time.
+	p.protocol = &pluginProtocol{
+		acceptSecrets:                   res.GetAcceptSecrets(),
+		acceptResources:                 res.GetAcceptResources(),
+		supportsPreview:                 true,
+		acceptOutputs:                   res.GetAcceptOutputs(),
+		supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		acceptsByteString:               res.GetAcceptsByteString(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -533,6 +601,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptsByteString:               res.GetAcceptsByteString(),
 	}, nil
 }
 
@@ -571,6 +640,9 @@ func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest
 
 // GetSchema fetches the schema for this resource provider, if any.
 func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSchemaResponse, error) {
+	_, span := otel.Tracer("pulumi-cli").Start(ctx, "provider.GetSchema")
+	defer span.End()
+
 	var subpackageVersion string
 	if req.SubpackageVersion != nil {
 		subpackageVersion = req.SubpackageVersion.String()
@@ -788,7 +860,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		// exposed this issue with the kubernetes provider, new versions will be fixed to not error on
 		// this (https://github.com/pulumi/pulumi-kubernetes/issues/2663) but so that the CLI continues to
 		// work for old versions we have an explicit ignore for this one error here.
-		if p.pkg == "kubernetes" &&
+		if providers.GetProviderPackage(req.URN.Type()) == "kubernetes" &&
 			strings.Contains(rpcError.Error(), "cannot unmarshal string into Go value of type struct") {
 			logging.V(8).Infof("%s ignoring error from kubernetes provider", label)
 			return DiffResult{Changes: DiffUnknown}, nil
@@ -797,18 +869,9 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		return DiffResult{}, err
 	}
 
-	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
-	for _, diff := range resp.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	replaces := slice.Cast[resource.PropertyKey](resp.GetReplaces())
+	stables := slice.Cast[resource.PropertyKey](resp.GetStables())
+	diffs := slice.Cast[resource.PropertyKey](resp.GetDiffs())
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
@@ -978,9 +1041,15 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 	label := p.label() + ".Configure()"
 	logging.V(7).Infof("%s executing (#vars=%d)", label, len(req.Inputs))
 
-	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
+	// The deprecated `variables` field is keyed by `<pkg>:config:<key>` for providers that still read config
+	// under the old name. The plugin no longer knows its own package, so we take it from the provider type the
+	// engine supplies at configure time.
+	contract.Assertf(req.Type != nil, "ConfigureRequest.Type must be set")
+	pkg := providers.GetProviderPackage(*req.Type)
+
+	// Convert the inputs to a variables map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
-	config := make(map[string]string)
+	variables := make(map[string]string)
 	for k, v := range req.Inputs {
 		if k == "version" {
 			continue
@@ -1008,9 +1077,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			mapped = string(marshalled)
 		}
 
-		// Pass the older spelling of a configuration key across the RPC interface, for now, to support
-		// providers which are on the older plan.
-		config[string(p.Pkg())+":config:"+string(k)] = mapped.(string)
+		variables[string(pkg)+":config:"+string(k)] = mapped.(string)
 	}
 
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
@@ -1052,7 +1119,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			AcceptResources:        true,
 			SendsOldInputs:         true,
 			SendsOldInputsToDelete: true,
-			Variables:              config,
+			Variables:              variables, //nolint:staticcheck
 			Args:                   minputs,
 		})
 		if err != nil {
@@ -1064,6 +1131,8 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		}
 
 		if p.protocol == nil {
+			// Byte string support is negotiated only at handshake time; providers that did not
+			// handshake never receive such values.
 			p.protocol = &pluginProtocol{
 				acceptSecrets:                   resp.GetAcceptSecrets(),
 				acceptResources:                 resp.GetAcceptResources(),
@@ -1107,10 +1176,11 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:         label + ".olds",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:          label + ".olds",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
 		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
 		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
 		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
@@ -1122,11 +1192,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{}, err
 	}
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:         label + ".news",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".news",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1236,6 +1307,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1248,6 +1320,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1260,6 +1333,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1283,18 +1357,9 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	}
 
 	// nil is semantically important to a lot of the pulumi system so we only pre-allocate if we have non-zero length.
-	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
-	for _, stable := range resp.GetStables() {
-		stables = append(stables, resource.PropertyKey(stable))
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
-	for _, diff := range resp.GetDiffs() {
-		diffs = append(diffs, resource.PropertyKey(diff))
-	}
+	replaces := slice.Cast[resource.PropertyKey](resp.GetReplaces())
+	stables := slice.Cast[resource.PropertyKey](resp.GetStables())
+	diffs := slice.Cast[resource.PropertyKey](resp.GetDiffs())
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
@@ -1360,11 +1425,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
 	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".inputs",
+		KeepUnknowns:   req.Preview,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1401,7 +1467,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 
 	if id == "" && !req.Preview {
 		return CreateResponse{Status: resource.StatusUnknown},
-			fmt.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, req.URN)
+			fmt.Errorf("plugin returned empty resource.ID from create '%v'", req.URN)
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
@@ -1471,6 +1537,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			ElideAssetContents: true,
 			KeepSecrets:        protocol.acceptSecrets,
 			KeepResources:      protocol.acceptResources,
+			KeepByteString:     protocol.acceptsByteString,
 			PropagateNil:       true,
 		})
 		if err != nil {
@@ -1483,6 +1550,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1490,10 +1558,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1513,6 +1582,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		Type:                  req.URN.Type().String(),
 		Properties:            mstate,
 		Inputs:                minputs,
+		Timeout:               req.Timeout,
 		ResourceStatusAddress: req.ResourceStatusAddress,
 		ResourceStatusToken:   req.ResourceStatusToken,
 		OldViews:              oldViews,
@@ -1635,6 +1705,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1645,27 +1716,30 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:         label + ".newInputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".newInputs",
+		KeepUnknowns:   req.Preview,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".oldViews",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1762,6 +1836,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1773,6 +1848,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1780,10 +1856,11 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".oldViews",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1811,6 +1888,84 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 
 	logging.V(7).Infof("%s success", label)
 	return DeleteResponse{Status: resource.StatusOK}, err
+}
+
+func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
+	label := fmt.Sprintf("%s.List(%s)", p.label(), req.Token)
+	logging.V(7).Infof("%s executing (#query=%d)", label, len(req.Query))
+
+	client := p.clientRaw
+	protocol, pcfg, err := p.getPluginConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !pcfg.known {
+		return NewComputedListStream(), nil
+	}
+
+	query, err := MarshalProperties(req.Query, MarshalOptions{
+		Label:          label + ".query",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Use a cancellable child of the context. We hold onto the cancel so we can release the underlying gRPC stream
+	// resources on every exit path from the iterator below — including when the caller breaks out of the range loop
+	// early (gRPC server streams only release on EOF, error, or context cancel).
+	streamCtx, cancel := context.WithCancel(ctx)
+	rpcStream, err := client.List(streamCtx, &pulumirpc.ListRequest{
+		Token:             string(req.Token),
+		Query:             query,
+		Limit:             req.Limit,
+		PageSize:          req.PageSize,
+		ContinuationToken: req.ContinuationToken,
+	})
+	if err != nil {
+		cancel()
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return nil, rpcError
+	}
+
+	// Drain the gRPC stream lazily. The closure mutates stream.Computed and stream.ContinuationToken as the
+	// trailing metadata arrives, so callers must iterate Items to completion to observe accurate values.
+	stream := &ListStream{}
+	stream.Items = func(yield func(ListResult, error) bool) {
+		defer cancel()
+		for {
+			item, err := rpcStream.Recv()
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			if err != nil {
+				rpcError := rpcerror.Convert(err)
+				logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+				yield(ListResult{}, rpcError)
+				return
+			}
+
+			switch item.GetResponse().(type) {
+			case *pulumirpc.ListResponse_Computed_:
+				stream.Computed = true
+			case *pulumirpc.ListResponse_Result_:
+				result := item.GetResult()
+				if !yield(ListResult{
+					ID:   resource.ID(result.GetId()),
+					Name: result.GetName(),
+				}, nil) {
+					return
+				}
+			case *pulumirpc.ListResponse_Continuation_:
+				stream.ContinuationToken = item.GetContinuation().GetContinuationToken()
+			}
+		}
+	}
+	return stream, nil
 }
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
@@ -1863,10 +2018,11 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	// Marshal the input properties.
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  true,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:          label + ".inputs",
+		KeepUnknowns:   true,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
@@ -1883,18 +2039,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the dependencies.
-	dependencies := make([]string, len(req.Options.Dependencies))
-	for i, dep := range req.Options.Dependencies {
-		dependencies[i] = string(dep)
-	}
+	dependencies := slice.Cast[string](req.Options.Dependencies)
 
 	// Marshal the property dependencies.
 	inputDependencies := map[string]*pulumirpc.ConstructRequest_PropertyDependencies{}
 	for name, dependencies := range req.Options.PropertyDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](dependencies)
 		inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
 	}
 
@@ -1909,15 +2059,13 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the replace with.
-	replaceWithURNs := make([]string, len(req.Options.ReplaceWith))
-	for i, urn := range req.Options.ReplaceWith {
-		replaceWithURNs[i] = string(urn)
-	}
+	replaceWithURNs := slice.Cast[string](req.Options.ReplaceWith)
 
 	// Marshal the replacement trigger.
 	var replacementTrigger *structpb.Value
 	if !req.Options.ReplacementTrigger.IsNull() {
-		trigger, err := MarshalPropertyValue("replacementTrigger", req.Options.ReplacementTrigger, MarshalOptions{
+		value := resource.ToResourcePropertyValue(req.Options.ReplacementTrigger)
+		trigger, err := MarshalPropertyValue("replacementTrigger", value, MarshalOptions{
 			Label:            label + ".replacementTrigger",
 			KeepUnknowns:     req.Info.DryRun,
 			KeepSecrets:      true,
@@ -2002,6 +2150,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 			Create: ct.Create,
 			Update: ct.Update,
 			Delete: ct.Delete,
+			Read:   ct.Read,
 		}
 	}
 
@@ -2024,10 +2173,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	outputDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetStateDependencies() {
-		urns := make([]resource.URN, len(rpcDeps.Urns))
-		for i, d := range rpcDeps.Urns {
-			urns[i] = resource.URN(d)
-		}
+		urns := slice.Cast[resource.URN](rpcDeps.Urns)
 		outputDependencies[resource.PropertyKey(k)] = urns
 	}
 
@@ -2059,10 +2205,11 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".args",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2133,10 +2280,11 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:          label + ".args",
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
@@ -2149,10 +2297,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	// Marshal the arg dependencies.
 	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
 	for name, dependencies := range req.Options.ArgDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](dependencies)
 		argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
 	}
 
@@ -2196,10 +2341,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 
 	returnDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetReturnDependencies() {
-		urns := make([]resource.URN, len(rpcDeps.Urns))
-		for i, d := range rpcDeps.Urns {
-			urns[i] = resource.URN(d)
-		}
+		urns := slice.Cast[resource.URN](rpcDeps.Urns)
 		returnDependencies[resource.PropertyKey(k)] = urns
 	}
 

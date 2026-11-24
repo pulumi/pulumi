@@ -26,7 +26,6 @@ import (
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -47,7 +46,8 @@ func newStateEditCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use: "edit",
+		Use:     "edit",
+		Aliases: []string{"update", "modify"},
 		// TODO(dixler) Add test for unicode round-tripping before unhiding.
 		// TODO(fraser) This needs tests _in general_ it is currently basically untested.
 		Hidden: !env.Experimental.Value(),
@@ -75,9 +75,13 @@ a preview showing a diff of the altered state.`,
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
+			}
+			if stateEdit.Stdout == nil {
+				stateEdit.Stdout = cmd.OutOrStdout()
 			}
 			if err := stateEdit.Run(ctx, s); err != nil {
 				return err
@@ -150,11 +154,8 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
 	}
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return err
 	}
@@ -277,10 +278,13 @@ func openInEditorInternal(editor, filename string) error {
 	}
 	args = append(args, filename)
 
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+	// Launching an editor subprocess; wire it to the actual terminal so the
+	// user can interact with it. Using the cobra writers (which may be
+	// buffered or piped) would break vim/emacs/etc.
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout //nolint:forbidigo
+	cmd.Stderr = os.Stderr //nolint:forbidigo
 
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(cmd.Stdout, "Failed to exec EDITOR: %v\n", err)

@@ -43,7 +43,7 @@ func TestPolicyWithConfig(t *testing.T) {
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_w_config")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("npm", "install")
 	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
@@ -115,7 +115,7 @@ func TestPolicyWithoutConfig(t *testing.T) {
 	// Pack and push a Policy Pack for the organization.
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_wo_config")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("npm", "install")
 	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
@@ -155,7 +155,6 @@ type policyGroupsJSON struct {
 	NumStacks      int    `json:"numStacks"`
 }
 
-//nolint:unused // Used by skipped test
 func assertJSON(e *ptesting.Environment, out string, respObj any) {
 	err := json.Unmarshal([]byte(out), &respObj)
 	if err != nil {
@@ -165,8 +164,6 @@ func assertJSON(e *ptesting.Environment, out string, respObj any) {
 
 // publishPolicyPackWithVersion updates the version in package.json so we can
 // dynamically publish different versions for testing.
-//
-//nolint:unused // Used by skipped test
 func publishPolicyPackWithVersion(e *ptesting.Environment, orgName, version string) {
 	cmd := fmt.Sprintf(`sed 's/{ policyVersion }/%s/g' package.json.tmpl | tee package.json`, version)
 	e.RunCommand("bash", "-c", cmd)

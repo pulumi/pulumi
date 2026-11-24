@@ -1,0 +1,2799 @@
+{
+    "check": {
+        "exprs": {
+            "some_list": {
+                "range": {
+                    "environment": "imports",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 91
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 12,
+                        "byte": 110
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "base": {
+                    "range": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 40
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 43
+                        }
+                    },
+                    "schema": {
+                        "prefixItems": [
+                            {
+                                "type": "string",
+                                "const": "a"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "base": {
+                        "range": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 14,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 17,
+                                "byte": 42
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        "literal": "foo"
+                    },
+                    "list": [
+                        {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 43
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "a"
+                            },
+                            "literal": "a"
+                        }
+                    ]
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 93
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 12,
+                                "byte": 98
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "literal": "hello"
+                    },
+                    {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 105
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 12,
+                                "byte": 110
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                ]
+            },
+            "some_object": {
+                "range": {
+                    "environment": "imports",
+                    "begin": {
+                        "line": 11,
+                        "column": 5,
+                        "byte": 130
+                    },
+                    "end": {
+                        "line": 15,
+                        "column": 28,
+                        "byte": 234
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "alpha": {
+                            "type": "null"
+                        },
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "zed": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "alpha",
+                        "baz",
+                        "beta",
+                        "foo",
+                        "goodbye",
+                        "hello",
+                        "zed"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 63
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 16,
+                            "byte": 100
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "alpha": {
+                                "type": "string",
+                                "const": "beta"
+                            },
+                            "baz": {
+                                "type": "string",
+                                "const": "qux"
+                            },
+                            "foo": {
+                                "type": "string",
+                                "const": "bar"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "alpha",
+                            "baz",
+                            "foo"
+                        ]
+                    },
+                    "keyRanges": {
+                        "alpha": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 9,
+                                "column": 5,
+                                "byte": 89
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 94
+                            }
+                        },
+                        "baz": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 8,
+                                "column": 5,
+                                "byte": 76
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 79
+                            }
+                        },
+                        "foo": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 7,
+                                "column": 5,
+                                "byte": 63
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 8,
+                                "byte": 66
+                            }
+                        }
+                    },
+                    "object": {
+                        "alpha": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 12,
+                                    "byte": 96
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 100
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "beta"
+                            },
+                            "literal": "beta"
+                        },
+                        "baz": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 10,
+                                    "byte": 81
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 84
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "qux"
+                            },
+                            "literal": "qux"
+                        },
+                        "foo": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 68
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 71
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "bar"
+                            },
+                            "literal": "bar"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "alpha": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 168
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 10,
+                            "byte": 173
+                        }
+                    },
+                    "beta": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 14,
+                            "column": 5,
+                            "byte": 184
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 9,
+                            "byte": 188
+                        }
+                    },
+                    "goodbye": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 12,
+                            "column": 5,
+                            "byte": 147
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 12,
+                            "byte": 154
+                        }
+                    },
+                    "hello": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 130
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 10,
+                            "byte": 135
+                        }
+                    },
+                    "zed": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 211
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 8,
+                            "byte": 214
+                        }
+                    }
+                },
+                "object": {
+                    "alpha": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 13,
+                                "column": 12,
+                                "byte": 175
+                            },
+                            "end": {
+                                "line": 13,
+                                "column": 16,
+                                "byte": 179
+                            }
+                        },
+                        "schema": {
+                            "type": "null"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 12,
+                                    "byte": 96
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 100
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "beta"
+                            },
+                            "literal": "beta"
+                        }
+                    },
+                    "beta": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 14,
+                                "column": 11,
+                                "byte": 190
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 27,
+                                "byte": 206
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "imports",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 13,
+                                        "byte": 192
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    }
+                                },
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "c",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    }
+                                },
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 26,
+                                        "byte": 205
+                                    }
+                                },
+                                "value": {
+                                    "environment": "c",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 8,
+                                        "byte": 15
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "goodbye": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 12,
+                                "column": 14,
+                                "byte": 156
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 21,
+                                "byte": 163
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "literal": "for now"
+                    },
+                    "hello": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 11,
+                                "column": 12,
+                                "byte": 137
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 17,
+                                "byte": 142
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    },
+                    "zed": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 15,
+                                "column": 10,
+                                "byte": 216
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 28,
+                                "byte": 234
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "some_object",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 12,
+                                        "byte": 218
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    }
+                                },
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 5,
+                                        "byte": 130
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 28,
+                                        "byte": 234
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 27,
+                                        "byte": 233
+                                    }
+                                },
+                                "value": {
+                                    "environment": "b",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 68
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 71
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "some_string": {
+                "range": {
+                    "environment": "imports",
+                    "begin": {
+                        "line": 6,
+                        "column": 16,
+                        "byte": 68
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 21,
+                        "byte": 73
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hello"
+                },
+                "literal": "hello"
+            }
+        },
+        "properties": {
+            "some_list": {
+                "value": [
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 93
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 12,
+                                    "byte": 98
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 105
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 12,
+                                    "byte": 110
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 91
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 12,
+                            "byte": 110
+                        }
+                    },
+                    "base": {
+                        "value": [
+                            {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 7,
+                                            "byte": 42
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 8,
+                                            "byte": 43
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 5,
+                                    "byte": 40
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 43
+                                }
+                            },
+                            "base": {
+                                "value": "foo",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 14,
+                                            "byte": 39
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 17,
+                                            "byte": 42
+                                        }
+                                    },
+                                    "base": {
+                                        "value": "foo",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 14,
+                                                    "byte": 39
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 17,
+                                                    "byte": 42
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "some_number": {
+                "value": 42,
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 16,
+                            "byte": 23
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 18,
+                            "byte": 25
+                        }
+                    },
+                    "base": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 16,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 18,
+                                    "byte": 25
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "alpha": {
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 12,
+                                    "byte": 175
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 16,
+                                    "byte": 179
+                                }
+                            },
+                            "base": {
+                                "value": "beta",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 9,
+                                            "column": 12,
+                                            "byte": 96
+                                        },
+                                        "end": {
+                                            "line": 9,
+                                            "column": 16,
+                                            "byte": 100
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 10,
+                                    "byte": 81
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 84
+                                }
+                            }
+                        }
+                    },
+                    "beta": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 11,
+                                    "byte": 190
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 27,
+                                    "byte": 206
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 68
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 71
+                                }
+                            }
+                        }
+                    },
+                    "goodbye": {
+                        "value": "for now",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 14,
+                                    "byte": 156
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 21,
+                                    "byte": 163
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 12,
+                                    "byte": 137
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 17,
+                                    "byte": 142
+                                }
+                            }
+                        }
+                    },
+                    "zed": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 10,
+                                    "byte": 216
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 28,
+                                    "byte": 234
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 130
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 28,
+                            "byte": 234
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "alpha": {
+                                "value": "beta",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 9,
+                                            "column": 12,
+                                            "byte": 96
+                                        },
+                                        "end": {
+                                            "line": 9,
+                                            "column": 16,
+                                            "byte": 100
+                                        }
+                                    }
+                                }
+                            },
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 8,
+                                            "column": 10,
+                                            "byte": 81
+                                        },
+                                        "end": {
+                                            "line": 8,
+                                            "column": 13,
+                                            "byte": 84
+                                        }
+                                    }
+                                }
+                            },
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 10,
+                                            "byte": 68
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 13,
+                                            "byte": 71
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 63
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 100
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "some_string": {
+                "value": "hello",
+                "trace": {
+                    "def": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 6,
+                            "column": 16,
+                            "byte": 68
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 21,
+                            "byte": 73
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "some_list": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "some_number": {
+                    "type": "number",
+                    "const": 42
+                },
+                "some_object": {
+                    "properties": {
+                        "alpha": {
+                            "type": "null"
+                        },
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "zed": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "alpha",
+                        "baz",
+                        "beta",
+                        "foo",
+                        "goodbye",
+                        "hello",
+                        "zed"
+                    ]
+                },
+                "some_string": {
+                    "type": "string",
+                    "const": "hello"
+                }
+            },
+            "type": "object",
+            "required": [
+                "some_list",
+                "some_number",
+                "some_object",
+                "some_string"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "imports",
+                            "trace": {
+                                "def": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "imports",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "imports",
+                            "trace": {
+                                "def": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "imports"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "imports"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "some_list": [
+            "hello",
+            "world"
+        ],
+        "some_number": 42,
+        "some_object": {
+            "alpha": null,
+            "baz": "qux",
+            "beta": "bar",
+            "foo": "bar",
+            "goodbye": "for now",
+            "hello": "world",
+            "zed": "bar"
+        },
+        "some_string": "hello"
+    },
+    "eval": {
+        "exprs": {
+            "some_list": {
+                "range": {
+                    "environment": "imports",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 91
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 12,
+                        "byte": 110
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "base": {
+                    "range": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 40
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 43
+                        }
+                    },
+                    "schema": {
+                        "prefixItems": [
+                            {
+                                "type": "string",
+                                "const": "a"
+                            }
+                        ],
+                        "items": false,
+                        "type": "array"
+                    },
+                    "base": {
+                        "range": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 14,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 17,
+                                "byte": 42
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "foo"
+                        },
+                        "literal": "foo"
+                    },
+                    "list": [
+                        {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 42
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 43
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "a"
+                            },
+                            "literal": "a"
+                        }
+                    ]
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 93
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 12,
+                                "byte": 98
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        "literal": "hello"
+                    },
+                    {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 105
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 12,
+                                "byte": 110
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    }
+                ]
+            },
+            "some_object": {
+                "range": {
+                    "environment": "imports",
+                    "begin": {
+                        "line": 11,
+                        "column": 5,
+                        "byte": 130
+                    },
+                    "end": {
+                        "line": 15,
+                        "column": 28,
+                        "byte": 234
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "alpha": {
+                            "type": "null"
+                        },
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "zed": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "alpha",
+                        "baz",
+                        "beta",
+                        "foo",
+                        "goodbye",
+                        "hello",
+                        "zed"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 63
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 16,
+                            "byte": 100
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "alpha": {
+                                "type": "string",
+                                "const": "beta"
+                            },
+                            "baz": {
+                                "type": "string",
+                                "const": "qux"
+                            },
+                            "foo": {
+                                "type": "string",
+                                "const": "bar"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "alpha",
+                            "baz",
+                            "foo"
+                        ]
+                    },
+                    "keyRanges": {
+                        "alpha": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 9,
+                                "column": 5,
+                                "byte": 89
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 94
+                            }
+                        },
+                        "baz": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 8,
+                                "column": 5,
+                                "byte": 76
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 79
+                            }
+                        },
+                        "foo": {
+                            "environment": "b",
+                            "begin": {
+                                "line": 7,
+                                "column": 5,
+                                "byte": 63
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 8,
+                                "byte": 66
+                            }
+                        }
+                    },
+                    "object": {
+                        "alpha": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 12,
+                                    "byte": 96
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 100
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "beta"
+                            },
+                            "literal": "beta"
+                        },
+                        "baz": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 10,
+                                    "byte": 81
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 84
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "qux"
+                            },
+                            "literal": "qux"
+                        },
+                        "foo": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 68
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 71
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "bar"
+                            },
+                            "literal": "bar"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "alpha": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 13,
+                            "column": 5,
+                            "byte": 168
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 10,
+                            "byte": 173
+                        }
+                    },
+                    "beta": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 14,
+                            "column": 5,
+                            "byte": 184
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 9,
+                            "byte": 188
+                        }
+                    },
+                    "goodbye": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 12,
+                            "column": 5,
+                            "byte": 147
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 12,
+                            "byte": 154
+                        }
+                    },
+                    "hello": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 130
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 10,
+                            "byte": 135
+                        }
+                    },
+                    "zed": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 15,
+                            "column": 5,
+                            "byte": 211
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 8,
+                            "byte": 214
+                        }
+                    }
+                },
+                "object": {
+                    "alpha": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 13,
+                                "column": 12,
+                                "byte": 175
+                            },
+                            "end": {
+                                "line": 13,
+                                "column": 16,
+                                "byte": 179
+                            }
+                        },
+                        "schema": {
+                            "type": "null"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 12,
+                                    "byte": 96
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 100
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "beta"
+                            },
+                            "literal": "beta"
+                        }
+                    },
+                    "beta": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 14,
+                                "column": 11,
+                                "byte": 190
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 27,
+                                "byte": 206
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "imports",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 13,
+                                        "byte": 192
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    }
+                                },
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "c",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 199
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    }
+                                },
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 22,
+                                        "byte": 201
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 26,
+                                        "byte": 205
+                                    }
+                                },
+                                "value": {
+                                    "environment": "c",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 8,
+                                        "byte": 15
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "goodbye": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 12,
+                                "column": 14,
+                                "byte": 156
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 21,
+                                "byte": 163
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "literal": "for now"
+                    },
+                    "hello": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 11,
+                                "column": 12,
+                                "byte": 137
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 17,
+                                "byte": 142
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "literal": "world"
+                    },
+                    "zed": {
+                        "range": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 15,
+                                "column": 10,
+                                "byte": 216
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 28,
+                                "byte": 234
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "some_object",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 12,
+                                        "byte": 218
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    }
+                                },
+                                "value": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 5,
+                                        "byte": 130
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 28,
+                                        "byte": 234
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 23,
+                                        "byte": 229
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 27,
+                                        "byte": 233
+                                    }
+                                },
+                                "value": {
+                                    "environment": "b",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 68
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 71
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "some_string": {
+                "range": {
+                    "environment": "imports",
+                    "begin": {
+                        "line": 6,
+                        "column": 16,
+                        "byte": 68
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 21,
+                        "byte": 73
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hello"
+                },
+                "literal": "hello"
+            }
+        },
+        "properties": {
+            "some_list": {
+                "value": [
+                    {
+                        "value": "hello",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 93
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 12,
+                                    "byte": 98
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 105
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 12,
+                                    "byte": 110
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 91
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 12,
+                            "byte": 110
+                        }
+                    },
+                    "base": {
+                        "value": [
+                            {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 7,
+                                            "byte": 42
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 8,
+                                            "byte": 43
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 5,
+                                    "byte": 40
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 43
+                                }
+                            },
+                            "base": {
+                                "value": "foo",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 14,
+                                            "byte": 39
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 17,
+                                            "byte": 42
+                                        }
+                                    },
+                                    "base": {
+                                        "value": "foo",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 14,
+                                                    "byte": 39
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 17,
+                                                    "byte": 42
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "some_number": {
+                "value": 42,
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 2,
+                            "column": 16,
+                            "byte": 23
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 18,
+                            "byte": 25
+                        }
+                    },
+                    "base": {
+                        "value": 42,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 2,
+                                    "column": 16,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 2,
+                                    "column": 18,
+                                    "byte": 25
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "alpha": {
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 12,
+                                    "byte": 175
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 16,
+                                    "byte": 179
+                                }
+                            },
+                            "base": {
+                                "value": "beta",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 9,
+                                            "column": 12,
+                                            "byte": 96
+                                        },
+                                        "end": {
+                                            "line": 9,
+                                            "column": 16,
+                                            "byte": 100
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 10,
+                                    "byte": 81
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 13,
+                                    "byte": 84
+                                }
+                            }
+                        }
+                    },
+                    "beta": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 11,
+                                    "byte": 190
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 27,
+                                    "byte": 206
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 10,
+                                    "byte": 68
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 71
+                                }
+                            }
+                        }
+                    },
+                    "goodbye": {
+                        "value": "for now",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 14,
+                                    "byte": 156
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 21,
+                                    "byte": 163
+                                }
+                            }
+                        }
+                    },
+                    "hello": {
+                        "value": "world",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 12,
+                                    "byte": 137
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 17,
+                                    "byte": 142
+                                }
+                            }
+                        }
+                    },
+                    "zed": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "imports",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 10,
+                                    "byte": 216
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 28,
+                                    "byte": 234
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 130
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 28,
+                            "byte": 234
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "alpha": {
+                                "value": "beta",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 9,
+                                            "column": 12,
+                                            "byte": 96
+                                        },
+                                        "end": {
+                                            "line": 9,
+                                            "column": 16,
+                                            "byte": 100
+                                        }
+                                    }
+                                }
+                            },
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 8,
+                                            "column": 10,
+                                            "byte": 81
+                                        },
+                                        "end": {
+                                            "line": 8,
+                                            "column": 13,
+                                            "byte": 84
+                                        }
+                                    }
+                                }
+                            },
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 10,
+                                            "byte": 68
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 13,
+                                            "byte": 71
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 5,
+                                    "byte": 63
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 100
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "some_string": {
+                "value": "hello",
+                "trace": {
+                    "def": {
+                        "environment": "imports",
+                        "begin": {
+                            "line": 6,
+                            "column": 16,
+                            "byte": 68
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 21,
+                            "byte": 73
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "some_list": {
+                    "prefixItems": [
+                        {
+                            "type": "string",
+                            "const": "hello"
+                        },
+                        {
+                            "type": "string",
+                            "const": "world"
+                        }
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "some_number": {
+                    "type": "number",
+                    "const": 42
+                },
+                "some_object": {
+                    "properties": {
+                        "alpha": {
+                            "type": "null"
+                        },
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "goodbye": {
+                            "type": "string",
+                            "const": "for now"
+                        },
+                        "hello": {
+                            "type": "string",
+                            "const": "world"
+                        },
+                        "zed": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "alpha",
+                        "baz",
+                        "beta",
+                        "foo",
+                        "goodbye",
+                        "hello",
+                        "zed"
+                    ]
+                },
+                "some_string": {
+                    "type": "string",
+                    "const": "hello"
+                }
+            },
+            "type": "object",
+            "required": [
+                "some_list",
+                "some_number",
+                "some_object",
+                "some_string"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "imports",
+                            "trace": {
+                                "def": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "imports",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "imports",
+                            "trace": {
+                                "def": {
+                                    "environment": "imports",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "imports",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "imports"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "imports"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "some_list": [
+            "hello",
+            "world"
+        ],
+        "some_number": 42,
+        "some_object": {
+            "alpha": null,
+            "baz": "qux",
+            "beta": "bar",
+            "foo": "bar",
+            "goodbye": "for now",
+            "hello": "world",
+            "zed": "bar"
+        },
+        "some_string": "hello"
+    },
+    "evalJSONRevealed": {
+        "some_list": [
+            "hello",
+            "world"
+        ],
+        "some_number": 42,
+        "some_object": {
+            "alpha": null,
+            "baz": "qux",
+            "beta": "bar",
+            "foo": "bar",
+            "goodbye": "for now",
+            "hello": "world",
+            "zed": "bar"
+        },
+        "some_string": "hello"
+    }
+}

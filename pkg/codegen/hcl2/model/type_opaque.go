@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // OpaqueType represents a type that is named by a string.
@@ -49,7 +48,7 @@ func (t *OpaqueType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *OpaqueType) equals(other Type, seen comparePairs) bool {
 	if o, ok := other.(*OpaqueType); ok {
 		return *o == *t
 	}
@@ -59,16 +58,20 @@ func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A token(name) is assignable
 // from token(name).
 func (t *OpaqueType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *OpaqueType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
 
 func (t *OpaqueType) conversionFromImpl(
-	src Type, unifying, checkUnsafe bool, seen map[Type]struct{},
+	src Type, unifying, checkUnsafe bool, seen *cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(
-		t, src, unifying, seen, &gsync.Map[Type, cacheEntry]{}, func() (ConversionKind, lazyDiagnostics) {
+		t, src, unifying, seen, &typeCache{}, func() (ConversionKind, lazyDiagnostics) {
 			if constType, ok := src.(*ConstType); ok {
 				return t.conversionFrom(constType.Type, unifying, seen)
 			}
@@ -109,6 +112,9 @@ func (t *OpaqueType) conversionFromImpl(
 				}
 				return NoConversion, noConversionDiag
 			case StringType:
+				if src == IDType {
+					return SafeConversion, nil
+				}
 				ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
 				ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
 				if ckb == SafeConversion || ckn == SafeConversion {
@@ -118,13 +124,19 @@ func (t *OpaqueType) conversionFromImpl(
 					return UnsafeConversion, nil
 				}
 				return NoConversion, noConversionDiag
+			case IDType:
+				kind, _ := StringType.conversionFromImpl(src, unifying, checkUnsafe, seen)
+				if kind.Exists() {
+					return kind, nil
+				}
+				return NoConversion, noConversionDiag
 			default:
 				return NoConversion, noConversionDiag
 			}
 		})
 }
 
-func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return t.conversionFromImpl(src, unifying, true, seen)
 }
 
@@ -135,6 +147,7 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 //
 // - The dynamic type is safely convertible from any other type, and is unsafely convertible _to_ any other type
 // - The string type is safely convertible from bool, number, and int
+// - The id type is safely convertible to and from string, and otherwise behaves like string
 // - The number type is safely convertible from int and unsafely convertible from string
 // - The int type is unsafely convertible from string
 // - The bool type is unsafely convertible from string
@@ -153,6 +166,8 @@ func (t *OpaqueType) String() string {
 		return "bool"
 	case StringType:
 		return "string"
+	case IDType:
+		return "id"
 	default:
 		if hclsyntax.ValidIdentifier(string(*t)) {
 			return string(*t)
@@ -163,8 +178,7 @@ func (t *OpaqueType) String() string {
 }
 
 func NewOpaqueType(name string) *OpaqueType {
-	t := OpaqueType(name)
-	return &t
+	return new(OpaqueType(name))
 }
 
 func (t *OpaqueType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -180,10 +194,10 @@ func (t *OpaqueType) string(_ map[Type]struct{}) string {
 	return t.String()
 }
 
-var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType}
+var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType, IDType}
 
-func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *OpaqueType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		if t == DynamicType || other == DynamicType {
 			// These should have been handled by unify.
 			contract.Failf("unexpected type %v in OpaqueType.unify", t)
@@ -192,11 +206,11 @@ func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
 
 		for _, goal := range opaquePrecedence {
 			if t == goal {
-				kind, _ := goal.conversionFrom(other, true, nil)
+				kind, _ := goal.conversionFrom(other, true, seen)
 				return goal, kind
 			}
 			if other == goal {
-				kind, _ := goal.conversionFrom(t, true, nil)
+				kind, _ := goal.conversionFrom(t, true, seen)
 				return goal, kind
 			}
 		}

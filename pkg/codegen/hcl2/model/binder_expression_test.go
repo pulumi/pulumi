@@ -307,6 +307,118 @@ func TestBindFunctionCall(t *testing.T) {
 	}
 }
 
+func TestBindFunctionCallExpandFinal(t *testing.T) {
+	t.Parallel()
+
+	// `fSL` takes a string and a list(int): list is intentionally not implicitly convertible from
+	// a primitive (and vice versa), so element-type mismatches on `...` produce diagnostics.
+	// `fSV` is the varargs variant.
+	env := environment(map[string]any{
+		"fSL": NewFunction(StaticFunctionSignature{
+			Parameters: []Parameter{
+				{Name: "foo", Type: StringType},
+				{Name: "bar", Type: NewListType(IntType)},
+			},
+			ReturnType: BoolType,
+		}),
+		"fSV": NewFunction(StaticFunctionSignature{
+			Parameters: []Parameter{
+				{Name: "foo", Type: StringType},
+			},
+			VarargsParameter: &Parameter{
+				Name: "bar", Type: NewListType(IntType),
+			},
+			ReturnType: BoolType,
+		}),
+		"listOfListOfInt":   NewListType(NewListType(IntType)),
+		"setOfListOfInt":    NewSetType(NewListType(IntType)),
+		"stringAndListInt":  NewTupleType(StringType, NewListType(IntType)),
+		"stringAndListInts": NewTupleType(StringType, NewListType(IntType), NewListType(IntType)),
+		"listOfStrings":     NewListType(StringType),
+		"stringAndString":   NewTupleType(StringType, StringType),
+		"emptyTuple":        NewTupleType(),
+	})
+	scope := env.scope()
+
+	t.Run("valid expansions", func(t *testing.T) {
+		t.Parallel()
+		cases := []exprTestCase{
+			// Expand a list(list(int)) into the varargs parameter of fSV.
+			{x: `fSV("foo", listOfListOfInt...)`, t: BoolType},
+			// Expand a set(list(int)) into the varargs parameter of fSV.
+			{x: `fSV("foo", setOfListOfInt...)`, t: BoolType},
+			// Expand a tuple whose element types line up with fSL's positional parameters.
+			{x: `fSL(stringAndListInt...)`, t: BoolType},
+			// Expand a tuple whose element types line up with fSV's positional + varargs.
+			{x: `fSV(stringAndListInts...)`, t: BoolType},
+		}
+		for _, c := range cases {
+			t.Run(c.x, func(t *testing.T) {
+				t.Parallel()
+				expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
+				require.Len(t, diags, 0)
+				assertConvertibleFrom(t, c.t, expr.Type())
+				call, ok := expr.(*FunctionCallExpression)
+				require.True(t, ok)
+				assert.True(t, call.ExpandFinal, "expected ExpandFinal to be set on the bound expression")
+			})
+		}
+	})
+
+	t.Run("type mismatches", func(t *testing.T) {
+		t.Parallel()
+		// The summary "cannot assign expression of type %s to location of type %s: " uses the
+		// InputType wrapper for the destination, which lifts list(int) into the verbose union form.
+		elementMismatch := "cannot assign expression of type string to location of type " +
+			"list(int | output(int)) | output(list(int)): "
+		cases := []struct {
+			x         string
+			summaries []string
+		}{
+			// Expanding a list(string) into fSL's list(int) parameter should report that the
+			// element type string is not convertible to list(int).
+			{
+				x:         `fSL("foo", listOfStrings...)`,
+				summaries: []string{elementMismatch},
+			},
+			// Expanding a list(string) where fSV's varargs parameter expects list(int).
+			{
+				x:         `fSV("foo", listOfStrings...)`,
+				summaries: []string{elementMismatch},
+			},
+			// Expanding a tuple(string, string) into fSL(string, list(int)): second element wrong.
+			{
+				x:         `fSL(stringAndString...)`,
+				summaries: []string{elementMismatch},
+			},
+			// Expanding an empty tuple omits both required positional parameters.
+			{
+				x: `fSL(emptyTuple...)`,
+				summaries: []string{
+					"missing required parameter 'foo'",
+					"missing required parameter 'bar'",
+				},
+			},
+			// Expanding a tuple with more elements than fSL accepts (and no varargs).
+			{
+				x:         `fSL(stringAndListInts...)`,
+				summaries: []string{"too many arguments to call: expected 2, got 3"},
+			},
+		}
+		for _, c := range cases {
+			t.Run(c.x, func(t *testing.T) {
+				t.Parallel()
+				_, diags := BindExpressionText(c.x, scope, hcl.Pos{})
+				summaries := make([]string, len(diags))
+				for i, d := range diags {
+					summaries[i] = d.Summary
+				}
+				assert.Equal(t, c.summaries, summaries)
+			})
+		}
+	})
+}
+
 func TestBindIndex(t *testing.T) {
 	t.Parallel()
 
@@ -374,6 +486,44 @@ func TestBindIndex(t *testing.T) {
 			_, ok := expr.(*IndexExpression)
 			assert.True(t, ok)
 			assert.Equal(t, c.x, fmt.Sprintf("%v", expr))
+		})
+	}
+}
+
+func TestBindLookup(t *testing.T) {
+	t.Parallel()
+
+	env := environment(map[string]any{
+		"key": StringType,
+		"m":   NewMapType(BoolType),
+		"o":   NewObjectType(map[string]Type{"foo": BoolType, "bar": IntType}),
+		"om":  NewOutputType(NewMapType(BoolType)),
+	})
+	scope := env.scope()
+
+	cases := []struct {
+		x       string
+		t       Type
+		printed string
+	}{
+		{x: `lookup(m, key)`, t: BoolType, printed: "m[key]"},
+		{x: `lookup(o, "foo")`, t: BoolType, printed: `o["foo"]`},
+		{x: `lookup(o, "bar")`, t: IntType, printed: `o["bar"]`},
+		{x: `lookup(o, key)`, t: NewUnionType(BoolType, IntType), printed: `o[key]`},
+		{x: `lookup(om, key)`, t: NewOutputType(BoolType), printed: "om[key]"},
+		{x: `lookup( m , key )`, t: BoolType, printed: " m[key ]"},
+		{x: "lookup(m, /* c */ key)", t: BoolType, printed: "m[/* c */ key]"},
+	}
+	for _, c := range cases {
+		t.Run(c.x, func(t *testing.T) {
+			t.Parallel()
+
+			expr, diags := BindExpressionText(c.x, scope, hcl.Pos{})
+			require.Len(t, diags, 0)
+			assert.Equal(t, c.t, expr.Type())
+			_, ok := expr.(*IndexExpression)
+			assert.True(t, ok)
+			assert.Equal(t, c.printed, fmt.Sprintf("%v", expr))
 		})
 	}
 }

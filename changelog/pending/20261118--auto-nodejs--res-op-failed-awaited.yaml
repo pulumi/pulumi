@@ -1,0 +1,4 @@
+component: auto/nodejs
+kind: improvement
+body: Expose `awaited` on `ResOpFailedEvent`, so an awaiting resource can be told apart from a failed one
+time: 2026-11-18T21:00:01Z

@@ -55,7 +55,7 @@ def do_goodbye_world(input: Optional[_builtins.str] = None,
 
     return AwaitableDoGoodbyeWorldResult(
         output=pulumi.get(__ret__, 'output'))
-def do_goodbye_world_output(input: Optional[pulumi.Input[_builtins.str]] = None,
+def do_goodbye_world_output(input: pulumi.Input[Optional[_builtins.str]] = None,
                             opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[DoGoodbyeWorldResult]:
     """
     Use this data source to access information about an existing resource.

@@ -72,12 +72,12 @@ description: Test taint functionality
 	// Get the URN of the test resource
 	var resourceURN string
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
-	lines := strings.Split(stdout, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(stdout, "\n")
+	for line := range lines {
 		if strings.Contains(line, "pulumi-nodejs:dynamic:Resource") {
 			// This is our dynamic resource - extract the URN
-			fields := strings.Fields(line)
-			for _, field := range fields {
+			fields := strings.FieldsSeq(line)
+			for field := range fields {
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					resourceURN = field
 					break
@@ -157,12 +157,12 @@ description: Test taint multiple resources
 	// Get URNs of resources
 	var resource1URN, resource2URN string
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
-	lines := strings.Split(stdout, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(stdout, "\n")
+	for line := range lines {
 		if strings.Contains(line, "pulumi-nodejs:dynamic:Resource") {
 			// This is our dynamic resource - extract the URN
-			fields := strings.Fields(line)
-			for _, field := range fields {
+			fields := strings.FieldsSeq(line)
+			for field := range fields {
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					if strings.Contains(field, "resource1") {
 						resource1URN = field
@@ -234,12 +234,12 @@ description: Test untaint functionality
 	// Get the URN of the test resource
 	var resourceURN string
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
-	lines := strings.Split(stdout, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(stdout, "\n")
+	for line := range lines {
 		if strings.Contains(line, "pulumi-nodejs:dynamic:Resource") {
 			// This is our dynamic resource - extract the URN
-			fields := strings.Fields(line)
-			for _, field := range fields {
+			fields := strings.FieldsSeq(line)
+			for field := range fields {
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					resourceURN = field
 					break
@@ -319,12 +319,12 @@ description: Test untaint all functionality
 	// Get URNs of all resources
 	var urns []string
 	stdout, _ := e.RunCommand("pulumi", "stack", "--show-urns")
-	lines := strings.Split(stdout, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(stdout, "\n")
+	for line := range lines {
 		if strings.Contains(line, "pulumi-nodejs:dynamic:Resource") {
 			// This is our dynamic resource - extract the URN
-			fields := strings.Fields(line)
-			for _, field := range fields {
+			fields := strings.FieldsSeq(line)
+			for field := range fields {
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					urns = append(urns, field)
 					break

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"iter"
 	"runtime/debug"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -252,6 +253,31 @@ func (g *DAG[T]) Drain(ctx context.Context) iter.Seq2[T, Done] {
 		for iterate(yield) {
 		}
 	}
+}
+
+// Return the set of nodes that n directly depends on.
+//
+// Predecessors is not safe to call while mutating the graph.
+func (g *DAG[T]) Predecessors(n Node) iter.Seq[Node] {
+	nInner := g.nodes[n.i]
+	predecessors := make([]Node, len(nInner.prerequisites))
+	for i, v := range nInner.prerequisites {
+		predecessors[i] = Node{v}
+	}
+	return slices.Values(predecessors)
+}
+
+// Return the set of nodes that have a direct dependency on n.
+//
+// Successors is not safe to call while mutating the graph.
+func (g *DAG[T]) Successors(n Node) iter.Seq[Node] {
+	successors := []Node{}
+	for i, candidate := range g.nodes {
+		if slices.Contains(candidate.prerequisites, n.i) {
+			successors = append(successors, Node{i})
+		}
+	}
+	return slices.Values(successors)
 }
 
 // Calling marks a process as done.

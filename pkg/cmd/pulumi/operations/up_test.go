@@ -77,12 +77,12 @@ func TestValidatePolicyPackConfig(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
 			err := validatePolicyPackConfig(test.PolicyPackPaths, test.PolicyPackConfigPaths)
 			if test.ExpectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}

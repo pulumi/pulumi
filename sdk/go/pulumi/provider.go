@@ -21,7 +21,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -58,6 +57,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if err != nil {
 		return nil, fmt.Errorf("constructing run context: %w", err)
 	}
+	pulumiCtx.state.parentStackTraceHandle = req.GetStackTraceHandle()
 
 	// Deserialize the inputs and apply appropriate dependencies.
 	inputDependencies := req.GetInputDependencies()
@@ -187,6 +187,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 				Create: t.GetCreate(),
 				Update: t.GetUpdate(),
 				Delete: t.GetDelete(),
+				Read:   t.GetRead(),
 			}
 		}
 		if len(req.GetReplaceWith()) > 0 {
@@ -230,7 +231,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 
 	// Marshal all properties for the RPC call.
-	keepUnknowns := req.GetDryRun()
+	keepUnknowns := true
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
 		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
@@ -241,7 +242,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.ConstructResponse_PropertyDependencies)
 	for k, deps := range propertyDeps {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+		slices.Sort(deps)
 
 		urns := slice.Prealloc[string](len(deps))
 		for i, d := range deps {
@@ -363,7 +364,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 	}
 
 	// Allocate storage as necessary.
-	for dest.Kind() == reflect.Ptr {
+	for dest.Kind() == reflect.Pointer {
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
 		dest = elem.Elem()
@@ -422,7 +423,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		// Try to determine the input type from the interface.
 		if it := internal.InputInterfaceTypeToConcreteType(dest.Type()); it != nil {
 			inputType := it
-			for inputType.Kind() == reflect.Ptr {
+			for inputType.Kind() == reflect.Pointer {
 				inputType = inputType.Elem()
 			}
 
@@ -663,7 +664,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error 
 	}
 	argsV := reflect.ValueOf(args)
 	typ := argsV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return errors.New("args must be a pointer to a struct")
 	}
 	argsV, typ = argsV.Elem(), typ.Elem()
@@ -734,7 +735,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]any, args any) error 
 				elemType := field.Type.Elem()
 				length := len(ci.value.ArrayValue())
 				dest := reflect.MakeSlice(field.Type, length, length)
-				for i := 0; i < length; i++ {
+				for i := range length {
 					val, err := handleField(elemType, ci.value.ArrayValue()[i], ci.Dependencies(ctx))
 					if err != nil {
 						return err
@@ -789,7 +790,7 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 
 	resourceV := reflect.ValueOf(resource)
 	typ := resourceV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, nil, errors.New("resource must be a pointer to a struct")
 	}
 	resourceV, typ = resourceV.Elem(), typ.Elem()
@@ -906,7 +907,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.CallResponse_ReturnDependencies)
 	for k, deps := range propertyDeps {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+		slices.Sort(deps)
 
 		urns := slice.Prealloc[string](len(deps))
 		for i, d := range deps {
@@ -989,7 +990,7 @@ func newCallResult(result any) (Input, error) {
 
 	resultV := reflect.ValueOf(result)
 	typ := resultV.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, errors.New("result must be a pointer to a struct")
 	}
 	resultV, typ = resultV.Elem(), typ.Elem()

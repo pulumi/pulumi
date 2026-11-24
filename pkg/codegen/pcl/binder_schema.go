@@ -17,8 +17,11 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
+
+	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -160,7 +163,14 @@ func (c *PackageCache) loadPackageSchema(
 	}
 
 	var versionSemver *semver.Version
-	if v, err := semver.Make(version); err == nil {
+	if version != "" {
+		v, err := semver.Parse(version)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"package %q version %q is not valid semver: %w",
+				name, version, err,
+			)
+		}
 		versionSemver = &v
 	}
 
@@ -184,6 +194,7 @@ func (c *PackageCache) loadPackageSchema(
 }
 
 func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	ctx context.Context,
 	loader schema.Loader,
 	descriptor *schema.PackageDescriptor,
 ) (*packageSchema, error) {
@@ -203,7 +214,7 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 		return s, nil
 	}
 
-	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +238,7 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	node.VariableType = model.NewObjectType(map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type
@@ -276,20 +287,77 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	return pkgOpts
 }
 
+func (b *binder) getReadPkgOpts(node *ReadResource) packageOpts {
+	node.VariableType = model.NewObjectType(map[string]model.Type{
+		"id":  model.NewOutputType(model.StringType),
+		"urn": model.NewOutputType(model.StringType),
+	})
+	var rangeKey, rangeValue model.Type
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				typ := model.ResolveOutputs(expr.Type())
+				strict := !b.options.skipRangeTypecheck
+				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range(), strict)
+				rangeKey, rangeValue = rk, rv
+			}
+		}
+	}
+
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+
+	var options *model.Block
+	for _, item := range block.Body.Items {
+		if item, ok := item.(*model.Block); ok && item.Type == "options" {
+			options = item
+			break
+		}
+	}
+
+	pkgOpts := packageOpts{}
+	if options != nil {
+		for _, item := range options.Body.Items {
+			switch item := item.(type) {
+			case *model.Attribute:
+				switch item.Name {
+				case "version":
+					pkgOpts.version = modelExprToString(&item.Value)
+				case "pluginDownloadURL":
+					pkgOpts.pluginDownloadURL = modelExprToString(&item.Value)
+				}
+			}
+		}
+	}
+
+	return pkgOpts
+}
+
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
-	packageNames := codegen.StringSet{}
+	packageNames := mapset.NewSet[string]()
 
-	if r, ok := n.(*Resource); ok {
+	switch r := n.(type) {
+	case *Resource:
 		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if mod == "providers" {
+		if packageName == "pulumi" && mod == "providers" {
 			packageNames.Add(name)
 		} else {
 			packageNames.Add(packageName)
 		}
 		pkgOpts = b.getPkgOpts(r)
+	case *ReadResource:
+		token, tokenRange := r.GetToken()
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName == "pulumi" && mod == "providers" {
+			packageNames.Add(name)
+		} else {
+			packageNames.Add(packageName)
+		}
+		pkgOpts = b.getReadPkgOpts(r)
 	}
 
 	diags := hclsyntax.VisitAll(n.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
@@ -311,7 +379,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	})
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
-	for _, name := range packageNames.SortedValues() {
+	for _, name := range mapset.Sorted(packageNames) {
 		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
 			continue
 		}
@@ -319,7 +387,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 		var pkg *packageSchema
 		var err error
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
 		} else {
 			pkg, err = b.options.packageCache.loadPackageSchema(
 				ctx, b.options.loader,
@@ -350,11 +418,22 @@ func buildEnumValue(v any) cty.Value {
 	case int64:
 		return cty.NumberIntVal(v)
 	case float64:
-		return cty.NumberFloatVal(v)
+		return ctyNumberFromFloat64(v)
 	default:
 		contract.Failf("Found unexpected constant type %T: %[1]v", v)
 		return cty.NilVal
 	}
+}
+
+// ctyNumberFromFloat64 builds a [cty.Number] whose internal big.Float matches the one cty creates when parsing
+// the number from text. cty.NumberFloatVal rounds to 53 bits (float64's mantissa) while cty.ParseNumberVal uses
+// 512 bits, and cty.Value.RawEquals is representation-sensitive — so a schema const built with NumberFloatVal
+// never compares equal to the same number parsed back out of HCL source. Routing through ParseNumberVal keeps
+// the two paths bit-identical.
+func ctyNumberFromFloat64(v float64) cty.Value {
+	// strconv.FormatFloat with precision -1 emits the shortest decimal that round-trips through float64, which
+	// is sufficient for ParseNumberVal to recover the exact same bits.
+	return cty.MustParseNumberVal(strconv.FormatFloat(v, 'g', -1, 64))
 }
 
 // A marker struct to ensure type safety when retrieving the type from an
@@ -427,7 +506,12 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 			return t
 		}
 
-		properties := map[string]model.Type{}
+		// A resource reference is typed the way a bound resource is: its identity and every
+		// property as an output, so a resource converts to a reference to its own type.
+		properties := map[string]model.Type{
+			"id":  model.NewOutputType(model.IDType),
+			"urn": model.NewOutputType(model.StringType),
+		}
 		objType := model.NewObjectType(properties, src)
 		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
 			objType.Strict = false
@@ -439,7 +523,7 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 				typ = &schema.OptionalType{ElementType: typ}
 			}
 
-			properties[prop.Name] = b.schemaTypeToTypeOrConst(typ, prop)
+			properties[prop.Name] = model.NewOutputType(b.schemaTypeToTypeOrConst(typ, prop))
 		}
 		return objType
 	default:
@@ -477,8 +561,10 @@ func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property)
 		switch v := prop.ConstValue.(type) {
 		case bool:
 			value = cty.BoolVal(v)
+		case int32:
+			value = cty.NumberIntVal(int64(v))
 		case float64:
-			value = cty.NumberFloatVal(v)
+			value = ctyNumberFromFloat64(v)
 		case string:
 			value = cty.StringVal(v)
 		default:
@@ -564,6 +650,18 @@ func GetDiscriminatedUnionObjectMapping(t *model.UnionType) map[string]model.Typ
 	mapping := map[string]model.Type{}
 	for _, t := range t.ElementTypes {
 		k, v := getDiscriminatedUnionObjectItem(t)
+		if k == "" {
+			continue
+		}
+		// When the union comes from a lifted schema.InputType, each variant
+		// appears twice — once as the input-shape ObjectType and once wrapped
+		// in an OutputType containing the plain shape. Both share a token.
+		// Prefer the first (input-shape) match so downstream conversion picks
+		// the shape whose fields carry OutputType, which is what triggers
+		// literals to be wrapped as pulumi.String / pulumi.Bool inputs.
+		if _, exists := mapping[k]; exists {
+			continue
+		}
 		mapping[k] = v
 	}
 	return mapping
@@ -668,7 +766,7 @@ func GenEnum(
 			safeEnum(member)
 		} else {
 			unsafeEnum(from)
-			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			knownVal, _, _ := strings.Cut(strings.Split(known.GoString(), "(")[1], ")")
 			diag := &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),

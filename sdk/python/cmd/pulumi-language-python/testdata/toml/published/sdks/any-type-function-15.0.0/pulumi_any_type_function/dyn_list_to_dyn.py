@@ -55,7 +55,7 @@ def dyn_list_to_dyn(inputs: Optional[Sequence[Any]] = None,
 
     return AwaitableDynListToDynResult(
         result=pulumi.get(__ret__, 'result'))
-def dyn_list_to_dyn_output(inputs: Optional[pulumi.Input[Optional[Sequence[Any]]]] = None,
+def dyn_list_to_dyn_output(inputs: pulumi.Input[Optional[Optional[Sequence[Any]]]] = None,
                            opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[DynListToDynResult]:
     """
     Use this data source to access information about an existing resource.

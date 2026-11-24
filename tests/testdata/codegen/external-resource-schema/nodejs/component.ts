@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 import * as pulumiGoalias from "@pulumi/goalias";
-import * as pulumiKubernetes from "@pulumi/kubernetes";
+import * as pulumiOther from "@pulumi/other";
 
 export class Component extends pulumi.CustomResource {
     /**
@@ -18,6 +18,16 @@ export class Component extends pulumi.CustomResource {
      */
     public static get(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): Component {
         return new Component(name, undefined as any, { ...opts, id: id });
+    }
+
+    /**
+     * Check whether an existing Component resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example::Component", id, {}, { ...opts }, undefined);
     }
 
     /** @internal */
@@ -34,9 +44,9 @@ export class Component extends pulumi.CustomResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    declare public /*out*/ readonly provider: pulumi.Output<pulumiKubernetes.Provider | undefined>;
+    declare public /*out*/ readonly provider: pulumi.Output<pulumiOther.Provider | undefined>;
     declare public /*out*/ readonly res: pulumi.Output<pulumiGoalias.mod1.v1.Res>;
-    declare public /*out*/ readonly storageClasses: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
+    declare public /*out*/ readonly storageClasses: pulumi.Output<{[key: string]: pulumiOther.Thing} | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -81,10 +91,10 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>;
-    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[]>;
-    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>}>;
-    requiredMetadata: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>;
-    requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[]>;
-    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>}>;
+    metadata?: pulumi.Input<pulumiOther.types.input.module.sub.ConfigArgs | undefined>;
+    metadataArray?: pulumi.Input<pulumi.Input<pulumiOther.types.input.module.sub.ConfigArgs>[] | undefined>;
+    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiOther.types.input.module.sub.ConfigArgs>} | undefined>;
+    requiredMetadata: pulumi.Input<pulumiOther.types.input.module.sub.ConfigArgs>;
+    requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiOther.types.input.module.sub.ConfigArgs>[]>;
+    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiOther.types.input.module.sub.ConfigArgs>}>;
 }

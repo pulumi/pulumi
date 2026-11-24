@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
 
@@ -151,7 +152,7 @@ func TestReadingGitRepo(t *testing.T) {
 	// Confirm that data can be inferred from the CI system if unavailable.
 	// Fake running under Travis CI. We also need to unset GITHUB_ACTIONS so that
 	// the GitHub Actions detector doesn't take precedence when running in CI.
-	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	ptesting.Unsetenv(t, "PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
@@ -259,7 +260,7 @@ func TestReadingHgRepo(t *testing.T) {
 	// CI-driven branch name should be adopted when on the default branch.
 	e.RunCommand("hg", "update", "default")
 
-	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
+	ptesting.Unsetenv(t, "PULUMI_DISABLE_CI_DETECTION")
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
@@ -414,71 +415,11 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 	assert.Equal(t, expected, env[backend.StackEnvironments])
 }
 
-func TestDetectAIAgent(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		env  map[string]string
-		want string
-	}{
-		{
-			name: "explicit AI_AGENT wins",
-			env: map[string]string{
-				"AI_AGENT":        "my-agent",
-				"CODEX_THREAD_ID": "thread",
-			},
-			want: "my-agent",
-		},
-		{
-			name: "normalize copilot cli alias",
-			env: map[string]string{
-				"AI_AGENT": "github-copilot-cli",
-			},
-			want: "github-copilot",
-		},
-		{
-			name: "codex",
-			env: map[string]string{
-				"CODEX_THREAD_ID": "thread",
-			},
-			want: "codex",
-		},
-		{
-			name: "cowork beats claude",
-			env: map[string]string{
-				"CLAUDE_CODE_IS_COWORK": "1",
-				"CLAUDE_CODE":           "1",
-			},
-			want: "cowork",
-		},
-		{
-			name: "copilot vars",
-			env: map[string]string{
-				"COPILOT_MODEL": "gpt-5",
-			},
-			want: "github-copilot",
-		},
-		{
-			name: "none",
-			env:  map[string]string{},
-			want: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			getEnv := func(key string) string {
-				return tt.env[key]
-			}
-			assert.Equal(t, tt.want, detectAIAgent(getEnv))
-		})
-	}
-}
-
 func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
+	// Don't let agent-detection env vars from the host shell mask CODEX_THREAD_ID.
+	for _, key := range agentdetect.DetectionEnvVars() {
+		t.Setenv(key, "")
+	}
 	t.Setenv("CODEX_THREAD_ID", "thread")
 	env := map[string]string{}
 	addExecutionMetadataToEnvironment(env, "unknown", "")

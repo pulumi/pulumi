@@ -26,21 +26,29 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +60,8 @@ func newPolicyAnalyzeCmd(
 	// Nil uses the real plugin host.
 	loadAnalyzers func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error),
 ) *cobra.Command {
-	var stack string
+	var stackName string
+	var file string
 	var diffDisplay bool
 	var jsonDisplay bool
 	var policyPackPaths []string
@@ -60,14 +69,18 @@ func newPolicyAnalyzeCmd(
 
 	cmd := &cobra.Command{
 		Use:   "analyze",
-		Short: "Analyze a stack's current state against policy packs",
-		Long: "Analyze a stack's current state against one or more local policy packs.\n" +
+		Short: "Analyze existing resource state against policy packs",
+		Long: "Analyze existing resource state against one or more local policy packs.\n" +
 			"\n" +
-			"This command runs policy analysis against the stack's existing resource state\n" +
-			"without executing the Pulumi program or making provider calls.\n" +
+			"This command runs policy analysis against existing resource state without\n" +
+			"executing the Pulumi program or making provider calls. Pass --stack to analyze\n" +
+			"a stack (defaulting to the current stack), or --file to analyze a state file\n" +
+			"(as produced by `pulumi stack export`) without requiring a stack or backend login.\n" +
+			"Secrets in the file that can't be decrypted offline are redacted to the\n" +
+			"string `[secret]` for analysis, regardless of their original type.\n" +
 			"\n" +
-			"If any remediation policy fires, the change is reported but the stack state\n" +
-			"is not modified. Exits with a non-zero status if any mandatory violations are found.",
+			"If any remediation policy fires, the change is reported but the state is not\n" +
+			"modified. Exits with a non-zero status if any mandatory violations are found.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -86,34 +99,96 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
-					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+					cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, nil)
 					if err != nil {
+						return nil, nil, err
+					}
+					reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), env.Global())
+					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
+						nil, pkgWorkspace.EnsureLanguageInstalled,
+						schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+						packageworkspace.NewResolverServer(reg))
+					if err != nil {
+						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
+					}
+					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
+						pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
+					if err != nil {
+						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
 					}
 					analyzers, err := engine.LoadLocalPolicyPackAnalyzers(ctx, pctx, packs, nil)
 					if err != nil {
 						contract.IgnoreClose(pctx)
+						contract.IgnoreClose(pluginHost)
 						return nil, nil, err
 					}
-					return analyzers, func() { contract.IgnoreClose(pctx) }, nil
+					return analyzers, func() { contract.IgnoreClose(pctx); contract.IgnoreClose(pluginHost) }, nil
 				}
 			}
 
-			// Get the stack.
-			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-			s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, lm, stack, cmdStack.LoadOnly, displayOpts)
-			if err != nil {
-				return err
-			}
+			// Resolve the snapshot to analyze, either from a state file or a live stack.
+			// In file mode there is no backend stack; the display layer only reads the
+			// reference's Name() and Project(), so a synthetic reference suffices.
+			var snap *deploy.Snapshot
+			var stackRef backend.StackReference
+			var sourceDesc string
+			if file != "" {
+				f, err := os.Open(file)
+				if err != nil {
+					return fmt.Errorf("could not open file: %w", err)
+				}
+				defer contract.IgnoreClose(f)
 
-			// Load the current stack snapshot.
-			snap, err := s.Snapshot(ctx, secretsProvider)
-			if err != nil {
-				return fmt.Errorf("loading stack snapshot: %w", err)
+				// Decode into a json.RawMessage-backed UntypedDeployment so unrecognized
+				// fields round-trip, then deserialize into a typed snapshot.
+				var deployment apitype.UntypedDeployment
+				if err := json.NewDecoder(f).Decode(&deployment); err != nil {
+					return fmt.Errorf("reading deployment from %s: %w", file, err)
+				}
+
+				snap, err = stack.DeserializeUntypedDeployment(ctx, &deployment, secretsProvider)
+				if err != nil {
+					// Secrets couldn't be decrypted offline (e.g. a service-backed export whose
+					// secrets manager needs a login this invocation lacks). Retry with secrets
+					// redacted so analysis still runs; policies then see "[secret]". A non-secrets
+					// failure recurs identically below, so we surface the original err.
+					var redactErr error
+					snap, redactErr = stack.DeserializeUntypedDeployment(ctx, &deployment, backendsecrets.BlindingProvider)
+					if redactErr != nil {
+						return fmt.Errorf("deserializing deployment from %s: %w", file, err)
+					}
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"warning: could not decrypt secrets in %s; analyzing with secret values redacted\n", file)
+				}
+
+				// AnalyzeSnapshot dereferences each URN (URN.Name asserts the urn:pulumi:
+				// prefix), so reject a structurally invalid URN here instead of panicking.
+				for _, r := range snap.Resources {
+					if !r.URN.IsValid() {
+						return fmt.Errorf("state file %s contains a resource with an invalid URN %q", file, r.URN)
+					}
+				}
+
+				stackRef = stackReferenceForFile(snap)
+				sourceDesc = "File " + file
+			} else {
+				displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+				s, err := cmdStack.RequireStack(ctx, cmdutil.Diag(), ws, lm, stackName, cmdStack.LoadOnly, displayOpts, "")
+				if err != nil {
+					return err
+				}
+
+				snap, err = s.Snapshot(ctx, secretsProvider)
+				if err != nil {
+					return fmt.Errorf("loading stack snapshot: %w", err)
+				}
+
+				stackRef = s.Ref()
+				sourceDesc = fmt.Sprintf("Stack %s", stackRef)
 			}
 			if len(snap.Resources) == 0 {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Stack %s has no resources; nothing to analyze.\n", s.Ref())
+				fmt.Fprintf(cmd.ErrOrStderr(), "%s has no resources; nothing to analyze.\n", sourceDesc)
 				return nil
 			}
 
@@ -124,20 +199,28 @@ func newPolicyAnalyzeCmd(
 				return fmt.Errorf("loading policy packs: %w", err)
 			}
 			defer cleanup()
+			exceptions, err := engine.LocalPolicyPackExceptions(ctx, cmdutil.Diag(), packs, analyzers)
+			if err != nil {
+				return fmt.Errorf("loading policy exceptions: %w", err)
+			}
 
 			// Run analysis against the snapshot.
 			events, finish, err := newAnalyzeEvents(
+				cmd.Context(),
 				cmd.OutOrStdout(), cmd.ErrOrStderr(), cmdutil.GetGlobalColorization(),
-				diffDisplay, jsonDisplay, s.Ref(), analyzers)
+				diffDisplay, jsonDisplay, stackRef, analyzers)
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
-			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
-			finish()
+			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, exceptions, events)
+			result := apitype.OperationResultFromError(err)
+			if err == nil && hasMandatory {
+				result = apitype.OperationResultFailed
+			}
+			finish(result)
 			if err != nil {
 				return fmt.Errorf("running policy analysis: %w", err)
 			}
-
 			if hasMandatory {
 				return errors.New("one or more mandatory policy violations were found")
 			}
@@ -147,8 +230,10 @@ func newPolicyAnalyzeCmd(
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
+	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
 		"The name of the stack to analyze. Defaults to the current stack")
+	cmd.Flags().StringVar(&file, "file", "",
+		"Analyze a state file (as produced by `pulumi stack export`) instead of a live stack")
 	cmd.Flags().BoolVar(&diffDisplay, "diff", false,
 		"Display policy diagnostics as a rich diff instead of grouped progress output")
 	cmd.Flags().BoolVarP(&jsonDisplay, "json", "j", false,
@@ -159,8 +244,54 @@ func newPolicyAnalyzeCmd(
 		"Path to a JSON config file for the corresponding --policy-pack")
 
 	cmd.MarkFlagsMutuallyExclusive("json", "diff")
+	cmd.MarkFlagsMutuallyExclusive("file", "stack")
 
 	return cmd
+}
+
+// stackReferenceForFile builds a synthetic stack reference for --file mode (no backend stack).
+// The display reads only Name()/Project(): a file whose resources share one stack/project is
+// labeled with it; a heterogeneous selection (common for an Insights export spanning projects or
+// stacks) gets a neutral "multiple" so the label doesn't imply a single origin; a file with no
+// analyzable URN falls back to "unknown".
+func stackReferenceForFile(snap *deploy.Snapshot) backend.StackReference {
+	ref := &backend.MockStackReference{
+		StringV:  "<unknown>",
+		NameV:    tokens.MustParseStackName("unknown"),
+		ProjectV: "unknown",
+	}
+
+	var stackName tokens.StackName
+	var project tokens.Name
+	found, homogeneous := false, true
+	for _, r := range snap.Resources {
+		if !r.URN.IsValid() {
+			continue
+		}
+		sn, err := tokens.ParseStackName(string(r.URN.Stack()))
+		if err != nil {
+			continue
+		}
+		proj := tokens.Name(r.URN.Project())
+		if !found {
+			stackName, project, found = sn, proj, true
+		} else if sn != stackName || proj != project {
+			homogeneous = false
+			break
+		}
+	}
+
+	switch {
+	case found && homogeneous:
+		ref.NameV = stackName
+		ref.ProjectV = project
+		ref.StringV = stackName.String()
+	case found:
+		ref.NameV = tokens.MustParseStackName("multiple")
+		ref.ProjectV = "multiple"
+		ref.StringV = "<multiple>"
+	}
+	return ref
 }
 
 // analyzeEvents implements deploy.PolicyEvents and writes human-readable output.
@@ -175,6 +306,7 @@ type analyzeEvents struct {
 }
 
 func newAnalyzeEvents(
+	ctx context.Context,
 	out io.Writer,
 	errOut io.Writer,
 	colorization colors.Colorization,
@@ -182,9 +314,9 @@ func newAnalyzeEvents(
 	jsonDisplay bool,
 	stackRef backend.StackReference,
 	analyzers []plugin.Analyzer,
-) (*analyzeEvents, func(), error) {
+) (*analyzeEvents, func(apitype.OperationResult), error) {
 	if jsonDisplay {
-		policyPacks, err := policyPackVersions(analyzers)
+		policyPacks, err := policyPackVersions(ctx, analyzers)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -192,7 +324,7 @@ func newAnalyzeEvents(
 			out:  out,
 			json: json.NewEncoder(out),
 		}
-		return events, func() {
+		return events, func(result apitype.OperationResult) {
 			events.outLock.Lock()
 			defer events.outLock.Unlock()
 			events.writeEvent(engine.NewEvent(engine.SummaryEventPayload{
@@ -201,6 +333,7 @@ func newAnalyzeEvents(
 				Duration:        0 * time.Second,
 				ResourceChanges: nil,
 				PolicyPacks:     policyPacks,
+				Result:          result,
 			}))
 		}, nil
 	}
@@ -212,10 +345,10 @@ func newAnalyzeEvents(
 				Color: colorization,
 			},
 			seen: make(map[resource.URN]engine.StepEventMetadata),
-		}, func() {}, nil
+		}, func(apitype.OperationResult) {}, nil
 	}
 
-	policyPacks, err := policyPackVersions(analyzers)
+	policyPacks, err := policyPackVersions(ctx, analyzers)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,6 +358,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   true,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
@@ -239,24 +373,25 @@ func newAnalyzeEvents(
 		"", events, done, opts, false)
 
 	return &analyzeEvents{
-			events: events,
-		}, func() {
-			events <- engine.NewEvent(engine.SummaryEventPayload{
-				IsPreview:       false,
-				MaybeCorrupt:    false,
-				Duration:        0 * time.Second,
-				ResourceChanges: nil,
-				PolicyPacks:     policyPacks,
-			})
-			close(events)
-			<-done
-		}, nil
+		events: events,
+	}, func(result apitype.OperationResult) {
+		events <- engine.NewEvent(engine.SummaryEventPayload{
+			IsPreview:       false,
+			MaybeCorrupt:    false,
+			Duration:        0 * time.Second,
+			ResourceChanges: nil,
+			PolicyPacks:     policyPacks,
+			Result:          result,
+		})
+		close(events)
+		<-done
+	}, nil
 }
 
-func policyPackVersions(analyzers []plugin.Analyzer) (map[string]string, error) {
+func policyPackVersions(ctx context.Context, analyzers []plugin.Analyzer) (map[string]string, error) {
 	policyPacks := map[string]string{}
 	for _, analyzer := range analyzers {
-		info, err := analyzer.GetAnalyzerInfo()
+		info, err := analyzer.GetAnalyzerInfo(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("getting analyzer info: %w", err)
 		}
@@ -283,14 +418,16 @@ func (e *analyzeEvents) writeEvent(event engine.Event) {
 		return
 	}
 
-	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
+	msg := display.RenderDiffEvent(event, 0, 0, e.seen, e.opts)
 	if msg == "" {
 		return
 	}
 	fmt.Fprint(e.out, msg)
 }
 
-func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (e *analyzeEvents) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
 	e.writeEvent(engine.NewEvent(engine.PolicyViolationEventPayload{
@@ -301,14 +438,15 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Severity:          d.Severity,
+		Exceptions:        exceptions,
 	}))
 }
 
 func (e *analyzeEvents) OnPolicyRemediation(
 	urn resource.URN,
 	rem plugin.Remediation,
-	before resource.PropertyMap,
-	after resource.PropertyMap,
+	before property.Map,
+	after property.Map,
 ) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()

@@ -1389,7 +1389,15 @@ async function getOrCreateEntryAsync(
         const moduleParts = normalizedModuleName.split("/");
 
         const nodeModulesSegment = "node_modules";
-        const nodeModulesSegmentIndex = moduleParts.findIndex((v) => v === nodeModulesSegment);
+        // pnpm installs packages into a store keyed with version numbers
+        // `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...`, and adds a symlink to this in
+        // `node_modules/<pkg>` so Node.js can resolve the package. We see the real path here, not the symlink. In that
+        // layout the real package name follows the *last* `node_modules` segment. For npm/yarn (and pnpm's hoisted
+        // node-linker) the package name follows the *first* `node_modules` segment.
+        const isPnpmStore = moduleParts.includes(".pnpm");
+        const nodeModulesSegmentIndex = isPnpmStore
+            ? moduleParts.lastIndexOf(nodeModulesSegment)
+            : moduleParts.indexOf(nodeModulesSegment);
         const isInNodeModules = nodeModulesSegmentIndex >= 0;
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
@@ -1588,21 +1596,16 @@ function isImportStarResult(obj: any): obj is { default: unknown } {
  * be `/`).
  */
 async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefined> {
-    // First, check the built-in modules
-    const modules = await getBuiltInModules();
-    const key = modules.get(obj);
-    if (key) {
-        return key;
-    }
-
     // When TypeScript compiles `import * as foo from "foo"` with `module: "nodenext"`, it emits
     // `__importStar(require("foo"))`. This creates a wrapper object with a `default` property that holds the original
     // module.
-    if (isImportStarResult(obj)) {
-        const unwrappedKey = modules.get(obj.default);
-        if (unwrappedKey) {
-            return unwrappedKey;
-        }
+    const target = isImportStarResult(obj) ? obj.default : obj;
+
+    // First, check the built-in modules
+    const modules = await getBuiltInModules();
+    const key = modules.get(target);
+    if (key) {
+        return key;
     }
 
     // Next, check the Node module require cache, which will store cached values
@@ -1611,7 +1614,7 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
         const c = require.cache[path];
-        if (c !== undefined && c.exports === obj) {
+        if (c !== undefined && c.exports === target) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
             const modPath = upath.relative(process.cwd(), path);

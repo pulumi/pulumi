@@ -36,7 +36,7 @@ class ResResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.bool]] = None,
+                 value: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a ResResource resource with the given unique name, props, and options.
@@ -68,7 +68,7 @@ class ResResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.bool]] = None,
+                 value: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -105,6 +105,12 @@ class ResResource(pulumi.CustomResource):
 
         __props__.__dict__["value"] = None
         return ResResource(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'names:index:ResResource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

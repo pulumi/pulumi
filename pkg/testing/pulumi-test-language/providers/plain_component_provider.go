@@ -21,10 +21,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -45,10 +45,6 @@ func (p *PlainComponentProvider) Close() error {
 
 func (p *PlainComponentProvider) SignalCancellation(context.Context) error {
 	return nil
-}
-
-func (p *PlainComponentProvider) Pkg() tokens.Package {
-	return "plaincomponent"
 }
 
 func (p *PlainComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -156,25 +152,25 @@ func (p *PlainComponentProvider) GetMappings(
 func (p *PlainComponentProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "36.0.0" {
+	if version.AsString() != "36.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 36.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 36.0.0"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
@@ -195,13 +191,14 @@ func (p *PlainComponentProvider) Configure(
 func (p *PlainComponentProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "plaincomponent:index:Custom" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
@@ -212,12 +209,12 @@ func (p *PlainComponentProvider) Check(
 			Failures: makeCheckFailure("value", "value is not a string"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *PlainComponentProvider) Diff(
@@ -229,19 +226,20 @@ func (p *PlainComponentProvider) Diff(
 func (p *PlainComponentProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "plaincomponent:index:Custom" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown},
 			fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	id := "id-" + req.Properties["value"].StringValue()
+	id := "id-" + properties["value"].StringValue()
 	if req.Preview {
 		id = ""
 	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -282,9 +280,9 @@ func (p *PlainComponentProvider) Construct(
 	}
 
 	// Build the label from the plain inputs.
-	name := req.Inputs["name"].StringValue()
-	settings := req.Inputs["settings"].ObjectValue()
-	enabled := settings["enabled"].BoolValue()
+	name := req.Inputs.Get("name").AsString()
+	settings := req.Inputs.Get("settings").AsMap()
+	enabled := settings.Get("enabled").AsBool()
 	label := name
 	if !enabled {
 		label = name + " (disabled)"
@@ -323,8 +321,8 @@ func (p *PlainComponentProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
-			"label": label,
+		Outputs: property.NewMap(map[string]property.Value{
+			"label": property.New(label),
 		}),
 	}, nil
 }

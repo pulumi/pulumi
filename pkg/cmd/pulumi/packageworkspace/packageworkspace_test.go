@@ -15,10 +15,28 @@
 package packageworkspace_test
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Check that [packageworkspace.Workspace] implements [packageinstallation.Context]
 // without importing [packageinstallation] from [packageworkspace].
 var _ packageinstallation.Context = packageworkspace.Workspace{}
+
+func TestProjectOperationsRequireRuntime(t *testing.T) {
+	t.Parallel()
+
+	w := packageworkspace.Workspace{}
+	runtime := &workspace.ProjectRuntimeInfo{}
+
+	_, err := w.GenerateLocalSDK(t.Context(), runtime, ".", nil)
+	require.EqualError(t, err, "cannot generate an SDK for a project without a runtime")
+
+	err = w.LinkIntoProject(t.Context(), runtime, ".", nil)
+	require.EqualError(t, err, "cannot link packages into a project without a runtime")
+}

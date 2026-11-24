@@ -16,38 +16,58 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"sync"
+	"time"
 
-	mapset "github.com/deckarep/golang-set/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type testHost struct {
-	engine      *languageTestServer
-	ctx         *plugin.Context
-	host        plugin.Host
-	runtime     plugin.LanguageRuntime
-	runtimeName string
-	providers   map[string]func() (plugin.Provider, error)
+	engine       *languageTestServer
+	runtime      plugin.LanguageRuntime
+	runtimeName  string
+	languageInfo string
+	providers    map[string]func() (plugin.Provider, error)
+
+	// servicesMu guards loader, contextServices and contextProviders, which are written as the
+	// engine boots contexts concurrently.
+	servicesMu sync.Mutex
+
+	// loader is the provider-backed schema loader this host binds onto a context. It is captured
+	// here when Loader runs so the conformance runner can reuse it to bind PCL programs.
+	loader *providerLoader
+
+	// contextServices holds the loader, mapper and resolver gRPC servers this host hosts for each context; they
+	// are shut down in that context's ReleaseContext.
+	contextServices map[*plugin.Context][]*plugin.GrpcServer
+
+	// contextProviders holds the providers this host booted from a path for each context; they are
+	// closed in that context's ReleaseContext.
+	contextProviders map[*plugin.Context][]plugin.Provider
 
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
@@ -55,20 +75,12 @@ type testHost struct {
 	policies []plugin.Analyzer
 
 	closeMutex sync.Mutex
-
-	skipEnsurePluginsValidation bool
-
-	loaderAddress string
 }
 
 var _ plugin.Host = (*testHost)(nil)
 
 func (h *testHost) ServerAddr() string {
 	return h.engine.addr
-}
-
-func (h *testHost) LoaderAddr() string {
-	return h.loaderAddress
 }
 
 func (h *testHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
@@ -102,18 +114,14 @@ func (h *testHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, st
 	panic("not implemented")
 }
 
-func (h *testHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
+func (h *testHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyzer, error) {
 	panic("not implemented")
 }
 
 func (h *testHost) PolicyAnalyzer(
-	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	hasPlugin := func(spec workspace.PluginDescriptor) bool {
-		// This is only called for the language runtime, so we can just do a simple check.
-		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
-	}
-	analyzer, err := plugin.NewPolicyAnalyzer(h, h.ctx, name, path, opts, hasPlugin)
+	analyzer, err := plugin.NewPolicyAnalyzer(h, ctx, name, path, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -121,11 +129,9 @@ func (h *testHost) PolicyAnalyzer(
 	return analyzer, nil
 }
 
-func (h *testHost) ListAnalyzers() []plugin.Analyzer {
-	return h.policies
-}
-
-func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+func (h *testHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
 	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
 	var key string
@@ -170,6 +176,12 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 
+	return provider, nil
+}
+
+// serveProvider puts an in-process provider behind a gRPC server, so that the engine talks to it as
+// it talks to a plugin. The host closes the server when it closes.
+func (h *testHost) serveProvider(provider plugin.Provider) (plugin.Provider, error) {
 	grpcProvider, closer, err := wrapProviderWithGrpc(provider)
 	if err != nil {
 		return nil, err
@@ -181,80 +193,45 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 	return grpcProvider, nil
 }
 
+func (h *testHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
+	provider, err := plugin.NewProviderFromPath(h, ctx, path, e)
+	if err != nil {
+		return nil, err
+	}
+	lifetime := ctx.LifetimeContext()
+	h.servicesMu.Lock()
+	h.contextProviders[lifetime] = append(h.contextProviders[lifetime], provider)
+	h.servicesMu.Unlock()
+	return provider, nil
+}
+
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
-func (h *testHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (h *testHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	if runtime != h.runtimeName {
 		return nil, fmt.Errorf("unexpected runtime %s", runtime)
 	}
 	return h.runtime, nil
 }
 
-func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	// Remove the builtin "pulumi" provider, as that's always available.
-	filtered := make([]workspace.PluginDescriptor, 0, len(plugins))
-	for _, plugin := range plugins {
-		if plugin.Kind == apitype.ResourcePlugin && plugin.Name == "pulumi" {
-			continue
-		}
-		filtered = append(filtered, plugin)
-	}
-	plugins = filtered
-
-	// Skip validation if requested (e.g., for tests using version resource option)
-	if h.skipEnsurePluginsValidation {
-		return nil
-	}
-
-	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
-	// that that returned the expected plugins (with expected versions).
-	expected := mapset.NewSet[string]()
-	for name, provider := range h.providers {
-		p, err := provider()
-		if err != nil {
-			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
-		}
-		pkg := p.Pkg()
-		version, err := GetProviderVersion(p)
-		if err != nil {
-			return fmt.Errorf("get provider version %s: %w", pkg, err)
-		}
-		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
-	}
-
-	actual := mapset.NewSetWithSize[string](len(plugins))
-	for _, plugin := range plugins {
-		actual.Add(fmt.Sprintf("%s-%s@%s", plugin.Kind, plugin.Name, plugin.Version))
-	}
-
-	// Symmetric difference, we want to know if there are any unexpected plugins, or any missing plugins.
-	diff := expected.SymmetricDifference(actual)
-	if !diff.IsEmpty() {
-		expectedSlice := expected.ToSlice()
-		slices.Sort(expectedSlice)
-		actualSlice := actual.ToSlice()
-		slices.Sort(actualSlice)
-		return fmt.Errorf("unexpected required plugins: actual %v, expected %v", actualSlice, expectedSlice)
-	}
-
-	return nil
-}
-
 func (h *testHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
+	ctx *plugin.Context, spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for name, provider := range h.providers {
+		for key, provider := range h.providers {
 			p, err := provider()
 			if err != nil {
-				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", key, err)
 			}
-			pkg := p.Pkg()
-			providerVersion, err := GetProviderVersion(p)
+			providerVersion, err := GetProviderVersion(context.TODO(), p)
 			if err != nil {
-				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
+				return nil, fmt.Errorf("get provider version %s: %w", key, err)
 			}
-			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
+			name, err := GetProviderName(context.TODO(), p)
+			if err != nil {
+				return nil, fmt.Errorf("get provider name %s: %w", key, err)
+			}
+			if spec.Name == name && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,
@@ -272,10 +249,143 @@ func (h *testHost) ResolvePlugin(
 	}, nil
 }
 
-func (h *testHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	// We're not using project plugins, in fact this method shouldn't even really exists on Host given it's
-	// just reading off Pulumi.yaml.
-	return nil
+// ReleaseContext closes the providers this host booted from a path for the context, then shuts down
+// the loader, mapper and resolver gRPC servers it hosts for the context. The servers go last because the
+// providers may use them while they shut down. Other providers are torn down when the host closes.
+func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
+	h.servicesMu.Lock()
+	providers := h.contextProviders[ctx]
+	delete(h.contextProviders, ctx)
+	servers := h.contextServices[ctx]
+	delete(h.contextServices, ctx)
+	h.servicesMu.Unlock()
+
+	var errs []error
+	for _, provider := range providers {
+		if err := closeProvider(provider); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, srv := range servers {
+		if err := srv.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// closeProvider sends Cancel before Close, so that the plugin can acknowledge a graceful shutdown and
+// Close does not report its exit as a crash.
+func closeProvider(provider plugin.Provider) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	contract.IgnoreError(provider.SignalCancellation(ctx))
+	return provider.Close()
+}
+
+// Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader
+// resolves schemas from the test's own providers via this host.
+func (h *testHost) Loader(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	loader := &providerLoader{
+		language:     h.runtimeName,
+		languageInfo: h.languageInfo,
+		pctx:         ctx,
+		host:         h,
+	}
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv, schema.NewLoaderServer(loader))
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.loader = loader
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+// Mapper serves the standard conversion mapper bound to ctx, sourcing mappings from the plugins
+// installed in the global plugin storage.
+func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterMapperServer(srv, convert.NewMapperServerFromContext(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+// Resolver serves a package resolver bound to ctx. The resolver resolves package specs against the
+// test's own providers via this host.
+func (h *testHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		pulumirpc.RegisterPackageResolverServer(srv, &providerResolver{pctx: ctx, host: h})
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+// A providerResolver is a package resolver that resolves package specs from a given set of providers.
+// A spec's source is the name of the provider.
+type providerResolver struct {
+	pulumirpc.UnimplementedPackageResolverServer
+
+	pctx *plugin.Context
+	host plugin.Host
+}
+
+func (r *providerResolver) ResolvePackage(
+	ctx context.Context, req *pulumirpc.PackageSpec,
+) (*pulumirpc.PackageDependency, error) {
+	if len(req.Parameters) > 0 {
+		return nil, status.Errorf(codes.Unimplemented,
+			"resolving package %q: parameterized package specs are not supported", req.Source)
+	}
+
+	var version *semver.Version
+	if req.Version != "" {
+		v, err := semver.Parse(req.Version)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"resolving package %q: invalid version %q: %v", req.Source, req.Version, err)
+		}
+		version = &v
+	}
+
+	provider, err := r.host.Provider(r.pctx, workspace.PluginDescriptor{
+		Kind:    apitype.ResourcePlugin,
+		Name:    req.Source,
+		Version: version,
+	}, env.NewEnv(env.Global))
+	if err != nil {
+		return nil, fmt.Errorf("resolving package %q: %w", req.Source, err)
+	}
+
+	resp, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("resolving package %q: getting schema: %w", req.Source, err)
+	}
+	var pkg schema.PartialPackageSpec
+	if err := json.Unmarshal(resp.Schema, &pkg); err != nil {
+		return nil, fmt.Errorf("resolving package %q: unmarshaling schema: %w", req.Source, err)
+	}
+
+	return &pulumirpc.PackageDependency{
+		Name:    pkg.Name,
+		Kind:    string(apitype.ResourcePlugin),
+		Version: pkg.Version,
+		Server:  pkg.PluginDownloadURL,
+	}, nil
 }
 
 func (h *testHost) SignalCancellation() error {
@@ -358,6 +468,20 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
 	wrapped := plugin.NewProviderWithClient(
-		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+		nil, pulumirpc.NewResourceProviderClient(conn), false)
+	// Handshake with the provider, as a real engine would at plugin spawn time, so that
+	// handshake-negotiated capabilities like byte string are recorded. Providers that don't
+	// implement Handshake fall back to the capabilities they report from Configure.
+	_, err = wrapped.Handshake(context.Background(), plugin.ProviderHandshakeRequest{
+		AcceptsByteString:      true,
+		SendsOldOutputsToCheck: true,
+		AcceptsOutputsInInvoke: true,
+		AcceptsOutputsInCall:   true,
+		AcceptsOutputsInCheck:  false,
+	})
+	if err != nil && status.Code(err) != codes.Unimplemented {
+		contract.IgnoreClose(wrapper)
+		return nil, nil, fmt.Errorf("could not handshake with resource provider service: %w", err)
+	}
 	return wrapped, wrapper, nil
 }

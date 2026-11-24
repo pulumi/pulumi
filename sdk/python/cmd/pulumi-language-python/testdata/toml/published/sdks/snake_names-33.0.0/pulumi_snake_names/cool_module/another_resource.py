@@ -41,7 +41,7 @@ class Another_resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 the_input: Optional[pulumi.Input[_builtins.str]] = None,
+                 the_input: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Another_resource resource with the given unique name, props, and options.
@@ -73,7 +73,7 @@ class Another_resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 the_input: Optional[pulumi.Input[_builtins.str]] = None,
+                 the_input: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -110,6 +110,12 @@ class Another_resource(pulumi.CustomResource):
 
         __props__.__dict__["the_input"] = None
         return Another_resource(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'snake_names:cool_module:another_resource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

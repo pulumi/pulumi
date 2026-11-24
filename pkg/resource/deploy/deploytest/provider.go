@@ -21,10 +21,11 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type Provider struct {
@@ -34,7 +35,7 @@ type Provider struct {
 	Package tokens.Package
 	Version semver.Version
 
-	Config     resource.PropertyMap
+	Config     property.Map
 	configured bool
 
 	DialMonitorF func(ctx context.Context, endpoint string) (*ResourceMonitor, error)
@@ -51,6 +52,7 @@ type Provider struct {
 	CreateF       func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error)
 	UpdateF       func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error)
 	DeleteF       func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error)
+	ListF         func(context.Context, plugin.ListRequest) (*plugin.ListStream, error)
 	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
 	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
 	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
@@ -77,10 +79,6 @@ func (prov *Provider) SignalCancellation(context.Context) error {
 
 func (prov *Provider) Close() error {
 	return nil
-}
-
-func (prov *Provider) Pkg() tokens.Package {
-	return prov.Package
 }
 
 func (prov *Provider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -138,13 +136,17 @@ func (prov *Provider) Configure(ctx context.Context, req plugin.ConfigureRequest
 func (prov *Provider) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	contract.Requiref(req.RandomSeed != nil, "randomSeed", "must not be nil")
 	if prov.CheckF == nil {
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	}
 	return prov.CheckF(ctx, req)
 }
 
 func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	if prov.CreateF == nil {
+		// A real provider cannot know the id of a resource it has not created yet.
+		if req.Preview {
+			return plugin.CreateResponse{Properties: property.Map{}}, nil
+		}
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
@@ -152,7 +154,7 @@ func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plu
 		}
 		return plugin.CreateResponse{
 			ID:         resource.ID(uuid.String()),
-			Properties: resource.PropertyMap{},
+			Properties: property.Map{},
 		}, nil
 	}
 	return prov.CreateF(ctx, req)
@@ -179,24 +181,22 @@ func (prov *Provider) Delete(ctx context.Context, req plugin.DeleteRequest) (plu
 	return prov.DeleteF(ctx, req)
 }
 
+func (prov *Provider) List(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
+	if prov.ListF == nil {
+		return plugin.NewListStream(nil, ""), nil
+	}
+	return prov.ListF(ctx, req)
+}
+
 func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 	contract.Assertf(req.URN != "", "Read URN was empty")
 	contract.Assertf(req.ID != "", "Read ID was empty")
 	if prov.ReadF == nil {
-		state := req.State
-		if state == nil {
-			state = resource.PropertyMap{}
-		}
-		inputs := req.Inputs
-		if inputs == nil {
-			inputs = resource.PropertyMap{}
-		}
-
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Outputs: state,
-				Inputs:  inputs,
+				Outputs: &req.State,
+				Inputs:  &req.Inputs,
 			},
 			Status: resource.StatusOK,
 		}, nil
@@ -223,7 +223,7 @@ func (prov *Provider) Construct(ctx context.Context, req plugin.ConstructRequest
 func (prov *Provider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 	if prov.InvokeF == nil {
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{},
+			Properties: property.Map{},
 		}, nil
 	}
 	return prov.InvokeF(ctx, req)

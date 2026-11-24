@@ -22,8 +22,6 @@ import (
 )
 
 // regresion test for https://github.com/pulumi/pulumi/issues/18659
-//
-//nolint:paralleltest // sets PULUMI_HOME and os.Args
 func TestNewHelp(t *testing.T) {
 	tempdir := t.TempDir()
 	t.Setenv("PULUMI_HOME", tempdir)
@@ -32,7 +30,9 @@ func TestNewHelp(t *testing.T) {
 	os.Args = []string{"pulumi", "help", "new"}
 	defer func() { os.Args = args }()
 
-	cmd, _ := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd()
+	defer cleanup()
+
 	err := cmd.Execute()
 	require.NoError(t, err)
 }

@@ -32,20 +32,26 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/dustin/go-humanize"
 	"github.com/hexops/gotextdiff"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -137,13 +143,13 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		var result []apitype.APICapabilityConfig
 		if delta {
 			result = append(result, apitype.APICapabilityConfig{
-				Capability:    apitype.DeltaCheckpointUploads,
+				Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 				Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 			})
 		}
 		if v4 {
 			result = append(result, apitype.APICapabilityConfig{
-				Capability:    apitype.DeploymentSchemaVersion,
+				Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 				Version:       1,
 				Configuration: json.RawMessage(`{"version":4}`),
 			})
@@ -199,8 +205,11 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		})
 	}
 
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
 	initPersister := func() *cloudSnapshotPersister {
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(
+			ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -217,7 +226,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: resource.URN("urn-1")},
 			},
 		}, false /*showSecrets*/)
@@ -241,7 +250,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -273,7 +282,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -299,7 +308,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: resource.URN("urn-1")},
 				{URN: resource.URN("urn-2")},
 			},
@@ -326,7 +335,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -356,7 +365,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -393,7 +402,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -418,7 +427,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -450,7 +459,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -475,7 +484,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -506,7 +515,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -536,7 +545,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -660,11 +669,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			case "/api/capabilities":
 				resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{
 					{
-						Capability:    apitype.DeltaCheckpointUploads,
+						Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 						Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
 					},
 					{
-						Capability:    apitype.DeploymentSchemaVersion,
+						Capability:    cloudapitype.AppAPICapabilityDeploymentSchemaVersion,
 						Version:       1,
 						Configuration: json.RawMessage(`{"version":4}`),
 					},
@@ -712,9 +721,12 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		})
 	}
 
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(
+			ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -731,7 +743,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -762,7 +774,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -796,7 +808,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN: resource.URN("urn-1"),
 				},
@@ -826,7 +838,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	deploymentV3, version, features, err = stack.SerializeDeploymentWithMetadata(t.Context(),
 		&deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:                 resource.URN("urn-1"),
 					RefreshBeforeUpdate: true, // This is a v4 feature.
@@ -881,7 +893,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 				pulumi.ResourceState
 			}
 
-			for i := 0; i < resourceCount; i++ {
+			for i := range resourceCount {
 				var dummy Dummy
 				err := ctx.RegisterComponentResource("examples:dummy:Dummy", fmt.Sprintf("dummy-%d", i), &dummy)
 				if err != nil {
@@ -897,7 +909,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 			return nil
 		})
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
 
 	var journalEntries engine.JournalEntries
 	p := &lt.TestPlan{
@@ -1047,7 +1059,6 @@ type dynamicStackCase struct {
 }
 
 func (c dynamicStackCase) getName() string {
-	//nolint:gosec // resourcePayloadBytes is always positive
 	return fmt.Sprintf("%v_x_%v", c.resourceCount, humanize.Bytes(uint64(c.resourcePayloadBytes)))
 }
 
@@ -1108,6 +1119,10 @@ func BenchmarkDiffStack(b *testing.B) {
 }
 
 func TestDiffStack(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large checkpoint matrix in short mode")
+	}
+
 	t.Parallel()
 
 	testOrBenchmarkDiffStack(t, testDiffStack, dynamicCases)
@@ -1146,7 +1161,7 @@ var recordedCases = []diffStackCase{
 }
 
 func init() {
-	for _, c := range strings.Split(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
+	for c := range strings.SplitSeq(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
 		if c != "" {
 			recordedCases = append(recordedCases, recordedStackCase(c))
 		}
@@ -1164,6 +1179,10 @@ func TestDiffStackRecorded(t *testing.T) {
 }
 
 func TestMarshalDeployment(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large checkpoint matrix in short mode")
+	}
+
 	t.Parallel()
 
 	if runtime.GOOS == "windows" {

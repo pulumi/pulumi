@@ -2,6 +2,7 @@ name: Test
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -74,12 +75,13 @@ env:
   PULUMI_VERSION: ${{ inputs.version }}
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
-  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  PULUMI_TEST_USE_NPM: "true"
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
   PYTHON: python
+  UV_PYTHON_PREFERENCE: only-system
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
   GO_TEST_SHUFFLE: off
@@ -87,7 +89,8 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN,OTEL_EXPORTER_OTLP_ENDPOINT
 
 jobs:
   test:
@@ -111,15 +114,18 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
-      - if: contains(inputs.platform, 'ubuntu')
-        name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
         with:
-          tool-cache: false
-          swap-storage: false
-          large-packages: false
-          dotnet: false
-
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@eec71a90d9989af7ff14bd700b83fc72fae36119 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
       - name: Write test started file
@@ -163,9 +169,17 @@ jobs:
           echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
           command -v bash
           bash --version
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
+      - name: Configure dependency cooldown
+        uses: ./.github/actions/dependency-cooldown
+      # Frees ~24GiB; test jobs run out of disk otherwise (#17470). The bulk of
+      # the cleanup runs in the background, overlapping the setup steps below.
+      # The "Wait for disk cleanup" step joins it before tests run.
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Free Disk Space (Ubuntu)
+        run: ./.github/scripts/free-disk-space start
       - name: Setup versioning env vars
         env:
           version: ${{ inputs.version }}
@@ -191,7 +205,7 @@ jobs:
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+      - uses: actions/setup-go@v6
         id: setup-go
         env:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
@@ -204,42 +218,62 @@ jobs:
             .gocache.tmp
       - name: Prime Go cache
         if: ${{ ! steps.setup-go.outputs.cache-hit }}
-        # Compile every test to ensure we populate a good cache entry.
+        # Compile every test to ensure we populate a good cache entry. The
+        # sdk is also built with -trimpath: the Go language host compiles
+        # test programs with -trimpath (see compileProgram in
+        # sdk/go/pulumi-language-go), and Go's build cache keys entries on
+        # build flags — without these entries the first program build in a
+        # job rebuilds the SDK's whole dependency graph mid-test. Persisted
+        # caches saved before this line existed lack the entries and never
+        # heal on their own; delete them (or otherwise rotate the cache key)
+        # so every matrix cell re-primes.
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
+          ( cd sdk && go build -trimpath ./... )
       - name: Install delve
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest
       - name: Set up uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        uses: ./.github/actions/retry
         with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
-          dotnet-quality: ga
+          action: actions/setup-dotnet@v5
+          with: |
+            dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+            dotnet-quality: ga
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
       - name: Set up JDK 11
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@v5
         with:
           java-version: '11'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@d9c87d481d55275bb5441eef3fe0e46805f9ef70 # v3
-        with:
-          gradle-version: "7.6"
+      - name: Pin Maven 3.9.16 (pulumi-java plugin discovery breaks with Maven 3.10)
+        env:
+          MAVEN_VERSION: 3.9.16
+          MAVEN_DIR: ${{ runner.temp }}/maven
+        run: |
+          set -euo pipefail
+          mkdir -p "${MAVEN_DIR}"
+          cd "${MAVEN_DIR}"
+          curl -fsSL --retry 5 --retry-all-errors -o maven.tar.gz \
+            "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+          tar xzf maven.tar.gz
+          echo "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin" | tee -a "$GITHUB_PATH"
+          "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin/mvn" --version
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -247,11 +281,17 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
-      - name: Install yarn and pnpm
+      - name: Install npm, yarn and pnpm
         run: |
-          npm install -g yarn pnpm
+          # npm added min-release-age-exclude in 11.17.0. Use a compatible npm 11 version so the
+          # cooldown and first-party exceptions work across every Node.js version in the matrix.
+          npm install -g yarn pnpm@11 npm@^11.17.0
       - name: Install bun
-        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
+        uses: ./.github/actions/retry
+        with:
+          action: oven-sh/setup-bun@v2
+          with: |
+            bun-version: 1.4.3
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -265,21 +305,25 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
       - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@71d17cb091aa850acb2a1a4cf87258d183eb941b # v1.11.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/retry
         with:
-          repo: gotestyourself/gotestsum
-          tag: v1.8.1
-          cache: enable
+          action: jaxxstorm/action-install-gh-release@v3.0.0
+          with: |
+            repo: gotestyourself/gotestsum
+            tag: v1.13.0
+            cache: enable
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@71d17cb091aa850acb2a1a4cf87258d183eb941b # v1.11.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/retry
         with:
-          repo: pulumi/goteststats
-          tag: v0.0.7
-          cache: enable
+          action: jaxxstorm/action-install-gh-release@v3.0.0
+          with: |
+            repo: pulumi/goteststats
+            tag: v0.0.7
+            cache: enable
+          attempt_limit: 3
+          attempt_delay: 5000
       - name: Generate artifact name
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         id: goenv
@@ -307,16 +351,20 @@ jobs:
       # Integration and performance test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
-          path: artifacts/cli
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-integration
+            path: artifacts/cli
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
         if: ${{ inputs.is-performance-test }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        uses: ./.github/actions/retry
         with:
-          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
-          path: artifacts/cli
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}-perf
+            path: artifacts/cli
       - name: Install Pulumi Go Binaries
         if: ${{ inputs.is-integration-test || inputs.is-performance-test }}
         run: |
@@ -358,37 +406,37 @@ jobs:
           cd sdk/nodejs
           make build_package
           cd bin
+          npm link
           yarn link
           bun link
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python
           make ensure
-      - name: Install Python SDK
-        run: |
-          cd sdk/python
-          make build_package
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: Create GCP service account key file
         run: |
-          echo -n '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+          echo -n '${{ steps.esc-secrets.outputs.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+      - if: contains(inputs.platform, 'ubuntu')
+        name: Wait for disk cleanup (Ubuntu)
+        run: ./.github/scripts/free-disk-space wait
       - name: run tests "${{ inputs.test-command }}"
         id: test
         run: ${{ inputs.test-command }}
         continue-on-error: ${{ inputs.continue-on-error }}
         env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+          AZURE_TENANT_ID: ${{ steps.esc-secrets.outputs.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ steps.esc-secrets.outputs.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ steps.esc-secrets.outputs.AZURE_CLIENT_SECRET }}
+          AZURE_STORAGE_SAS_TOKEN: ${{ steps.esc-secrets.outputs.AZURE_STORAGE_SAS_TOKEN }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
-          AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
+          AWS_ACCESS_KEY: ${{ steps.esc-secrets.outputs.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.esc-secrets.outputs.AWS_CI_ACCESS_SECRET }}
           DOTNET_VERSION: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
@@ -397,11 +445,12 @@ jobs:
           if [ -e .nyc_output ]; then
             UUID=$(python -c "import uuid; print(str(uuid.uuid4()).replace('-', '').lower())")
             COVERAGE_PATH="${PULUMI_TEST_COVERAGE_PATH:-./coverage}"
-            yarn run nyc report -r cobertura --report-dir "$COVERAGE_PATH"
+            npx nyc report -r cobertura --report-dir "$COVERAGE_PATH"
             mv "$COVERAGE_PATH/cobertura-coverage.xml" "$COVERAGE_PATH/cobertura-coverage-$UUID.xml"
           fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
+        continue-on-error: true
         run: |
           # Merge coverage data from coverage-instrumented binaries
           # if available.
@@ -422,21 +471,26 @@ jobs:
             rm -rf "$MERGED_DIR"
           fi
       - name: Upload code coverage
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: ./.github/actions/retry
         if: ${{ inputs.enable-coverage }}
+        continue-on-error: true
         with:
-          name: coverage-${{ env.TEST_HASH_ID }}
-          path: |
-            coverage/*
-            !coverage/.gitkeep
+          action: actions/upload-artifact@v7
+          with: |
+            name: coverage-${{ env.TEST_HASH_ID }}
+            overwrite: true
+            path: |
+              coverage/*
+              !coverage/.gitkeep
       - name: Upload codecov test results
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1
+        continue-on-error: true
         with:
           directory: junit/
           fail_ci_if_error: false
           override_branch: ${{ github.event_name == 'merge_group' && 'master' || github.head_ref }}
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:
@@ -462,7 +516,10 @@ jobs:
           if [[ exit_status -eq 0 || exit_status -eq 141 ]]; then true; else exit $exit_status; fi
       - name: Upload artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: ./.github/actions/retry
         with:
-          name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
-          path: test-results/*.json
+          action: actions/upload-artifact@v7
+          with: |
+            name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
+            overwrite: true
+            path: test-results/*.json

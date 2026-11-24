@@ -43,7 +43,7 @@ class Receiver(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 details: Optional[pulumi.Input[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict']]]]] = None,
+                 details: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict', 'outputs.Detail']]]]] = None,
                  __props__=None):
         """
         Create a Receiver resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class Receiver(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 details: Optional[pulumi.Input[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict']]]]] = None,
+                 details: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict', 'outputs.Detail']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -112,6 +112,12 @@ class Receiver(pulumi.CustomResource):
 
         __props__.__dict__["details"] = None
         return Receiver(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'nestedobject:index:Receiver', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

@@ -2,6 +2,6 @@ name: python-provider
 runtime:
   name: python
   options:
-    virtualenv: venv
+    toolchain: uv
 packages:
   typescript-a: ../ts-provider-a

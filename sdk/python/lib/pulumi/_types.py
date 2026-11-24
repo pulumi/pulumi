@@ -267,6 +267,7 @@
 
 import builtins
 import collections.abc
+import enum
 import functools
 import inspect
 import sys
@@ -276,6 +277,7 @@ from collections import abc
 from collections.abc import Callable, Iterator
 from typing import (
     Any,
+    Literal,
     Optional,
     TypeVar,
     Union,
@@ -450,7 +452,7 @@ def _py_properties(cls: type) -> tuple[tuple[str, str, builtins.property], ...]:
     for base in reversed(cls.__mro__):
         for python_name, v in base.__dict__.items():
             if isinstance(v, builtins.property):
-                prop = cast(builtins.property, v)
+                prop = v
                 pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
                 if pulumi_name is not MISSING:
                     result.append((python_name, cast(str, pulumi_name), prop))
@@ -582,6 +584,33 @@ def output_type(cls: type[T]) -> type[T]:
             setattr(cls, _PULUMI_PYTHON_TO_PULUMI_TABLE, python_to_pulumi_table)
 
     return cls
+
+
+def output_type_to_dict(obj: Any) -> dict[str, Any]:
+    """
+    Returns a dict for the output type.
+
+    The keys of the dict are Pulumi (wire-format) names that should not be translated.
+    """
+    cls = type(obj)
+    assert is_output_type(cls)
+
+    result: dict[str, Any] = {}
+    for _, pulumi_name, prop in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
+        fget = prop.fget
+
+        # If the property has a _pulumi_deprecated_callable attribute, use that
+        # as the getter. We do this so as to bypass the warnings which would
+        # otherwise be emitted, which are not appropriate here since the user
+        # has not written code that makes use of a deprecated identifier.
+        deprecated_callable = prop.fget.__dict__.get(_PULUMI_DEPRECATED_CALLABLE)
+        if deprecated_callable is not None:
+            fget = deprecated_callable
+
+        value = fget(obj)  # type: ignore
+        if value is not None:
+            result[pulumi_name] = value
+    return result
 
 
 def output_type_from_dict(cls: type[T], output: dict[str, Any]) -> T:
@@ -719,6 +748,230 @@ def _is_optional_type(tp):
     return False
 
 
+# The sentinel the engine uses for values that are unknown during preview. It mirrors
+# runtime.rpc.UNKNOWN, which cannot be imported here without an import cycle.
+_UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+
+
+def _is_plumbing_arg(arg: Any) -> bool:
+    """
+    Reports whether a union arg is runtime plumbing rather than a member of its own: the
+    `Awaitable` and `Output` wrappers an `Input` carries, and the `TypedDict` alternatives, which
+    duplicate a sibling member.
+    """
+    from . import Output
+
+    if arg is Output or get_origin(arg) is Output:
+        return True
+    if isinstance(arg, typing.ForwardRef):
+        # `Input` quotes its "Output[T]" arg; in a union built outside a class body the reference
+        # is never resolved.
+        return arg.__forward_arg__.startswith("Output[")
+    if get_origin(arg) in (abc.Awaitable, abc.Coroutine):
+        return True
+    return typing.is_typeddict(arg)
+
+
+def _wire_matchable(arg: Any) -> bool:
+    """
+    Reports whether the wire shape of `arg` is known well enough to test a value against it.
+    `Any` and unrecognized annotations are not: a value might always belong to them.
+    """
+    if arg is Any:
+        return False
+    if origin := get_origin(arg):
+        return origin in (list, abc.Sequence, dict, abc.Mapping, Literal)
+    return inspect.isclass(arg)
+
+
+@functools.cache
+def _wire_union_members(typ: Any) -> Optional[tuple[Any, ...]]:
+    """
+    Returns the members of the union `typ` a wire value could belong to, or None if `typ` is not
+    a union with at least two of them. `None` and plumbing args are dropped; a union carrying a
+    member whose shape cannot be tested is rejected outright.
+    """
+    if not _is_union_type(typ):
+        return None
+    members = []
+    for arg in typing.get_args(typ):
+        if arg is type(None) or _is_plumbing_arg(arg):
+            continue
+        if not _wire_matchable(arg):
+            return None
+        members.append(arg)
+    if len(members) < 2:
+        return None
+    return tuple(members)
+
+
+def is_discriminated_union(typ: Any) -> bool:
+    """
+    Reports whether a value of `typ` can be reduced to one of its members.
+    """
+    return _wire_union_members(typ) is not None
+
+
+def _py_name_for(cls: type, pulumi_name: str) -> Optional[str]:
+    """
+    Returns the Python name of the property of `cls` whose Pulumi name is `pulumi_name`.
+    """
+    for python_name, name, _ in _py_properties(cls):
+        if name == pulumi_name:
+            return python_name
+    return None
+
+
+def _lookup(value: abc.Mapping, key: str) -> Any:
+    # An output type is a dict subclass that warns when a Pulumi name is read through `get` or
+    # `[]`, to steer users towards its property getters. Read the underlying dict directly so
+    # that looking for a constant does not warn.
+    if isinstance(value, dict):
+        return dict.get(value, key, MISSING)
+    return value.get(key, MISSING)
+
+
+def _same_constant(expected: Any, actual: Any) -> bool:
+    # `True == 1` in Python, so compare booleans only against booleans.
+    if isinstance(expected, bool) != isinstance(actual, bool):
+        return False
+    return expected == actual
+
+
+def _wire_matches(
+    value: Any, typ: Any, name_for: Callable[[type, str], Optional[str]]
+) -> bool:
+    """
+    Reports whether `value` can belong to `typ` on the wire. Values that cannot be examined —
+    outputs, awaitables, and the engine's unknown sentinel — match every type, so an unknown
+    never rules out the member a value actually belongs to; at worst it leaves the reduction
+    ambiguous. Must match pkg/codegen/utilities.go's IsWireDiscriminatableUnionType.
+    """
+    from . import Output
+
+    if isinstance(value, Output) or inspect.isawaitable(value):
+        return True
+    if isinstance(value, str) and value == _UNKNOWN:
+        return True
+
+    if typ is Any:
+        return True
+    if typ is type(None):
+        return value is None
+    if _is_union_type(typ):
+        return any(
+            _wire_matches(value, arg, name_for)
+            for arg in typing.get_args(typ)
+            if not _is_plumbing_arg(arg)
+        )
+
+    origin = get_origin(typ)
+    if origin is Literal:
+        return any(_same_constant(arg, value) for arg in typing.get_args(typ))
+    if typ is list or origin in (list, abc.Sequence):
+        if not isinstance(value, abc.Sequence) or isinstance(value, (str, bytes)):
+            return False
+        args = typing.get_args(typ)
+        return not args or all(_wire_matches(v, args[0], name_for) for v in value)
+    if typ is dict or origin in (dict, abc.Mapping):
+        if not isinstance(value, abc.Mapping):
+            return False
+        args = typing.get_args(typ)
+        return len(args) != 2 or all(
+            _wire_matches(v, args[1], name_for) for v in value.values()
+        )
+
+    if not inspect.isclass(typ):
+        # An annotation we do not understand cannot rule anything out.
+        return True
+    if typ is bool:
+        return isinstance(value, bool)
+    if typ in (int, float):
+        # All wire numbers arrive as floats, so int and float are one shape; `True == 1` in
+        # Python, so booleans are excluded.
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if is_input_type(typ) or is_output_type(typ):
+        return _object_wire_matches(value, typ, name_for)
+    if issubclass(typ, enum.Enum):
+        return isinstance(value, typ) or any(
+            _same_constant(member.value, value) for member in typ
+        )
+    if typing.is_typeddict(typ):
+        # TypedDict classes do not support isinstance checks.
+        return isinstance(value, abc.Mapping)
+    return isinstance(value, typ)
+
+
+def _object_wire_matches(
+    value: Any, cls: type, name_for: Callable[[type, str], Optional[str]]
+) -> bool:
+    """
+    Reports whether `value` can be a `cls` under the closed reading: every key names a declared
+    property, required properties are present, and every present value matches its property's
+    annotation. Properties are looked up under the names `name_for` maps them to.
+    """
+    if isinstance(value, cls):
+        return True
+    if not isinstance(value, abc.Mapping):
+        return False
+
+    lookup_names = {
+        pulumi_name: name_for(cls, pulumi_name)
+        for _, pulumi_name, _prop in _py_properties(cls)
+    }
+    declared = {name for name in lookup_names.values() if name is not None}
+    if any(key not in declared for key in value):
+        return False
+
+    property_types = (
+        input_type_types(cls) if is_input_type(cls) else output_type_types(cls)
+    )
+    required = _required_property_names(cls)
+    for pulumi_name, lookup_name in lookup_names.items():
+        v = _lookup(value, lookup_name) if lookup_name is not None else MISSING
+        if v is MISSING or v is None:
+            if pulumi_name in required:
+                return False
+            continue
+        annotation = property_types.get(pulumi_name)
+        if annotation is not None and not _wire_matches(v, annotation, name_for):
+            return False
+    return True
+
+
+@functools.cache
+def _required_property_names(cls: type) -> frozenset[str]:
+    """
+    Returns the Pulumi names of the properties of `cls` whose declared annotation does not admit
+    None.
+    """
+    return frozenset(
+        name
+        for name, hint in _raw_return_hints(cls).items()
+        if not _is_optional_type(hint)
+    )
+
+
+def reduce_discriminated_union(
+    typ: Any, value: abc.Mapping, name_for: Callable[[type, str], Optional[str]]
+) -> Optional[Any]:
+    """
+    Returns the single member of the union `typ` that `value` can belong to on the wire, or None
+    when no member — or more than one — matches. `name_for` maps a member and a property's
+    Pulumi name to the name to look up in `value`: pass `_py_name_for` for Python-keyed values,
+    or the identity for Pulumi-keyed values as the engine sends them.
+    """
+    members = _wire_union_members(typ)
+    if members is None:
+        return None
+    candidates = [
+        member for member in members if _wire_matches(value, member, name_for)
+    ]
+    if len(candidates) != 1:
+        return None
+    return candidates[0]
+
+
 def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:
     """
     Returns a dict of globals for the class and its base classes.
@@ -735,15 +988,13 @@ def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:
 
 
 @functools.cache
-def _types_from_py_properties(cls: type) -> dict[str, type]:
+def _raw_return_hints(cls: type) -> dict[str, Any]:
     """
-    Returns a dict of Pulumi names to types for a type.
+    Returns a dict of Pulumi names to each property getter's resolved return type annotation,
+    before any Output/Optional unwrapping.
     """
     from . import Output
 
-    # We use get_type_hints() below on each Python property to resolve the getter function's
-    # return type annotation, resolving forward references.
-    #
     # We pass the cls's globals to get_type_hints() to ensure any other referenced
     # output types (which may exist in other modules of the cls, like `.outputs` or
     # `...meta.v1.outputs`) can be resolved. If we didn't pass the cls's globals,
@@ -761,24 +1012,34 @@ def _types_from_py_properties(cls: type) -> dict[str, type]:
     # and it doesn't matter what the value is for our purposes.
     localns = {"Output": Output, "T": type(None)}  # type: ignore
 
-    # Build-up a dictionary of Pulumi property names to types by looping through all the
-    # Python properties on the class that have a getter marked as a Pulumi property getter,
-    # and looking at the getter function's return type annotation.
-    # Types that are Output[T] and Optional[T] are unwrapped to just T.
-    result: dict[str, type] = {}
+    hints: dict[str, Any] = {}
     for _, pulumi_name, prop in _py_properties(cls):
-        cls_hints = get_type_hints(prop.fget, globalns=globalns, localns=localns)
-        # Get the function's return type hint.
-        return_hint = cls_hints.get("return")
+        return_hint = get_type_hints(prop.fget, globalns=globalns, localns=localns).get(
+            "return"
+        )
         if return_hint is not None:
-            typ = unwrap_type(return_hint)
-            # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
-            # because unwrap_type would have returned the T in Output[T] if it was specified
-            # generically. To avoid raising a type mismatch error when the deserialized output type
-            # doesn't match Output, we exclude it from the results.
-            if typ is Output:
-                continue
-            result[pulumi_name] = typ
+            hints[pulumi_name] = return_hint
+    return hints
+
+
+@functools.cache
+def _types_from_py_properties(cls: type) -> dict[str, type]:
+    """
+    Returns a dict of Pulumi names to types for a type. Types that are Output[T] and Optional[T]
+    are unwrapped to just T.
+    """
+    from . import Output
+
+    result: dict[str, type] = {}
+    for pulumi_name, return_hint in _raw_return_hints(cls).items():
+        typ = unwrap_type(return_hint)
+        # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
+        # because unwrap_type would have returned the T in Output[T] if it was specified
+        # generically. To avoid raising a type mismatch error when the deserialized output type
+        # doesn't match Output, we exclude it from the results.
+        if typ is Output:
+            continue
+        result[pulumi_name] = typ
     return result
 
 

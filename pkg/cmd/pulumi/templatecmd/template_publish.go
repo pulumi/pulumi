@@ -43,9 +43,7 @@ type publishTemplateArgs struct {
 	name      string
 }
 
-type templatePublishCmd struct {
-	defaultOrg func(context.Context, backend.Backend, *workspace.Project) (string, error)
-}
+type templatePublishCmd struct{}
 
 func newTemplatePublishCmd() *cobra.Command {
 	var args publishTemplateArgs
@@ -57,7 +55,7 @@ func newTemplatePublishCmd() *cobra.Command {
 			"This command publishes a template directory to the Private Registry.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			tplPublishCmd := templatePublishCmd{defaultOrg: backend.GetDefaultOrg}
+			tplPublishCmd := templatePublishCmd{}
 			return tplPublishCmd.Run(ctx, cmd, args, cliArgs[0])
 		},
 	}
@@ -71,13 +69,16 @@ func newTemplatePublishCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(
 		&args.version, "version", "",
-		"The version of the template (required, semver format)")
+		"The version of the template (required, semver format)",
+	)
 	cmd.Flags().StringVar(
 		&args.name, "name", "",
-		"The name of the template (required)")
+		"The name of the template (required)",
+	)
 	cmd.Flags().StringVar(
 		&args.publisher, "publisher", "",
-		"The publisher of the template (e.g., 'pulumi'). Defaults to the default organization in your pulumi config.")
+		"The publisher of the template (e.g., 'pulumi'). Defaults to the default organization in your pulumi config.",
+	)
 	contract.AssertNoErrorf(cmd.MarkFlagRequired("version"), "Could not mark \"version\" as required")
 	contract.AssertNoErrorf(cmd.MarkFlagRequired("name"), "Could not mark \"name\" as required")
 
@@ -104,14 +105,20 @@ func (tplCmd *templatePublishCmd) Run(
 		return fmt.Errorf("invalid version format: %w", err)
 	}
 
-	project, _, err := pkgWorkspace.Instance.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := pkgWorkspace.Instance.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return fmt.Errorf("failed to determine current project: %w", err)
 	}
 
 	b, err := cmdBackend.CurrentBackend(
 		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project,
-		display.Options{Color: cmdutil.GetGlobalColorization()})
+		display.Options{Color: cmdutil.GetGlobalColorization()},
+	)
 	if err != nil {
 		return err
 	}
@@ -125,7 +132,7 @@ func (tplCmd *templatePublishCmd) Run(
 	if args.publisher != "" {
 		publisher = args.publisher
 	} else {
-		publisher, err = tplCmd.defaultOrg(ctx, b, project)
+		publisher, err = b.GetDefaultOrg(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}

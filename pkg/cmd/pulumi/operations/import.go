@@ -21,8 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -35,20 +39,24 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -57,21 +65,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
-	equals := strings.Index(spec, "=")
-	if equals == -1 {
+	before, after, ok := strings.Cut(spec, "=")
+	if !ok {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
-	name, urn := spec[:equals], resource.URN(spec[equals+1:])
+	name, urn := before, resource.URN(after)
 	if name == "" || urn == "" {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
@@ -86,10 +95,32 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, urn, nil
 }
 
-func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFile, error) {
+func makeImportFileFromResourceList(ctx context.Context, resources []plugin.ResourceImport) (importFile, error) {
+	// Serialized with secrets in plain text, marked with the secret signature: the converter response
+	// carries them the same way, and parseImportFile deserializes them back into secret values.
+	serialize := func(props *property.Map, name, kind string) (map[string]any, error) {
+		if props == nil {
+			return nil, nil
+		}
+		mprops := resource.ToResourcePropertyMap(*props)
+		serialized, err := resourcestack.SerializeProperties(ctx, mprops, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		if err != nil {
+			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
+		}
+		return serialized, nil
+	}
+
 	nameTable := map[string]resource.URN{}
 	specs := make([]importSpec, len(resources))
 	for i, res := range resources {
+		inputs, err := serialize(res.Inputs, res.Name, "inputs")
+		if err != nil {
+			return importFile{}, err
+		}
+		outputs, err := serialize(res.Outputs, res.Name, "outputs")
+		if err != nil {
+			return importFile{}, err
+		}
 		specs[i] = importSpec{
 			Type:              tokens.Type(res.Type),
 			Name:              res.Name,
@@ -99,6 +130,25 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Component:         res.IsComponent,
 			Remote:            res.IsRemote,
 			LogicalName:       res.LogicalName,
+			Parent:            res.Parent,
+			Properties:        res.Properties,
+			Provider:          res.Provider,
+			Inputs:            inputs,
+			Outputs:           outputs,
+		}
+		if p := res.Parameterization; p != nil {
+			specs[i].Parameterization = &importParameterization{
+				PluginName:    p.PluginName,
+				PluginVersion: p.PluginVersion,
+				Value:         p.Value,
+			}
+		}
+		if e := res.Extension; e != nil {
+			specs[i].Extension = &importExtension{
+				Name:    e.Name,
+				Version: e.Version,
+				Value:   e.Value,
+			}
 		}
 	}
 
@@ -166,8 +216,41 @@ type importSpec struct {
 	Component         bool        `json:"component,omitempty"`
 	Remote            bool        `json:"remote,omitempty"`
 
+	// Inputs holds input properties supplied for the resource. Values the provider's Read cannot return
+	// (e.g. write-only attributes) are taken from here instead. For a provider declared in the resources
+	// block, Inputs is its configuration.
+	Inputs map[string]any `json:"inputs,omitempty"`
+	// Outputs holds the resource's full output state. When set, the resource is imported from these
+	// values directly and the provider's Read is skipped entirely.
+	Outputs map[string]any `json:"outputs,omitempty"`
+
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
 	LogicalName string `json:"logicalName,omitempty"`
+
+	// Parameterization is set when the resource should be imported under a replacement-parameterized
+	// (e.g. dynamically bridged) provider rather than a plain one.
+	Parameterization *importParameterization `json:"parameterization,omitempty"`
+
+	// Extension is set when an extension parameterization should be applied to the resource's (base)
+	// provider. Mutually exclusive with Parameterization.
+	Extension *importExtension `json:"extension,omitempty"`
+}
+
+// importParameterization is the JSON representation of a resource's replacement parameterization. The
+// parameterized package name and version are taken from the resource's own type and version; these
+// fields describe the base plugin the parameterization is applied to.
+type importParameterization struct {
+	PluginName    string `json:"pluginName"`
+	PluginVersion string `json:"pluginVersion"`
+	Value         []byte `json:"value"`
+}
+
+// importExtension is the JSON representation of an extension parameterization applied to a resource's
+// (base) provider.
+type importExtension struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Value   []byte `json:"value"`
 }
 
 type importFile struct {
@@ -176,6 +259,8 @@ type importFile struct {
 	// ProviderInputs maps provider names (as used in NameTable and importSpec.Provider) to
 	// their serialized inputs. This allows the import system to create explicit providers
 	// that are not yet in state with the correct configuration. Secrets are encrypted.
+	//
+	// Deprecated: declare the provider in Resources and set its configuration via its Inputs instead.
 	ProviderInputs map[string]map[string]any `json:"providerInputs,omitempty"`
 }
 
@@ -305,7 +390,20 @@ func parseImportFile(
 		if spec.Name == "" {
 			pusherrf("%v has no name", describeResource(i, spec))
 		}
-		if !spec.Component && spec.ID == "" {
+		if providers.IsProviderType(spec.Type) {
+			// Providers declared in the resources block are created during import rather than read
+			// from a cloud, so they take no ID.
+			if spec.ID != "" {
+				pusherrf("%v has an ID, but is a provider, which is created rather than read",
+					describeResource(i, spec))
+			}
+			if spec.Component {
+				pusherrf("%v is a provider and may not be marked as a component", describeResource(i, spec))
+			}
+			if len(spec.Outputs) > 0 {
+				pusherrf("%v is a provider and may not have outputs", describeResource(i, spec))
+			}
+		} else if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
 		} else if spec.Component && spec.ID != "" {
 			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
@@ -472,10 +570,13 @@ func parseImportFile(
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}
-			urn, ok := f.NameTable[spec.Provider]
+			// urnMapping covers both the name table and the URNs built above for in-file resources.
+			urn, ok := urnMapping[spec.Provider]
 			if !ok {
-				pusherrf("the provider '%v' for %v has no entry in 'nameTable'",
+				pusherrf("the provider '%v' for %v has no entry in 'nameTable' or 'resources'",
 					spec.Provider, describeResource(i, spec))
+			} else if !urn.IsValid() || !providers.IsProviderType(urn.Type()) {
+				pusherrf("the provider '%v' for %v is not a provider", spec.Provider, describeResource(i, spec))
 			} else {
 				imp.Provider = urn
 			}
@@ -488,7 +589,40 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.ProviderInputs = providerInputs
+					imp.ProviderInputs = resource.FromResourcePropertyMap(providerInputs)
+				}
+			}
+		}
+
+		if providers.IsProviderType(spec.Type) {
+			serializedInputs, ok := f.ProviderInputs[spec.Name]
+			if spec.Inputs != nil {
+				serializedInputs, ok = spec.Inputs, true
+			}
+			if ok {
+				inputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize provider inputs for %v: %w",
+						describeResource(i, spec), err)
+				} else {
+					imp.Inputs = resource.FromResourcePropertyMap(inputs)
+				}
+			}
+		} else {
+			if spec.Inputs != nil {
+				inputs, err := resourcestack.DeserializeProperties(spec.Inputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize inputs for %v: %w", describeResource(i, spec), err)
+				} else {
+					imp.Inputs = resource.FromResourcePropertyMap(inputs)
+				}
+			}
+			if spec.Outputs != nil {
+				outputs, err := resourcestack.DeserializeProperties(spec.Outputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize outputs for %v: %w", describeResource(i, spec), err)
+				} else {
+					imp.Outputs = resource.FromResourcePropertyMap(outputs)
 				}
 			}
 		}
@@ -503,25 +637,47 @@ func parseImportFile(
 			}
 		}
 
+		if spec.Parameterization != nil {
+			v, err := semver.ParseTolerant(spec.Parameterization.PluginVersion)
+			if err != nil {
+				pusherrf("could not parse parameterization version '%v' for %v: %w",
+					spec.Parameterization.PluginVersion, describeResource(i, spec), err)
+			} else {
+				imp.Parameterization = &deploy.Parameterization{
+					PluginName:    tokens.Package(spec.Parameterization.PluginName),
+					PluginVersion: v,
+					Value:         spec.Parameterization.Value,
+				}
+			}
+		}
+
+		if spec.Extension != nil {
+			if spec.Parameterization != nil {
+				pusherrf("%v has both a parameterization and an extension, which are mutually exclusive",
+					describeResource(i, spec))
+			}
+			imp.Extension = &apitype.Extension{
+				Name:    spec.Extension.Name,
+				Version: spec.Extension.Version,
+				Value:   spec.Extension.Value,
+			}
+		}
+
+		for field, props := range map[string]property.Map{
+			"inputs":         imp.Inputs,
+			"outputs":        imp.Outputs,
+			"providerInputs": imp.ProviderInputs,
+		} {
+			if props.HasComputed() {
+				pusherrf("the %v for %v contain unknown values; fill them in before importing",
+					field, describeResource(i, spec))
+			}
+		}
+
 		imports[i] = imp
 	}
 
 	return imports, names, errs
-}
-
-func getCurrentDeploymentForStack(
-	ctx context.Context,
-	s backend.Stack,
-) (*deploy.Snapshot, error) {
-	deployment, err := backend.ExportStackDeployment(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
-	if err != nil {
-		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
-	}
-	return snap, err
 }
 
 type programGeneratorFunc func(
@@ -544,18 +700,18 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
 			}
 			fmt.Fprintf(&errMsg, "%v\n", v)
-			fmt.Print(errMsg.String())
+			fmt.Fprint(out, errMsg.String())
 		}
 	}()
 
-	resourceTable := map[resource.URN]*resource.State{}
+	resourceTable := map[resource.URN]*pkgresource.State{}
 	for _, r := range snap.Resources {
 		if !r.Delete {
 			resourceTable[r.URN] = r
 		}
 	}
 
-	var resources []*resource.State
+	var resources []*pkgresource.State
 	for _, i := range imports {
 		var parentType tokens.Type
 		if i.Parent != "" {
@@ -574,7 +730,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		return false, nil
 	}
 
-	loader := schema.NewPluginLoader(ctx.Host)
+	loader := schema.NewPluginLoader(ctx)
 	err := importer.GenerateLanguageDefinitions(
 		out,
 		loader,
@@ -584,15 +740,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				return err
 			}
 
-			var contents []byte
-			for _, v := range files {
-				contents = v
-			}
-
-			if _, err := w.Write(contents); err != nil {
-				return err
-			}
-			return nil
+			return writeGeneratedProgram(w, files)
 		},
 		resources,
 		snap.Resources,
@@ -600,6 +748,24 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	)
 
 	return true, err
+}
+
+func writeGeneratedProgram(w io.Writer, files map[string][]byte) error {
+	for _, name := range slices.Sorted(maps.Keys(files)) {
+		if strings.HasPrefix(name, "sdks/") {
+			continue
+		}
+		contents := files[name]
+		if _, err := w.Write(contents); err != nil {
+			return err
+		}
+		if len(contents) > 0 && contents[len(contents)-1] != '\n' {
+			if _, err := io.WriteString(w, "\n"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func NewImportCmd() *cobra.Command {
@@ -612,11 +778,13 @@ func NewImportCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var stackName string
+	var configFile string
 	var execKind string
 	var execAgent string
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var outputFormat string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -630,12 +798,13 @@ func NewImportCmd() *cobra.Command {
 	var yes bool
 	var protectResources bool
 	var properties []string
+	var skipPluginPreInstall bool
 
 	var from string
 	var generateResources string
 
 	cmd := &cobra.Command{
-		Use:   "import [type] [name] [id]",
+		Use:   "import",
 		Short: "Import resources into an existing stack",
 		Long: "Import resources into an existing stack.\n" +
 			"\n" +
@@ -659,7 +828,7 @@ func NewImportCmd() *cobra.Command {
 			"The type token and property used for resource lookup are available in the Import section of\n" +
 			"the resource's API documentation in the Pulumi Registry (https://www.pulumi.com/registry/)." +
 			"\n" +
-			"To fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"To fully specify parent and/or provider, substitute the <urn> for each into the following:\n" +
 			"\n" +
 			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
 			"\n" +
@@ -685,7 +854,7 @@ func NewImportCmd() *cobra.Command {
 			"    }\n" +
 			"\n" +
 			"The full import file schema references can be found in the " +
-			"[import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).\n" +
+			"[import documentation](https://www.pulumi.com/docs/iac/guides/migration/import/#import-file-schema).\n" +
 			"\n" +
 			"The import JSON file can be generated from a Pulumi program by running\n" +
 			"\n" +
@@ -697,15 +866,30 @@ func NewImportCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch outputFormat {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", outputFormat, "default", "json")
+			}
+
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := ws.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
 
 			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
 				return err
+			}
+
+			if from == "terraform" && importFilePath == "" && proj.Runtime.Name() == "hcl" {
+				return errors.New("`pulumi import --from terraform` will produce state that doesn't line up " +
+					"with Pulumi's HCL runtime.\nYou should run `pulumi import --from hcl` instead.")
 			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -715,10 +899,24 @@ func NewImportCmd() *cobra.Command {
 				return fmt.Errorf("get working directory: %w", err)
 			}
 			sink := cmdutil.Diag()
-			pCtx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+			reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return fmt.Errorf("create plugin host: %w", err)
+			}
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
+			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
 			if importFilePath != "" {
@@ -760,7 +958,8 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromHost)
+					version, err := pkgWorkspace.InstallPlugin(
+						ctx, pluginSpec, log, schema.NewLoaderServerFromContext, pCtx.CloudCredentialEnv)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -769,9 +968,9 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				baseMapper, err := convert.NewBasePluginMapper(
-					convert.DefaultWorkspace(),
+					pluginstorage.Instance,
 					from, /*conversionKey*/
-					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
+					convert.ProviderFactoryFromHost(ctx, pCtx),
 					installPlugin,
 					nil, /*mappings*/
 				)
@@ -781,17 +980,29 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				mapperServer := convert.NewMapperServer(mapper)
-				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+				loaderServer := schema.NewLoaderServer(schema.NewPluginLoader(pCtx))
+				resolverServer := packageworkspace.NewResolverServer(reg)(pCtx)
+				grpcServer, err := plugin.NewServer(pCtx,
+					convert.MapperRegistration(mapperServer),
+					schema.LoaderRegistration(loaderServer),
+					packageworkspace.ResolverRegistration(resolverServer))
 				if err != nil {
 					return err
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperTarget: grpcServer.Addr(),
-					Args:         args,
+					MapperTarget:   grpcServer.Addr(),
+					Args:           args,
+					LoaderTarget:   grpcServer.Addr(),
+					ResolverTarget: grpcServer.Addr(),
 				})
 				if err != nil {
-					return err
+					rpcErr := rpcerror.Convert(err)
+					msg := strings.TrimSpace(rpcErr.Message())
+					if msg == "" {
+						return fmt.Errorf("converter %q failed: %w", from, err)
+					}
+					return fmt.Errorf("converter %q failed: %s", from, msg)
 				}
 
 				cmdDiag.PrintDiagnostics(sink, resp.Diagnostics)
@@ -801,7 +1012,7 @@ func NewImportCmd() *cobra.Command {
 					return errors.New("conversion failed")
 				}
 
-				f, err := makeImportFileFromResourceList(resp.Resources)
+				f, err := makeImportFileFromResourceList(ctx, resp.Resources)
 				if err != nil {
 					return err
 				}
@@ -832,7 +1043,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if !generateCode && outputFilePath != "" {
-				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
+				fmt.Fprintln(cmd.ErrOrStderr(), "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -873,6 +1084,7 @@ func NewImportCmd() *cobra.Command {
 				EventLogPath:     eventLogPath,
 				Debug:            debug,
 				JSONDisplay:      jsonDisplay,
+				SummaryJSON:      outputFormat == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -883,7 +1095,7 @@ func NewImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -897,24 +1109,33 @@ func NewImportCmd() *cobra.Command {
 			// Fetch the current stack.
 			s, err := cmdStack.RequireStack(
 				ctx,
-				cmdutil.Diag(),
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
 				cmdStack.LoadOnly,
 				opts.Display,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
+				return err
+			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
+
+			if len(importFile.ProviderInputs) > 0 {
+				sink.Warningf(diag.Message("", "the 'providerInputs' field is deprecated: declare the "+
+					"provider in 'resources' and set its configuration via its 'inputs' instead"))
+			}
 
 			imports, nameTable, err := parseImportFile(
 				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)
@@ -931,12 +1152,21 @@ func NewImportCmd() *cobra.Command {
 				}
 				sink := cmdutil.Diag()
 
-				ctx, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, true, nil, schema.NewLoaderServerFromHost)
+				innerReg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, ws, proj, sink, env.Global())
+				innerHost, err := pkghost.New(context.WithoutCancel(ctx), sink, sink, nil,
+					pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+					packageworkspace.NewResolverServer(innerReg))
 				if err != nil {
 					return nil, nil, err
 				}
-				defer contract.IgnoreClose(pCtx.Host)
-				languagePlugin, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+				// host is owned here, closed after the context
+				defer contract.IgnoreClose(innerHost)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil, pCtx.CloudCredentialEnv)
+				if err != nil {
+					return nil, nil, err
+				}
+				defer contract.IgnoreClose(ctx)
+				languagePlugin, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 				if err != nil {
 					return nil, nil, err
 				}
@@ -952,7 +1182,8 @@ func NewImportCmd() *cobra.Command {
 				// this is because we might generate unbound variables in the generated code that reference
 				// a parent resource or a provider
 				strict := false
-				files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+				files, diagnostics, err := languagePlugin.GenerateProgram(
+					pCtx.Request(), program.Source(), grpcServer.Addr(), pCtx.MapperAddr(), strict)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -967,7 +1198,7 @@ func NewImportCmd() *cobra.Command {
 			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,
@@ -980,38 +1211,36 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
+				CloudCredentialEnv:   cloudCredentialEnv,
 				Parallel:             parallel,
 				Debug:                debug,
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
 				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 				Experimental:         env.Experimental.Value(),
+				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
-			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
+			_, finalSnap, err := backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 			}, imports)
+			// err is checked below after handling context.Canceled and writing the import file.
 
-			if generateCode {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
-				if err != nil {
-					return err
-				}
-
-				validImports, err := generateImportedDefinitions(
-					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+			if generateCode && proj.Runtime.Name() != "" && finalSnap != nil {
+				validImports, err2 := generateImportedDefinitions(
+					pCtx, output, s.Ref().Name(), proj.Name, finalSnap, programGenerator, nameTable, imports,
 					protectResources)
-				if err != nil {
-					if _, ok := err.(*importer.DiagnosticsError); ok {
-						err = fmt.Errorf("internal error: %w", err)
+				if err2 != nil {
+					if _, ok := err2.(*importer.DiagnosticsError); ok {
+						err2 = fmt.Errorf("internal error: %w", err2)
 					}
-					return err
+					return err2
 				}
 
 				if validImports {
@@ -1020,16 +1249,18 @@ func NewImportCmd() *cobra.Command {
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" && !jsonDisplay {
-						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+					if outputFilePath == "" && !jsonDisplay && outputFormat != "json" {
+						outW := cmd.OutOrStdout()
+						fmt.Fprint(outW,
+							"Please copy the following code into your Pulumi application. Not doing so\n"+
+								"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
-							fmt.Print(("Please note that the imported resources are marked as protected. " +
-								"To destroy them\n" +
-								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-								"the destroy will take effect.\n\n"))
+							fmt.Fprint(outW, "Please note that the imported resources are marked as protected. "+
+								"To destroy them\n"+
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n"+
+								"the destroy will take effect.\n\n")
 						}
-						fmt.Print(outputResult.String())
+						fmt.Fprint(outW, outputResult.String())
 					}
 				}
 			}
@@ -1073,7 +1304,6 @@ func NewImportCmd() *cobra.Command {
 		//nolint:lll
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
 	cmd.PersistentFlags().StringSliceVar(
-		//nolint:lll
 		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
@@ -1092,7 +1322,7 @@ func NewImportCmd() *cobra.Command {
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 
 	// Flags for engine.UpdateOptions.
@@ -1111,6 +1341,12 @@ func NewImportCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the import diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&outputFormat, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
@@ -1137,6 +1373,9 @@ func NewImportCmd() *cobra.Command {
 		&generateResources, "generate-resources", "",
 		//nolint:lll
 		"When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path")
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

@@ -17,14 +17,15 @@ package org
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/spf13/cobra"
 
-	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -46,7 +47,7 @@ func NewOrgCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -61,16 +62,17 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := pkgBackend.GetDefaultOrg(ctx, currentBe, project)
+			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Current Backend: %s\n", cloudURL)
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "Current Backend: %s\n", cloudURL)
 			if defaultOrg != "" {
-				fmt.Printf("Default Org: %s\n", defaultOrg)
+				fmt.Fprintf(out, "Default Org: %s\n", defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Fprintln(out, "No Default Org Specified")
 			}
 
 			return nil
@@ -82,6 +84,11 @@ func NewOrgCmd() *cobra.Command {
 	cmd.AddCommand(newOrgSetDefaultCmd())
 	cmd.AddCommand(newOrgGetDefaultCmd())
 	cmd.AddCommand(newSearchCmd())
+	cmd.AddCommand(newOrgWebhookCmd())
+	cmd.AddCommand(newOrgRoleCmd())
+	cmd.AddCommand(newOrgMemberCmd())
+	cmd.AddCommand(newOrgAuditLogCmd())
+	cmd.AddCommand(newOrgUsageCmd())
 
 	return cmd
 }
@@ -110,7 +117,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -122,6 +129,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			if !currentBe.SupportsOrganizations() {
 				return fmt.Errorf("unable to set a default organization for backend type: %s",
 					currentBe.Name())
+			}
+
+			if user, orgs, _, userErr := currentBe.CurrentUser(); userErr == nil &&
+				orgName != user && !slices.Contains(orgs, orgName) {
+				cmdutil.Diag().Warningf(diag.Message("",
+					"you do not appear to be a member of organization %q; "+
+						"commands that use the default organization may fail"), orgName)
 			}
 
 			cloudURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
@@ -161,7 +175,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -175,15 +189,15 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := pkgBackend.GetDefaultOrg(ctx, currentBe, project)
+			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
 			if err != nil {
 				return err
 			}
 
 			if defaultOrg != "" {
-				fmt.Println(defaultOrg)
+				fmt.Fprintln(cmd.OutOrStdout(), defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Fprintln(cmd.OutOrStdout(), "No Default Org Specified")
 			}
 
 			return nil

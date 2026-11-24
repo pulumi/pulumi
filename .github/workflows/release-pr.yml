@@ -1,9 +1,13 @@
+env:
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Post-Release PR
 
 permissions:
   # To create a PR
   contents: write
   pull-requests: write
+  id-token: write
 
 on:
   workflow_call:
@@ -35,46 +39,57 @@ jobs:
     name: version bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@eec71a90d9989af7ff14bd700b83fc72fae36119 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+          fetch-depth: 0
+      - uses: ./.github/actions/retry
         with:
-          go-version: '>=1.19.0' # decoupled from version sets, only used by changelog tool
+          action: jdx/mise-action@v2
+          with: |
+            version: 2026.10.3
+            experimental: true
+            install_args: --locked
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}
-          RELEASE_NOTES: ${{ inputs.release-notes }}
           QUEUE_MERGE: ${{ inputs.queue-merge }}
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+          REVIEW_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_REVIEW_TOKEN }}
         run: |
           set -euo pipefail
-          git switch --create "automation/release-v${PULUMI_VERSION}"
 
-          echo -en "# Changelog\n\n${RELEASE_NOTES}\n\n$(tail -n+3 CHANGELOG.md)" > ./CHANGELOG.md
+          python3 scripts/changie-pr-lookup.py
+          changie batch "${PULUMI_VERSION}"
+          changie merge
 
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          rm ./changelog/pending/*.yaml || true
           git add -A
-
           git commit -m "chore: changelog for v${PULUMI_VERSION}"
+          CHANGELOG_COMMIT=$(git rev-parse HEAD)
 
-          # Update go module dependencies
-          (
-            cd pkg
-            go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
-          )
-          make tidy_fix
-          git add -A
-          git commit -m "chore: post-release go.mod updates"
+          git switch --create "automation/release-v${PULUMI_VERSION}" origin/master
+          git cherry-pick "${CHANGELOG_COMMIT}"
 
           git push -u origin HEAD
 
-          # Note that the title of the PR is used in the on-push workflow.  If the title needs to
-          # change here, please also check on-push.yml
-          PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
+          PR=$(gh pr create --title "Changelog for v${PULUMI_VERSION}" --body "")
+
+          GITHUB_TOKEN="${REVIEW_TOKEN}" gh pr review --approve "${PR}"
 
           if [ "${QUEUE_MERGE}" = "true" ]; then
             gh pr merge --auto --squash "${PR}"

@@ -30,7 +30,7 @@ import (
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func BenchmarkLoadPackage(b *testing.B) {
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	for n := 0; n < b.N; n++ {
 		_, err := NewPackageCache().loadPackageSchema(b.Context(), loader, "aws", "", "")

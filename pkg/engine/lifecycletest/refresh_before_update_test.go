@@ -20,13 +20,14 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,43 +51,41 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := req.Properties.Copy()
+					props := req.Properties.AsMap()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
+						Properties:          property.NewMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
-					if req.NewInputs.DeepEquals(req.OldInputs) {
+					if req.NewInputs.Equals(req.OldInputs) {
 						return plugin.DiffResponse{Changes: plugin.DiffNone}, nil
 					}
 					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), req.OldInputs["input"].StringValue())
-					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), req.OldOutputs["result"].StringValue())
+					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), req.OldInputs.Get("input").AsString())
+					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), req.OldOutputs.Get("result").AsString())
 
-					props := req.NewInputs.Copy()
-					props["result"] = props["input"]
+					props := req.NewInputs.Set("result", req.NewInputs.Get("input"))
 					return plugin.UpdateResponse{
 						Properties:          props,
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					inputs := req.Inputs.Copy()
-					inputs["input"] = resource.NewProperty(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
-					props := req.State.Copy()
-					props["input"] = inputs["input"]
-					props["result"] = resource.NewProperty(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
+					freshInput := property.New(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
+					inputs := req.Inputs.Set("input", freshInput)
+					freshResult := property.New(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
+					props := req.State.Set("input", freshInput).Set("result", freshResult)
 					return plugin.ReadResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              inputs,
-							Outputs:             props,
+							Inputs:              &inputs,
+							Outputs:             &props,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil
@@ -95,9 +94,9 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		}, deploytest.WithHandshake),
 	}
 
-	inputs := resource.PropertyMap{
-		"input": resource.NewProperty("value-1"),
-	}
+	inputs := property.NewMap(map[string]property.Value{
+		"input": property.New("value-1"),
+	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
@@ -110,7 +109,7 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -136,9 +135,9 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Second update.
-	inputs = resource.PropertyMap{
-		"input": resource.NewProperty("value-2"),
-	}
+	inputs = property.NewMap(map[string]property.Value{
+		"input": property.New("value-2"),
+	})
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
 	require.Len(t, snap.Resources, 3)
@@ -245,10 +244,10 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := req.Properties.Copy()
+					props := req.Properties.AsMap()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
+						Properties:          property.NewMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -267,8 +266,8 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil
@@ -281,10 +280,17 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
 		require.NoError(t, err)
 
-		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{})
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": property.New("value"),
+			}),
+		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": resp.Outputs.Get("result"),
+			}),
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"input": {resp.URN},
 			},
@@ -293,7 +299,7 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{

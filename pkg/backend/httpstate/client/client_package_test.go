@@ -380,7 +380,7 @@ func TestPublishPackage(t *testing.T) {
 			// Create client pointing to our test server
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: "fake-token",
+				apiToken: apiAccessToken("fake-token"),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,
@@ -408,7 +408,7 @@ func TestPublishPackage(t *testing.T) {
 
 			// Check results
 			if tt.errorMessage != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.errorMessage)
 			} else {
 				require.NoError(t, err)

@@ -10,7 +10,9 @@ export interface Data {
     boolean: boolean;
     float: number;
     innerData: outputs.InnerData;
+    innerDataList?: outputs.InnerData[];
     integer: number;
+    optionalInner?: outputs.InnerData;
     string: string;
     stringMap: {[key: string]: string};
 }

@@ -16,9 +16,13 @@ package display
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
+	"unicode/utf8"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -30,28 +34,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
+// byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
+// since such strings cannot be represented in JSON or terminal output directly.
+func byteStringDisplay(s string) string {
+	return `b"` + base64.StdEncoding.EncodeToString([]byte(s)) + `"`
+}
+
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
-// not true any secret values are replaced with "[secret]".
-func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
+// not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
+// replaced with their b"<base64>" rendering.
+func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
+	if v.IsSecret() {
+		if !showSecrets {
+			return property.New("[secret]")
+		}
+		v = v.WithSecret(false)
+	}
 	switch {
+	case v.IsString() && !utf8.ValidString(v.AsString()):
+		return property.New(byteStringDisplay(v.AsString()))
 	case v.IsArray():
-		new := make([]resource.PropertyValue, len(v.ArrayValue()))
-		for i, e := range v.ArrayValue() {
+		arr := v.AsArray()
+		new := make([]property.Value, arr.Len())
+		for i, e := range arr.All() {
 			new[i] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewProperty(new)
-	case v.IsObject():
-		new := make(resource.PropertyMap, len(v.ObjectValue()))
-		for k, e := range v.ObjectValue() {
+		return property.New(new)
+	case v.IsMap():
+		obj := v.AsMap()
+		new := make(map[string]property.Value, obj.Len())
+		for k, e := range obj.All() {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewProperty(new)
-	case v.IsSecret() && showSecrets:
-		return massagePropertyValue(v.SecretValue().Element, showSecrets)
-	case v.IsSecret():
-		return resource.NewProperty("[secret]")
+		return property.New(new)
 	default:
 		return v
 	}
@@ -61,29 +79,29 @@ func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.P
 // This allows us to serialize the resulting map using our existing serialization logic we use for deployments, to
 // produce sane output for stackOutputs.  If we did not do this, SecretValues would be serialized as objects
 // with the signature key and value.
-func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyMap {
-	new := make(resource.PropertyMap, len(m))
-	for k, e := range m {
+func MassageSecrets(m property.Map, showSecrets bool) property.Map {
+	new := make(map[string]property.Value, m.Len())
+	for k, e := range m.All() {
 		new[k] = massagePropertyValue(e, showSecrets)
 	}
-	return new
+	return property.NewMap(new)
 }
 
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
 // on the supplied options, in addition to massaging secret fields.
-func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var inputs resource.PropertyMap
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
 		// For now, replace any secret properties as the string [secret] and then serialize what we have.
-		inputs = MassageSecrets(s.Inputs, false)
-		outputs = MassageSecrets(s.Outputs, false)
+		inputs = resource.ToResourcePropertyMap(MassageSecrets(resource.FromResourcePropertyMap(s.Inputs), false))
+		outputs = resource.ToResourcePropertyMap(MassageSecrets(resource.FromResourcePropertyMap(s.Outputs), false))
 	} else {
 		// If we're suppressing outputs, don't show the root stack properties.
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
 	}
-	return resource.NewState{
+	return pkgresource.NewState{
 		Type:                    s.Type,
 		URN:                     s.URN,
 		Custom:                  s.Custom,
@@ -118,6 +136,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
+		SnippetID:               s.SnippetID,
 	}.Make()
 }
 
@@ -180,6 +199,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			}
 		case engine.StartDebuggingEvent:
 			// We don't want to display debugging events in the JSON output.
+			continue
+		case engine.UpdateStartedEvent:
+			// Only sent to in-process callers, never to the display. Listed for the exhaustive linter.
 			continue
 
 		case engine.StdoutColorEvent:
@@ -279,7 +301,7 @@ func getPreviewMetadataStep(
 	ctx := context.TODO()
 	if m.Old != nil {
 		oldState := stateForJSONOutput(m.Old.State, opts)
-		res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
+		res, _, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.OldState = &res
 		} else {
@@ -288,7 +310,7 @@ func getPreviewMetadataStep(
 	}
 	if m.New != nil {
 		newState := stateForJSONOutput(m.New.State, opts)
-		res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
+		res, _, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.NewState = &res
 		} else {

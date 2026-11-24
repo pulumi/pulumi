@@ -19,6 +19,7 @@ import { Stack } from "./stack";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import type { Resource } from "../resource";
 import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
@@ -127,6 +128,9 @@ export interface Store {
     logErrorCount: number;
     terminated: boolean;
 
+    /** The caller's registration stack for the current Construct request. */
+    parentStackTraceHandle?: string;
+
     /**
      * Tells us if the resource monitor we are connected to is able to support
      * secrets across its RPC interface. When it does, we marshal outputs marked
@@ -200,6 +204,17 @@ export interface Store {
     supportsErrorHooks: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to gates invokes on
+     * the created-ness of their declared dependencies.
+     */
+    supportsInvokeDependsOn: boolean;
+
+    /**
+     * Tells us if the resource monitor supports state migration callbacks.
+     */
+    supportsStateMigrations: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -214,6 +229,73 @@ export interface Store {
      * Tracks the list of resource modules that have been registered.
      */
     resourceModules: Map<string, ResourceModule[]>;
+
+    /**
+     * Caches package references returned by `RegisterPackage` for
+     * parameterized providers. Scoped to the deployment so concurrent inline
+     * programs each register against their own engine and receive distinct
+     * refs.
+     */
+    packageRefs: Map<string, Promise<string>>;
+
+    pendingResourceRegistrations: Map<Resource, PendingResourceRegistration>;
+
+    deferredOutputSources: WeakMap<object, object>;
+}
+
+/**
+ * @internal
+ */
+export type PendingRegistrationPhase = "dependencies" | "inputs" | "parent" | "provider" | "dependency-urns";
+
+/**
+ * @internal
+ */
+export interface PendingResourceRegistration {
+    res: Resource;
+    parent: Resource | undefined;
+    label: string;
+    type?: string;
+    name?: string;
+    phase: PendingRegistrationPhase;
+    inputProperty?: string;
+    awaitingOutput?: unknown;
+    fail?: (err: Error) => void;
+}
+
+/**
+ * @internal
+ */
+export function getDeferredOutputSources(): WeakMap<object, object> {
+    const store = getStore();
+    if (store.deferredOutputSources === undefined) {
+        // deferredOutputSources may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.deferredOutputSources = new WeakMap();
+    }
+    return store.deferredOutputSources;
+}
+
+/**
+ * @internal
+ */
+export function failPendingRegistration(res: Resource, err: Error): void {
+    const pending = getPendingResourceRegistrations();
+    pending.get(res)?.fail?.(err);
+    pending.delete(res);
+}
+
+/**
+ * @internal
+ */
+export function getPendingResourceRegistrations(): Map<Resource, PendingResourceRegistration> {
+    const store = getStore();
+    if (store.pendingResourceRegistrations === undefined) {
+        // pendingResourceRegistrations may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.pendingResourceRegistrations = new Map();
+    }
+    return store.pendingResourceRegistrations;
 }
 
 /**
@@ -253,6 +335,8 @@ export class LocalStore implements Store {
     /* Tracks whether the monitor was terminated while we were waiting for an operation to complete */
     terminated = false;
 
+    parentStackTraceHandle?: string;
+
     supportsSecrets = false;
     supportsResourceReferences = false;
     supportsOutputValues = false;
@@ -264,8 +348,13 @@ export class LocalStore implements Store {
     supportsParameterization = false;
     supportsResourceHooks = false;
     supportsErrorHooks = false;
+    supportsInvokeDependsOn = false;
+    supportsStateMigrations = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
+    packageRefs = new Map<string, Promise<string>>();
+    pendingResourceRegistrations = new Map<Resource, PendingResourceRegistration>();
+    deferredOutputSources = new WeakMap<object, object>();
 }
 
 /**
@@ -276,6 +365,24 @@ export class LocalStore implements Store {
 export function getStackResource(): Stack | undefined {
     const { stackResource } = getStore();
     return stackResource;
+}
+
+/**
+ * Get the caller's registration stack handle for the current Construct request.
+ *
+ * @internal
+ */
+export function getParentStackTraceHandle(): string | undefined {
+    return getStore().parentStackTraceHandle;
+}
+
+/**
+ * Set the caller's registration stack handle for the current Construct request.
+ *
+ * @internal
+ */
+export function setParentStackTraceHandle(handle?: string): void {
+    getStore().parentStackTraceHandle = handle;
 }
 
 /**
@@ -306,6 +413,21 @@ export function getResourceModules(): Map<string, ResourceModule[]> {
         store.resourceModules = new Map<string, ResourceModule[]>();
     }
     return store.resourceModules;
+}
+
+/**
+ * Get the package reference cache for the current stack deployment.
+ *
+ * @internal
+ */
+export function getPackageRefs(): Map<string, Promise<string>> {
+    const store = getStore();
+    if (store.packageRefs === undefined) {
+        // packageRefs may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.packageRefs = new Map<string, Promise<string>>();
+    }
+    return store.packageRefs;
 }
 
 /**

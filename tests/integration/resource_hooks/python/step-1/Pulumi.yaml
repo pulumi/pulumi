@@ -1,3 +1,6 @@
 name: resource_hooks_python
 description: A program with resource hooks
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

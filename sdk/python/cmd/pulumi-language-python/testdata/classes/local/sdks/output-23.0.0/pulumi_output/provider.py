@@ -14,7 +14,7 @@ __all__ = ['ProviderArgs', 'Provider']
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 elide_unknowns: Optional[pulumi.Input[_builtins.bool]] = None):
+                 elide_unknowns: pulumi.Input[Optional[_builtins.bool]] = None):
         """
         The set of arguments for constructing a Provider resource.
         """
@@ -23,11 +23,11 @@ class ProviderArgs:
 
     @_builtins.property
     @pulumi.getter(name="elideUnknowns")
-    def elide_unknowns(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def elide_unknowns(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "elide_unknowns")
 
     @elide_unknowns.setter
-    def elide_unknowns(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def elide_unknowns(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "elide_unknowns", value)
 
 
@@ -37,7 +37,7 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 elide_unknowns: Optional[pulumi.Input[_builtins.bool]] = None,
+                 elide_unknowns: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a Output resource with the given unique name, props, and options.
@@ -69,7 +69,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 elide_unknowns: Optional[pulumi.Input[_builtins.bool]] = None,
+                 elide_unknowns: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

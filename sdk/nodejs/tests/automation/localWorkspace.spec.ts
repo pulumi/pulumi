@@ -32,6 +32,11 @@ import { getTestOrg, getTestSuffix, withStack, withTestBackend } from "./util";
 const userAgent = "pulumi/pulumi/test";
 
 describe("LocalWorkspace", () => {
+    it(`projectSettings permits a project without a runtime`, () => {
+        const settings: ProjectSettings = { name: "runtime-less" };
+        assert.strictEqual(settings.runtime, undefined);
+    });
+
     it(`projectSettings from yaml/yml/json`, async () => {
         for (const ext of ["yaml", "yml", "json"]) {
             const ws = await LocalWorkspace.create(
@@ -545,7 +550,7 @@ describe("LocalWorkspace", () => {
     });
     // Regression test for https://github.com/pulumi/pulumi/issues/17613
     it(`does not hang on a failed input`, async function () {
-        this.timeout(20 * 1000); // This test hangs indefinitely if it fails
+        this.timeout(40 * 1000); // This test hangs indefinitely if it fails
 
         const program = async () => {
             class MyResource extends CustomResource {

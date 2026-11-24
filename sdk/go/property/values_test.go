@@ -30,7 +30,7 @@ import (
 // Calling == does not implement desirable behavior, so we ensure that it is invalid.
 func TestCannotCompareValues(t *testing.T) {
 	t.Parallel()
-	assert.False(t, reflect.TypeOf(Value{}).Comparable())
+	assert.False(t, reflect.TypeFor[Value]().Comparable())
 }
 
 func TestNullEquivalence(t *testing.T) {

@@ -19,9 +19,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -46,6 +50,17 @@ type deploymentExecutor struct {
 	// The number of expected events remaining from step generaton, this tells us we're still expecting events
 	// to be posted back to us from async work such as DiffSteps.
 	asyncEventsExpected int32
+
+	// The completion tokens for each URN. These can be used to wait for a resource to complete before continuing.
+	// This can be used for example for waiting for dependencies in untargeted same steps.
+	chainTokens map[resource.URN]completionToken
+}
+
+func newDeploymentExecutor(deployment *Deployment) *deploymentExecutor {
+	return &deploymentExecutor{
+		deployment:  deployment,
+		chainTokens: map[resource.URN]completionToken{},
+	}
 }
 
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
@@ -88,7 +103,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 func (ex *deploymentExecutor) printPendingOperationsWarning() {
 	var pendingOperations strings.Builder
 	for _, op := range ex.deployment.prev.PendingOperations {
-		pendingOperations.WriteString(fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type))
+		fmt.Fprintf(&pendingOperations, "  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
 	resolutionMessage := "" +
@@ -204,6 +219,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				ex.reportError("", closeErr)
 				err = result.BailError(closeErr)
 			}
+		} else {
+			shutdownCtx, cancel := context.WithTimeout(callerCtx, 5*time.Second)
+			defer cancel()
+			shutdownDone := make(chan struct{})
+			go func() {
+				defer close(shutdownDone)
+				contract.IgnoreError(src.Cancel(shutdownCtx))
+			}()
+			select {
+			case <-shutdownDone:
+			case <-shutdownCtx.Done():
+			}
 		}
 	}()
 
@@ -227,6 +254,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// these events back to the step gen in the main loop with program events.
 	stepGenEvents := make(chan SourceEvent)
 	ex.stepGen = newStepGenerator(ex.deployment, refresh, mode, stepGenEvents)
+	ex.stepGen.skipped = ex.skipped
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -234,6 +262,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	// Set up a step generator and executor for this deployment.
 	ex.stepExec = newStepExecutor(ctx, cancel, ex.deployment, false)
+	// Let state migrations pause resource execution while they update deployment state.
+	ex.stepGen.stepExecutionBarrier = ex.stepExec
 
 	// We iterate the source in its own goroutine because iteration is blocking and we want the main loop to be able to
 	// respond to cancellation requests promptly.
@@ -273,21 +303,57 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		// generator is done when its async counter is 0, i.e. for each async event it said it was going to do we've
 		// seen and posted that event back to it.
 		seenNil := false
+		// The source-event select case is disabled while migrationPlanningFence is set, so at most one migration can
+		// be pending here.
+		var pendingMigrationEvent RegisterResourceEvent
+		migrationPlanningFence := false
+
+		handleEvent := func(event SourceEvent) error {
+			if err := ex.handleSingleEvent(ctx, event); err != nil {
+				if !result.IsBail(err) {
+					logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+					ex.reportError(ex.deployment.generateEventURN(event), err)
+				}
+				cancel()
+				return result.BailError(err)
+			}
+			return nil
+		}
+
+		// A registration with migrations creates a planning fence. The loop stops accepting source events while it
+		// drains earlier planning continuations, handles the migration registration, and drains any planning work it
+		// starts.
 		for {
+			// Earlier planning has drained, so the pending migration registration can now be handled.
+			if pendingMigrationEvent != nil && ex.asyncEventsExpected == 0 {
+				event := pendingMigrationEvent
+				pendingMigrationEvent = nil
+				if err := handleEvent(event); err != nil {
+					return false, err
+				}
+			}
+			// The migration registration has been handled and no earlier or migration-triggered planning continuations
+			// remain, we can unblock source event consumption.
+			if migrationPlanningFence && pendingMigrationEvent == nil && ex.asyncEventsExpected == 0 {
+				migrationPlanningFence = false
+			}
+
+			sourceEvents := incomingEvents
+			if migrationPlanningFence {
+				// A nil channel disables the select case below. Stop accepting source events until all planning before
+				// and for the migration registration is complete.
+				sourceEvents = nil
+			}
+
 			select {
 			case event := <-stepGenEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
 
-				if err := ex.handleSingleEvent(event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event), err)
-					}
-					cancel()
-					return false, result.BailError(err)
+				if err := handleEvent(event); err != nil {
+					return false, err
 				}
 
-			case event := <-incomingEvents:
+			case event := <-sourceEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
 					event.Error)
 
@@ -304,13 +370,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				if event.Event == nil {
 					seenNil = true
 				} else {
-					if err := ex.handleSingleEvent(event.Event); err != nil {
-						if !result.IsBail(err) {
-							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+					registration, hasMigration := event.Event.(RegisterResourceEvent)
+					hasMigration = hasMigration && len(registration.StateMigrations()) != 0
+					if hasMigration {
+						migrationPlanningFence = true
+						if ex.asyncEventsExpected != 0 {
+							pendingMigrationEvent = registration
+							continue
 						}
-						cancel()
-						return false, result.BailError(err)
+					}
+
+					if err := handleEvent(event.Event); err != nil {
+						return false, err
 					}
 				}
 			case <-ctx.Done():
@@ -351,9 +422,14 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	// Finalize the stack outputs.
 	if e := ex.stepExec.stackOutputsEvent; e != nil {
-		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()
+		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored() ||
+			ex.deployment.PostStepError() != nil
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
+			if !result.IsBail(err) {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): error finalizing stack outputs: %v", err)
+				ex.reportError(e.URN(), err)
+			}
 			return nil, result.BailError(err)
 		}
 	}
@@ -404,7 +480,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// If the step generator and step executor were both successful, then we send all the resources
 	// observed to be analyzed. Otherwise, this step is skipped.
 	if err == nil && stepExecutorError == nil {
-		err := ex.stepGen.AnalyzeResources()
+		err := ex.stepGen.AnalyzeResources(ctx)
 		if err != nil {
 			if !result.IsBail(err) {
 				logging.V(4).Infof("deploymentExecutor.Execute(...): error analyzing resources: %v", err)
@@ -414,8 +490,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		}
 	}
 
+	postStepError := ex.deployment.PostStepError()
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() {
+	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() || postStepError != nil {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		ex.reportExecResult("failed")
@@ -425,10 +502,26 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		if stepExecutorError != nil {
 			return nil, result.BailErrorf("step executor errored: %w", stepExecutorError)
 		}
+		if postStepError != nil {
+			return nil, result.BailError(postStepError)
+		}
 		return nil, result.BailErrorf("step generator errored")
 	} else if canceled {
 		ex.reportExecResult("canceled")
 		return nil, result.BailErrorf("canceled")
+	}
+
+	// If any step ended in an await (no other real errors above), surface a dedicated error so the
+	// CLI can exit with the await-specific exit code. Emit a warning-level diagnostic rather than
+	// the standard "update failed" error, since nothing failed — the engine just couldn't await
+	// one or more operations.
+	if ex.stepExec.Awaited() {
+		kind := "update"
+		if ex.deployment.opts.DryRun {
+			kind = "preview"
+		}
+		ex.deployment.Diag().Warningf(diag.RawMessage("", kind+" has awaiting resources"))
+		return nil, result.BailError(&plugin.AwaitError{})
 	}
 
 	return ex.deployment.newPlans.plan(), err
@@ -503,7 +596,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// This is not "true" delete parallelism, since there may be resources that could safely begin
 		// deleting but we won't until the previous set of deletes fully completes. This approximation
 		// is conservative, but correct.
-		erroredDeps := mapset.NewSet[*resource.State]()
+		erroredDeps := mapset.NewSet[*pkgresource.State]()
 		seenErrors := mapset.NewSet[Step]()
 		for _, antichain := range deleteChains {
 			erroredSteps := ex.stepExec.GetErroredSteps()
@@ -517,7 +610,7 @@ func (ex *deploymentExecutor) performPostSteps(
 				if seenErrors.Contains(step) {
 					continue
 				}
-				for _, r := range []*resource.State{step.Res(), step.Old()} {
+				for _, r := range []*pkgresource.State{step.Res(), step.Old()} {
 					if r != nil && dg.Contains(r) {
 						deps := dg.TransitiveDependenciesOf(r)
 						erroredDeps = erroredDeps.Union(deps)
@@ -550,10 +643,27 @@ func (ex *deploymentExecutor) performPostSteps(
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
-	_, allDeps := step.Res().GetAllDependencies()
+	// Some step types (e.g. ExtensionParameterizeStep) operate on the provider rather than a
+	// resource and have no Res(). They can't depend on skipped resources.
+	res := step.Res()
+	if res == nil {
+		return false
+	}
+	return doesResourceDependOn(res, skipped)
+}
+
+func doesResourceDependOn(res *pkgresource.State, skipped mapset.Set[urn.URN]) bool {
+	provider, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true
+		}
+	}
+	if provider != "" {
+		if ref, err := sdkproviders.ParseReference(provider); err == nil {
+			if skipped.Contains(ref.URN()) {
+				return true
+			}
 		}
 	}
 
@@ -562,17 +672,29 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
-func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
+func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event SourceEvent) error {
 	contract.Requiref(event != nil, "event", "must not be nil")
 
+	// A program may still send references that use resource names from before a migration.
+	normalizedEvent, err := ex.deployment.normalizeStateMigrationSourceEvent(event)
+	if err != nil {
+		return err
+	}
+	event = normalizedEvent
+
+	// Record errored steps before generating new ones, so that the step generator doesn't send
+	// resources that depend on them (or on a failed provider) to providers or analyzers.
+	for _, errored := range ex.stepExec.GetErroredSteps() {
+		ex.skipped.Add(errored.Res().URN)
+	}
+
 	var steps []Step
-	var err error
 	switch e := event.(type) {
 	case ContinueResourceImportEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceImportEvent")
 		ex.asyncEventsExpected--
 		var async bool
-		steps, async, err = ex.stepGen.ContinueStepsFromImport(e)
+		steps, async, err = ex.stepGen.ContinueStepsFromImport(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -580,7 +702,15 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
 		ex.asyncEventsExpected--
 		var async bool
-		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
+		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(ctx, e)
+		if async {
+			ex.asyncEventsExpected++
+		}
+	case ContinueExtensionEvent:
+		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueExtensionEvent")
+		ex.asyncEventsExpected--
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromExtension(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -591,7 +721,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		var async bool
-		steps, async, err = ex.stepGen.GenerateSteps(e)
+		steps, async, err = ex.stepGen.GenerateSteps(ctx, e)
 		if async {
 			ex.asyncEventsExpected++
 		}
@@ -600,6 +730,11 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
+		// A skipped resource was never operated on, so there's nothing to record its outputs against.
+		if ex.skipped.Contains(e.URN()) {
+			e.Done()
+			return nil
+		}
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 
@@ -627,7 +762,21 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 		return nil
 	}
 
-	ex.stepExec.ExecuteSerial(newSteps)
+	stepURNs := make([]resource.URN, len(newSteps))
+	for i, step := range newSteps {
+		stepURNs[i] = step.URN()
+		if same, ok := step.(*SameStep); ok {
+			for _, urn := range same.waitURNs {
+				if tok, has := ex.chainTokens[urn]; has {
+					same.waitTokens = append(same.waitTokens, tok)
+				}
+			}
+		}
+	}
+	tok := ex.stepExec.ExecuteSerial(newSteps)
+	for _, urn := range stepURNs {
+		ex.chainTokens[urn] = tok
+	}
 	return nil
 }
 
@@ -692,7 +841,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 	// old snapshot.  If they did provider --target's then only create refresh steps for those
 	// specific targets.
 	steps := []Step{}
-	resourceToStep := map[*resource.State]Step{}
+	resourceToStep := map[*pkgresource.State]Step{}
 
 	// We also keep track of dependents as we find them in order to exclude
 	// transitive dependents as well.
@@ -743,6 +892,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
+				if err := ex.deployment.ensureProviderExtension(res); err != nil {
+					return fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
+				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)
 				step := NewRefreshStep(ex.deployment, nil, res, oldViews, nil)
@@ -771,6 +923,9 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 				err := ex.deployment.EnsureProvider(res.Provider)
 				if err != nil {
 					return fmt.Errorf("could not load provider for resource %v: %w", res.URN, err)
+				}
+				if err := ex.deployment.ensureProviderExtension(res); err != nil {
+					return fmt.Errorf("could not parameterize extension for resource %v: %w", res.URN, err)
 				}
 
 				oldViews := ex.deployment.GetOldViews(res.URN)
@@ -838,7 +993,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, refreshBeforeUp
 	return nil
 }
 
-func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.State]Step) {
+func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*pkgresource.State]Step) {
 	// Rebuild this deployment's map of old resources and dependency graph, stripping out any deleted
 	// resources and repairing dependency lists as necessary. Note that this updates the base
 	// snapshot _in memory_, so it is critical that any components that use the snapshot refer to
@@ -867,13 +1022,13 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	// Note that the correctness of this process depends on the fact that the list of resources is a
 	// topological sort of its corresponding dependency graph, so a resource always appears in the
 	// list after any resources on which it may depend.
-	resources := []*resource.State{}
+	resources := []*pkgresource.State{}
 	referenceable := make(map[resource.URN]bool)
-	olds := make(map[resource.URN]*resource.State)
-	allOlds := make(map[resource.URN][]*resource.State)
-	oldViews := make(map[resource.URN][]*resource.State)
+	olds := make(map[resource.URN]*pkgresource.State)
+	allOlds := make(map[resource.URN][]*pkgresource.State)
+	oldViews := make(map[resource.URN][]*pkgresource.State)
 	for _, s := range ex.deployment.prev.Resources {
-		var old, new *resource.State
+		var old, new *pkgresource.State
 		if step, has := resourceToStep[s]; has {
 			// We produced a refresh step for this specific resource.  Use the new information about
 			// its dependencies during the update.
@@ -894,35 +1049,36 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		newDeps := []resource.URN{}
 		newPropDeps := map[resource.PropertyKey][]resource.URN{}
+		newReplaceWith := []resource.URN{}
 
 		_, allDeps := new.GetAllDependencies()
 		for _, dep := range allDeps {
 			switch dep.Type {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				// We handle parents separately later on (see undangleParentResources),
 				// so we'll skip over them here.
 				continue
-			case resource.ResourceDependency:
+			case pkgresource.ResourceDependency:
 				if referenceable[dep.URN] {
 					newDeps = append(newDeps, dep.URN)
 				}
-			case resource.ResourcePropertyDependency:
+			case pkgresource.ResourcePropertyDependency:
 				if referenceable[dep.URN] {
 					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
 				}
-			case resource.ResourceDeletedWith:
+			case pkgresource.ResourceDeletedWith:
 				if !referenceable[dep.URN] {
 					new.DeletedWith = ""
 				}
-			case resource.ResourceReplaceWith:
-				if !referenceable[dep.URN] {
-					new.ReplaceWith = nil
+			case pkgresource.ResourceReplaceWith:
+				if referenceable[dep.URN] {
+					newReplaceWith = append(newReplaceWith, dep.URN)
 				}
 			}
 		}
 
-		// Since we can only have shrunk the sets of dependencies and property
-		// dependencies, we'll only update them if they were non empty to begin
+		// Since we can only have shrunk the sets of dependencies, property dependencies,
+		// and replace-with dependencies, we'll only update them if they were non empty to begin
 		// with. This is to avoid e.g. replacing a nil input with an non-nil but
 		// empty output, which while equivalent in many cases is not the same and
 		// could result in subtly different behaviour in some parts of the engine.
@@ -931,6 +1087,9 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 		if len(new.PropertyDependencies) > 0 {
 			new.PropertyDependencies = newPropDeps
+		}
+		if len(new.ReplaceWith) > 0 {
+			new.ReplaceWith = newReplaceWith
 		}
 
 		// Add this resource to the resource list and mark it as referenceable.
@@ -958,7 +1117,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 	ex.deployment.oldViews = oldViews
 }
 
-func undangleParentResources(undeleted map[resource.URN]bool, resources []*resource.State) {
+func undangleParentResources(undeleted map[resource.URN]bool, resources []*pkgresource.State) {
 	// Since a refresh may delete arbitrary resources, we need to handle the case where
 	// the parent of a still existing resource is deleted.
 	//

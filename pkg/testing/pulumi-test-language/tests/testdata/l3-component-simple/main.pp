@@ -1,5 +1,9 @@
+resource "input" "simple:index:Resource" {
+    value = true
+}
+
 component someComponent "./myComponent" {
-    input = true
+    input = input.value
 }
 
 output result { 

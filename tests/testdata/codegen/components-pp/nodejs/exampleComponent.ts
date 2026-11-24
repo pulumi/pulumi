@@ -57,26 +57,26 @@ export class ExampleComponent extends pulumi.ComponentResource {
 
         // Example of iterating a list of objects
         const serverPasswords: random.RandomPassword[] = [];
-        for (const range = {value: 0}; range.value < args.servers.length; range.value++) {
-            serverPasswords.push(new random.RandomPassword(`${name}-serverPasswords-${range.value}`, {
+        for (let range = 0; range < args.servers.length; range++) {
+            serverPasswords.push(new random.RandomPassword(`${name}-serverPasswords-${range}`, {
                 length: 16,
                 special: true,
-                overrideSpecial: args.servers[range.value].name,
+                overrideSpecial: args.servers[range].name,
             }, {
             parent: this,
         }));
         }
 
         // Example of iterating a map of objects
-        const zonePasswords: random.RandomPassword[] = [];
+        const zonePasswords: {[key: string]: random.RandomPassword} = {};
         for (const range of Object.entries(args.deploymentZones).sort().map(([k, v]) => ({key: k, value: v}))) {
-            zonePasswords.push(new random.RandomPassword(`${name}-zonePasswords-${range.key}`, {
+            zonePasswords[range.key] = new random.RandomPassword(`${name}-zonePasswords-${range.key}`, {
                 length: 16,
                 special: true,
                 overrideSpecial: range.value.zone,
             }, {
             parent: this,
-        }));
+        });
         }
 
         const simpleComponent = new SimpleComponent(`${name}-simpleComponent`, {

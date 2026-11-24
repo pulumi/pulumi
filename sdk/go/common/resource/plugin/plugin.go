@@ -80,8 +80,11 @@ type PulumiPluginJSON struct {
 	Version string `json:"version,omitempty"`
 	// Optional plugin server. If not set, the default server is used when installing the plugin.
 	Server string `json:"server,omitempty"`
-	// Parameterization information for the package.
+	// Replacement parameterization for the package.
 	Parameterization *PulumiParameterizationJSON `json:"parameterization,omitempty"`
+	// Extension parameterization for the package. The package extends the base
+	// plugin in place rather than replacing it.
+	ExtensionParameterization *PulumiParameterizationJSON `json:"extensionParameterization,omitempty"`
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
@@ -469,6 +472,19 @@ func parsePort(portString string) (int, error) {
 	return port, nil
 }
 
+// cloudCredentialEnvVars returns the KEY=value environment entries the context injects into a
+// plugin. They are passed to every plugin kind as part of `ExecPlugin`.
+func cloudCredentialEnvVars(ctx *Context) []string {
+	if ctx == nil {
+		return nil
+	}
+	vars := make([]string, 0, len(ctx.CloudCredentialEnv))
+	for k, v := range ctx.CloudCredentialEnv {
+		vars = append(vars, k+"="+v)
+	}
+	return vars
+}
+
 // ExecPlugin starts a plugin executable either via a direct exec or via a language runtime.
 func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	pluginArgs []string, pwd string, e env.Env, attachDebugger bool,
@@ -491,6 +507,12 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	if otelEndpoint := cmdutil.OTelEndpoint(); otelEndpoint != "" {
 		environment = append(environment, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEndpoint)
 	}
+	if logEP := cmdutil.LogReceiverEndpoint(); logEP != "" {
+		environment = append(environment, "PULUMI_LOG_OTLP_ENDPOINT="+logEP)
+	}
+
+	// Appended last to win over ambient values.
+	environment = append(environment, cloudCredentialEnvVars(ctx)...)
 
 	// Check to see if we have a binary we can invoke directly
 	stat, err := os.Stat(bin)
@@ -534,7 +556,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("getting absolute path for plugin directory: %w", err)
 		}
 
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name())
+		runtime, err := ctx.Host.LanguageRuntime(ctx, runtimeInfo.Name())
 		if err != nil {
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
@@ -549,7 +571,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			Env:              environment,
 			Kind:             string(kind),
 			AttachDebugger:   attachDebugger,
-			LoaderAddress:    ctx.Host.LoaderAddr(),
+			LoaderAddress:    ctx.LoaderAddr(),
 		})
 		if err != nil {
 			return nil, err //nolint:govet // lostcancel

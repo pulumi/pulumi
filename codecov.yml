@@ -50,9 +50,16 @@ ignore:
   - "sdk/proto"
   - "sdk/python/lib/pulumi/runtime/proto"
 
+  # Don't count the auto-generated low-level CLI interfaces against coverage;
+  # they are mechanical renderings of the CLI spec and are exercised via the
+  # high-level Automation API.
+  - "sdk/nodejs/automation/interface"
+  - "sdk/python/lib/pulumi/automation/interface"
+
   # Ignore code generators.
   - "sdk/go/internal/gen-pux-applyn"
   - "sdk/nodejs/tools"
+  - "sdk/python/tools/automation"
 
   # More generally, none of the test data
   # should count against coverage.

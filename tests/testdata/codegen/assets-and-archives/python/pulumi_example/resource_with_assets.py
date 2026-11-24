@@ -22,8 +22,8 @@ __all__ = ['ResourceWithAssetsArgs', 'ResourceWithAssets']
 class ResourceWithAssetsArgs:
     def __init__(__self__, *,
                  source: pulumi.Input[Union[pulumi.Asset, pulumi.Archive]],
-                 archive: Optional[pulumi.Input[pulumi.Archive]] = None,
-                 nested: Optional[pulumi.Input['TypeWithAssetsArgs']] = None):
+                 archive: pulumi.Input[Optional[pulumi.Archive]] = None,
+                 nested: pulumi.Input[Optional['TypeWithAssetsArgs']] = None):
         """
         The set of arguments for constructing a ResourceWithAssets resource.
         """
@@ -44,20 +44,20 @@ class ResourceWithAssetsArgs:
 
     @_builtins.property
     @pulumi.getter
-    def archive(self) -> Optional[pulumi.Input[pulumi.Archive]]:
+    def archive(self) -> pulumi.Input[Optional[pulumi.Archive]]:
         return pulumi.get(self, "archive")
 
     @archive.setter
-    def archive(self, value: Optional[pulumi.Input[pulumi.Archive]]):
+    def archive(self, value: pulumi.Input[Optional[pulumi.Archive]]):
         pulumi.set(self, "archive", value)
 
     @_builtins.property
     @pulumi.getter
-    def nested(self) -> Optional[pulumi.Input['TypeWithAssetsArgs']]:
+    def nested(self) -> pulumi.Input[Optional['TypeWithAssetsArgs']]:
         return pulumi.get(self, "nested")
 
     @nested.setter
-    def nested(self, value: Optional[pulumi.Input['TypeWithAssetsArgs']]):
+    def nested(self, value: pulumi.Input[Optional['TypeWithAssetsArgs']]):
         pulumi.set(self, "nested", value)
 
 
@@ -67,9 +67,9 @@ class ResourceWithAssets(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 archive: Optional[pulumi.Input[pulumi.Archive]] = None,
-                 nested: Optional[pulumi.Input[Union['TypeWithAssetsArgs', 'TypeWithAssetsArgsDict']]] = None,
-                 source: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
+                 archive: pulumi.Input[Optional[pulumi.Archive]] = None,
+                 nested: pulumi.Input[Optional[Union['TypeWithAssetsArgs', 'TypeWithAssetsArgsDict', 'outputs.TypeWithAssets']]] = None,
+                 source: pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]] = None,
                  __props__=None):
         """
         Create a ResourceWithAssets resource with the given unique name, props, and options.
@@ -101,9 +101,9 @@ class ResourceWithAssets(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 archive: Optional[pulumi.Input[pulumi.Archive]] = None,
-                 nested: Optional[pulumi.Input[Union['TypeWithAssetsArgs', 'TypeWithAssetsArgsDict']]] = None,
-                 source: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
+                 archive: pulumi.Input[Optional[pulumi.Archive]] = None,
+                 nested: pulumi.Input[Optional[Union['TypeWithAssetsArgs', 'TypeWithAssetsArgsDict', 'outputs.TypeWithAssets']]] = None,
+                 source: pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -145,6 +145,12 @@ class ResourceWithAssets(pulumi.CustomResource):
         __props__.__dict__["asset"] = None
         __props__.__dict__["nested"] = None
         return ResourceWithAssets(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'example:index:ResourceWithAssets', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

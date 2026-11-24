@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"regexp"
 	"sort"
 	"strings"
@@ -234,10 +234,7 @@ func convertTraceToSamples(root *appdash.Trace, start time.Time, quantum time.Du
 	})
 
 	// determine where to start sampling
-	delta := timespanEvent.Start().Sub(start)
-	if delta < 0 {
-		delta = 0
-	}
+	delta := max(timespanEvent.Start().Sub(start), 0)
 
 	// We are multiplying a duration by a duration here, which can be buggy (e.g. consider that time.Second * time.Second
 	// is *not* one second, and that in general multiplying durations is not well-defined). However, in this case it's
@@ -271,7 +268,7 @@ func convertTraceToSamples(root *appdash.Trace, start time.Time, quantum time.Du
 	return result, nil
 }
 
-func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
+func convertTraceToPprof(w io.Writer, quantum time.Duration, querier appdash.Queryer) error {
 	roots, err := traceRoots(querier)
 	if err != nil {
 		return err
@@ -349,7 +346,7 @@ func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
 		Function: functions,
 	}
 
-	return p.Write(os.Stdout)
+	return p.Write(w)
 }
 
 type otelSpan struct {
@@ -651,8 +648,8 @@ func (t *otelTrace) getNextSpanID() trace.SpanID {
 	return id
 }
 
-func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
-	fmt.Printf("converting trace...\n")
+func exportTraceToOtel(w io.Writer, querier appdash.Queryer, ignoreLogSpans bool) error {
+	fmt.Fprintf(w, "converting trace...\n")
 
 	roots, err := traceRoots(querier)
 	if err != nil {
@@ -669,7 +666,7 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 		return err
 	}
 
-	// Conver the trace roots.
+	// Convert the trace roots.
 	for _, r := range roots {
 		if err = t.newSpan(r, nil); err != nil {
 			return err
@@ -677,26 +674,23 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 	}
 
 	// Export the results to the collector.
-	fmt.Print("dialing collector...\n")
+	fmt.Fprint(w, "dialing collector...\n")
 	exporter, err := otlptracegrpc.New(context.Background())
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("exporting spans for trace %v...\n", t.id)
+	fmt.Fprintf(w, "exporting spans for trace %v...\n", t.id)
 	spans := t.spans
 	for len(spans) > 0 {
-		batchSize := 1
-		if len(spans) < batchSize {
-			batchSize = len(spans)
-		}
+		batchSize := min(len(spans), 1)
 		if err = exporter.ExportSpans(context.Background(), spans[:batchSize]); err != nil {
 			return err
 		}
 		spans = spans[batchSize:]
 	}
 
-	fmt.Printf("shutting down...\n")
+	fmt.Fprintf(w, "shutting down...\n")
 	return exporter.Shutdown(context.Background())
 }
 
@@ -720,9 +714,9 @@ func NewConvertTraceCmd() *cobra.Command {
 				return err
 			}
 			if otel {
-				return exportTraceToOtel(store, ignoreLogSpans)
+				return exportTraceToOtel(cmd.OutOrStdout(), store, ignoreLogSpans)
 			}
-			return convertTraceToPprof(quantum, store)
+			return convertTraceToPprof(cmd.OutOrStdout(), quantum, store)
 		},
 	}
 

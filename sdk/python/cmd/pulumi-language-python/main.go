@@ -660,6 +660,7 @@ func packageDependencyFromPluginJSON(
 ) (*pulumirpc.PackageDependency, error) {
 	var name, version, server string
 	var parameterization *pulumirpc.PackageParameterization
+	var extension *pulumirpc.PackageParameterization
 	if p != nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
@@ -673,6 +674,14 @@ func packageDependencyFromPluginJSON(
 				Name:    p.Parameterization.Name,
 				Version: p.Parameterization.Version,
 				Value:   p.Parameterization.Value,
+			}
+		}
+
+		if p.ExtensionParameterization != nil {
+			extension = &pulumirpc.PackageParameterization{
+				Name:    p.ExtensionParameterization.Name,
+				Version: p.ExtensionParameterization.Version,
+				Value:   p.ExtensionParameterization.Value,
 			}
 		}
 
@@ -710,6 +719,7 @@ func packageDependencyFromPluginJSON(
 		Kind:             "resource",
 		Server:           server,
 		Parameterization: parameterization,
+		Extension:        extension,
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
@@ -840,8 +850,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, *debugger, error) {
 	err := checkForPackage(ctx, "debugpy", opts)
 	if err != nil {
-		var installError *NotInstalledError
-		if errors.As(err, &installError) {
+		if installError, ok := errors.AsType[*NotInstalledError](err); ok {
 			return nil, nil, fmt.Errorf("debugpy is not installed. %s", installError.InstallMessage)
 		}
 		return nil, nil, err
@@ -1112,13 +1121,13 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if err != nil {
 			return nil, err
 		}
-		typecheckerCmd.Stdout = os.Stdout
-		typecheckerCmd.Stderr = os.Stderr
+		var typecheckerOutput bytes.Buffer
+		typecheckerCmd.Stdout = io.MultiWriter(os.Stdout, &typecheckerOutput)
+		typecheckerCmd.Stderr = io.MultiWriter(os.Stderr, &typecheckerOutput)
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
-			var installError *NotInstalledError
-			if errors.As(err, &installError) {
+			if installError, ok := errors.AsType[*NotInstalledError](err); ok {
 				return nil, fmt.Errorf("The typechecker option is set to %s, but %s is not installed. %s",
 					typechecker, typechecker, installError.InstallMessage)
 			}
@@ -1126,9 +1135,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
-				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			if output := typecheckerOutput.String(); output != "" {
+				return nil, fmt.Errorf("%s failed: %w\n%s", typechecker, err, output)
 			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
@@ -1329,29 +1337,17 @@ func (host *pythonLanguageHost) InstallDependencies(
 		return err
 	}
 
-	// For plugins with pyproject.toml (bootstrap-less mode), we need to install the package itself
-	// in addition to any dependencies listed in requirements.txt.
+	// For plugins with a buildable pyproject.toml (bootstrap-less mode), we need to install the package itself
+	// in addition to its dependencies.
 	if req.IsPlugin {
 		buildable, err := toolchain.IsBuildablePackage(req.Info.ProgramDirectory)
 		if err != nil {
 			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
 		}
 		if buildable {
-			// Ensure the virtual environment exists first
-			if err := tc.EnsureVenv(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+			if err := tc.InstallPackage(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 				true /*showOutput*/, stdout, stderr); err != nil {
-				return fmt.Errorf("creating virtual environment: %w", err)
-			}
-
-			// Install the package itself (pip install .)
-			cmd, err := tc.ModuleCommand(server.Context(), "pip", "install", req.Info.ProgramDirectory)
-			if err != nil {
-				return fmt.Errorf("preparing pip install command: %w", err)
-			}
-			cmd.Stdout = stdout
-			cmd.Stderr = stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("installing package: %w", err)
+				return err
 			}
 		}
 	}
@@ -1384,7 +1380,14 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		// Pip is always available in a Python installation or virtual environment.
 		choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](3)
 		choices = append(choices, pipOption)
-		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
+		others := plugin.MakeExecutablePromptChoices("poetry", "uv")
+		// Only offer the other toolchains if at least one is installed. With pip as the single choice, the CLI
+		// uses it without prompting.
+		if slices.ContainsFunc(others, func(c *pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue) bool {
+			return c.DisplayName == c.StringValue
+		}) {
+			choices = append(choices, others...)
+		}
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
 			Description: "The toolchain to use for installing dependencies and running the program",
@@ -1517,7 +1520,7 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 //     entrypoint.
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+) (err error) {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
 	ctx := server.Context()
 
@@ -1640,6 +1643,11 @@ func (host *pythonLanguageHost) RunPlugin(
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
+		defer func() {
+			if err != nil {
+				policyPackServer.Abort(err)
+			}
+		}()
 
 		config, err := policyPackServer.AwaitConfiguration(ctx)
 		if err != nil {
@@ -1699,11 +1707,9 @@ func (host *pythonLanguageHost) RunPlugin(
 	}
 
 	if err = run(); err != nil {
-		var exiterr *exec.ExitError
-		if errors.As(err, &exiterr) {
+		if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				return server.Send(&pulumirpc.RunPluginResponse{
-					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
 			}
@@ -1788,7 +1794,6 @@ func (host *pythonLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for python, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1797,7 +1802,7 @@ func (host *pythonLanguageHost) GenerateProgram(
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), bindOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1891,7 +1896,7 @@ func (host *pythonLanguageHost) Handshake(ctx context.Context,
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
@@ -1988,7 +1993,7 @@ func (host *pythonLanguageHost) Link(
 			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
 		}
 		packages[packageName] = dep.Path
-		imports.WriteString(fmt.Sprintf("  import %s as %s\n", packageName, importName))
+		fmt.Fprintf(&imports, "  import %s as %s\n", packageName, importName)
 	}
 	instructions += imports.String()
 

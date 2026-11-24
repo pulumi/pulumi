@@ -140,6 +140,7 @@ message AnalyzerResourceOptions {
         double create = 1; // The create resource timeout in seconds.
         double update = 2; // The update resource timeout in seconds.
         double delete = 3; // The delete resource timeout in seconds.
+        double read = 4; // The read resource timeout in seconds.
     }
 
     bool protect = 1;                            // true if the resource should be marked protected.

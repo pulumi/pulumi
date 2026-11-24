@@ -15,9 +15,7 @@ func main() {
 		res1, err := mod.NewResource(ctx, "res1", &mod.ResourceArgs{
 			Text: mod.ConcatWorldOutput(ctx, mod.ConcatWorldOutputArgs{
 				Value: pulumi.String("hello"),
-			}, nil).ApplyT(func(invoke mod.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -28,16 +26,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out1", callCall.ApplyT(func(call mod.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out1", callCall.Output())
 		// Next use just the module name as defined by the module format
 		res2, err := mod.NewResource(ctx, "res2", &mod.ResourceArgs{
 			Text: mod.ConcatWorldOutput(ctx, mod.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
-			}, nil).ApplyT(func(invoke mod.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -48,16 +42,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out2", callCall1.ApplyT(func(call mod.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out2", callCall1.Output())
 		// First use the fully specified token to invoke and create a resource.
 		res3, err := nested.NewResource(ctx, "res3", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("hello"),
-			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -68,16 +58,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out3", callCall2.ApplyT(func(call nested.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out3", callCall2.Output())
 		// Next use just the module name as defined by the module format
 		res4, err := nested.NewResource(ctx, "res4", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
-			}, nil).ApplyT(func(invoke nested.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -88,16 +74,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out4", callCall3.ApplyT(func(call nested.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out4", callCall3.Output())
 		// First use the fully specified token to invoke and create a resource in the index module.
 		res5, err := moduleformat.NewResource(ctx, "res5", &moduleformat.ResourceArgs{
 			Text: moduleformat.ConcatWorldOutput(ctx, moduleformat.ConcatWorldOutputArgs{
 				Value: pulumi.String("bonjour"),
-			}, nil).ApplyT(func(invoke moduleformat.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -108,16 +90,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out5", callCall4.ApplyT(func(call moduleformat.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out5", callCall4.Output())
 		// Next use just the module name as defined by the module format
 		res6, err := moduleformat.NewResource(ctx, "res6", &moduleformat.ResourceArgs{
 			Text: moduleformat.ConcatWorldOutput(ctx, moduleformat.ConcatWorldOutputArgs{
 				Value: pulumi.String("youkoso"),
-			}, nil).ApplyT(func(invoke moduleformat.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -128,16 +106,12 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out6", callCall5.ApplyT(func(call moduleformat.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out6", callCall5.Output())
 		// Next use the short, 2 component, form because this is the index module
 		res7, err := moduleformat.NewResource(ctx, "res7", &moduleformat.ResourceArgs{
 			Text: moduleformat.ConcatWorldOutput(ctx, moduleformat.ConcatWorldOutputArgs{
 				Value: pulumi.String("guten tag"),
-			}, nil).ApplyT(func(invoke moduleformat.ConcatWorldResult) (string, error) {
-				return invoke.Result, nil
-			}).(pulumi.StringOutput),
+			}, nil).Result(),
 		})
 		if err != nil {
 			return err
@@ -148,9 +122,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out7", callCall6.ApplyT(func(call moduleformat.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out7", callCall6.Output())
 		return nil
 	})
 }

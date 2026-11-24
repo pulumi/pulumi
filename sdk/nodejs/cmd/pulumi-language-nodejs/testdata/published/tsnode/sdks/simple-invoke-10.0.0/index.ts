@@ -5,6 +5,21 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { EchoMapArgs, EchoMapResult, EchoMapOutputArgs } from "./echoMap";
+export const echoMap: typeof import("./echoMap").echoMap = null as any;
+export const echoMapOutput: typeof import("./echoMap").echoMapOutput = null as any;
+utilities.lazyLoad(exports, ["echoMap","echoMapOutput"], () => require("./echoMap"));
+
+export { GetTextArgs, GetTextResult, GetTextOutputArgs } from "./getText";
+export const getText: typeof import("./getText").getText = null as any;
+export const getTextOutput: typeof import("./getText").getTextOutput = null as any;
+utilities.lazyLoad(exports, ["getText","getTextOutput"], () => require("./getText"));
+
+export { InvokeWithDefaultArgs, InvokeWithDefaultResult, InvokeWithDefaultOutputArgs } from "./invokeWithDefault";
+export const invokeWithDefault: typeof import("./invokeWithDefault").invokeWithDefault = null as any;
+export const invokeWithDefaultOutput: typeof import("./invokeWithDefault").invokeWithDefaultOutput = null as any;
+utilities.lazyLoad(exports, ["invokeWithDefault","invokeWithDefaultOutput"], () => require("./invokeWithDefault"));
+
 export { MyInvokeArgs, MyInvokeResult, MyInvokeOutputArgs } from "./myInvoke";
 export const myInvoke: typeof import("./myInvoke").myInvoke = null as any;
 export const myInvokeOutput: typeof import("./myInvoke").myInvokeOutput = null as any;

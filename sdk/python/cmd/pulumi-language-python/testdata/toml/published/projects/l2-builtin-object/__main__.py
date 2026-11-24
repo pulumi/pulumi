@@ -8,3 +8,5 @@ pulumi.export("lookupOutputDefault", res.output_map.apply(lambda output_map: out
 pulumi.export("entriesObjectOutput", res.output_object.apply(lambda output_object: [{"key": k, "value": v} for k, v in sorted(output_object.items())]))
 pulumi.export("lookupObjectOutput", res.output_object.apply(lambda output_object: output_object.get("output", "default")))
 pulumi.export("lookupObjectOutputDefault", res.output_object.apply(lambda output_object: output_object.get("missing", "default")))
+pulumi.export("lengthOutput", res.output_map.apply(lambda output_map: len(output_map)))
+pulumi.export("lengthObjectOutput", res.output_object.apply(lambda output_object: len(output_object)))

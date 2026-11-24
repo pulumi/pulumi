@@ -19,6 +19,16 @@ export class Person extends pulumi.CustomResource {
         return new Person(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Person resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("example::Person", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'example::Person';
 
@@ -62,6 +72,6 @@ export class Person extends pulumi.CustomResource {
  * The set of arguments for constructing a Person resource.
  */
 export interface PersonArgs {
-    name?: pulumi.Input<string>;
-    pets?: pulumi.Input<pulumi.Input<inputs.PetArgs>[]>;
+    name?: pulumi.Input<string | undefined>;
+    pets?: pulumi.Input<pulumi.Input<inputs.PetArgs>[] | undefined>;
 }

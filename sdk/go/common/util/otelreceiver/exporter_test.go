@@ -65,7 +65,7 @@ func TestResolveFilePath(t *testing.T) {
 	t.Run("empty path returns error", func(t *testing.T) {
 		t.Parallel()
 		_, err := resolveFilePath("file://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -86,27 +86,27 @@ func TestNewExporterSchemes(t *testing.T) {
 	t.Run("empty endpoint returns error", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("unsupported scheme returns error", func(t *testing.T) {
 		t.Parallel()
-		_, err := NewExporter("https://example.com")
-		require.Error(t, err)
+		_, err := NewExporter("ftp://example.com")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "unsupported endpoint scheme")
 	})
 
 	t.Run("grpc:// scheme requires a host", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("grpc://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "host is required")
 	})
 
 	t.Run("grpcs:// scheme requires a host", func(t *testing.T) {
 		t.Parallel()
 		_, err := NewExporter("grpcs://")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "host is required")
 	})
 
@@ -137,6 +137,61 @@ func TestNewExporterSchemes(t *testing.T) {
 		grpcExp, ok := exp.(*GRPCExporter)
 		require.True(t, ok, "expected *GRPCExporter")
 		require.Equal(t, []string{"testkey"}, grpcExp.headers["x-api-key"])
+		require.NoError(t, exp.Shutdown(t.Context()))
+	})
+
+	t.Run("http:// scheme requires a host", func(t *testing.T) {
+		t.Parallel()
+		_, err := NewExporter("http://")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		require.Contains(t, err.Error(), "host is required")
+	})
+
+	t.Run("https:// scheme requires a host", func(t *testing.T) {
+		t.Parallel()
+		_, err := NewExporter("https://")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		require.Contains(t, err.Error(), "host is required")
+	})
+
+	t.Run("https:// defaults to the OTLP traces path", func(t *testing.T) {
+		t.Parallel()
+		exp, err := NewExporter("https://api.example.com")
+		require.NoError(t, err)
+		httpExp, ok := exp.(*HTTPExporter)
+		require.True(t, ok, "expected *HTTPExporter")
+		require.Equal(t, "https://api.example.com/v1/traces", httpExp.url)
+		require.NoError(t, exp.Shutdown(t.Context()))
+	})
+
+	t.Run("https:// preserves an explicit path", func(t *testing.T) {
+		t.Parallel()
+		exp, err := NewExporter("https://api.example.com:4318/custom/traces")
+		require.NoError(t, err)
+		httpExp, ok := exp.(*HTTPExporter)
+		require.True(t, ok, "expected *HTTPExporter")
+		require.Equal(t, "https://api.example.com:4318/custom/traces", httpExp.url)
+		require.NoError(t, exp.Shutdown(t.Context()))
+	})
+
+	t.Run("https:// exporter carries headers", func(t *testing.T) {
+		t.Parallel()
+		exp, err := NewExporter("https://api.example.com?x-api-key=testkey")
+		require.NoError(t, err)
+		httpExp, ok := exp.(*HTTPExporter)
+		require.True(t, ok, "expected *HTTPExporter")
+		require.Equal(t, "testkey", httpExp.headers["x-api-key"])
+		require.Equal(t, "https://api.example.com/v1/traces", httpExp.url)
+		require.NoError(t, exp.Shutdown(t.Context()))
+	})
+
+	t.Run("http:// creates exporter", func(t *testing.T) {
+		t.Parallel()
+		exp, err := NewExporter("http://localhost:4318")
+		require.NoError(t, err)
+		httpExp, ok := exp.(*HTTPExporter)
+		require.True(t, ok, "expected *HTTPExporter")
+		require.Equal(t, "http://localhost:4318/v1/traces", httpExp.url)
 		require.NoError(t, exp.Shutdown(t.Context()))
 	})
 }

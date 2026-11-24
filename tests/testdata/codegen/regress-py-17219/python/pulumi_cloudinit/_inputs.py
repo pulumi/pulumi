@@ -23,17 +23,17 @@ __all__ = [
 
 class ConfigPartArgsDict(TypedDict):
     content: pulumi.Input[_builtins.str]
-    content_type: NotRequired[pulumi.Input[_builtins.str]]
-    filename: NotRequired[pulumi.Input[_builtins.str]]
-    merge_type: NotRequired[pulumi.Input[_builtins.str]]
+    content_type: NotRequired[pulumi.Input[Optional[_builtins.str]]]
+    filename: NotRequired[pulumi.Input[Optional[_builtins.str]]]
+    merge_type: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class ConfigPartArgs:
     def __init__(__self__, *,
                  content: pulumi.Input[_builtins.str],
-                 content_type: Optional[pulumi.Input[_builtins.str]] = None,
-                 filename: Optional[pulumi.Input[_builtins.str]] = None,
-                 merge_type: Optional[pulumi.Input[_builtins.str]] = None):
+                 content_type: pulumi.Input[Optional[_builtins.str]] = None,
+                 filename: pulumi.Input[Optional[_builtins.str]] = None,
+                 merge_type: pulumi.Input[Optional[_builtins.str]] = None):
         pulumi.set(__self__, "content", content)
         if content_type is not None:
             pulumi.set(__self__, "content_type", content_type)
@@ -53,29 +53,29 @@ class ConfigPartArgs:
 
     @_builtins.property
     @pulumi.getter(name="contentType")
-    def content_type(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def content_type(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "content_type")
 
     @content_type.setter
-    def content_type(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def content_type(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "content_type", value)
 
     @_builtins.property
     @pulumi.getter
-    def filename(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def filename(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "filename")
 
     @filename.setter
-    def filename(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def filename(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "filename", value)
 
     @_builtins.property
     @pulumi.getter(name="mergeType")
-    def merge_type(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def merge_type(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "merge_type")
 
     @merge_type.setter
-    def merge_type(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def merge_type(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "merge_type", value)
 
 

@@ -15,21 +15,29 @@
 package backend
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"testing"
+	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
 func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotManager, *MockStackPersister) {
@@ -51,7 +59,7 @@ func TestIdenticalSamesJournaling(t *testing.T) {
 	t.Parallel()
 
 	sameState := NewResource(aUniqueUrn)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		sameState,
 	})
 
@@ -88,7 +96,7 @@ func TestSamesWithEmptyDependenciesJournaling(t *testing.T) {
 	t.Parallel()
 
 	res := NewResourceWithDeps(aUniqueUrnResourceA, nil)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		res,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -110,7 +118,7 @@ func TestSamesWithEmptyArraysInInputsJournaling(t *testing.T) {
 	require.NoError(t, err)
 
 	res := NewResourceWithInputs(aUniqueUrnResourceA, inputs)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		res,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -145,7 +153,7 @@ func TestSamesWithDependencyChangesJournaling(t *testing.T) {
 	// The setup: the snapshot contains two resources, A and B, where
 	// B depends on A. We're going to begin a mutation in which B no longer
 	// depends on A and appears first in program order.
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 		resourceB,
 	})
@@ -212,7 +220,7 @@ func TestWriteCheckpointOnceUnsafeJournaling(t *testing.T) {
 	resourceP := NewResource("a-unique-urn-resource-p")
 	resourceA := NewResource("a-unique-urn-resource-a")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		provider,
 		resourceP,
 		resourceA,
@@ -270,7 +278,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	resourceP := NewResource(aUniqueUrnResourceP)
 	resourceA := NewResource(aUniqueUrnResourceA)
 
-	changes := slice.Prealloc[*resource.State](4)
+	changes := slice.Prealloc[*pkgresource.State](4)
 
 	// Change the "custom" bit.
 	changes = append(changes, NewResource(resourceA.URN))
@@ -292,7 +300,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	changes = append(changes, NewResource(resourceA.URN))
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		provider,
 		resourceP,
 		resourceA,
@@ -335,7 +343,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
 		// The snapshot might edit the URN so don't check against that
 		c.URN = inSnapshot.URN
-		sres, err := stack.SerializeResource(
+		sres, _, err := stack.SerializeResource(
 			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
 		require.NoError(t, err)
 
@@ -365,7 +373,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 	inSnapshot := sp.SavedSnapshots[0].Resources[0]
-	sres, err := stack.SerializeResource(
+	sres, _, err := stack.SerializeResource(
 		t.Context(), sourceUpdated, b64.NewBase64SecretsManager().Encrypter(), false)
 	require.NoError(t, err)
 	assert.Equal(t, sres, inSnapshot)
@@ -378,13 +386,13 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	resourceA.ID = "id"
 	resourceA.Provider = "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
-	snap = NewSnapshot([]*resource.State{
+	snap = NewSnapshot([]*pkgresource.State{
 		provider,
 		provider2,
 		resourceA,
 	})
 
-	changes = []*resource.State{NewResource(resourceA.URN)}
+	changes = []*pkgresource.State{NewResource(resourceA.URN)}
 	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
 
 	for _, c := range changes {
@@ -427,7 +435,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
-		sres, err := stack.SerializeResource(
+		sres, _, err := stack.SerializeResource(
 			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
 		require.NoError(t, err)
 		assert.Equal(t, sres, inSnapshot)
@@ -468,7 +476,7 @@ func TestVexingDeploymentJournaling(t *testing.T) {
 	c := NewResource("c", a.URN, b.URN)
 	d := NewResource("d", c.URN)
 	e := NewResource("e", c.URN)
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		a,
 		b,
 		c,
@@ -580,7 +588,7 @@ func TestDeletionJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -602,7 +610,7 @@ func TestFailedDeleteJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -685,7 +693,7 @@ func TestRecordingUpdateSuccessJournaling(t *testing.T) {
 	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -722,7 +730,7 @@ func TestRecordingUpdateFailureJournaling(t *testing.T) {
 	resourceA.Inputs["key"] = resource.NewProperty("old")
 	resourceANew := NewResource("a")
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 
@@ -756,7 +764,7 @@ func TestRecordingDeleteSuccessJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -784,7 +792,7 @@ func TestRecordingDeleteFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -818,7 +826,7 @@ func TestRecordingReadSuccessNoPreviousResourceJournaling(t *testing.T) {
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, nil, resourceA)
+	step := deploy.NewReadStep(nil, nil, nil, resourceA, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -852,11 +860,11 @@ func TestRecordingReadSuccessPreviousResourceJournaling(t *testing.T) {
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
+	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -890,7 +898,7 @@ func TestRecordingReadFailureNoPreviousResourceJournaling(t *testing.T) {
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, nil, resourceA)
+	step := deploy.NewReadStep(nil, nil, nil, resourceA, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -923,11 +931,11 @@ func TestRecordingReadFailurePreviousResourceJournaling(t *testing.T) {
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewProperty("new")
 
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew)
+	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -957,7 +965,7 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -1002,7 +1010,7 @@ func TestRecordingSameFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	snap := NewSnapshot([]*resource.State{
+	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
@@ -1029,7 +1037,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsJournaling(t 
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
@@ -1050,7 +1058,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsJournaling(t *t
 
 	r := NewResource("a")
 
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
@@ -1077,7 +1085,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a", "b")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
@@ -1101,7 +1109,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 	// The dependency "b" does not exist in the snapshot, so we'll get a missing
 	// dependency error when we try to save the snapshot.
 	r := NewResource("a")
-	snap := NewSnapshot([]*resource.State{r})
+	snap := NewSnapshot([]*pkgresource.State{r})
 	sp := &MockStackPersister{}
 	secretsProvider := stack.Base64SecretsProvider{}
 	journal, err := NewSnapshotJournaler(
@@ -1114,4 +1122,131 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 
 	require.NoError(t, err)
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
+}
+
+// failingBatchEncryptSecretsManager wraps a working secrets manager but always fails
+// its BatchEncrypt call, modeling a transient encryption-service failure (e.g. a 5xx
+// from Pulumi Cloud's secrets endpoint, an expired token, or a network blip).
+type failingBatchEncryptSecretsManager struct{}
+
+func (failingBatchEncryptSecretsManager) Type() string                  { return "failing" }
+func (failingBatchEncryptSecretsManager) State() json.RawMessage        { return nil }
+func (f failingBatchEncryptSecretsManager) Encrypter() config.Encrypter { return f }
+func (f failingBatchEncryptSecretsManager) Decrypter() config.Decrypter { return f }
+
+func (failingBatchEncryptSecretsManager) EncryptValue(
+	_ context.Context, plaintext string,
+) (string, error) {
+	return "encrypted:" + plaintext, nil
+}
+
+func (failingBatchEncryptSecretsManager) BatchEncrypt(
+	_ context.Context, _ []string,
+) ([]string, error) {
+	return nil, errors.New("batch encrypt boom")
+}
+
+func (failingBatchEncryptSecretsManager) DecryptValue(
+	_ context.Context, ciphertext string,
+) (string, error) {
+	return ciphertext, nil
+}
+
+func (failingBatchEncryptSecretsManager) BatchDecrypt(
+	_ context.Context, ciphertexts []string,
+) ([]string, error) {
+	return ciphertexts, nil
+}
+
+// TestJournalEncryptionFailureNotSilent reproduces https://github.com/pulumi/pulumi/issues/23144.
+//
+// When a journal entry contains a secret value, SnapshotJournaler.AddJournalEntry passes the
+// entry through stack.BatchEncrypt, which begins a batch on the secrets manager, queues each
+// SecretV1 target via Enqueue, then flushes the batch in a deferred completeBatch call. If the
+// underlying BatchEncrypt fails, the queued targets keep Ciphertext == "". With both
+// Ciphertext and Plaintext empty and `omitempty` JSON tags, the persisted SecretV1 reduces to
+// just {"4dabf18193072939515e22adb298388d":"1b47..."} on disk -- which fails to deserialize on
+// the next operation with:
+//
+//	malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied
+//
+// The bug is that stack.BatchEncrypt ends with `return result, nil`, discarding the error it
+// accumulated from completeBatch. AddJournalEntry therefore returns nil and silently persists
+// the malformed entry.
+func TestJournalEncryptionFailureNotSilent(t *testing.T) {
+	t.Parallel()
+
+	sm := stack.NewBatchingCachingSecretsManager(failingBatchEncryptSecretsManager{})
+
+	// Empty base snapshot so the constructor's own SerializeDeployment doesn't trip.
+	baseSnap := deploy.NewSnapshot(deploy.Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+	}, sm, nil, nil, deploy.SnapshotMetadata{}, nil, nil)
+
+	sp := &MockStackPersister{}
+	j, err := NewSnapshotJournaler(t.Context(), sp, sm, stack.Base64SecretsProvider{}, baseSnap)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = j.Close() })
+
+	// Mirror the issue's repro: a resource whose outputs contain a secret value, like an
+	// aws.ssm.Parameter's `value` / `valueWo`.
+	urn := resource.NewURN("test-stack", "test-project", "", "aws:ssm/parameter:Parameter", "p")
+	state := &pkgresource.State{
+		Type:   tokens.Type("aws:ssm/parameter:Parameter"),
+		URN:    urn,
+		Custom: true,
+		Inputs: resource.PropertyMap{},
+		Outputs: resource.PropertyMap{
+			"value": resource.MakeSecret(resource.NewProperty("super-secret")),
+		},
+	}
+
+	err = j.AddJournalEntry(engine.JournalEntry{
+		SequenceID:  1,
+		Kind:        engine.JournalEntrySuccess,
+		OperationID: 1,
+		State:       state,
+	})
+
+	// Bug: today AddJournalEntry returns nil because stack.BatchEncrypt drops the error
+	// from completeBatch. Once stack.BatchEncrypt is fixed to return its accumulated error,
+	// this assertion will pass. Use assert (not require) so the secondary check on the
+	// persisted snapshot below also runs and surfaces the visible state corruption.
+	//nolint:forbidigo // pre-existing
+	if assert.Error(t, err, "AddJournalEntry must surface batch encryption failures (#23144)") {
+		assert.Contains(t, err.Error(), "batch encrypt boom")
+	}
+
+	// Belt-and-braces: a persisted snapshot must never contain a SecretV1 with neither
+	// ciphertext nor plaintext, regardless of whether the error is propagated.
+	for _, snap := range sp.SavedSnapshots {
+		for _, res := range snap.Resources {
+			assertNoMalformedSecrets(t, res.Inputs)
+			assertNoMalformedSecrets(t, res.Outputs)
+		}
+	}
+}
+
+// assertNoMalformedSecrets walks the persisted property tree and asserts that no SecretV1
+// has both Ciphertext and Plaintext empty. A SecretV1 in that state serializes (via
+// `omitempty` on both fields) to just {"4dabf18193072939515e22adb298388d":"..."}, which
+// fails to deserialize on the next operation -- the corruption signature in #23144.
+func assertNoMalformedSecrets(t *testing.T, props map[string]any) {
+	t.Helper()
+	for k, v := range props {
+		switch v := v.(type) {
+		case *apitype.SecretV1:
+			assert.Truef(t, v.Ciphertext != "" || v.Plaintext != "",
+				"property %q is a SecretV1 with neither ciphertext nor plaintext: %+v", k, v)
+		case map[string]any:
+			if sig, _ := v[resource.SigKey].(string); sig == resource.SecretSig {
+				cipher, _ := v["ciphertext"].(string)
+				plain, _ := v["plaintext"].(string)
+				assert.Truef(t, cipher != "" || plain != "",
+					"property %q is a SecretV1 with neither ciphertext nor plaintext: %+v", k, v)
+			}
+			assertNoMalformedSecrets(t, v)
+		}
+	}
 }

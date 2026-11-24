@@ -18,13 +18,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/stackenv"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 )
 
-var _ = backend.EnvironmentsBackend((*cloudBackend)(nil))
+var (
+	_ = backend.EnvironmentsBackend((*cloudBackend)(nil))
+	_ = backend.ManagedEnvironmentsBackend((*cloudBackend)(nil))
+)
 
 func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDiagnostics {
 	if len(diags) == 0 {
@@ -48,10 +52,10 @@ func (b *cloudBackend) CreateEnvironment(
 	envName string,
 	yaml []byte,
 ) (apitype.EnvironmentDiagnostics, error) {
-	if err := b.escClient.CreateEnvironmentWithProject(ctx, org, projectName, envName); err != nil {
+	if err := b.escClient.CreateEnvironment(ctx, org, projectName, envName); err != nil {
 		return nil, err
 	}
-	diags, err := b.escClient.UpdateEnvironmentWithProject(ctx, org, projectName, envName, yaml, "")
+	diags, _, err := b.escClient.UpdateEnvironment(ctx, org, projectName, envName, yaml, "")
 	return convertESCDiags(diags), err
 }
 
@@ -69,11 +73,43 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	org string,
 	yaml []byte,
 	duration time.Duration,
+	environmentOverrides map[string]string,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
-	id, diags, err := b.escClient.OpenYAMLEnvironment(ctx, org, yaml, duration)
+	id, diags, err := b.escClient.OpenYAMLEnvironment(ctx, org, yaml, duration,
+		client.OpenYAMLOption{EnvironmentOverrides: environmentOverrides})
 	if err != nil || len(diags) != 0 {
 		return nil, convertESCDiags(diags), err
 	}
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
+}
+
+func (b *cloudBackend) EvaluateManagedEnvironment(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	definition []byte,
+) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+	evaluation, diags, err := stackenv.Evaluate(ctx, b.escClient, org, project, name, definition, 2*time.Hour)
+	if evaluation == nil {
+		return nil, convertESCDiags(diags), err
+	}
+	return &backend.ManagedEnvironmentEvaluation{
+		Environment:         evaluation.Environment,
+		BaseRevision:        evaluation.BaseRevision,
+		PublishedDefinition: evaluation.PublishedDefinition,
+		ChangeRequestID:     evaluation.ChangeRequestID,
+		DraftRevision:       evaluation.DraftRevision,
+	}, convertESCDiags(diags), err
+}
+
+func (b *cloudBackend) EncryptEnvironmentSecrets(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	return b.escClient.EncryptSecrets(ctx, org, project, name, plaintexts)
 }

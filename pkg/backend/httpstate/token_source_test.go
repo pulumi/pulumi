@@ -46,7 +46,7 @@ func TestTokenSource(t *testing.T) {
 	require.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		tok, err := ts.GetToken(ctx)
 		require.NoError(t, err)
 		require.NoError(t, backend.VerifyToken(tok))
@@ -80,7 +80,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	require.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 80; i++ {
+	for i := range 80 {
 		tok, err := ts.GetToken(ctx)
 		require.NoError(t, err)
 		require.NoError(t, backend.VerifyToken(tok))

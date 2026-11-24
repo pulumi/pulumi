@@ -18,8 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -27,11 +30,12 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +65,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 			"AWSBackupServiceRolePolicyForBackup",
 			"arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup",
 			componentURN, // parent
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -71,13 +75,13 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(componentURN, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(componentURN, property.Map{})
 		require.NoError(t, err)
 
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -109,7 +113,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 			"AWSBackupServiceRolePolicyForBackup",
 			"arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup",
 			componentURN, // parent
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -119,13 +123,13 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(componentURN, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(componentURN, property.Map{})
 		require.NoError(t, err)
 
 		return nil
 	})
 
-	hostF2 := deploytest.NewPluginHostF(nil, nil, programF2, loaders...)
+	hostF2 := deploytest.NewPluginHostF(nil, nil, programF2, nil, nil, loaders...)
 	p2 := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF2},
 	}
@@ -149,13 +153,13 @@ func TestUpdateWithTargetedParentChildMarkedAsDelete(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type: "pkgA:m:typA",
 			URN:  p.NewURN("pkgA:m:typA", "resA", ""),
 		}
 		s.Resources = append(s.Resources, resA)
 
-		justAChild := &resource.State{
+		justAChild := &pkgresource.State{
 			Type:   "pkgA:m:typA",
 			URN:    "urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::childA",
 			Custom: true,
@@ -179,7 +183,7 @@ func TestUpdateWithTargetedParentChildMarkedAsDelete(t *testing.T) {
 		return nil
 	})
 
-	host := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	host := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: host,
@@ -229,7 +233,7 @@ func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
 	initialSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    p.NewProviderURN("pkgA", "prov", ""),
 			Custom: true,
@@ -240,14 +244,14 @@ func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		parent := &resource.State{
+		parent := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      p.NewURN("pkgA:m:typA", "parent", ""),
 			Provider: provRef.String(),
 		}
 		s.Resources = append(s.Resources, parent)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:               "pkgA:m:typA",
 			URN:                p.NewURN("pkgA:m:typA", "resA", parent.URN),
 			Custom:             true,
@@ -287,7 +291,7 @@ func TestUpdateWithTargetedResourceChangingParent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	opts := lt.TestUpdateOptions{
 		T:     t,
@@ -318,7 +322,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -329,7 +333,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		provRef, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		parent := &resource.State{
+		parent := &pkgresource.State{
 			Type:     "pkgA:index:Component",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component::parent",
 			Custom:   false,
@@ -337,7 +341,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, parent)
 
-		child := &resource.State{
+		child := &pkgresource.State{
 			Type:     "pkgA:index:Res",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgA:index:Res::child",
 			Custom:   true,
@@ -347,7 +351,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, child)
 
-		provB := &resource.State{
+		provB := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::provB",
 			Custom: true,
@@ -402,7 +406,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:             t,
 		HostF:         hostF,
@@ -410,7 +414,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
-	require.Error(t, err) // TODO: Change this to require.ErrorContains with the correct error message
+	require.Error(t, err) //nolint:forbidigo // TODO: Change this to require.ErrorContains with the correct error message
 }
 
 func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
@@ -431,7 +435,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    p.NewProviderURN("pkgA", "provA", ""),
 			Custom: true,
@@ -442,7 +446,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 		provRefA, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      p.NewURN("pkgA:m:typA", "resA", ""),
 			Custom:   false,
@@ -451,7 +455,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA)
 
-		provB := &resource.State{
+		provB := &pkgresource.State{
 			Type:        "pulumi:providers:pkgB",
 			URN:         p.NewProviderURN("pkgB", "provB", ""),
 			Custom:      true,
@@ -485,7 +489,7 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -498,10 +502,6 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#21700]: Fix the underlying issue and re-enable this test. Note that this test is flaky,
-	// so you need to run it with `-count=1000` to make sure you see the failure.
-	t.Skip("Skipping test due to underlying panic")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
@@ -511,7 +511,7 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -522,7 +522,7 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 		provRef, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:               "pkgA:m:typA",
 			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:             true,
@@ -557,7 +557,7 @@ func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -592,7 +592,7 @@ func TestUntargetedComponentResource(t *testing.T) {
 					// This call to RegisterResourceOutputs triggers the panic when the component
 					// is filtered out by targeting. The panic occurs because findResourceInNewOrOld()
 					// cannot locate the resource in either the base snapshot or the new resources map.
-					outs := resource.PropertyMap{}
+					outs := property.Map{}
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
 
@@ -619,7 +619,7 @@ func TestUntargetedComponentResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
 	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
@@ -643,9 +643,6 @@ func TestUntargetedComponentResource(t *testing.T) {
 func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#22511]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: targeted update with refresh produces unknown provider reference for child providers")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
@@ -658,7 +655,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	snap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		comp := &resource.State{
+		comp := &pkgresource.State{
 			Type:   "pkgA:index:Component",
 			URN:    "urn:pulumi:test-stack::test-project::pkgA:index:Component::comp",
 			Custom: false,
@@ -666,7 +663,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 		s.Resources = append(s.Resources, comp)
 
 		// Child provider parented under the component.
-		childProv := &resource.State{
+		childProv := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pkgA:index:Component$pulumi:providers:pkgB::childProv",
 			Custom: true,
@@ -681,7 +678,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 		// Resource using child provider, parented under the component.
 		resAURN := "urn:pulumi:test-stack::test-project::" +
 			"pkgA:index:Component$pkgB:index:ResA::resA"
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgB:index:ResA",
 			URN:      resource.URN(resAURN),
 			Custom:   false,
@@ -727,7 +724,7 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 
 	targetURN := "urn:pulumi:test-stack::test-project::" +
 		"pkgA:index:Component$pkgB:index:ResA::resA"
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	opts := lt.TestUpdateOptions{
 		T:     t,
 		HostF: hostF,
@@ -739,5 +736,284 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 
 	_, err := lt.TestOp(engine.Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// TestTargetedUpdateRefreshWithDeletedParent reproduces a fuzz-found snapshot
+// integrity error where a targeted update with refresh runs against a snapshot
+// that contains a top-level component resource marked for deletion which has
+// children. The rebuilt snapshot orders the deleted parent after its children,
+// violating the invariant that a parent resource must precede its children.
+//
+// Reproducer for the fuzz failure at:
+//
+//	cd pkg && PULUMI_LIFECYCLE_TEST_FUZZ=1 go test ./engine/lifecycletest \
+//	  -run '^TestFuzz$' -tags all -rapid.seed=11828830533255979657 -count=1 -v
+func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#22923]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: targeted update with refresh reorders a deleted parent after its children")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		// A top-level custom resource that the target component is parented under.
+		parentA := &pkgresource.State{
+			Type:           "pkgA:m:TypeA",
+			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::res-shared",
+			Custom:         true,
+			ID:             "id-parentA",
+			Provider:       provRef.String(),
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, parentA)
+
+		// The targeted component resource, parented under parentA.
+		target := &pkgresource.State{
+			Type:           "pkgA:m:TypeB",
+			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeA$pkgA:m:TypeB::res-target",
+			Custom:         false,
+			Provider:       provRef.String(),
+			Parent:         parentA.URN,
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, target)
+
+		// A separate, top-level component resource marked for deletion. This
+		// shares a name with the target but has a different URN.
+		deletedParent := &pkgresource.State{
+			Type:           "pkgA:m:TypeB",
+			URN:            "urn:pulumi:test-stack::test-project::pkgA:m:TypeB::res-target",
+			Custom:         false,
+			Delete:         true,
+			Provider:       provRef.String(),
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, deletedParent)
+
+		// A child of the deleted parent that is also marked for deletion. This
+		// shares a name with parentA but has a different URN.
+		deletedChild := &pkgresource.State{
+			Type:     "pkgA:m:TypeA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeB$pkgA:m:TypeA::res-shared",
+			Custom:   true,
+			Delete:   true,
+			ID:       "id-deletedChild",
+			Provider: provRef.String(),
+			Parent:   deletedParent.URN,
+		}
+		s.Resources = append(s.Resources, deletedChild)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:TypeA", "res-shared", true, deploytest.ResourceOptions{
+			Provider:       provRef.String(),
+			RetainOnDelete: new(true),
+		})
+		require.NoError(t, err)
+
+		// Re-register the resource that matches the deleted top-level component
+		// in the snapshot. The targeted nested component is not re-registered
+		// and so will be marked for deletion during the targeted update.
+		_, err = monitor.RegisterResource("pkgA:m:TypeB", "res-target", false, deploytest.ResourceOptions{
+			Provider:       provRef.String(),
+			RetainOnDelete: new(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	targetURN := "urn:pulumi:test-stack::test-project::pkgA:m:TypeA$pkgA:m:TypeB::res-target"
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{targetURN}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// TestRefreshProgramUpdateReplacedComponentProvider covers an update with
+// Refresh and RefreshProgram set, run against a snapshot with a component
+// resource that refers to a provider. The program replaces the provider, and
+// the engine replaces the component with it. The delete-replaced steps for the
+// old provider and the old component are not ordered: in refresh-program mode
+// the delete scheduler compares refreshed state copies against the original
+// states in the dependency graph, so it finds no dependency between them and
+// runs both deletes in parallel. When the old provider is deleted first, the
+// old component still refers to it, which violates snapshot integrity. The
+// order is random, so the update runs repeatedly.
+func TestRefreshProgramUpdateReplacedComponentProvider(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/24680]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: refresh-program update deletes a replaced provider before the replaced component that refers to it")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	newSnap := func() *deploy.Snapshot {
+		prov := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+		comp := &pkgresource.State{
+			Type:     "pkgA:m:TypeA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::comp",
+			Custom:   false,
+			Provider: provRef.String(),
+		}
+		snap := &deploy.Snapshot{Resources: []*pkgresource.State{prov, comp}}
+		require.NoError(t, snap.VerifyIntegrity())
+		return snap
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, _ plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs: property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
+		})
+		require.NoError(t, err)
+		ref, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:TypeA", "comp", false, deploytest.ResourceOptions{
+			Provider: ref.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	for i := range 30 {
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+		_, err := lt.TestOp(engine.Update).RunStep(
+			p.GetProject(), p.GetTarget(t, newSnap()), lt.TestUpdateOptions{
+				T:                t,
+				HostF:            hostF,
+				SkipDisplayTests: true,
+				UpdateOptions:    engine.UpdateOptions{Refresh: true, RefreshProgram: true},
+			},
+			false, p.BackendClient, nil, strconv.Itoa(i))
+		require.NoError(t, err)
+	}
+}
+
+// TestUpdateDeleteBeforeReplaceProviderOfComponent covers an update that
+// delete-before-replaces a provider that a component resource refers to. The
+// engine removes the old provider from the state as soon as the replacement is
+// created, while the component still refers to the old provider by ID. Custom
+// resources are not affected: the engine deletes and re-creates them as
+// dependent replacements of the provider, but it never does that for components.
+func TestUpdateDeleteBeforeReplaceProviderOfComponent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/24788]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: delete-before-replace of a provider removes it from the state while a component still refers to it")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	prov := &pkgresource.State{
+		Type:   "pulumi:providers:pkgA",
+		URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+		Custom: true,
+		ID:     "id-prov",
+	}
+	provRef, err := providers.NewReference(prov.URN, prov.ID)
+	require.NoError(t, err)
+	comp := &pkgresource.State{
+		Type:     "pkgA:m:TypeA",
+		URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeA::comp",
+		Custom:   false,
+		Provider: provRef.String(),
+	}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{prov, comp}}
+	require.NoError(t, snap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(_ context.Context, _ plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs:              property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
+			DeleteBeforeReplace: new(true),
+		})
+		require.NoError(t, err)
+		ref, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:TypeA", "comp", false, deploytest.ResourceOptions{
+			Provider: ref.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	_, err = lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+		false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }

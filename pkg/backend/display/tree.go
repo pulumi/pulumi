@@ -201,12 +201,7 @@ func (r *treeRenderer) render(termWidth int) {
 			return true
 		})
 	}
-	if len(r.systemMessages) == 0 && len(keys) > 0 {
-		// If we don't have system messages, but we do have progress events, show
-		// the progress. For the most part, we shouldn't have both at the same time,
-		// since the most common system messages refer to cancellation/SIGINT
-		// handling, at which point the program will be terminating. That said, if
-		// we do, we'll give the system messages priority.
+	if len(keys) > 0 {
 		slices.Sort(keys)
 
 		for _, key := range keys {
@@ -282,11 +277,16 @@ func (r *treeRenderer) frame(locked, done bool) {
 		statusMessageHeight = 1
 	}
 
+	samesHeight := 0
+	if !done && r.sames != 0 {
+		samesHeight = 3
+	}
+
 	// Enable autoscrolling if the display is scrolled to its maximum offset.
 	autoscroll := r.treeTableOffset == r.maxTreeTableOffset
 
 	// Layout the display. The extra '1' accounts for the fact that we terminate each line with a newline.
-	totalHeight := treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
+	totalHeight := treeTableHeight + samesHeight + systemMessagesHeight + statusMessageHeight + 1
 	r.maxTreeTableOffset = 0
 
 	// If this is not the final frame and the terminal is not large enough to show the entire display:
@@ -311,11 +311,8 @@ func (r *treeRenderer) frame(locked, done bool) {
 		// last line of the tree table (where the scroll indicator is displayed).
 		mergeLastLine := systemMessagesHeight == 0 && statusMessageHeight != 0
 
-		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
-		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
-		if r.maxTreeTableOffset < 0 {
-			r.maxTreeTableOffset = 0
-		}
+		treeTableHeight = termHeight - samesHeight - systemMessagesHeight - statusMessageHeight - 1
+		r.maxTreeTableOffset = max(len(treeTableRows)-treeTableHeight+1, 0)
 		scrollable := r.maxTreeTableOffset != 0
 
 		if r.treeTableOffset > r.maxTreeTableOffset {
@@ -336,7 +333,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 			treeTableRows = treeTableRows[r.treeTableOffset:]
 		}
 
-		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
+		totalHeight = treeTableHeight + samesHeight + systemMessagesHeight + statusMessageHeight + 1
 
 		footer := ""
 		if scrollable {
@@ -405,7 +402,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 	// Render the count of any unchanged resources if there are any and we aren't
 	// done (at which point we'll have a summary displaying the final count
 	// alongside other statistics).
-	if !done && r.sames != 0 {
+	if samesHeight > 0 {
 		r.overln("")
 		r.overln(r.clampLine(colors.SpecHeadline+"Resources:"+colors.Reset, termWidth))
 		r.overln(r.clampLine(colors.BrightBlack+fmt.Sprintf("    %d unchanged", r.sames)+colors.Reset, termWidth))
@@ -425,10 +422,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
-		padding := termWidth - colors.MeasureColorizedString(statusMessage)
-		if padding < 0 {
-			padding = 0
-		}
+		padding := max(termWidth-colors.MeasureColorizedString(statusMessage), 0)
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
@@ -444,7 +438,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 	// the unwriten lines with empty space.
 	if r.rewind > lineCount {
 		delta := r.rewind - lineCount
-		for i := 0; i < delta; i++ {
+		for range delta {
 			r.overln("")
 		}
 		r.term.CursorUp(delta)
@@ -463,10 +457,7 @@ func (r *treeRenderer) clampLine(line string, maxWidth int) string {
 	// msgWithColors having the color code information embedded with it.  So we need to get
 	// the right substring of it, assuming that embedded colors are just markup and do not
 	// actually contribute to the length
-	maxRowLength := maxWidth - 1
-	if maxRowLength < 0 {
-		maxRowLength = 0
-	}
+	maxRowLength := max(maxWidth-1, 0)
 	return colors.TrimColorizedString(line, maxRowLength)
 }
 

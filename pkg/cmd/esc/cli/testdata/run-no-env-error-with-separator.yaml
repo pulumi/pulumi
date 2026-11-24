@@ -1,0 +1,10 @@
+run: |
+  esc run -- pulumi preview
+error: exit status 1
+
+---
+> esc run -- pulumi preview
+
+---
+> esc run -- pulumi preview
+Error: no environment specified

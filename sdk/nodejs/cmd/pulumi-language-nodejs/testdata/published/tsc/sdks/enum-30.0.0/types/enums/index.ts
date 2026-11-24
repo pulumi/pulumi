@@ -15,9 +15,25 @@ export const IntEnum = {
 
 export type IntEnum = (typeof IntEnum)[keyof typeof IntEnum];
 
+export const NumberEnum = {
+    ZeroPointOne: 0.1,
+    One: 1,
+} as const;
+
+export type NumberEnum = (typeof NumberEnum)[keyof typeof NumberEnum];
+
 export const StringEnum = {
     StringOne: "one",
     StringTwo: "two",
 } as const;
 
 export type StringEnum = (typeof StringEnum)[keyof typeof StringEnum];
+
+export const WordyEnum = {
+    A_Value_With_Spaces_: "A Value With Spaces.",
+    It_s_got_apostrophes: "It's got apostrophes",
+    WordyEnum_UNDERSCORE_PREFIX: "_UNDERSCORE_PREFIX",
+    Named: "plain",
+} as const;
+
+export type WordyEnum = (typeof WordyEnum)[keyof typeof WordyEnum];

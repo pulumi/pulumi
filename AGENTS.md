@@ -42,7 +42,7 @@ All commands assume you're at the repo root.
 - **Tidy fix:** `mise exec -- make tidy_fix`
 - **Proto generation:** `mise exec -- make build_proto`
 - **Proto check:** `mise exec -- make check_proto`
-- **Changelog entry:** `mise exec -- make changelog` (interactive)
+- **Changelog entry:** `mise exec -- make changelog` (interactive) (See also the changelog messages guidelines in CONTRIBUTING.md)
 - **Go workspace:** `mise exec -- make work`
 
 ## Key invariants
@@ -51,10 +51,12 @@ All commands assume you're at the repo root.
   - Use `mise exec -- make work` to create a `go.work` file for cross-module development.
 - Proto-generated files must stay in sync with `proto/*.proto`. CI enforces via `mise exec -- make check_proto`.
 - `pkg/codegen/schema/pulumi.json` is the metaschema. It must be valid JSON Schema and pass biome formatting.
-- Changelog entries are required for most PRs. Run `mise exec -- make changelog` to create one.
+- Changelog entries are required for most PRs. Run `mise exec -- make changelog` to create one. Try to keep changelog entries to one sentence and focus on user-visible changes. Do not include implementation details. Write them in the active imperative form ("Fix ...", "Add ...", not "Fixes ..." or "Added ..."). Do not end changelog entries with punctuation. Check style locally with `mise exec -- make lint_changelog_style`.
 - PRs are squash-merged — the PR description becomes the commit message.
 - Integration tests need the CLI and SDKs built first. `bin/` must be on `PATH`.
 - Copyright headers for new files should always be stamped with the current year.
+- Use comments judiciously, only add them where they are necessary to explain why something is happening, and for exported methods.
+- Split changes into multiple PRs if possible, smaller PRs are preferred for reviewability. If a PR has more than one changelog it's doing too many things at once and should be split up.
 
 ## Forbidden actions
 

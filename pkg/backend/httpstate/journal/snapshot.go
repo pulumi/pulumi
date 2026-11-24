@@ -77,6 +77,11 @@ func (j *cloudJournaler) AddJournalEntry(entry engine.JournalEntry) error {
 	if entry.PendingReplacementNew != nil && *entry.PendingReplacementNew > 0 {
 		dependsOn = append(dependsOn, *entry.PendingReplacementNew)
 	}
+	for _, patch := range entry.NewStatePatches {
+		if patch.OperationID > 0 {
+			dependsOn = append(dependsOn, patch.OperationID)
+		}
+	}
 
 	for _, depID := range dependsOn {
 		j.m.Lock()
@@ -167,9 +172,9 @@ func sendBatch(
 ) error {
 	// Try to send the batch as-is. If there's no error or if the error is _not_ a 413 Content Too Large,
 	// we're done. Otherwise, try to send two smaller batches. If the batch is too small to split, we're done.
-	var apiError *apitype.ErrorResponse
 	err := client.SaveJournalEntries(ctx, update, batch, tokenSource)
-	if err == nil || !errors.As(err, &apiError) || apiError.Code != http.StatusRequestEntityTooLarge || len(batch) <= 1 {
+	apiError, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if err == nil || !ok || apiError.Code != http.StatusRequestEntityTooLarge || len(batch) <= 1 {
 		return err
 	}
 

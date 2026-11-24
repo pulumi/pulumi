@@ -36,12 +36,12 @@ import (
 	"sync"
 	"time"
 
+	// We need to re-use glogs flags otherwise we'd get conflicts if another dependency pulled in glog later.
+	_ "github.com/golang/glog"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
-
-type Filter interface {
-	Filter(s string) string
-}
 
 var (
 	LogToStderr = false // true if logging is being redirected to stderr.
@@ -50,43 +50,161 @@ var (
 )
 
 var (
-	rwLock  sync.RWMutex
-	filters []Filter
+	rwLock sync.RWMutex
+
+	secretsSeen     map[string]struct{}
+	secretsPairs    []string
+	secretsReplacer *strings.Replacer
 )
 
 var (
-	slogHandler *slog.Logger
-	logFilePath string
-	logFile     *os.File
+	handlerMu     sync.RWMutex
+	primary       slog.Handler = discardHandler{} // regular log output (stderr / file)
+	sinkHandler   slog.Handler                    // encrypted log handler, nil when inactive
+	exportHandler slog.Handler                    // OTLP export handler, nil when inactive
+	logFilePath   string
+	logFile       *os.File
 )
 
 func init() {
-	slogHandler = slog.New(discardHandler{})
+	rebuildLogger()
+}
 
-	// Register the standard logging flags on flag.CommandLine, matching
-	// the behavior glog had via its own init(). Plugin binaries (language
-	// hosts) use the standard flag package and receive these flags from
-	// the CLI when --logflow is enabled.
-	//
-	// Guard with Lookup so we don't panic if a transitive dependency
-	// (e.g. glog) has already registered the same flag name.
-	if flag.CommandLine.Lookup("logtostderr") == nil {
-		flag.BoolVar(&LogToStderr, "logtostderr", false,
-			"Log to stderr instead of to files")
+// rebuildLogger assembles the slog.Logger from the current primary and
+// sink handlers and installs it as the slog default. Must be called with
+// handlerMu held for writing. slog.SetDefault is safe for concurrent use
+// with readers, so no additional synchronisation is needed.
+func rebuildLogger() {
+	var p slog.Handler = verbosityHandler{inner: formattingHandler{inner: primary}}
+	var h slog.Handler = filteringHandler{inner: &teeHandler{
+		primary:  p,
+		sink:     sinkHandler,
+		exporter: exportHandler,
+	}}
+	slog.SetDefault(slog.New(h))
+}
+
+// logRedactable is implemented by attribute values (such as the property types) that know how to
+// replace their secret contents for plaintext log output. Only the primary (stderr or log file)
+// output redacts; the sink and export handlers receive unredacted records.
+type logRedactable interface {
+	RedactedLogValue() slog.Value
+}
+
+func redactAttr(a slog.Attr) slog.Attr {
+	if k := a.Value.Kind(); k != slog.KindAny && k != slog.KindLogValuer {
+		return a
 	}
-	if flag.CommandLine.Lookup("v") == nil {
-		flag.IntVar(&Verbose, "v", 0,
-			"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	switch v := a.Value.Any().(type) {
+	case logRedactable:
+		a.Value = v.RedactedLogValue()
+	case map[string]any:
+		a.Value = slog.AnyValue(redactSecretsInJSON(v))
+	case []any:
+		a.Value = slog.AnyValue(redactSecretsInJSON(v))
 	}
+	return a
+}
+
+// redactSecretsInJSON walks an already-serialized JSON value and replaces any object carrying the
+// Pulumi secret signature with "[secret]". Unlike the in-place walk `pulumi logs share` uses on
+// records it owns, this copies: the original value is shared with the unredacted sink and export
+// log outputs.
+func redactSecretsInJSON(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		if isSerializedSecret(val) {
+			return "[secret]"
+		}
+		redacted := make(map[string]any, len(val))
+		for k, child := range val {
+			redacted[k] = redactSecretsInJSON(child)
+		}
+		return redacted
+	case []any:
+		redacted := make([]any, len(val))
+		for i, child := range val {
+			redacted[i] = redactSecretsInJSON(child)
+		}
+		return redacted
+	default:
+		return val
+	}
+}
+
+// isSerializedSecret reports whether an already-serialized JSON object holds a secret. Secrets
+// reach the wire in two shapes: a plain secret, and an output value whose secret flag is set.
+func isSerializedSecret(m map[string]any) bool {
+	s, ok := m[sig.Key].(string)
+	if !ok {
+		return false
+	}
+	switch s {
+	case sig.Secret:
+		return true
+	case sig.OutputValue:
+		secret, ok := m["secret"].(bool)
+		return ok && secret
+	default:
+		return false
+	}
+}
+
+// SetExportHandler installs an slog.Handler for OTLP log export.
+// The handler receives a copy of every log record.  Pass nil to
+// remove the export handler.
+func SetExportHandler(h slog.Handler) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	exportHandler = h
+	rebuildLogger()
+}
+
+// SetSinkHandler installs an additional slog.Handler that receives a
+// copy of every log record.  Pass nil to remove the sink.  The handler
+// must be safe for concurrent use.
+func SetSinkHandler(h slog.Handler) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	sinkHandler = h
+	rebuildLogger()
+}
+
+// sinkEnabled reports whether the sink handler exists and accepts
+// records at the given level.
+func sinkEnabled(level slog.Level) bool {
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+	return sinkHandler != nil && sinkHandler.Enabled(context.TODO(), level)
 }
 
 const LevelTrace = slog.LevelDebug - 4
 
+func verbosityLevel(verbose int) slog.Level {
+	switch {
+	case verbose >= 11:
+		return LevelTrace
+	case verbose >= 10:
+		return slog.LevelDebug
+	case verbose >= 1:
+		return slog.LevelInfo
+	default:
+		return slog.LevelWarn
+	}
+}
+
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
-// The value is 0 when disabled, or the verbosity level when enabled.
 type VerboseLogger struct{ level int32 }
 
-func (v VerboseLogger) Enabled() bool { return Verbose >= int(v.level) && v.level > 0 }
+// Enabled returns true if either slog verbose logging or the sink handler
+// wants messages at this level.
+func (v VerboseLogger) Enabled() bool {
+	return v.slogEnabled() || sinkEnabled(v.slogLevel())
+}
+
+func (v VerboseLogger) slogEnabled() bool {
+	return Verbose >= int(v.level) && v.level > 0
+}
 
 // slogLevel maps the pulumi verbosity level to a slog level:
 //
@@ -106,7 +224,7 @@ func (v VerboseLogger) slogLevel() slog.Level {
 
 func (v VerboseLogger) Info(args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v.level))
+		slog.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v.level))
 	}
 }
 
@@ -116,9 +234,12 @@ func (v VerboseLogger) Infoln(args ...any) {
 }
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
+// The format string is stored as the slog message and each argument is
+// recorded as a separate "pulumi.log.argN" attribute so that the sink
+// handler can access them individually.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v.level))
+		slog.Log(context.TODO(), v.slogLevel(), format, fmtAttrs(args, "v", int(v.level))...)
 	}
 }
 
@@ -127,15 +248,26 @@ func V(level int32) VerboseLogger {
 }
 
 func Errorf(format string, args ...any) {
-	slogHandler.Error(fmt.Sprintf(format, args...))
+	slog.Log(context.TODO(), slog.LevelError, format, fmtAttrs(args)...)
 }
 
 func Infof(format string, args ...any) {
-	slogHandler.Info(fmt.Sprintf(format, args...))
+	slog.Log(context.TODO(), slog.LevelInfo, format, fmtAttrs(args)...)
 }
 
 func Warningf(format string, args ...any) {
-	slogHandler.Warn(fmt.Sprintf(format, args...))
+	slog.Log(context.TODO(), slog.LevelWarn, format, fmtAttrs(args)...)
+}
+
+// fmtAttrs encodes format arguments as slog key-value pairs so that
+// downstream handlers can access each value individually.
+// Extra key-value pairs (e.g. "v", level) are appended.
+func fmtAttrs(args []any, extra ...any) []any {
+	out := make([]any, 0, len(args)*2+len(extra))
+	for i, a := range args {
+		out = append(out, fmt.Sprintf("pulumi.log.arg%d", i), a)
+	}
+	return append(out, extra...)
 }
 
 func InitLogging(logToStderr bool, verbose int, logFlow bool) {
@@ -162,21 +294,32 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	} else if f := flag.CommandLine.Lookup("v"); f != nil {
 		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
 	}
+	initExportHandler(filepath.Base(os.Args[0]))
 
-	if LogToStderr {
-		slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level: LevelTrace,
-		})})
-	} else if Verbose > 0 {
+	handlerMu.Lock()
+
+	switch {
+	case exportHandler != nil:
+		// Logs already flow to the engine over OTel, so skip local output:
+		// a log file would only duplicate them, and writing JSON records to
+		// stderr would leak them into the engine's display of our output.
+		primary = discardHandler{}
+	case LogToStderr:
+		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+			Level: verbosityLevel(Verbose),
+		})
+	case Verbose > 0:
 		f, err := os.Create(logFileName())
 		if err == nil {
 			logFilePath = f.Name()
 			logFile = f
-			slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(f, &slog.HandlerOptions{
-				Level: LevelTrace,
-			})})
+			primary = slog.NewJSONHandler(f, &slog.HandlerOptions{
+				Level: verbosityLevel(Verbose),
+			})
 		}
 	}
+	rebuildLogger()
+	handlerMu.Unlock()
 }
 
 // logFileName returns a log file path matching the glog naming convention:
@@ -201,8 +344,9 @@ func logFileName() string {
 	return filepath.Join(os.TempDir(), name)
 }
 
-// Flush flushes any pending log I/O.
+// Flush flushes any pending log I/O and shuts down the export handler.
 func Flush() {
+	shutdownExportHandler()
 	if logFile != nil {
 		logFile.Sync() //nolint:errcheck
 	}
@@ -215,27 +359,111 @@ func GetLogfilePath() (string, error) {
 	return "", errors.New("no log files found")
 }
 
-type nopFilter struct{}
-
-func (f *nopFilter) Filter(s string) string {
-	return s
+// teeHandler fans out slog records to a primary handler and optional
+// sink/export handlers.
+type teeHandler struct {
+	primary  slog.Handler
+	sink     slog.Handler // encrypted log, nil when inactive
+	exporter slog.Handler // OTLP export, nil when inactive
 }
 
-type replacerFilter struct {
-	replacer *strings.Replacer
+func (t *teeHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	if t.primary.Enabled(ctx, level) {
+		return true
+	}
+	if t.sink != nil && t.sink.Enabled(ctx, level) {
+		return true
+	}
+	if t.exporter != nil && t.exporter.Enabled(ctx, level) {
+		return true
+	}
+	return false
 }
 
-func (f *replacerFilter) Filter(s string) string {
-	return f.replacer.Replace(s)
+func (t *teeHandler) Handle(ctx context.Context, r slog.Record) error {
+	if t.primary.Enabled(ctx, r.Level) {
+		_ = t.primary.Handle(ctx, r)
+	}
+	if t.sink != nil && t.sink.Enabled(ctx, r.Level) {
+		_ = t.sink.Handle(ctx, r)
+	}
+	if t.exporter != nil && t.exporter.Enabled(ctx, r.Level) {
+		_ = t.exporter.Handle(ctx, r)
+	}
+	return nil
 }
 
-func AddGlobalFilter(filter Filter) {
-	rwLock.Lock()
-	filters = append(filters, filter)
-	rwLock.Unlock()
+func (t *teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	result := &teeHandler{primary: t.primary.WithAttrs(attrs)}
+	if t.sink != nil {
+		result.sink = t.sink.WithAttrs(attrs)
+	}
+	if t.exporter != nil {
+		result.exporter = t.exporter.WithAttrs(attrs)
+	}
+	return result
 }
 
-func CreateFilter(secrets []string, replacement string) Filter {
+func (t *teeHandler) WithGroup(name string) slog.Handler {
+	result := &teeHandler{primary: t.primary.WithGroup(name)}
+	if t.sink != nil {
+		result.sink = t.sink.WithGroup(name)
+	}
+	if t.exporter != nil {
+		result.exporter = t.exporter.WithGroup(name)
+	}
+	return result
+}
+
+// formattingHandler reconstructs the formatted message from
+// pulumi.log.argN attributes before forwarding to its inner handler.
+// This lets the primary log output show the fully formatted message
+// while the sink handler can access each argument individually.
+type formattingHandler struct {
+	inner slog.Handler
+}
+
+func (f formattingHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return f.inner.Enabled(ctx, level)
+}
+
+func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
+	// Collect pulumi.log.argN values (in order) and all other attrs.
+	var fmtArgs []any
+	var other []slog.Attr
+	r.Attrs(func(a slog.Attr) bool {
+		a = redactAttr(a)
+		if strings.HasPrefix(a.Key, "pulumi.log.arg") {
+			fmtArgs = append(fmtArgs, a.Value.Any())
+		} else {
+			other = append(other, a)
+		}
+		return true
+	})
+
+	msg := r.Message
+	if len(fmtArgs) > 0 {
+		msg = fmt.Sprintf(r.Message, fmtArgs...)
+	}
+
+	newRec := slog.NewRecord(r.Time, r.Level, msg, r.PC)
+	newRec.AddAttrs(other...)
+	return f.inner.Handle(ctx, newRec)
+}
+
+func (f formattingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	redacted := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		redacted[i] = redactAttr(a)
+	}
+	return formattingHandler{inner: f.inner.WithAttrs(redacted)}
+}
+
+func (f formattingHandler) WithGroup(name string) slog.Handler {
+	return formattingHandler{inner: f.inner.WithGroup(name)}
+}
+
+func replacements(secrets []string, replacement string) []string {
 	items := slice.Prealloc[string](len(secrets))
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
@@ -257,24 +485,78 @@ func CreateFilter(secrets []string, replacement string) Filter {
 			items = append(items, escaped, replacement)
 		}
 	}
-	if len(items) > 0 {
-		return &replacerFilter{replacer: strings.NewReplacer(items...)}
-	}
+	return items
+}
 
-	return &nopFilter{}
+// AddGlobalSecretFilter registers secrets to be replaced by FilterString. Secrets registered
+// here are deduplicated and folded into a single replacer, so FilterString makes one pass over
+// its input no matter how many operations register their secrets.
+func AddGlobalSecretFilter(secrets []string, replacement string) {
+	rwLock.Lock()
+	defer rwLock.Unlock()
+
+	changed := false
+	for _, secret := range secrets {
+		if _, seen := secretsSeen[secret]; seen {
+			continue
+		}
+		if secretsSeen == nil {
+			secretsSeen = map[string]struct{}{}
+		}
+		secretsSeen[secret] = struct{}{}
+		secretsPairs = append(secretsPairs, replacements([]string{secret}, replacement)...)
+		changed = true
+	}
+	if changed && len(secretsPairs) > 0 {
+		secretsReplacer = strings.NewReplacer(secretsPairs...)
+	}
 }
 
 func FilterString(msg string) string {
-	var localFilters []Filter
 	rwLock.RLock()
-	localFilters = filters
+	secretsFilter := secretsReplacer
 	rwLock.RUnlock()
 
-	for _, filter := range localFilters {
-		msg = filter.Filter(msg)
+	if secretsFilter != nil {
+		msg = secretsFilter.Replace(msg)
 	}
-
 	return msg
+}
+
+// verbosityHandler drops records whose "v" attribute exceeds the requested -v level before they
+// reach the primary log output. Records carry their original pulumi verbosity in the "v"
+// attribute, while their slog levels are bucketed too coarsely (V(1)-V(9) all map to Info) for
+// level-based filtering alone. Only the primary output filters by verbosity; the sink and export
+// handlers receive every record.
+type verbosityHandler struct {
+	inner slog.Handler
+}
+
+func (h verbosityHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.inner.Enabled(ctx, level)
+}
+
+func (h verbosityHandler) Handle(ctx context.Context, r slog.Record) error {
+	drop := false
+	r.Attrs(func(a slog.Attr) bool {
+		if a.Key == "v" && a.Value.Kind() == slog.KindInt64 {
+			drop = a.Value.Int64() > int64(Verbose)
+			return false
+		}
+		return true
+	})
+	if drop {
+		return nil
+	}
+	return h.inner.Handle(ctx, r)
+}
+
+func (h verbosityHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return verbosityHandler{inner: h.inner.WithAttrs(attrs)}
+}
+
+func (h verbosityHandler) WithGroup(name string) slog.Handler {
+	return verbosityHandler{inner: h.inner.WithGroup(name)}
 }
 
 type discardHandler struct{}

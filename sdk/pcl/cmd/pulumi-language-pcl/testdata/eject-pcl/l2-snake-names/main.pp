@@ -6,6 +6,11 @@ resource "first" "snake_names:cool_module:some_resource" {
     }
 }
 
+// Whole objects in stack outputs keep their wire-format (snake_case) keys
+output "theOutput" {
+    value = first.the_output
+}
+
 // Datasource outputs are correctly translated
 resource "third" "snake_names:cool_module:another_resource" {
     the_input = invoke("snake_names:cool_module:some_data", {

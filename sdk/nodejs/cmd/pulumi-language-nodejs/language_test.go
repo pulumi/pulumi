@@ -98,15 +98,24 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
-	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
+	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index",                  //nolint:lll
+	"l2-raw-string-bytes":                "the Node.js SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
+	"l2-invoke-per-value-deps":           "output aware invokes not yet implemented",
+	"l2-call-per-value-deps":             "output aware calls not yet implemented",
+
+	"l2-component-output-value-input-deps": "SDK does not yet set uses_output_values on RegisterResource",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
 // forceTsc controls whether to pre-compile TypeScript before running.
 func testLanguage(t *testing.T, runtime string, forceTsc bool) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)
@@ -132,10 +141,14 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 			cancel := make(chan bool)
 
+			// Share installed node_modules trees between test projects with
+			// identical dependency manifests; see installcache.go.
+			installCacheDir := t.TempDir()
+
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, runtime, "", "", forceTsc)
+					host := newLanguageHost(t.Context(), engineAddress, runtime, "", "", forceTsc, installCacheDir)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -204,7 +217,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					}
 
 					if runtime == "bun" {
-						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
+						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" ||
+							tt == "provider-replacement-trigger-component" || tt == "l2-docs" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
 									"https://github.com/pulumi/pulumi/issues/22100")
@@ -213,22 +227,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
-					}
-
-					// Skip l2-large-string on Node.js 24 https://github.com/nodejs/node/issues/58197
-					// TODO: https://github.com/pulumi/pulumi/issues/19442
-					if runtime == "nodejs" && tt == "l2-large-string" {
-						cmd := exec.Command("node", "-v")
-						output, err := cmd.Output()
-						require.NoError(t, err)
-
-						var major int
-						_, err = fmt.Sscanf(string(output), "v%d", &major)
-						require.NoError(t, err)
-
-						if major >= 24 {
-							t.Skip("Skipping test on Node.js 24+ due to known regression")
-						}
 					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
@@ -240,8 +238,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

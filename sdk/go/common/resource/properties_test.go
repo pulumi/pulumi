@@ -485,7 +485,7 @@ func TestHasValue(t *testing.T) {
 		{
 			name:     "output unknown",
 			prop:     MakeOutput(NewProperty("")),
-			expected: false,
+			expected: true,
 		},
 		{
 			name: "output known",

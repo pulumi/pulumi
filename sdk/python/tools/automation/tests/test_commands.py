@@ -25,7 +25,9 @@ from typing import Any, Dict, List
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 FIXTURE = Path(__file__).resolve().parent / "fixture.json"
 BOILERPLATE = TOOLS_DIR / "boilerplate" / "testing.py"
-OUTPUT_DIR = TOOLS_DIR / "output"
+# The generator writes to ``<output>/__init__.py``; give that output directory
+# a distinct name so it becomes the importable module.
+OUTPUT_DIR = TOOLS_DIR / "output" / "generated"
 
 
 def setUpModule() -> None:
@@ -36,17 +38,18 @@ def setUpModule() -> None:
     )
 
 
-# Add the output directory to the path so we can import the generated module.
-sys.path.insert(0, str(OUTPUT_DIR))
+# Add the parent of the generated package to sys.path so Python can import it.
+sys.path.insert(0, str(OUTPUT_DIR.parent))
 
 
 class TestCommands(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # Import the generated module (force reimport if cached).
-        if "main" in sys.modules:
-            importlib.reload(sys.modules["main"])
-        mod = importlib.import_module("main")
+        module_name = OUTPUT_DIR.name
+        if module_name in sys.modules:
+            importlib.reload(sys.modules[module_name])
+        mod = importlib.import_module(module_name)
         cls.mod = mod
         cls.api = mod.API()
 

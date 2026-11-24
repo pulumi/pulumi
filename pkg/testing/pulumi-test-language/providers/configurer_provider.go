@@ -23,10 +23,11 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -65,7 +66,6 @@ const (
 
 func (p *ConfigurerProvider) Close() error                             { return nil }
 func (p *ConfigurerProvider) SignalCancellation(context.Context) error { return nil }
-func (p *ConfigurerProvider) Pkg() tokens.Package                      { return configurerPkg }
 
 func (p *ConfigurerProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	v := semver.MustParse(configurerVersion)
@@ -98,16 +98,17 @@ func (p *ConfigurerProvider) GetSchema(
 		}
 	}
 
+	providerResource := resourceSpec(false,
+		"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
+		map[string]schema.PropertySpec{"config": primitive("string")},
+		map[string]schema.PropertySpec{"config": primitive("string")},
+	)
 	pkg := schema.PackageSpec{
 		Name:      configurerPkg,
 		Version:   configurerVersion,
 		Functions: map[string]schema.FunctionSpec{},
 		Resources: map[string]schema.ResourceSpec{},
-		Provider: resourceSpec(false,
-			"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
-			map[string]schema.PropertySpec{"config": primitive("string")},
-			map[string]schema.PropertySpec{"config": primitive("string")},
-		),
+		Provider:  &providerResource,
 	}
 
 	pkg.Resources["configurer:index:Custom"] = resourceSpec(false,
@@ -209,19 +210,19 @@ func (p *ConfigurerProvider) GetMappings(
 func (p *ConfigurerProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "missing version")}, nil
 	}
-	if !version.IsString() || version.StringValue() != configurerVersion {
+	if !version.IsString() || version.AsString() != configurerVersion {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "unexpected version"),
+			Failures: makeCheckConfigFailure("version", "unexpected version"),
 		}, nil
 	}
 	// Expect version and optionally config.
-	if len(req.News) > 2 {
+	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
@@ -236,8 +237,8 @@ func (p *ConfigurerProvider) DiffConfig(
 func (p *ConfigurerProvider) Configure(
 	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	if cfg, ok := req.Inputs["config"]; ok && cfg.IsString() {
-		p.config = cfg.StringValue()
+	if cfg, ok := req.Inputs.GetOk("config"); ok && cfg.IsString() {
+		p.config = cfg.AsString()
 	}
 	return plugin.ConfigureResponse{}, nil
 }
@@ -245,16 +246,17 @@ func (p *ConfigurerProvider) Configure(
 func (p *ConfigurerProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "configurer:index:Custom" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok || !value.IsString() {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing or non-string value")}, nil
 	}
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConfigurerProvider) Diff(
@@ -268,10 +270,11 @@ func (p *ConfigurerProvider) Diff(
 func (p *ConfigurerProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type() { //nolint:exhaustive //  Default covers the other case
 	case "configurer:index:Custom":
 		outs := resource.PropertyMap{
-			"value":  req.Properties["value"],
+			"value":  properties["value"],
 			"config": resource.NewProperty(p.config),
 		}
 		id := "id-" + req.URN.Name()
@@ -280,7 +283,7 @@ func (p *ConfigurerProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: outs,
+			Properties: resource.FromResourcePropertyMap(outs),
 			Status:     resource.StatusOK,
 		}, nil
 	default:
@@ -320,7 +323,7 @@ func (p *ConfigurerProvider) Construct(
 		return plugin.ConstructResponse{}, fmt.Errorf("register component: %w", err)
 	}
 
-	providerConfig := req.Inputs["providerConfig"].StringValue()
+	providerConfig := req.Inputs.Get("providerConfig").AsString()
 
 	innerProv, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type:    "pulumi:providers:configurer",
@@ -341,12 +344,7 @@ func (p *ConfigurerProvider) Construct(
 	// Store the inner provider reference on the component so methods can retrieve it later.
 	innerRef := resource.MakeCustomResourceReference(
 		resource.URN(innerProv.Urn), resource.ID(innerProv.Id), "")
-	innerRefStruct, err := plugin.MarshalPropertyValue(
-		"innerProviderRef", innerRef,
-		plugin.MarshalOptions{KeepResources: true, KeepSecrets: true})
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal inner provider ref: %w", err)
-	}
+	innerRefStruct := propertyrpc.MarshalValue(resource.FromResourcePropertyValue(innerRef))
 
 	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn: parent.Urn,
@@ -363,10 +361,10 @@ func (p *ConfigurerProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.PropertyMap{
-			"providerConfig":   resource.NewProperty(providerConfig),
-			"innerProviderRef": innerRef,
-		},
+		Outputs: property.NewMap(map[string]property.Value{
+			"providerConfig":   property.New(providerConfig),
+			"innerProviderRef": resource.FromResourcePropertyValue(innerRef),
+		}),
 	}, nil
 }
 
@@ -386,7 +384,7 @@ func (p *ConfigurerProvider) Call(
 	defer conn.Close()
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 	self, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
 		Args: &structpb.Struct{
@@ -412,18 +410,22 @@ func (p *ConfigurerProvider) Call(
 	case "configurer:index:Configurer/plainValue":
 		// Single-value plain returns use the magic key "res" on the wire.
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{"res": resource.NewProperty(42.0)},
+			Return: property.NewMap(map[string]property.Value{
+				"res": property.New(42.0),
+			}),
 		}, nil
 	case "configurer:index:Configurer/plainProvider":
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{"res": *innerRefValue},
+			Return: property.NewMap(map[string]property.Value{
+				"res": resource.FromResourcePropertyValue(*innerRefValue),
+			}),
 		}, nil
 	case "configurer:index:Configurer/nestedPlainProvider":
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{
-				"provider": *innerRefValue,
-				"value":    resource.NewProperty(42.0),
-			},
+			Return: property.NewMap(map[string]property.Value{
+				"provider": resource.FromResourcePropertyValue(*innerRefValue),
+				"value":    property.New(42.0),
+			}),
 		}, nil
 	}
 	return plugin.CallResponse{}, fmt.Errorf("unknown function %v", req.Tok)

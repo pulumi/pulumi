@@ -1,6 +1,11 @@
 PROJECT_NAME     := Pulumi pcl SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh pcl))
+SDK_PKGS         := $(shell go list ./... | grep -v /vendor/ | grep -v templates)
+
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS ?= build
 
 include ../../build/common.mk
 
@@ -22,6 +27,12 @@ install_plugin:: build
 	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_plugin
+
+test_fast::
+	@$(GO_TEST_FAST) $(SDK_PKGS)
+
+test_all:: $(TEST_ALL_DEPS)
+	@$(GO_TEST) $(SDK_PKGS)
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::

@@ -1,0 +1,43 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": null,
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "fn::secret"
+                    },
+                    "Value": {
+                        "Value": "hello"
+                    }
+                }
+            ]
+        }
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "builtin function call \"fn::secret\" not allowed at the top level",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-invocation2",
+                "Start": {
+                    "Line": 2,
+                    "Column": 3,
+                    "Byte": 10
+                },
+                "End": {
+                    "Line": 2,
+                    "Column": 13,
+                    "Byte": 20
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"fn::secret\"]"
+        }
+    ]
+}

@@ -18,7 +18,6 @@
 package pulumi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -73,7 +72,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 	}
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
@@ -118,7 +117,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 
 		app = out.ApplyT(func(v int) (any, error) {
@@ -129,7 +128,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
@@ -137,888 +136,1033 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { internal.ResolveOutput(out, 42, true, false, nil) }()
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) Archive { return *new(Archive) }).(ArchiveOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []Archive { return *new([]Archive) }).(ArchiveArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]Archive { return *new(map[string]Archive) }).(ArchiveMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]Archive { return *new(map[string][]Archive) }).(ArchiveArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]Archive { return *new([]map[string]Archive) }).(ArchiveMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) }).(ArchiveMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]Archive { return *new([][]Archive) }).(ArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]Archive { return *new(map[string]map[string][]Archive) }).(ArchiveArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]Archive { return *new(map[string][]map[string]Archive) }).(ArchiveMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]Archive { return *new([]map[string]map[string]Archive) }).(ArchiveMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]Archive { return *new([]map[string][]Archive) }).(ArchiveArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]Archive { return *new(map[string][][]Archive) }).(ArchiveArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]Archive { return *new([][][]Archive) }).(ArchiveArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]Archive {
 				return *new(map[string]map[string]map[string]Archive)
 			}).(ArchiveMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) Asset { return *new(Asset) }).(AssetOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []Asset { return *new([]Asset) }).(AssetArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]Asset { return *new(map[string]Asset) }).(AssetMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]Asset { return *new(map[string][]Asset) }).(AssetArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]Asset { return *new([]map[string]Asset) }).(AssetMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) }).(AssetMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]Asset { return *new([][]Asset) }).(AssetArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]Asset { return *new(map[string]map[string][]Asset) }).(AssetArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]Asset { return *new(map[string][]map[string]Asset) }).(AssetMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]Asset { return *new([]map[string]map[string]Asset) }).(AssetMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]Asset { return *new([]map[string][]Asset) }).(AssetArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]Asset { return *new(map[string][][]Asset) }).(AssetArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]Asset { return *new([][][]Asset) }).(AssetArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]Asset {
 				return *new(map[string]map[string]map[string]Asset)
 			}).(AssetMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) }).(AssetOrArchiveArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) }).(AssetOrArchiveMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) }).(AssetOrArchiveArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) }).(AssetOrArchiveMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) }).(AssetOrArchiveMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) }).(AssetOrArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]AssetOrArchive {
 				return *new(map[string]map[string][]AssetOrArchive)
 			}).(AssetOrArchiveArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]AssetOrArchive {
 				return *new(map[string][]map[string]AssetOrArchive)
 			}).(AssetOrArchiveMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]AssetOrArchive {
 				return *new([]map[string]map[string]AssetOrArchive)
 			}).(AssetOrArchiveMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]AssetOrArchive { return *new([]map[string][]AssetOrArchive) }).(AssetOrArchiveArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]AssetOrArchive { return *new(map[string][][]AssetOrArchive) }).(AssetOrArchiveArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]AssetOrArchive { return *new([][][]AssetOrArchive) }).(AssetOrArchiveArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]AssetOrArchive {
 				return *new(map[string]map[string]map[string]AssetOrArchive)
 			}).(AssetOrArchiveMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) bool { return *new(bool) }).(BoolOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *bool { return *new(*bool) }).(BoolPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []bool { return *new([]bool) }).(BoolArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]bool { return *new(map[string]bool) }).(BoolMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]bool { return *new(map[string][]bool) }).(BoolArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]bool { return *new([]map[string]bool) }).(BoolMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) }).(BoolMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]bool { return *new([][]bool) }).(BoolArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]bool { return *new(map[string]map[string][]bool) }).(BoolArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]bool { return *new(map[string][]map[string]bool) }).(BoolMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]bool { return *new([]map[string]map[string]bool) }).(BoolMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]bool { return *new([]map[string][]bool) }).(BoolArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]bool { return *new(map[string][][]bool) }).(BoolArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]bool { return *new([][][]bool) }).(BoolArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]bool { return *new(map[string]map[string]map[string]bool) }).(BoolMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64Output", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) float64 { return *new(float64) }).(Float64Output)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64PtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *float64 { return *new(*float64) }).(Float64PtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []float64 { return *new([]float64) }).(Float64ArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]float64 { return *new(map[string]float64) }).(Float64MapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]float64 { return *new(map[string][]float64) }).(Float64ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]float64 { return *new([]map[string]float64) }).(Float64MapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) }).(Float64MapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]float64 { return *new([][]float64) }).(Float64ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]float64 { return *new(map[string]map[string][]float64) }).(Float64ArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]float64 { return *new(map[string][]map[string]float64) }).(Float64MapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]float64 { return *new([]map[string]map[string]float64) }).(Float64MapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]float64 { return *new([]map[string][]float64) }).(Float64ArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]float64 { return *new(map[string][][]float64) }).(Float64ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]float64 { return *new([][][]float64) }).(Float64ArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]float64 {
 				return *new(map[string]map[string]map[string]float64)
 			}).(Float64MapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) ID { return *new(ID) }).(IDOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *ID { return *new(*ID) }).(IDPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []ID { return *new([]ID) }).(IDArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]ID { return *new(map[string]ID) }).(IDMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]ID { return *new(map[string][]ID) }).(IDArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]ID { return *new([]map[string]ID) }).(IDMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) }).(IDMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]ID { return *new([][]ID) }).(IDArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]ID { return *new(map[string]map[string][]ID) }).(IDArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]ID { return *new(map[string][]map[string]ID) }).(IDMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]ID { return *new([]map[string]map[string]ID) }).(IDMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]ID { return *new([]map[string][]ID) }).(IDArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]ID { return *new(map[string][][]ID) }).(IDArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]ID { return *new([][][]ID) }).(IDArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]ID { return *new(map[string]map[string]map[string]ID) }).(IDMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []any { return *new([]any) }).(ArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]any { return *new(map[string]any) }).(MapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]any { return *new(map[string][]any) }).(ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]any { return *new([]map[string]any) }).(MapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]any { return *new(map[string]map[string]any) }).(MapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]any { return *new([][]any) }).(ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]any { return *new(map[string]map[string][]any) }).(ArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]any { return *new(map[string][]map[string]any) }).(MapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]any { return *new([]map[string]map[string]any) }).(MapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]any { return *new([]map[string][]any) }).(ArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]any { return *new(map[string][][]any) }).(ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]any { return *new([][][]any) }).(ArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]any { return *new(map[string]map[string]map[string]any) }).(MapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) int { return *new(int) }).(IntOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *int { return *new(*int) }).(IntPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []int { return *new([]int) }).(IntArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]int { return *new(map[string]int) }).(IntMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]int { return *new(map[string][]int) }).(IntArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]int { return *new([]map[string]int) }).(IntMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]int { return *new(map[string]map[string]int) }).(IntMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]int { return *new([][]int) }).(IntArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]int { return *new(map[string]map[string][]int) }).(IntArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]int { return *new(map[string][]map[string]int) }).(IntMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]int { return *new([]map[string]map[string]int) }).(IntMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]int { return *new([]map[string][]int) }).(IntArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]int { return *new(map[string][][]int) }).(IntArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]int { return *new([][][]int) }).(IntArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]int { return *new(map[string]map[string]map[string]int) }).(IntMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) string { return *new(string) }).(StringOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *string { return *new(*string) }).(StringPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []string { return *new([]string) }).(StringArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]string { return *new(map[string]string) }).(StringMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]string { return *new(map[string][]string) }).(StringArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]string { return *new([]map[string]string) }).(StringMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]string { return *new(map[string]map[string]string) }).(StringMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]string { return *new([][]string) }).(StringArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]string { return *new(map[string]map[string][]string) }).(StringArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]string { return *new(map[string][]map[string]string) }).(StringMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]string { return *new([]map[string]map[string]string) }).(StringMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]string { return *new([]map[string][]string) }).(StringArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]string { return *new(map[string][][]string) }).(StringArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]string { return *new([][][]string) }).(StringArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]string {
 				return *new(map[string]map[string]map[string]string)
 			}).(StringMapMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNPtrOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) *URN { return *new(*URN) }).(URNPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []URN { return *new([]URN) }).(URNArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]URN { return *new(map[string]URN) }).(URNMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]URN { return *new(map[string][]URN) }).(URNArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]URN { return *new([]map[string]URN) }).(URNMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) }).(URNMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][]URN { return *new([][]URN) }).(URNArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string][]URN { return *new(map[string]map[string][]URN) }).(URNArrayMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][]map[string]URN { return *new(map[string][]map[string]URN) }).(URNMapArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string]map[string]URN { return *new([]map[string]map[string]URN) }).(URNMapMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) []map[string][]URN { return *new([]map[string][]URN) }).(URNArrayMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string][][]URN { return *new(map[string][][]URN) }).(URNArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayArrayOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) [][][]URN { return *new([][][]URN) }).(URNArrayArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapMapOutput", func(t *testing.T) {
+			t.Parallel()
+
 			_, ok := out.ApplyT(func(v int) map[string]map[string]map[string]URN { return *new(map[string]map[string]map[string]URN) }).(URNMapMapMapOutput)
 			assert.True(t, ok)
 		})
@@ -4054,13 +4198,13 @@ func TestToArchiveOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveOutputWithContext(context.Background())
+	out = in.ToArchiveOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveOutputWithContext(context.Background())
+	out = out.ToArchiveOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4084,13 +4228,13 @@ func TestToArchiveArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayOutputWithContext(context.Background())
+	out = in.ToArchiveArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayOutputWithContext(context.Background())
+	out = out.ToArchiveArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4114,13 +4258,13 @@ func TestToArchiveMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveMapOutputWithContext(context.Background())
+	out = in.ToArchiveMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveMapOutputWithContext(context.Background())
+	out = out.ToArchiveMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4144,13 +4288,13 @@ func TestToArchiveArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayMapOutputWithContext(context.Background())
+	out = in.ToArchiveArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayMapOutputWithContext(context.Background())
+	out = out.ToArchiveArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4174,13 +4318,13 @@ func TestToArchiveMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveMapArrayOutputWithContext(context.Background())
+	out = in.ToArchiveMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveMapArrayOutputWithContext(context.Background())
+	out = out.ToArchiveMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4204,13 +4348,13 @@ func TestToArchiveMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveMapMapOutputWithContext(context.Background())
+	out = in.ToArchiveMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveMapMapOutputWithContext(context.Background())
+	out = out.ToArchiveMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4234,13 +4378,13 @@ func TestToArchiveArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayArrayOutputWithContext(context.Background())
+	out = in.ToArchiveArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayArrayOutputWithContext(context.Background())
+	out = out.ToArchiveArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4264,13 +4408,13 @@ func TestToArchiveArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayMapMapOutputWithContext(context.Background())
+	out = in.ToArchiveArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayMapMapOutputWithContext(context.Background())
+	out = out.ToArchiveArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4294,13 +4438,13 @@ func TestToArchiveMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveMapArrayMapOutputWithContext(context.Background())
+	out = in.ToArchiveMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveMapArrayMapOutputWithContext(context.Background())
+	out = out.ToArchiveMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4324,13 +4468,13 @@ func TestToArchiveMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveMapMapArrayOutputWithContext(context.Background())
+	out = in.ToArchiveMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveMapMapArrayOutputWithContext(context.Background())
+	out = out.ToArchiveMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4354,13 +4498,13 @@ func TestToArchiveArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToArchiveArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToArchiveArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4384,13 +4528,13 @@ func TestToArchiveArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToArchiveArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToArchiveArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4414,13 +4558,13 @@ func TestToArchiveArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToArchiveArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToArchiveArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4444,13 +4588,13 @@ func TestToArchiveMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArchiveMapMapMapOutputWithContext(context.Background())
+	out = in.ToArchiveMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArchiveMapMapMapOutputWithContext(context.Background())
+	out = out.ToArchiveMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4474,13 +4618,13 @@ func TestToAssetOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOutputWithContext(context.Background())
+	out = in.ToAssetOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOutputWithContext(context.Background())
+	out = out.ToAssetOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4504,13 +4648,13 @@ func TestToAssetArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayOutputWithContext(context.Background())
+	out = in.ToAssetArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayOutputWithContext(context.Background())
+	out = out.ToAssetArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4534,13 +4678,13 @@ func TestToAssetMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetMapOutputWithContext(context.Background())
+	out = in.ToAssetMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetMapOutputWithContext(context.Background())
+	out = out.ToAssetMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4564,13 +4708,13 @@ func TestToAssetArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayMapOutputWithContext(context.Background())
+	out = in.ToAssetArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayMapOutputWithContext(context.Background())
+	out = out.ToAssetArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4594,13 +4738,13 @@ func TestToAssetMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetMapArrayOutputWithContext(context.Background())
+	out = in.ToAssetMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetMapArrayOutputWithContext(context.Background())
+	out = out.ToAssetMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4624,13 +4768,13 @@ func TestToAssetMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetMapMapOutputWithContext(context.Background())
+	out = in.ToAssetMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetMapMapOutputWithContext(context.Background())
+	out = out.ToAssetMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4654,13 +4798,13 @@ func TestToAssetArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayArrayOutputWithContext(context.Background())
+	out = in.ToAssetArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayArrayOutputWithContext(context.Background())
+	out = out.ToAssetArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4684,13 +4828,13 @@ func TestToAssetArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayMapMapOutputWithContext(context.Background())
+	out = in.ToAssetArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayMapMapOutputWithContext(context.Background())
+	out = out.ToAssetArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4714,13 +4858,13 @@ func TestToAssetMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetMapArrayMapOutputWithContext(context.Background())
+	out = in.ToAssetMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetMapArrayMapOutputWithContext(context.Background())
+	out = out.ToAssetMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4744,13 +4888,13 @@ func TestToAssetMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetMapMapArrayOutputWithContext(context.Background())
+	out = in.ToAssetMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetMapMapArrayOutputWithContext(context.Background())
+	out = out.ToAssetMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4774,13 +4918,13 @@ func TestToAssetArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToAssetArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToAssetArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4804,13 +4948,13 @@ func TestToAssetArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToAssetArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToAssetArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4834,13 +4978,13 @@ func TestToAssetArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToAssetArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToAssetArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4864,13 +5008,13 @@ func TestToAssetMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetMapMapMapOutputWithContext(context.Background())
+	out = in.ToAssetMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetMapMapMapOutputWithContext(context.Background())
+	out = out.ToAssetMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4894,13 +5038,13 @@ func TestToAssetOrArchiveOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4924,13 +5068,13 @@ func TestToAssetOrArchiveArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4954,13 +5098,13 @@ func TestToAssetOrArchiveMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -4984,13 +5128,13 @@ func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5014,13 +5158,13 @@ func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5044,13 +5188,13 @@ func TestToAssetOrArchiveMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5074,13 +5218,13 @@ func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5104,13 +5248,13 @@ func TestToAssetOrArchiveArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5134,13 +5278,13 @@ func TestToAssetOrArchiveMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5164,13 +5308,13 @@ func TestToAssetOrArchiveMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5194,13 +5338,13 @@ func TestToAssetOrArchiveArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5224,13 +5368,13 @@ func TestToAssetOrArchiveArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5254,13 +5398,13 @@ func TestToAssetOrArchiveArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5284,13 +5428,13 @@ func TestToAssetOrArchiveMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+	out = in.ToAssetOrArchiveMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+	out = out.ToAssetOrArchiveMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5314,13 +5458,13 @@ func TestToBoolOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolOutputWithContext(context.Background())
+	out = in.ToBoolOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolOutputWithContext(context.Background())
+	out = out.ToBoolOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5344,13 +5488,13 @@ func TestToBoolPtrOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolPtrOutputWithContext(context.Background())
+	out = in.ToBoolPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolPtrOutputWithContext(context.Background())
+	out = out.ToBoolPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5374,13 +5518,13 @@ func TestToBoolArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayOutputWithContext(context.Background())
+	out = in.ToBoolArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayOutputWithContext(context.Background())
+	out = out.ToBoolArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5404,13 +5548,13 @@ func TestToBoolMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolMapOutputWithContext(context.Background())
+	out = in.ToBoolMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolMapOutputWithContext(context.Background())
+	out = out.ToBoolMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5434,13 +5578,13 @@ func TestToBoolArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayMapOutputWithContext(context.Background())
+	out = in.ToBoolArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayMapOutputWithContext(context.Background())
+	out = out.ToBoolArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5464,13 +5608,13 @@ func TestToBoolMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolMapArrayOutputWithContext(context.Background())
+	out = in.ToBoolMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolMapArrayOutputWithContext(context.Background())
+	out = out.ToBoolMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5494,13 +5638,13 @@ func TestToBoolMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolMapMapOutputWithContext(context.Background())
+	out = in.ToBoolMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolMapMapOutputWithContext(context.Background())
+	out = out.ToBoolMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5524,13 +5668,13 @@ func TestToBoolArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayArrayOutputWithContext(context.Background())
+	out = in.ToBoolArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayArrayOutputWithContext(context.Background())
+	out = out.ToBoolArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5554,13 +5698,13 @@ func TestToBoolArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayMapMapOutputWithContext(context.Background())
+	out = in.ToBoolArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayMapMapOutputWithContext(context.Background())
+	out = out.ToBoolArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5584,13 +5728,13 @@ func TestToBoolMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolMapArrayMapOutputWithContext(context.Background())
+	out = in.ToBoolMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolMapArrayMapOutputWithContext(context.Background())
+	out = out.ToBoolMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5614,13 +5758,13 @@ func TestToBoolMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolMapMapArrayOutputWithContext(context.Background())
+	out = in.ToBoolMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolMapMapArrayOutputWithContext(context.Background())
+	out = out.ToBoolMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5644,13 +5788,13 @@ func TestToBoolArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToBoolArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToBoolArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5674,13 +5818,13 @@ func TestToBoolArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToBoolArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToBoolArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5704,13 +5848,13 @@ func TestToBoolArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToBoolArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToBoolArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5734,13 +5878,13 @@ func TestToBoolMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToBoolMapMapMapOutputWithContext(context.Background())
+	out = in.ToBoolMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToBoolMapMapMapOutputWithContext(context.Background())
+	out = out.ToBoolMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5764,13 +5908,13 @@ func TestToFloat64Output(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64OutputWithContext(context.Background())
+	out = in.ToFloat64OutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64OutputWithContext(context.Background())
+	out = out.ToFloat64OutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5794,13 +5938,13 @@ func TestToFloat64PtrOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64PtrOutputWithContext(context.Background())
+	out = in.ToFloat64PtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64PtrOutputWithContext(context.Background())
+	out = out.ToFloat64PtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5824,13 +5968,13 @@ func TestToFloat64ArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5854,13 +5998,13 @@ func TestToFloat64MapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64MapOutputWithContext(context.Background())
+	out = in.ToFloat64MapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64MapOutputWithContext(context.Background())
+	out = out.ToFloat64MapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5884,13 +6028,13 @@ func TestToFloat64ArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayMapOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayMapOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5914,13 +6058,13 @@ func TestToFloat64MapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64MapArrayOutputWithContext(context.Background())
+	out = in.ToFloat64MapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64MapArrayOutputWithContext(context.Background())
+	out = out.ToFloat64MapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5944,13 +6088,13 @@ func TestToFloat64MapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64MapMapOutputWithContext(context.Background())
+	out = in.ToFloat64MapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64MapMapOutputWithContext(context.Background())
+	out = out.ToFloat64MapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -5974,13 +6118,13 @@ func TestToFloat64ArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayArrayOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayArrayOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6004,13 +6148,13 @@ func TestToFloat64ArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayMapMapOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayMapMapOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6034,13 +6178,13 @@ func TestToFloat64MapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64MapArrayMapOutputWithContext(context.Background())
+	out = in.ToFloat64MapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64MapArrayMapOutputWithContext(context.Background())
+	out = out.ToFloat64MapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6064,13 +6208,13 @@ func TestToFloat64MapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64MapMapArrayOutputWithContext(context.Background())
+	out = in.ToFloat64MapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64MapMapArrayOutputWithContext(context.Background())
+	out = out.ToFloat64MapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6094,13 +6238,13 @@ func TestToFloat64ArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6124,13 +6268,13 @@ func TestToFloat64ArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6154,13 +6298,13 @@ func TestToFloat64ArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64ArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToFloat64ArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64ArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToFloat64ArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6184,13 +6328,13 @@ func TestToFloat64MapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToFloat64MapMapMapOutputWithContext(context.Background())
+	out = in.ToFloat64MapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToFloat64MapMapMapOutputWithContext(context.Background())
+	out = out.ToFloat64MapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6214,13 +6358,13 @@ func TestToIDOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDOutputWithContext(context.Background())
+	out = in.ToIDOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDOutputWithContext(context.Background())
+	out = out.ToIDOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6244,13 +6388,13 @@ func TestToIDPtrOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDPtrOutputWithContext(context.Background())
+	out = in.ToIDPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDPtrOutputWithContext(context.Background())
+	out = out.ToIDPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6274,13 +6418,13 @@ func TestToIDArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayOutputWithContext(context.Background())
+	out = in.ToIDArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayOutputWithContext(context.Background())
+	out = out.ToIDArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6304,13 +6448,13 @@ func TestToIDMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDMapOutputWithContext(context.Background())
+	out = in.ToIDMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDMapOutputWithContext(context.Background())
+	out = out.ToIDMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6334,13 +6478,13 @@ func TestToIDArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayMapOutputWithContext(context.Background())
+	out = in.ToIDArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayMapOutputWithContext(context.Background())
+	out = out.ToIDArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6364,13 +6508,13 @@ func TestToIDMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDMapArrayOutputWithContext(context.Background())
+	out = in.ToIDMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDMapArrayOutputWithContext(context.Background())
+	out = out.ToIDMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6394,13 +6538,13 @@ func TestToIDMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDMapMapOutputWithContext(context.Background())
+	out = in.ToIDMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDMapMapOutputWithContext(context.Background())
+	out = out.ToIDMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6424,13 +6568,13 @@ func TestToIDArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayArrayOutputWithContext(context.Background())
+	out = in.ToIDArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayArrayOutputWithContext(context.Background())
+	out = out.ToIDArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6454,13 +6598,13 @@ func TestToIDArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayMapMapOutputWithContext(context.Background())
+	out = in.ToIDArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayMapMapOutputWithContext(context.Background())
+	out = out.ToIDArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6484,13 +6628,13 @@ func TestToIDMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDMapArrayMapOutputWithContext(context.Background())
+	out = in.ToIDMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDMapArrayMapOutputWithContext(context.Background())
+	out = out.ToIDMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6514,13 +6658,13 @@ func TestToIDMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDMapMapArrayOutputWithContext(context.Background())
+	out = in.ToIDMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDMapMapArrayOutputWithContext(context.Background())
+	out = out.ToIDMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6544,13 +6688,13 @@ func TestToIDArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToIDArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToIDArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6574,13 +6718,13 @@ func TestToIDArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToIDArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToIDArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6604,13 +6748,13 @@ func TestToIDArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToIDArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToIDArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6634,13 +6778,13 @@ func TestToIDMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIDMapMapMapOutputWithContext(context.Background())
+	out = in.ToIDMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIDMapMapMapOutputWithContext(context.Background())
+	out = out.ToIDMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6664,13 +6808,13 @@ func TestToArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayOutputWithContext(context.Background())
+	out = in.ToArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayOutputWithContext(context.Background())
+	out = out.ToArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6694,13 +6838,13 @@ func TestToMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToMapOutputWithContext(context.Background())
+	out = in.ToMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToMapOutputWithContext(context.Background())
+	out = out.ToMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6724,13 +6868,13 @@ func TestToArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayMapOutputWithContext(context.Background())
+	out = in.ToArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayMapOutputWithContext(context.Background())
+	out = out.ToArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6754,13 +6898,13 @@ func TestToMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToMapArrayOutputWithContext(context.Background())
+	out = in.ToMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToMapArrayOutputWithContext(context.Background())
+	out = out.ToMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6784,13 +6928,13 @@ func TestToMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToMapMapOutputWithContext(context.Background())
+	out = in.ToMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToMapMapOutputWithContext(context.Background())
+	out = out.ToMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6814,13 +6958,13 @@ func TestToArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayArrayOutputWithContext(context.Background())
+	out = in.ToArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayArrayOutputWithContext(context.Background())
+	out = out.ToArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6844,13 +6988,13 @@ func TestToArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayMapMapOutputWithContext(context.Background())
+	out = in.ToArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayMapMapOutputWithContext(context.Background())
+	out = out.ToArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6874,13 +7018,13 @@ func TestToMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToMapArrayMapOutputWithContext(context.Background())
+	out = in.ToMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToMapArrayMapOutputWithContext(context.Background())
+	out = out.ToMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6904,13 +7048,13 @@ func TestToMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToMapMapArrayOutputWithContext(context.Background())
+	out = in.ToMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToMapMapArrayOutputWithContext(context.Background())
+	out = out.ToMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6934,13 +7078,13 @@ func TestToArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6964,13 +7108,13 @@ func TestToArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -6994,13 +7138,13 @@ func TestToArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7024,13 +7168,13 @@ func TestToMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToMapMapMapOutputWithContext(context.Background())
+	out = in.ToMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToMapMapMapOutputWithContext(context.Background())
+	out = out.ToMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7054,13 +7198,13 @@ func TestToIntOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntOutputWithContext(context.Background())
+	out = in.ToIntOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntOutputWithContext(context.Background())
+	out = out.ToIntOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7084,13 +7228,13 @@ func TestToIntPtrOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntPtrOutputWithContext(context.Background())
+	out = in.ToIntPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntPtrOutputWithContext(context.Background())
+	out = out.ToIntPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7114,13 +7258,13 @@ func TestToIntArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayOutputWithContext(context.Background())
+	out = in.ToIntArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayOutputWithContext(context.Background())
+	out = out.ToIntArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7144,13 +7288,13 @@ func TestToIntMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntMapOutputWithContext(context.Background())
+	out = in.ToIntMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntMapOutputWithContext(context.Background())
+	out = out.ToIntMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7174,13 +7318,13 @@ func TestToIntArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayMapOutputWithContext(context.Background())
+	out = in.ToIntArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayMapOutputWithContext(context.Background())
+	out = out.ToIntArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7204,13 +7348,13 @@ func TestToIntMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntMapArrayOutputWithContext(context.Background())
+	out = in.ToIntMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntMapArrayOutputWithContext(context.Background())
+	out = out.ToIntMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7234,13 +7378,13 @@ func TestToIntMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntMapMapOutputWithContext(context.Background())
+	out = in.ToIntMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntMapMapOutputWithContext(context.Background())
+	out = out.ToIntMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7264,13 +7408,13 @@ func TestToIntArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayArrayOutputWithContext(context.Background())
+	out = in.ToIntArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayArrayOutputWithContext(context.Background())
+	out = out.ToIntArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7294,13 +7438,13 @@ func TestToIntArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayMapMapOutputWithContext(context.Background())
+	out = in.ToIntArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayMapMapOutputWithContext(context.Background())
+	out = out.ToIntArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7324,13 +7468,13 @@ func TestToIntMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntMapArrayMapOutputWithContext(context.Background())
+	out = in.ToIntMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntMapArrayMapOutputWithContext(context.Background())
+	out = out.ToIntMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7354,13 +7498,13 @@ func TestToIntMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntMapMapArrayOutputWithContext(context.Background())
+	out = in.ToIntMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntMapMapArrayOutputWithContext(context.Background())
+	out = out.ToIntMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7384,13 +7528,13 @@ func TestToIntArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToIntArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToIntArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7414,13 +7558,13 @@ func TestToIntArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToIntArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToIntArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7444,13 +7588,13 @@ func TestToIntArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToIntArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToIntArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7474,13 +7618,13 @@ func TestToIntMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToIntMapMapMapOutputWithContext(context.Background())
+	out = in.ToIntMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToIntMapMapMapOutputWithContext(context.Background())
+	out = out.ToIntMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7504,13 +7648,13 @@ func TestToStringOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringOutputWithContext(context.Background())
+	out = in.ToStringOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringOutputWithContext(context.Background())
+	out = out.ToStringOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7534,13 +7678,13 @@ func TestToStringPtrOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringPtrOutputWithContext(context.Background())
+	out = in.ToStringPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringPtrOutputWithContext(context.Background())
+	out = out.ToStringPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7564,13 +7708,13 @@ func TestToStringArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayOutputWithContext(context.Background())
+	out = in.ToStringArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayOutputWithContext(context.Background())
+	out = out.ToStringArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7594,13 +7738,13 @@ func TestToStringMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringMapOutputWithContext(context.Background())
+	out = in.ToStringMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringMapOutputWithContext(context.Background())
+	out = out.ToStringMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7624,13 +7768,13 @@ func TestToStringArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayMapOutputWithContext(context.Background())
+	out = in.ToStringArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayMapOutputWithContext(context.Background())
+	out = out.ToStringArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7654,13 +7798,13 @@ func TestToStringMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringMapArrayOutputWithContext(context.Background())
+	out = in.ToStringMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringMapArrayOutputWithContext(context.Background())
+	out = out.ToStringMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7684,13 +7828,13 @@ func TestToStringMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringMapMapOutputWithContext(context.Background())
+	out = in.ToStringMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringMapMapOutputWithContext(context.Background())
+	out = out.ToStringMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7714,13 +7858,13 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayArrayOutputWithContext(context.Background())
+	out = in.ToStringArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayArrayOutputWithContext(context.Background())
+	out = out.ToStringArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7744,13 +7888,13 @@ func TestToStringArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayMapMapOutputWithContext(context.Background())
+	out = in.ToStringArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayMapMapOutputWithContext(context.Background())
+	out = out.ToStringArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7774,13 +7918,13 @@ func TestToStringMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringMapArrayMapOutputWithContext(context.Background())
+	out = in.ToStringMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringMapArrayMapOutputWithContext(context.Background())
+	out = out.ToStringMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7804,13 +7948,13 @@ func TestToStringMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringMapMapArrayOutputWithContext(context.Background())
+	out = in.ToStringMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringMapMapArrayOutputWithContext(context.Background())
+	out = out.ToStringMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7834,13 +7978,13 @@ func TestToStringArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToStringArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToStringArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7864,13 +8008,13 @@ func TestToStringArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToStringArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToStringArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7894,13 +8038,13 @@ func TestToStringArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToStringArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToStringArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7924,13 +8068,13 @@ func TestToStringMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToStringMapMapMapOutputWithContext(context.Background())
+	out = in.ToStringMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToStringMapMapMapOutputWithContext(context.Background())
+	out = out.ToStringMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7954,13 +8098,13 @@ func TestToURNOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNOutputWithContext(context.Background())
+	out = in.ToURNOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNOutputWithContext(context.Background())
+	out = out.ToURNOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7984,13 +8128,13 @@ func TestToURNPtrOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNPtrOutputWithContext(context.Background())
+	out = in.ToURNPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNPtrOutputWithContext(context.Background())
+	out = out.ToURNPtrOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8014,13 +8158,13 @@ func TestToURNArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayOutputWithContext(context.Background())
+	out = in.ToURNArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayOutputWithContext(context.Background())
+	out = out.ToURNArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8044,13 +8188,13 @@ func TestToURNMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNMapOutputWithContext(context.Background())
+	out = in.ToURNMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNMapOutputWithContext(context.Background())
+	out = out.ToURNMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8074,13 +8218,13 @@ func TestToURNArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayMapOutputWithContext(context.Background())
+	out = in.ToURNArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayMapOutputWithContext(context.Background())
+	out = out.ToURNArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8104,13 +8248,13 @@ func TestToURNMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNMapArrayOutputWithContext(context.Background())
+	out = in.ToURNMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNMapArrayOutputWithContext(context.Background())
+	out = out.ToURNMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8134,13 +8278,13 @@ func TestToURNMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNMapMapOutputWithContext(context.Background())
+	out = in.ToURNMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNMapMapOutputWithContext(context.Background())
+	out = out.ToURNMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8164,13 +8308,13 @@ func TestToURNArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayArrayOutputWithContext(context.Background())
+	out = in.ToURNArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayArrayOutputWithContext(context.Background())
+	out = out.ToURNArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8194,13 +8338,13 @@ func TestToURNArrayMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayMapMapOutputWithContext(context.Background())
+	out = in.ToURNArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayMapMapOutputWithContext(context.Background())
+	out = out.ToURNArrayMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8224,13 +8368,13 @@ func TestToURNMapArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNMapArrayMapOutputWithContext(context.Background())
+	out = in.ToURNMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNMapArrayMapOutputWithContext(context.Background())
+	out = out.ToURNMapArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8254,13 +8398,13 @@ func TestToURNMapMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNMapMapArrayOutputWithContext(context.Background())
+	out = in.ToURNMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNMapMapArrayOutputWithContext(context.Background())
+	out = out.ToURNMapMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8284,13 +8428,13 @@ func TestToURNArrayMapArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayMapArrayOutputWithContext(context.Background())
+	out = in.ToURNArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayMapArrayOutputWithContext(context.Background())
+	out = out.ToURNArrayMapArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8314,13 +8458,13 @@ func TestToURNArrayArrayMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayArrayMapOutputWithContext(context.Background())
+	out = in.ToURNArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayArrayMapOutputWithContext(context.Background())
+	out = out.ToURNArrayArrayMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8344,13 +8488,13 @@ func TestToURNArrayArrayArrayOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNArrayArrayArrayOutputWithContext(context.Background())
+	out = in.ToURNArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNArrayArrayArrayOutputWithContext(context.Background())
+	out = out.ToURNArrayArrayArrayOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -8374,13 +8518,13 @@ func TestToURNMapMapMapOutput(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.ToURNMapMapMapOutputWithContext(context.Background())
+	out = in.ToURNMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.ToURNMapMapMapOutputWithContext(context.Background())
+	out = out.ToURNMapMapMapOutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -17360,3 +17504,9 @@ func TestAnyOutputAsURNMapMapMapOutput(t *testing.T) {
 
 	assert.EqualValues(t, ev, av)
 }
+
+// An input type is also an input type of every type it implements.
+var _ AssetOrArchiveInput = ArchiveInput(nil)
+var _ AssetOrArchiveInput = AssetInput(nil)
+var _ StringInput = IDInput(nil)
+var _ StringInput = URNInput(nil)

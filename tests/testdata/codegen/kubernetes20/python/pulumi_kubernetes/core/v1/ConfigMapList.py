@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Literal
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -23,15 +23,15 @@ __all__ = ['ConfigMapListArgs', 'ConfigMapList']
 class ConfigMapListArgs:
     def __init__(__self__, *,
                  items: pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]],
-                 api_version: Optional[pulumi.Input[_builtins.str]] = None,
-                 kind: Optional[pulumi.Input[_builtins.str]] = None,
-                 metadata: Optional[pulumi.Input['_meta.v1.ListMetaArgs']] = None):
+                 api_version: pulumi.Input[Optional[Literal['v1']]] = None,
+                 kind: pulumi.Input[Optional[Literal['ConfigMapList']]] = None,
+                 metadata: pulumi.Input[Optional['_meta.v1.ListMetaArgs']] = None):
         """
         The set of arguments for constructing a ConfigMapList resource.
 
         :param pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]] items: Items is the list of ConfigMaps.
-        :param pulumi.Input[_builtins.str] api_version: APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-        :param pulumi.Input[_builtins.str] kind: Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+        :param pulumi.Input[Literal['v1']] api_version: APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+        :param pulumi.Input[Literal['ConfigMapList']] kind: Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
         :param pulumi.Input['_meta.v1.ListMetaArgs'] metadata: More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         """
         pulumi.set(__self__, "items", items)
@@ -56,38 +56,38 @@ class ConfigMapListArgs:
 
     @_builtins.property
     @pulumi.getter(name="apiVersion")
-    def api_version(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def api_version(self) -> pulumi.Input[Optional[Literal['v1']]]:
         """
         APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
         """
         return pulumi.get(self, "api_version")
 
     @api_version.setter
-    def api_version(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def api_version(self, value: pulumi.Input[Optional[Literal['v1']]]):
         pulumi.set(self, "api_version", value)
 
     @_builtins.property
     @pulumi.getter
-    def kind(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def kind(self) -> pulumi.Input[Optional[Literal['ConfigMapList']]]:
         """
         Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
         """
         return pulumi.get(self, "kind")
 
     @kind.setter
-    def kind(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def kind(self, value: pulumi.Input[Optional[Literal['ConfigMapList']]]):
         pulumi.set(self, "kind", value)
 
     @_builtins.property
     @pulumi.getter
-    def metadata(self) -> Optional[pulumi.Input['_meta.v1.ListMetaArgs']]:
+    def metadata(self) -> pulumi.Input[Optional['_meta.v1.ListMetaArgs']]:
         """
         More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         """
         return pulumi.get(self, "metadata")
 
     @metadata.setter
-    def metadata(self, value: Optional[pulumi.Input['_meta.v1.ListMetaArgs']]):
+    def metadata(self, value: pulumi.Input[Optional['_meta.v1.ListMetaArgs']]):
         pulumi.set(self, "metadata", value)
 
 
@@ -97,21 +97,20 @@ class ConfigMapList(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 api_version: Optional[pulumi.Input[_builtins.str]] = None,
-                 items: Optional[pulumi.Input[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict']]]]] = None,
-                 kind: Optional[pulumi.Input[_builtins.str]] = None,
-                 metadata: Optional[pulumi.Input[Union['_meta.v1.ListMetaArgs', '_meta.v1.ListMetaArgsDict']]] = None,
+                 api_version: pulumi.Input[Optional[Literal['v1']]] = None,
+                 items: pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict', 'outputs.ConfigMap']]]]] = None,
+                 kind: pulumi.Input[Optional[Literal['ConfigMapList']]] = None,
+                 metadata: pulumi.Input[Optional[Union['_meta.v1.ListMetaArgs', '_meta.v1.ListMetaArgsDict', '_meta.v1.outputs.ListMeta']]] = None,
                  __props__=None):
         """
         A Kubernetes list resource.
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[_builtins.str] api_version: APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-        :param pulumi.Input[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict']]]] items: Items is the list of ConfigMaps.
-        :param pulumi.Input[_builtins.str] kind: Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-        :param pulumi.Input[Union['_meta.v1.ListMetaArgs', '_meta.v1.ListMetaArgsDict']] metadata: More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+        :param pulumi.Input[Literal['v1']] api_version: APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+        :param pulumi.Input[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict', 'outputs.ConfigMap']]]] items: Items is the list of ConfigMaps.
+        :param pulumi.Input[Literal['ConfigMapList']] kind: Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+        :param pulumi.Input[Union['_meta.v1.ListMetaArgs', '_meta.v1.ListMetaArgsDict', '_meta.v1.outputs.ListMeta']] metadata: More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
         """
         ...
     @overload
@@ -121,7 +120,6 @@ class ConfigMapList(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         A Kubernetes list resource.
-
 
         :param str resource_name: The name of the resource.
         :param ConfigMapListArgs args: The arguments to use to populate this resource's properties.
@@ -138,10 +136,10 @@ class ConfigMapList(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 api_version: Optional[pulumi.Input[_builtins.str]] = None,
-                 items: Optional[pulumi.Input[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict']]]]] = None,
-                 kind: Optional[pulumi.Input[_builtins.str]] = None,
-                 metadata: Optional[pulumi.Input[Union['_meta.v1.ListMetaArgs', '_meta.v1.ListMetaArgsDict']]] = None,
+                 api_version: pulumi.Input[Optional[Literal['v1']]] = None,
+                 items: pulumi.Input[Optional[Sequence[pulumi.Input[Union['ConfigMapArgs', 'ConfigMapArgsDict', 'outputs.ConfigMap']]]]] = None,
+                 kind: pulumi.Input[Optional[Literal['ConfigMapList']]] = None,
+                 metadata: pulumi.Input[Optional[Union['_meta.v1.ListMetaArgs', '_meta.v1.ListMetaArgsDict', '_meta.v1.outputs.ListMeta']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -185,9 +183,15 @@ class ConfigMapList(pulumi.CustomResource):
         __props__.__dict__["metadata"] = None
         return ConfigMapList(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'kubernetes:core/v1:ConfigMapList', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="apiVersion")
-    def api_version(self) -> pulumi.Output[_builtins.str]:
+    def api_version(self) -> pulumi.Output[Literal['v1']]:
         """
         APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
         """
@@ -203,7 +207,7 @@ class ConfigMapList(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter
-    def kind(self) -> pulumi.Output[_builtins.str]:
+    def kind(self) -> pulumi.Output[Literal['ConfigMapList']]:
         """
         Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
         """

@@ -33,7 +33,7 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 }`, true
 	case "notImplemented":
 		return fmt.Sprintf(
-			`%sfunction notImplemented(message: string) {
+			`%sfunction notImplemented(message: string): any {
 %s    throw new Error(message);
 %s}`, indent, indent, indent), true
 	case "singleOrNone":

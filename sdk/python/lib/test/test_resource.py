@@ -14,14 +14,17 @@
 
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
+import inspect
 import os
 import unittest
+from unittest import mock
 import pytest
 import pytest_asyncio
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
+from pulumi.runtime.resource import convert_providers
 from pulumi import ResourceOptions
 from pulumi.runtime.rpc import ERROR_ON_DEPENDENCY_CYCLES_VAR
 import pulumi
@@ -38,16 +41,60 @@ async def test_get_package():
     assert "aws" == res.package
 
 
+def test_convert_providers_merges_provider_with_provider_mapping():
+    aws_provider = mock.Mock(package="aws")
+    old_component_provider = mock.Mock(package="component")
+    component_provider = mock.Mock(package="component")
+    providers = {
+        "aws": aws_provider,
+        "component": old_component_provider,
+    }
+
+    result = convert_providers(component_provider, providers)
+
+    assert result["aws"] is aws_provider
+    assert result["component"] is component_provider
+    assert providers["component"] is old_component_provider
+
+
+def test_convert_providers_merges_provider_with_provider_sequence():
+    aws_provider = mock.Mock(package="aws")
+    component_provider = mock.Mock(package="component")
+
+    result = convert_providers(component_provider, [aws_provider])
+
+    assert result["aws"] is aws_provider
+    assert result["component"] is component_provider
+
+
+@pytest.mark.parametrize("exception_type", [ValueError, AssertionError])
+def test_register_resource_adds_resource_context(exception_type):
+    @pulumi.runtime.test
+    async def run_test():
+        with mock.patch(
+            "pulumi.runtime.resource.prepare_resource",
+            new=mock.AsyncMock(side_effect=exception_type("preparation failed")),
+        ):
+            resource = pulumi.ComponentResource("python:test:Component", "bad-resource")
+            await resource.urn.future()
+
+    with pytest.raises(exception_type) as raised:
+        run_test()
+
+    message = str(raised.value)
+    assert "While processing resource: 'bad-resource'" in message
+    assert "'python:test:Component'" in message
+    assert f"{exception_type.__name__} has risen: preparation failed" in message
+
+
 @pytest.fixture(autouse=True)
 def clean_up_env_vars():
-    try:
-        del os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR]
-    except KeyError:
-        pass
+    with mock.patch.dict(os.environ):
+        os.environ.pop(ERROR_ON_DEPENDENCY_CYCLES_VAR, None)
+        yield
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_accepts_outputs(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -68,7 +115,6 @@ def test_depends_on_accepts_outputs(dep_tracker):
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -87,7 +133,6 @@ def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_respects_top_level_implicit_dependencies(dep_tracker):
     dep1 = MockResource(name="dep1")
     dep2 = MockResource(name="dep2")
@@ -128,7 +173,6 @@ def depends_on_variations(dep: pulumi.Resource) -> List[pulumi.ResourceOptions]:
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 def test_depends_on_typing_variations(dep_tracker) -> None:
     dep: pulumi.Resource = MockResource(name="dep1")
 
@@ -294,6 +338,23 @@ class MockResource(pulumi.CustomResource):
 
 
 class MergeResourceOptions(unittest.TestCase):
+    def test_state_migrations_preserve_positional_compatibility(self):
+        parameters = list(inspect.signature(ResourceOptions).parameters)
+        assert parameters[-1] == "state_migrations"
+
+    def test_state_migrations_merge_in_order(self):
+        def first(_):
+            return None
+
+        def second(_):
+            return None
+
+        merged = ResourceOptions.merge(
+            ResourceOptions(state_migrations=[first]),
+            ResourceOptions(state_migrations=[second]),
+        )
+        assert merged.state_migrations == [first, second]
+
     def test_parent(self):
         opts1 = ResourceOptions()
         assert opts1.protect is None

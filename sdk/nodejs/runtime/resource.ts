@@ -40,7 +40,14 @@ import {
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { invoke } from "./invoke";
-import { getStore } from "./state";
+import {
+    failPendingRegistration,
+    getParentStackTraceHandle,
+    getPendingResourceRegistrations,
+    getStore,
+    PendingResourceRegistration,
+} from "./state";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 import { isGrpcError } from "../errors";
 import {
@@ -74,38 +81,12 @@ import * as aliasproto from "../proto/alias_pb";
 import { Callback } from "../proto/callback_pb";
 import * as provproto from "../proto/provider_pb";
 import * as resproto from "../proto/resource_pb";
-import * as sourceproto from "../proto/source_pb";
+import { marshalSourcePosition, marshalStackTrace } from "./stackTrace";
 
 export interface SourcePosition {
     uri: string;
     line: number;
     column: number;
-}
-
-function marshalSourcePosition(sourcePosition?: SourcePosition) {
-    if (sourcePosition === undefined) {
-        return undefined;
-    }
-    const pos = new sourceproto.SourcePosition();
-    pos.setUri(sourcePosition.uri);
-    pos.setLine(sourcePosition.line);
-    pos.setColumn(sourcePosition.column);
-    return pos;
-}
-
-function marshalStackTrace(stackTrace?: (SourcePosition | undefined)[]) {
-    if (stackTrace === undefined) {
-        return undefined;
-    }
-    const trace = new sourceproto.StackTrace();
-    trace.setFramesList(
-        stackTrace.map((pos) => {
-            const frame = new sourceproto.StackFrame();
-            frame.setPc(marshalSourcePosition(pos)!);
-            return frame;
-        }),
-    );
-    return trace;
 }
 
 interface ResourceResolverOperation {
@@ -242,11 +223,9 @@ export function getResource(
                                         req,
                                         (
                                             rpcError: grpc.ServiceError | null,
-                                            innerResponse: provproto.InvokeResponse | undefined,
+                                            innerResponse: resproto.ResourceInvokeResponse | undefined,
                                         ) => {
-                                            log.debug(
-                                                `getResource Invoke RPC finished: err: ${rpcError}, resp: ${innerResponse}`,
-                                            );
+                                            log.debug(`getResource Invoke RPC finished: err: ${rpcError}`);
                                             if (rpcError) {
                                                 if (
                                                     rpcError.code === grpc.status.UNAVAILABLE ||
@@ -313,6 +292,7 @@ export function getResource(
                 });
             })
             .catch((err) => {
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -339,6 +319,7 @@ export function readResource(
     if (!opts.id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
     }
+    const parentStackTraceHandle = getParentStackTraceHandle();
     const id: Promise<Input<ID>> = output(opts.id).promise(true);
 
     const label = `resource:${name}[${t}]#...`;
@@ -384,6 +365,7 @@ export function readResource(
                 req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setStacktrace(marshalStackTrace(stackTrace));
+                req.setParentstacktracehandle(parentStackTraceHandle || "");
                 req.setPackageref(packageRefStr || "");
 
                 // Now run the operation, serializing the invocation if necessary.
@@ -402,9 +384,7 @@ export function readResource(
                                             rpcError: grpc.ServiceError | null,
                                             innerResponse: resproto.ReadResourceResponse | undefined,
                                         ) => {
-                                            log.debug(
-                                                `ReadResource RPC finished: ${label}; err: ${rpcError}, resp: ${innerResponse}`,
-                                            );
+                                            log.debug(`ReadResource RPC finished: ${label}; err: ${rpcError}`);
                                             if (rpcError) {
                                                 if (
                                                     rpcError.code === grpc.status.UNAVAILABLE ||
@@ -432,6 +412,8 @@ export function readResource(
                             resp = {
                                 getUrn: () => mockurn,
                                 getProperties: () => req.getProperties(),
+                                getResult: () => 0,
+                                getUnknown: () => false,
                             };
                         }
                     } catch (e) {
@@ -439,21 +421,152 @@ export function readResource(
                         resp = {
                             getUrn: () => "",
                             getProperties: () => undefined,
+                            getResult: () => 0,
+                            getUnknown: () => false,
                         };
                     }
 
-                    // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
+                    // Now resolve everything: the URN, the ID, and the output properties.
                     resop.resolveURN(resp.getUrn(), err);
-                    resop.resolveID!(resolvedID, resolvedID !== undefined, err);
-                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err);
+                    // Prefer the id returned by the provider's Read, which may differ from the id
+                    // supplied on the request (e.g. a provider that normalizes it to a canonical
+                    // form). An empty response id during preview means "unknown"; during update it
+                    // indicates an older engine that did not populate the field, in which case we
+                    // fall back to the request id for back-compat.
+                    const respID = resp.getId?.() || "";
+                    if (respID !== "") {
+                        resop.resolveID!(respID as ID, true, err);
+                    } else if (isDryRun()) {
+                        resop.resolveID!(undefined as any, false, err);
+                    } else {
+                        resop.resolveID!(resolvedID, resolvedID !== undefined, err);
+                    }
+                    // A skipped read reports Unknown=true and a failed read reports a non-success result;
+                    // resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+                    // seeing empty values as real.
+                    const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
+                    const unknown = !isDryRun() && resp.getUnknown();
+                    await resolveOutputs(
+                        res,
+                        t,
+                        name,
+                        resultFailed ? {} : props,
+                        resultFailed ? undefined : resp.getProperties(),
+                        {},
+                        resop.resolvers,
+                        err,
+                        resultFailed || unknown,
+                    );
                     done();
                 });
             })
             .catch((err) => {
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
         label,
+    );
+}
+
+/**
+ * Checks whether a resource exists in the provider without actually reading or importing it.
+ */
+export function existsResource(
+    type: string,
+    id: Input<string>,
+    props?: Inputs,
+    opts?: CustomResourceOptions,
+    packageRef?: Promise<string | undefined>,
+): Output<boolean> {
+    opts = opts || {};
+
+    const label = `existsResource[${type}]`;
+    log.debug(`Checking resource existence: t=${type}`);
+
+    const idPromise = output(id).promise(true);
+
+    const resultPromise = debuggablePromise(
+        (async (): Promise<{ exists: boolean; known: boolean }> => {
+            const monitor = getMonitor();
+
+            const resolvedID = await serializeProperty(label, await idPromise, new Set(), {
+                keepOutputValues: false,
+            });
+
+            // During previews, if the ID is unknown, we can't check existence, so the result is unknown.
+            if (resolvedID === undefined) {
+                return { exists: false, known: false };
+            }
+
+            // Serialize properties if provided.
+            const serializedProps = props ? await serializeProperties(label, props, { keepOutputValues: false }) : {};
+
+            // Resolve provider reference.
+            let providerRef: string | undefined;
+            if (opts!.provider) {
+                const providerURN = await opts!.provider.urn.promise();
+                const providerID = (await opts!.provider.id.promise()) || "";
+                providerRef = `${providerURN}::${providerID}`;
+            }
+
+            // Resolve parent URN.
+            let parentURN = "";
+            if (opts!.parent) {
+                const parentOutput = getParentURN(opts!.parent);
+                parentURN = (await parentOutput.promise()) || "";
+            }
+
+            // Resolve package ref if available.
+            let packageRefStr: string | undefined;
+            if (packageRef !== undefined) {
+                packageRefStr = await packageRef;
+                if (packageRefStr !== undefined) {
+                    // If we have a package reference we don't need to pass the version or plugin download URL.
+                    opts!.version = "";
+                    opts!.pluginDownloadURL = "";
+                }
+            }
+
+            const req = new resproto.ExistsResourceRequest();
+            req.setType(type);
+            req.setId(resolvedID);
+            req.setParent(parentURN);
+            req.setProperties(gstruct.Struct.fromJavaScript(serializedProps));
+            req.setProvider(providerRef || "");
+            req.setVersion(opts!.version || "");
+            req.setPlugindownloadurl(opts!.pluginDownloadURL || "");
+            req.setPackageref(packageRefStr || "");
+
+            if (!monitor) {
+                // In test mode without a monitor, report a known existing resource.
+                return { exists: true, known: true };
+            }
+
+            const resp = await new Promise<resproto.ExistsResourceResponse>((resolve, reject) => {
+                monitor.existsResource(
+                    req,
+                    (rpcError: grpc.ServiceError | null, innerResponse: resproto.ExistsResourceResponse) => {
+                        if (rpcError) {
+                            reject(new Error(`failed to check existence of resource [${type}]: ${rpcError.message}`));
+                        } else {
+                            resolve(innerResponse);
+                        }
+                    },
+                );
+            });
+
+            return { exists: resp.getExists(), known: !resp.getUnknown() };
+        })(),
+        label,
+    );
+
+    return new Output<boolean>(
+        [],
+        resultPromise.then((r) => r.exists),
+        /*isKnown*/ resultPromise.then((r) => r.known),
+        /*isSecret*/ Promise.resolve(false),
+        /*allResources*/ Promise.resolve(new Set<Resource>()),
     );
 }
 
@@ -536,8 +649,13 @@ export function registerResource(
     stackTrace?: (SourcePosition | undefined)[],
     packageRef?: Promise<string | undefined>,
 ): void {
+    const parentStackTraceHandle = getParentStackTraceHandle();
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
+
+    if (opts.stateMigrations !== undefined && opts.stateMigrations.length > 0 && !getStore().supportsStateMigrations) {
+        throw new Error("The Pulumi CLI does not support state migrations. Please update the Pulumi CLI");
+    }
 
     // Wait for all values to be available, and then perform the RPC.
     const done = rpcKeepAlive();
@@ -573,6 +691,18 @@ export function registerResource(
 
                     for (const transform of opts.transforms) {
                         callbacks.push(await callbackServer.registerTransform(transform));
+                    }
+                }
+
+                const stateMigrations: Callback[] = [];
+                if (opts.stateMigrations !== undefined && opts.stateMigrations.length > 0) {
+                    const callbackServer = getCallbacks();
+                    if (callbackServer === undefined) {
+                        throw new Error("Callback server could not initialize");
+                    }
+
+                    for (const migration of opts.stateMigrations) {
+                        stateMigrations.push(await callbackServer.registerStateMigration(migration));
                     }
                 }
 
@@ -670,7 +800,9 @@ export function registerResource(
                 req.setAliasspecs(true);
                 req.setSourceposition(marshalSourcePosition(sourcePosition));
                 req.setStacktrace(marshalStackTrace(stackTrace));
+                req.setParentstacktracehandle(parentStackTraceHandle || "");
                 req.setTransformsList(callbacks);
+                req.setStateMigrationsList(stateMigrations);
                 req.setSupportsresultreporting(true);
                 req.setHooks(hooks);
 
@@ -692,6 +824,7 @@ export function registerResource(
                     customTimeouts.setCreate(opts.customTimeouts.create || "");
                     customTimeouts.setUpdate(opts.customTimeouts.update || "");
                     customTimeouts.setDelete(opts.customTimeouts.delete || "");
+                    customTimeouts.setRead(opts.customTimeouts.read || "");
                 }
                 req.setCustomtimeouts(customTimeouts);
 
@@ -738,15 +871,11 @@ export function registerResource(
                                                 }
 
                                                 // Node lets us hack the message as long as we do it before accessing the `stack` property.
-                                                log.debug(
-                                                    `RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`,
-                                                );
+                                                log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}`);
                                                 preallocError.message = `failed to register new resource ${name} [${t}]: ${rpcErr.message}`;
                                                 reject(preallocError);
                                             } else {
-                                                log.debug(
-                                                    `RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`,
-                                                );
+                                                log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}`);
                                                 resolve(innerResponse);
                                             }
                                         },
@@ -763,6 +892,7 @@ export function registerResource(
                                 getObject: () => req.getObject(),
                                 getPropertydependenciesMap: () => undefined,
                                 getResult: () => 0,
+                                getUnknown: () => false,
                             };
                         }
                     } catch (e) {
@@ -773,8 +903,13 @@ export function registerResource(
                             getObject: () => req.getObject(),
                             getPropertydependenciesMap: () => undefined,
                             getResult: () => 0,
+                            getUnknown: () => false,
                         };
                     }
+
+                    // If the engine reported that the resource failed, resolve all of its outputs as
+                    // unknown so the rest of the program can continue.
+                    const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
 
                     resop.resolveURN(resp.getUrn(), err);
 
@@ -794,25 +929,28 @@ export function registerResource(
                         }
                     }
 
+                    const unknown = custom && !resultFailed && !isDryRun() && resp.getUnknown();
+
                     // Now resolve the output properties.
-                    const keepUnknowns = resp.getResult() !== resproto.Result.SUCCESS;
                     await resolveOutputs(
                         res,
                         t,
                         name,
-                        props,
-                        resp.getObject(),
+                        resultFailed ? {} : props,
+                        resultFailed ? undefined : resp.getObject(),
                         deps,
                         resop.resolvers,
                         err,
-                        keepUnknowns,
+                        resultFailed || unknown,
                     );
                     done();
                 });
             })
             .catch((err) => {
                 log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
-                // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
+                // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang,
+                // and fail the resource's outputs so that dependents (e.g. children awaiting our URN) unblock.
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -940,6 +1078,19 @@ export async function prepareResource(
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
+    const pendingRegistrations = getPendingResourceRegistrations();
+    const pending: PendingResourceRegistration = { res, parent, label, type, name, phase: "dependencies" };
+    pending.fail = (err) => {
+        resolveURN("", err);
+        if (resolveID !== undefined) {
+            resolveID(undefined, false, err);
+        }
+        for (const key of Object.keys(resolvers)) {
+            resolvers[key](undefined, true, false, [], err);
+        }
+    };
+    pendingRegistrations.set(res, pending);
+
     // Before we can proceed, all our dependencies must be finished.
     const replaceWithDependencies = await gatherExplicitDependencies(opts.replaceWith);
     const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
@@ -949,6 +1100,7 @@ export async function prepareResource(
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+    pending.phase = "inputs";
     const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
         // To initially scope the use of this new feature, we only keep output values when
         // remote is true (for multi-lang components, i.e. MLCs).
@@ -958,11 +1110,15 @@ export async function prepareResource(
         // on 'propertyDependencies' won't create outputs for properties that only
         // contain resource references.
         excludeResourceReferencesFromDependencies: remote,
+        pendingRegistration: pending,
     });
+    pending.inputProperty = undefined;
 
     // Wait for the parent to complete.
     // If no parent was provided, parent to the root resource.
+    pending.phase = "parent";
     const parentURN = parent ? await parent.urn.promise() : undefined;
+    pending.phase = "provider";
 
     let importID: ID | undefined;
     if (custom) {
@@ -1019,6 +1175,7 @@ export async function prepareResource(
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
     // the dependency graph and optimize operations accordingly.
+    pending.phase = "dependency-urns";
 
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
@@ -1058,6 +1215,8 @@ export async function prepareResource(
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
+
+    pendingRegistrations.delete(res);
 
     return {
         resolveURN: resolveURN,
@@ -1242,7 +1401,9 @@ async function resolveOutputs(
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
     if (outputs) {
-        Object.assign(allProps, deserializeProperties(outputs, keepUnknowns));
+        // Unknown outputs from the engine are always unknown, even during an update: a resource's outputs may
+        // depend on resources that failed or are awaiting.
+        Object.assign(allProps, deserializeProperties(outputs, true));
     }
 
     const label = `resource:${name}[${t}]#...`;
@@ -1269,6 +1430,8 @@ async function resolveOutputs(
  * outputs.
  */
 export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise<Inputs> | Output<Inputs>) {
+    ensureNotInStateMigration("register resource outputs");
+
     // Now run the operation. Note that we explicitly do not serialize output registration with
     // respect to other resource operations, as outputs may depend on properties of other resources
     // that will not resolve until later turns. This would create a circular promise chain that can
@@ -1302,10 +1465,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                             monitor.registerResourceOutputs(
                                 req,
                                 (err: grpc.ServiceError | null, innerResponse: gempty.Empty | undefined) => {
-                                    log.debug(
-                                        `RegisterResourceOutputs RPC finished: urn=${urn}; ` +
-                                            `err: ${err}, resp: ${innerResponse}`,
-                                    );
+                                    log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` + `err: ${err}`);
                                     if (err) {
                                         // If the monitor is unavailable, it is in the process of shutting down or has already
                                         // shut down. Don't emit an error and don't do any more RPCs, just exit.
@@ -1319,10 +1479,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
 
                                         reject(err);
                                     } else {
-                                        log.debug(
-                                            `RegisterResourceOutputs RPC finished: urn=${urn}; ` +
-                                                `err: ${err}, resp: ${innerResponse}`,
-                                        );
+                                        log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` + `err: ${err}`);
                                         resolve();
                                     }
                                 },
@@ -1388,6 +1545,8 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
 }
 
 export async function registerResourceHook(hook: ResourceHook) {
+    ensureNotInStateMigration("register resource hook");
+
     if (!getStore().supportsResourceHooks) {
         throw new Error("The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI");
     }
@@ -1401,6 +1560,8 @@ export async function registerResourceHook(hook: ResourceHook) {
 }
 
 export async function registerErrorHook(hook: ErrorHook) {
+    ensureNotInStateMigration("register error hook");
+
     if (!getStore().supportsErrorHooks) {
         throw new Error("The Pulumi CLI does not support error hooks. Please update the Pulumi CLI");
     }

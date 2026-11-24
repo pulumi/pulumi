@@ -123,12 +123,12 @@ func TestGetRefreshOption(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh)
+			shouldRefresh, err := GetRefreshOption(&tt.project, tt.refresh)
 			if err != nil {
-				t.Errorf("getRefreshOption() error = %v", err)
+				t.Errorf("GetRefreshOption() error = %v", err)
 			}
 			if shouldRefresh != tt.expectedRefreshState {
-				t.Errorf("getRefreshOption got = %t, expected %t", shouldRefresh, tt.expectedRefreshState)
+				t.Errorf("GetRefreshOption got = %t, expected %t", shouldRefresh, tt.expectedRefreshState)
 			}
 		})
 	}

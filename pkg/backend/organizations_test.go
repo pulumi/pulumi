@@ -15,7 +15,6 @@
 package backend
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -23,62 +22,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetDefaultOrg(t *testing.T) {
-	t.Parallel()
-	ctx := t.Context()
-	userConfiguredOrg := "user-configured-default-org"
-	backendConfiguredOrg := "backend-configured-org"
+func TestGetBackendConfigDefaultOrg(t *testing.T) {
+	t.Run("prefers PULUMI_DEFAULT_ORGANIZATION over configured default org", func(t *testing.T) {
+		t.Setenv("PULUMI_HOME", t.TempDir())
+		t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "env-org")
+		require.NoError(t, workspace.SetBackendConfigDefaultOrg("https://api.example.com", "configured-org"))
 
-	t.Run("prefers user-configured default org", func(t *testing.T) {
-		t.Parallel()
-
-		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
-			return userConfiguredOrg, nil
-		}
-
-		testBackend := &MockBackend{
-			GetDefaultOrgF: func(ctx context.Context) (string, error) {
-				assert.Fail(t, "should not make api call for get default org")
-				return "", nil
-			},
-		}
-
-		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)
-
+		org, err := getBackendConfigDefaultOrg(nil)
 		require.NoError(t, err)
-		assert.Equal(t, userConfiguredOrg, org)
+		assert.Equal(t, "env-org", org)
 	})
 
-	t.Run("falls back to making a call for user org", func(t *testing.T) {
-		t.Parallel()
-		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
-			return "", nil
-		}
+	t.Run("falls back to configured default org", func(t *testing.T) {
+		t.Setenv("PULUMI_HOME", t.TempDir())
+		t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+		t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
+		require.NoError(t, workspace.SetBackendConfigDefaultOrg("https://api.example.com", "configured-org"))
 
-		testBackend := &MockBackend{
-			GetDefaultOrgF: func(ctx context.Context) (string, error) {
-				return backendConfiguredOrg, nil
-			},
-		}
-
-		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)
-
+		org, err := getBackendConfigDefaultOrg(nil)
 		require.NoError(t, err)
-		assert.Equal(t, backendConfiguredOrg, org)
-	})
-
-	// This maintains existing behavior with `GetBackendConfigDefaultOrg`.
-	t.Run("returns empty string if nothing is configured", func(t *testing.T) {
-		t.Parallel()
-		defaultOrgConfigLookupFunc := func(*workspace.Project) (string, error) {
-			return "", nil
-		}
-		testBackend := &MockBackend{}
-
-		org, err := getDefaultOrg(ctx, testBackend, nil, defaultOrgConfigLookupFunc)
-
-		require.NoError(t, err)
-		assert.Equal(t, "", org)
+		assert.Equal(t, "configured-org", org)
 	})
 }
 

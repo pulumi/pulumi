@@ -21,13 +21,15 @@ import (
 	"path/filepath"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -88,7 +90,7 @@ func TestDeletingComponentResourceProducesResourceOutputsEvent(t *testing.T) {
 	eventsChan := make(chan Event, 10)
 	acts.Opts.Events.ch = eventsChan
 
-	step := deploy.NewDeleteStep(&deploy.Deployment{}, map[resource.URN]bool{}, &resource.State{
+	step := deploy.NewDeleteStep(&deploy.Deployment{}, map[resource.URN]bool{}, &pkgresource.State{
 		URN:      resource.URN("urn:pulumi:stack::project::my:example:Foo::foo"),
 		ID:       "foo",
 		Custom:   false,
@@ -117,18 +119,19 @@ type mockSnapshotMutation struct{}
 
 func (msm *mockSnapshotMutation) End(step deploy.Step, successful bool) error { return nil }
 
-//nolint:paralleltest // subtests use t.Setenv
 func TestLoadPolicyAnalyzer(t *testing.T) {
 	t.Run("successful load", func(t *testing.T) {
 		t.Parallel()
 
 		host := &plugin.MockHost{
-			PolicyAnalyzerF: func(name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			PolicyAnalyzerF: func(
+				_ *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
+			) (plugin.Analyzer, error) {
 				return &mockAnalyzer{name: name}, nil
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -142,12 +145,14 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 
 		expectedErr := errors.New("some other error")
 		host := &plugin.MockHost{
-			PolicyAnalyzerF: func(tokens.QName, string, *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			PolicyAnalyzerF: func(
+				*plugin.Context, tokens.QName, string, *plugin.PolicyAnalyzerOptions,
+			) (plugin.Analyzer, error) {
 				return nil, expectedErr
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -159,7 +164,9 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 		host := &plugin.MockHost{
-			PolicyAnalyzerF: func(tokens.QName, string, *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			PolicyAnalyzerF: func(
+				*plugin.Context, tokens.QName, string, *plugin.PolicyAnalyzerOptions,
+			) (plugin.Analyzer, error) {
 				return nil, workspace.NewMissingError(workspace.PluginDescriptor{
 					Name: "policy-opa",
 					Kind: apitype.AnalyzerPlugin,
@@ -167,7 +174,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -178,26 +185,32 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		assert.ErrorContains(t, err, "required analyzer plugin has not been installed")
 
 		// The original MissingError should be wrapped, not replaced.
-		var me *workspace.MissingError
-		assert.True(t, errors.As(err, &me))
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		assert.True(t, ok)
 	})
 
 	t.Run("MissingError with auto-install retries and succeeds", func(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 		// auto-install is enabled by default. The first call to PolicyAnalyzer
 		// returns MissingError; after the install attempt the second call succeeds.
+		expectedCredentials := map[string]string{
+			"PULUMI_API": "https://helper.example.com", "PULUMI_ACCESS_TOKEN": "helper-token",
+		}
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, credentials map[string]string,
 		) (*semver.Version, error) {
+			assert.Equal(t, expectedCredentials, credentials)
 			return nil, nil
 		}
 		t.Cleanup(func() { installPluginFunc = origInstall })
 
 		calls := 0
 		host := &plugin.MockHost{
-			PolicyAnalyzerF: func(name tokens.QName, _ string, _ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			PolicyAnalyzerF: func(
+				_ *plugin.Context, name tokens.QName, _ string, _ *plugin.PolicyAnalyzerOptions,
+			) (plugin.Analyzer, error) {
 				calls++
 				if calls == 1 {
 					return nil, workspace.NewMissingError(workspace.PluginDescriptor{
@@ -209,7 +222,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, expectedCredentials)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -225,14 +238,16 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		installErr := errors.New("network timeout")
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ map[string]string,
 		) (*semver.Version, error) {
 			return nil, installErr
 		}
 		t.Cleanup(func() { installPluginFunc = origInstall })
 
 		host := &plugin.MockHost{
-			PolicyAnalyzerF: func(tokens.QName, string, *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			PolicyAnalyzerF: func(
+				*plugin.Context, tokens.QName, string, *plugin.PolicyAnalyzerOptions,
+			) (plugin.Analyzer, error) {
 				return nil, workspace.NewMissingError(workspace.PluginDescriptor{
 					Name: "policy-opa",
 					Kind: apitype.AnalyzerPlugin,
@@ -240,7 +255,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -249,8 +264,8 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to automatically install analyzer plugin")
 
 		// The original MissingError should be wrapped.
-		var me *workspace.MissingError
-		assert.True(t, errors.As(err, &me))
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		assert.True(t, ok)
 	})
 
 	t.Run("MissingError after successful install wraps retry error", func(t *testing.T) {
@@ -258,7 +273,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ map[string]string,
 		) (*semver.Version, error) {
 			return nil, nil
 		}
@@ -266,7 +281,9 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 
 		// Even after install, PolicyAnalyzer still returns MissingError.
 		host := &plugin.MockHost{
-			PolicyAnalyzerF: func(tokens.QName, string, *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			PolicyAnalyzerF: func(
+				*plugin.Context, tokens.QName, string, *plugin.PolicyAnalyzerOptions,
+			) (plugin.Analyzer, error) {
 				return nil, workspace.NewMissingError(workspace.PluginDescriptor{
 					Name: "policy-opa",
 					Kind: apitype.AnalyzerPlugin,
@@ -274,7 +291,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -283,8 +300,8 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			`could not start policy pack "my-policy" because the built-in analyzer `+
 				`plugin that runs policy plugins is missing`)
 
-		var me *workspace.MissingError
-		assert.True(t, errors.As(err, &me))
+		_, ok := errors.AsType[*workspace.MissingError](err)
+		assert.True(t, ok)
 	})
 }
 
@@ -294,27 +311,30 @@ type mockAnalyzer struct {
 
 func (a *mockAnalyzer) Close() error       { return nil }
 func (a *mockAnalyzer) Name() tokens.QName { return a.name }
-func (a *mockAnalyzer) Analyze(plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+func (a *mockAnalyzer) Analyze(context.Context, plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *mockAnalyzer) AnalyzeStack([]plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+func (a *mockAnalyzer) AnalyzeStack(context.Context, []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
 	return plugin.AnalyzeResponse{}, nil
 }
 
-func (a *mockAnalyzer) Remediate(plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
+func (a *mockAnalyzer) Remediate(context.Context, plugin.AnalyzerResource) (plugin.RemediateResponse, error) {
 	return plugin.RemediateResponse{}, nil
 }
 
-func (a *mockAnalyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
+func (a *mockAnalyzer) GetAnalyzerInfo(context.Context) (plugin.AnalyzerInfo, error) {
 	return plugin.AnalyzerInfo{}, nil
 }
 
-func (a *mockAnalyzer) GetPluginInfo() (plugin.PluginInfo, error) {
+func (a *mockAnalyzer) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{}, nil
 }
-func (a *mockAnalyzer) Configure(map[string]plugin.AnalyzerPolicyConfig) error { return nil }
-func (a *mockAnalyzer) Cancel(context.Context) error                           { return nil }
+
+func (a *mockAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPolicyConfig) error {
+	return nil
+}
+func (a *mockAnalyzer) Cancel(context.Context) error { return nil }
 
 func TestParsePolicyConfigKey(t *testing.T) {
 	t.Parallel()
@@ -344,8 +364,7 @@ func TestMergePolicyConfig(t *testing.T) {
 	t.Parallel()
 
 	raw := func(s string) *json.RawMessage {
-		r := json.RawMessage(s)
-		return &r
+		return new(json.RawMessage(s))
 	}
 
 	t.Run("nil base and nil esc returns nil", func(t *testing.T) {

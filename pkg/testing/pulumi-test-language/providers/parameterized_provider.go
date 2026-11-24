@@ -24,9 +24,9 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type ParameterizedProvider struct {
@@ -49,10 +49,6 @@ func (p *ParameterizedProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *ParameterizedProvider) Pkg() tokens.Package {
-	return "parameterized"
-}
-
 func title(s string) string {
 	if s == "" {
 		return s
@@ -64,7 +60,9 @@ func (p *ParameterizedProvider) GetSchema(
 	_ context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
 	if p.parameterPackage == "" {
-		return plugin.GetSchemaResponse{}, errors.New("expected a parameter package name for a parameterized provider")
+		return plugin.GetSchemaResponse{Schema: []byte(
+			`{ "name": "parameterized", "version": "1.2.3" }`,
+		)}, nil
 	}
 
 	if p.parameterVersion == "" {
@@ -98,7 +96,7 @@ func (p *ParameterizedProvider) GetSchema(
 	pkg := schema.PackageSpec{
 		Name:    subpackage,
 		Version: version,
-		Provider: schema.ResourceSpec{
+		Provider: &schema.ResourceSpec{
 			InputProperties: map[string]schema.PropertySpec{
 				"text": {
 					TypeSpec: schema.TypeSpec{
@@ -186,39 +184,39 @@ func (p *ParameterizedProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 
 	// assert that the version is the parameterized version
-	if version.StringValue() != p.parameterVersion {
+	if version.AsString() != p.parameterVersion {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version in CheckConfig is not the parameterized version"),
+			Failures: makeCheckConfigFailure("version", "version in CheckConfig is not the parameterized version"),
 		}, nil
 	}
 
 	// Optionally expect the text config
-	text, ok := req.News["text"]
+	text, ok := req.News.GetOk("text")
 	if ok {
 		if !text.IsString() {
 			return plugin.CheckConfigResponse{
-				Failures: makeCheckFailure("text", "text is not a string"),
+				Failures: makeCheckConfigFailure("text", "text is not a string"),
 			}, nil
 		}
-		p.config = text.StringValue()
+		p.config = text.AsString()
 	}
 
-	if len(req.News) > 2 {
+	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -228,6 +226,7 @@ func (p *ParameterizedProvider) CheckConfig(
 func (p *ParameterizedProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "{sub-package}:index:{parameterized-resource}"
 	expectedToken := fmt.Sprintf("%s:index:%s", p.parameterPackage, string(p.parameterValue))
 	if string(req.URN.Type()) != expectedToken {
@@ -237,7 +236,7 @@ func (p *ParameterizedProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ParameterizedProvider) Create(
@@ -268,7 +267,7 @@ func (p *ParameterizedProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -289,9 +288,9 @@ func (p *ParameterizedProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: urn,
-		Outputs: resource.PropertyMap{
-			"parameterValue": resource.NewProperty(string(p.parameterValue) + "Component"),
-		},
+		Outputs: property.NewMap(map[string]property.Value{
+			"parameterValue": property.New(string(p.parameterValue) + "Component"),
+		}),
 	}, nil
 }
 
@@ -304,20 +303,18 @@ func (p *ParameterizedProvider) Invoke(
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid function token: %s. Expected %s", req.Tok, functionToken)
 	}
 
-	input, ok := req.Args["input"]
+	input, ok := req.Args.GetOk("input")
 	if !ok {
 		return plugin.InvokeResponse{}, errors.New("missing required argument 'input'")
 	}
 	if !input.IsString() {
-		return plugin.InvokeResponse{}, fmt.Errorf("expected input to be a string, got %s", input.TypeString())
-	}
-
-	outputs := resource.PropertyMap{
-		"output": resource.NewProperty(input.StringValue() + string(p.parameterValue)),
+		return plugin.InvokeResponse{}, fmt.Errorf("expected input to be a string, got %v", input)
 	}
 
 	return plugin.InvokeResponse{
-		Properties: outputs,
+		Properties: property.NewMap(map[string]property.Value{
+			"output": property.New(input.AsString() + string(p.parameterValue)),
+		}),
 	}, nil
 }
 

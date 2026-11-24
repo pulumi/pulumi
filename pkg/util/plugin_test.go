@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:revive // Legacy package name we don't want to change
 package util
 
 import (
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -46,4 +47,69 @@ func TestKnownProvider(t *testing.T) {
 	res := SetKnownPluginDownloadURL(&spec)
 	assert.True(t, res)
 	assert.Equal(t, "github://api.github.com/pulumiverse", spec.PluginDownloadURL)
+}
+
+func TestKnownLanguageRuntimeHCL(t *testing.T) {
+	t.Parallel()
+
+	spec := workspace.PluginDescriptor{
+		Name: "hcl",
+		Kind: apitype.LanguagePlugin,
+	}
+	res := SetKnownPluginDownloadURL(&spec)
+	assert.True(t, res)
+
+	// Check that version was set
+	require.NotNil(t, spec.Version)
+	assert.NotZero(t, *spec.Version)
+	// Now unset it for the comparison
+	spec.Version = nil
+
+	assert.Equal(t, workspace.PluginDescriptor{
+		Name: "hcl",
+		Kind: apitype.LanguagePlugin,
+	}, spec)
+}
+
+func TestKnownLanguageRuntimeOPA(t *testing.T) {
+	t.Parallel()
+
+	spec := workspace.PluginDescriptor{
+		Name: "opa",
+		Kind: apitype.LanguagePlugin,
+	}
+	res := SetKnownPluginDownloadURL(&spec)
+	assert.True(t, res)
+
+	require.NotNil(t, spec.Version)
+	assert.NotZero(t, *spec.Version)
+	assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", spec.PluginDownloadURL)
+
+	explicit := semver.MustParse("1.1.2")
+	spec = workspace.PluginDescriptor{
+		Name:    "opa",
+		Kind:    apitype.LanguagePlugin,
+		Version: &explicit,
+	}
+	assert.False(t, SetKnownPluginDownloadURL(&spec))
+	assert.Equal(t, &explicit, spec.Version)
+	assert.Equal(t, "github://api.github.com/pulumi/pulumi-policy-opa", spec.PluginDownloadURL)
+}
+
+func TestKnownLanguageRuntimePreservesExplicitVersion(t *testing.T) {
+	t.Parallel()
+
+	explicit := semver.MustParse("0.3.0")
+	spec := workspace.PluginDescriptor{
+		Name:    "hcl",
+		Kind:    apitype.LanguagePlugin,
+		Version: &explicit,
+	}
+	res := SetKnownPluginDownloadURL(&spec)
+	assert.False(t, res)
+	assert.Equal(t, workspace.PluginDescriptor{
+		Name:    "hcl",
+		Kind:    apitype.LanguagePlugin,
+		Version: &explicit,
+	}, spec)
 }

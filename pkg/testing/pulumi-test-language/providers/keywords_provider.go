@@ -18,12 +18,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -50,9 +51,9 @@ func (p *KeywordsProvider) properties() []string {
 
 func (p *KeywordsProvider) resourceTypes() []string {
 	return []string{
-		"keywords:index:Lambda",
 		"keywords:index:SomeResource",
 		"keywords:lambda:SomeResource",
+		"keywords:module:Lambda",
 	}
 }
 
@@ -66,7 +67,7 @@ func (p *KeywordsProvider) Configure(
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *KeywordsProvider) Pkg() tokens.Package {
+func (p *KeywordsProvider) pkg() tokens.Package {
 	return "keywords"
 }
 
@@ -96,7 +97,7 @@ func (p *KeywordsProvider) GetSchema(
 	}
 
 	pkg := schema.PackageSpec{
-		Name:      p.Pkg().String(),
+		Name:      p.pkg().String(),
 		Version:   p.version(),
 		Resources: resources,
 	}
@@ -109,26 +110,26 @@ func (p *KeywordsProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != p.version() {
+	if version.AsString() != p.version() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not "+p.version()),
+			Failures: makeCheckConfigFailure("version", "version is not "+p.version()),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -136,17 +137,13 @@ func (p *KeywordsProvider) CheckConfig(
 }
 
 func (p *KeywordsProvider) isValidResourceType(t tokens.Type) bool {
-	for _, rt := range p.resourceTypes() {
-		if string(t) == rt {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.resourceTypes(), string(t))
 }
 
 func (p *KeywordsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -155,7 +152,7 @@ func (p *KeywordsProvider) Check(
 
 	for _, prop := range p.properties() {
 		propKey := resource.PropertyKey(prop)
-		value, ok := req.News[propKey]
+		value, ok := news[propKey]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure(propKey, fmt.Sprintf("missing %s", propKey)),
@@ -167,18 +164,19 @@ func (p *KeywordsProvider) Check(
 			}, nil
 		}
 	}
-	if len(req.News) != len(p.properties()) {
+	if len(news) != len(p.properties()) {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *KeywordsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if !p.isValidResourceType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -193,7 +191,7 @@ func (p *KeywordsProvider) Create(
 	properties := make(resource.PropertyMap)
 	for _, prop := range p.properties() {
 		propKey := resource.PropertyKey(prop)
-		value, ok := req.Properties[propKey]
+		value, ok := inputs[propKey]
 		if !ok {
 			return plugin.CreateResponse{}, fmt.Errorf("missing property %s", propKey)
 		}
@@ -202,7 +200,7 @@ func (p *KeywordsProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -275,11 +273,12 @@ func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (pl
 		properties[resource.PropertyKey(prop)] = resource.NewProperty(prop)
 	}
 
+	m := resource.FromResourcePropertyMap(properties)
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  properties,
-			Outputs: properties,
+			Inputs:  &m,
+			Outputs: &m,
 		},
 		Status: resource.StatusOK,
 	}, nil

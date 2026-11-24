@@ -26,13 +26,14 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -358,7 +359,7 @@ func GetProviderParameterization(
 type Registry struct {
 	plugin.NotForwardCompatibleProvider
 
-	host      plugin.Host
+	pctx      *plugin.Context
 	isPreview bool
 	providers map[providers.Reference]plugin.Provider
 	builtins  plugin.Provider
@@ -369,9 +370,9 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
-	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider, e env.Env,
+	checksums map[string][]byte, pctx *plugin.Context, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
-	if builtins != nil && pkg == builtins.Pkg() {
+	if builtins != nil && pkg == "pulumi" {
 		return builtins, nil
 	}
 
@@ -383,7 +384,7 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 		Checksums:         checksums,
 	}
 
-	provider, err := host.Provider(descriptor, e)
+	provider, err := pctx.Host.Provider(pctx, descriptor, e)
 	if err == nil {
 		return provider, nil
 	}
@@ -392,8 +393,8 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	// version of a plugin is required which are not picked up by initial pass of required plugin
 	// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
 	// install the plugin now, and only error if we can't do that.
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
+	_, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok {
 		// Not a MissingError, return the original error.
 		return nil, err
 	}
@@ -405,16 +406,16 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	}
 
 	log := func(sev diag.Severity, msg string) {
-		host.Log(sev, "", msg, 0)
+		pctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromHost)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromContext, pctx.CloudCredentialEnv)
 	if err != nil {
 		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(descriptor, e)
+	return pctx.Host.Provider(pctx, descriptor, e)
 }
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
@@ -422,10 +423,10 @@ func loadParameterizedProvider(
 	ctx context.Context,
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	parameter *workspace.Parameterization,
-	host plugin.Host, builtins plugin.Provider,
+	pctx *plugin.Context, builtins plugin.Provider,
 	e env.Env,
 ) (plugin.Provider, error) {
-	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins, e)
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, pctx, builtins, e)
 	if err != nil {
 		return nil, err
 	}
@@ -461,10 +462,10 @@ func FilterProviderConfig(inputs resource.PropertyMap) resource.PropertyMap {
 	return result
 }
 
-// NewRegistry creates a new provider registry using the given host.
-func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Registry {
+// NewRegistry creates a new provider registry using the given plugin context.
+func NewRegistry(pctx *plugin.Context, isPreview bool, builtins plugin.Provider) *Registry {
 	return &Registry{
-		host:      host,
+		pctx:      pctx,
 		isPreview: isPreview,
 		providers: make(map[providers.Reference]plugin.Provider),
 		builtins:  builtins,
@@ -556,10 +557,6 @@ func (r *Registry) Close() error {
 	return nil
 }
 
-func (r *Registry) Pkg() tokens.Package {
-	return "pulumi"
-}
-
 func (r *Registry) label() string {
 	return "ProviderRegistry"
 }
@@ -626,36 +623,40 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	contract.Requiref(providers.IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	logging.V(7).Infof("%s executing (#oldInputs=%d,#newInputs=%d)",
+		label, req.OldInputs.Len(), req.NewInputs.Len())
+
+	oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
+	newInputs := resource.ToResourcePropertyMap(req.NewInputs)
 
 	// Parse the version from the provider properties and load the provider.
 	providerPkg := providers.GetProviderPackage(req.URN.Type())
-	name, err := GetProviderName(providerPkg, req.News)
+	name, err := GetProviderName(providerPkg, newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "name", Reason: err.Error(),
 		}}}, nil
 	}
-	version, err := GetProviderVersion(req.News)
+	version, err := GetProviderVersion(newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "version", Reason: err.Error(),
 		}}}, nil
 	}
-	downloadURL, err := GetProviderDownloadURL(req.News)
+	downloadURL, err := GetProviderDownloadURL(newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "pluginDownloadURL", Reason: err.Error(),
 		}}}, nil
 	}
-	parameter, err := GetProviderParameterization(providerPkg, req.News)
+	parameter, err := GetProviderParameterization(providerPkg, newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "parameter", Reason: err.Error(),
 		}}}, nil
 	}
 
-	envVarMappings, err := GetEnvironmentVariableMappings(req.News)
+	envVarMappings, err := GetEnvironmentVariableMappings(newInputs)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
 			Property: "envVarMappings", Reason: err.Error(),
@@ -664,7 +665,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
+		ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -675,31 +676,34 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	// Check the provider's config. If the check fails, unload the provider.
 	resp, err := provider.CheckConfig(ctx, plugin.CheckConfigRequest{
 		URN:           req.URN,
-		Olds:          FilterProviderConfig(req.Olds),
-		News:          FilterProviderConfig(req.News),
+		Olds:          resource.FromResourcePropertyMap(FilterProviderConfig(oldInputs)),
+		News:          resource.FromResourcePropertyMap(FilterProviderConfig(newInputs)),
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
 		contract.IgnoreClose(provider)
-		return plugin.CheckResponse{Failures: resp.Failures}, err
+		var failures []plugin.CheckFailure
+		for _, f := range resp.Failures {
+			failures = append(failures, plugin.CheckFailure{Property: f.Property, Reason: f.Reason})
+		}
+		return plugin.CheckResponse{Failures: failures}, err
 	}
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
-	if resp.Properties == nil {
-		resp.Properties = resource.PropertyMap{}
-	}
+
+	properties := resource.ToResourcePropertyMap(resp.Properties)
 
 	// If the provider tries to drop the versions field reset it back to the original value.
-	if _, ok := resp.Properties[versionKey]; !ok {
+	if _, ok := properties[versionKey]; !ok {
 		// Only set it if we had it originally
-		if _, ok := req.News[versionKey]; ok {
-			resp.Properties[versionKey] = req.News[versionKey]
+		if _, ok := newInputs[versionKey]; ok {
+			properties[versionKey] = newInputs[versionKey]
 		}
 	}
 	// If the provider tries to change the version field return an error
-	if newV, ok := resp.Properties[versionKey]; ok {
-		if oldV, ok := req.News[versionKey]; ok {
+	if newV, ok := properties[versionKey]; ok {
+		if oldV, ok := newInputs[versionKey]; ok {
 			if !oldV.DeepEquals(newV) {
 				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
 					req.URN, oldV.StringValue(), newV.StringValue())
@@ -709,15 +713,15 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 
 	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
 	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
-	if _, has := req.News[internalKey]; has {
+	if _, has := newInputs[internalKey]; has {
 		// Before we reset it warn the user that the providers data is being discarded
-		if _, has := resp.Properties[internalKey]; has {
-			r.host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
+		if _, has := properties[internalKey]; has {
+			r.pctx.Host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
 		}
-		resp.Properties[internalKey] = req.News[internalKey]
+		properties[internalKey] = newInputs[internalKey]
 	}
 
-	return plugin.CheckResponse{Properties: resp.Properties}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(properties)}, nil
 }
 
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list
@@ -738,7 +742,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Create a reference using the URN and the unconfigured ID and fetch the provider.
 	provider, ok := r.GetProvider(mustNewReference(req.URN, UnconfiguredID))
@@ -752,12 +756,15 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	}
 
 	// Diff the properties.
-	filteredNewInputs := FilterProviderConfig(req.NewInputs)
+	oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
+	oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
+	newInputs := resource.ToResourcePropertyMap(req.NewInputs)
+	filteredNewInputs := FilterProviderConfig(newInputs)
 	diff, err := provider.DiffConfig(context.Background(), plugin.DiffConfigRequest{
 		URN:           req.URN,
-		OldInputs:     FilterProviderConfig(req.OldInputs),
-		OldOutputs:    req.OldOutputs, // OldOutputs is already filtered
-		NewInputs:     filteredNewInputs,
+		OldInputs:     resource.FromResourcePropertyMap(FilterProviderConfig(oldInputs)),
+		OldOutputs:    resource.FromResourcePropertyMap(oldOutputs), // OldOutputs is already filtered
+		NewInputs:     resource.FromResourcePropertyMap(filteredNewInputs),
 		AllowUnknowns: req.AllowUnknowns,
 		IgnoreChanges: req.IgnoreChanges,
 	})
@@ -765,7 +772,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 		return plugin.DiffResult{Changes: plugin.DiffUnknown}, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if req.OldOutputs.DeepEquals(filteredNewInputs) {
+		if oldOutputs.DeepEquals(filteredNewInputs) {
 			diff.Changes = plugin.DiffNone
 		} else {
 			diff.Changes = plugin.DiffSome
@@ -789,7 +796,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 // when called from SameStep.Apply after the Check→Diff flow determined the provider hasn't changed.
 // If fromCheck is false (e.g., called from EnsureProvider for dependency diffing), we always load fresh
 // and do not touch the UnconfiguredID entry, which may be in use by a concurrent provider update.
-func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool) error {
+func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck bool) error {
 	urn := res.URN
 	if !providers.IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
@@ -849,7 +856,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(
-			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
+			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -862,12 +869,13 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 	name := urn.Name()
 	typ := urn.Type()
 
+	filteredInputs := FilterProviderConfig(res.Inputs)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &urn,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &res.ID,
-		Inputs: FilterProviderConfig(res.Inputs),
+		Inputs: resource.FromResourcePropertyMap(filteredInputs),
 	}); err != nil {
 		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
@@ -896,7 +904,9 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	label := fmt.Sprintf("%s.Create(%s)", r.label(), req.URN)
-	logging.V(7).Infof("%s executing (#news=%v)", label, len(req.Properties))
+	logging.V(7).Infof("%s executing (#news=%v)", label, req.Properties.Len())
+
+	properties := resource.ToResourcePropertyMap(req.Properties)
 
 	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
 	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
@@ -908,28 +918,28 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		providerPkg := providers.GetProviderPackage(req.URN.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
-		name, err := GetProviderName(providerPkg, req.Properties)
+		name, err := GetProviderName(providerPkg, properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		version, err := GetProviderVersion(req.Properties)
+		version, err := GetProviderVersion(properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		downloadURL, err := GetProviderDownloadURL(req.Properties)
+		downloadURL, err := GetProviderDownloadURL(properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, req.Properties)
+		parameter, err := GetProviderParameterization(providerPkg, properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 
-		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
+		envVarMappings, err := GetEnvironmentVariableMappings(properties)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
@@ -937,7 +947,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 
 		// TODO: We should thread checksums through here.
 		provider, err = loadParameterizedProvider(
-			ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins, buildEnvWithMappings(envVarMappings))
+			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
@@ -962,13 +972,13 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	name := req.URN.Name()
 	typ := req.URN.Type()
 
-	filteredProperties := FilterProviderConfig(req.Properties)
+	filteredProperties := FilterProviderConfig(properties)
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &req.URN,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
-		Inputs: filteredProperties,
+		Inputs: resource.FromResourcePropertyMap(filteredProperties),
 	}); err != nil {
 		return plugin.CreateResponse{Status: resource.StatusOK}, err
 	}
@@ -976,7 +986,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 	r.setProvider(mustNewReference(req.URN, id), provider)
 	return plugin.CreateResponse{
 		ID:         id,
-		Properties: filteredProperties,
+		Properties: resource.FromResourcePropertyMap(filteredProperties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -988,7 +998,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), req.ID, req.URN)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
 	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
@@ -998,13 +1008,13 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	name := req.URN.Name()
 	typ := req.URN.Type()
 
-	filteredProperties := FilterProviderConfig(req.NewInputs)
+	filteredProperties := FilterProviderConfig(resource.ToResourcePropertyMap(req.NewInputs))
 	_, err := provider.Configure(ctx, plugin.ConfigureRequest{
 		URN:    &req.URN,
 		Name:   &name,
 		Type:   &typ,
 		ID:     &req.ID,
-		Inputs: filteredProperties,
+		Inputs: resource.FromResourcePropertyMap(filteredProperties),
 	})
 	if err != nil {
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
@@ -1014,7 +1024,10 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 	// EnsureProvider for dependency diffing) may have registered an old provider at this ref.
 	// See https://github.com/pulumi/pulumi/issues/20529
 	r.setProviderAndCloseOld(mustNewReference(req.URN, req.ID), provider)
-	return plugin.UpdateResponse{Properties: filteredProperties, Status: resource.StatusOK}, nil
+	return plugin.UpdateResponse{
+		Properties: resource.FromResourcePropertyMap(filteredProperties),
+		Status:     resource.StatusOK,
+	}, nil
 }
 
 // Delete unregisters and unloads the provider with the given URN and ID. If the provider was never loaded
@@ -1034,6 +1047,10 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 
 func (r *Registry) Read(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 	return plugin.ReadResponse{}, errors.New("provider resources may not be read")
+}
+
+func (r *Registry) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {
+	return nil, errors.New("provider resources may not be listed")
 }
 
 func (r *Registry) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {

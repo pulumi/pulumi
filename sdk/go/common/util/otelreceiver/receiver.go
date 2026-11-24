@@ -26,6 +26,7 @@ import (
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	otellog "github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver/logging"
 )
 
 // Receiver is an OTLP gRPC receiver that can receive traces, metrics, and logs
@@ -47,8 +48,10 @@ type traceService struct {
 	r *Receiver
 }
 
-// Start creates and starts a new OTLP receiver with the given exporter.
-func Start(exporter SpanExporter) (*Receiver, error) {
+// Start creates and starts a new OTLP receiver with the given span
+// and log exporters.  Either exporter may be nil if that signal is
+// not needed.
+func Start(exporter SpanExporter, logExporter otellog.LogExporter) (*Receiver, error) {
 	addr := "127.0.0.1:0"
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -67,6 +70,9 @@ func Start(exporter SpanExporter) (*Receiver, error) {
 	r.server = grpc.NewServer()
 
 	coltracepb.RegisterTraceServiceServer(r.server, &traceService{r: r})
+	if logExporter != nil {
+		otellog.Register(r.server, logExporter)
+	}
 
 	go func() {
 		defer close(r.done)
@@ -123,8 +129,10 @@ func (s *traceService) Export(
 
 	logging.V(10).Infof("OTLP receiver: received %d resource spans", len(req.ResourceSpans))
 
-	if err := s.r.exporter.ExportSpans(ctx, req.ResourceSpans); err != nil {
-		logging.V(5).Infof("OTLP receiver: failed to export spans: %v", err)
+	if s.r.exporter != nil {
+		if err := s.r.exporter.ExportSpans(ctx, req.ResourceSpans); err != nil {
+			logging.V(5).Infof("OTLP receiver: failed to export spans: %v", err)
+		}
 	}
 	return &coltracepb.ExportTraceServiceResponse{}, nil
 }

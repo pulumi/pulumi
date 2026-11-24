@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import traceback
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
@@ -47,12 +48,14 @@ from .rpc import (
     unwrap_rpc_secret,
 )
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
+from ._state_migration_context import _state_migration_callback
 
 if TYPE_CHECKING:
     from ..resource import (
         Alias,
         ResourceOptions,
         ResourceTransform,
+        StateMigration,
     )
     from ..resource_hooks import ErrorHook, ResourceHook
 
@@ -67,15 +70,20 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
     _monitor: resource_pb2_grpc.ResourceMonitorStub
     _server: aio.Server
     _target: str
+    _loop: asyncio.AbstractEventLoop
 
     _transforms: dict[Union[ResourceTransform, InvokeTransform], str]
+
+    _state_migrations: dict[StateMigration, str]
 
     def __init__(self, monitor: resource_pb2_grpc.ResourceMonitorStub):
         log.debug("Creating CallbackServicer")
         _CallbackServicer._servicers.append(self)
         self._callbacks = {}
         self._transforms = {}
+        self._state_migrations = {}
         self._monitor = monitor
+        self._loop = asyncio.get_running_loop()
         self._server = aio.server(options=_GRPC_CHANNEL_OPTIONS)
         callback_pb2_grpc.add_CallbacksServicer_to_server(self, self._server)
         port = self._server.add_insecure_port(address="127.0.0.1:0")
@@ -93,7 +101,17 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
 
     @classmethod
     async def shutdown(cls):
-        for servicer in cls._servicers:
+        # A Pulumi program only has a single event loop, but the servicers list is
+        # shared process-wide, and a single process can run many programs on
+        # different loops, e.g. mock-based tests.
+        #
+        # Stopping a grpc.aio server from a different event loop than it was created
+        # on raises a RuntimeError, so only stop servicers created on the current loop.
+        loop = asyncio.get_running_loop()
+        for servicer in list(cls._servicers):
+            if servicer._loop is not loop:
+                continue
+            cls._servicers.remove(servicer)
             await servicer._server.stop(grace=0)
 
     async def Invoke(
@@ -203,6 +221,54 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         token = str(uuid.uuid4())
         self._callbacks[token] = cb
         self._transforms[transform] = token
+        return callback_pb2.Callback(
+            token=token,
+            target=self._target,
+        )
+
+    def register_state_migration(
+        self, migration: StateMigration
+    ) -> callback_pb2.Callback:
+        # If this migration function has already been registered, return it.
+        token = self._state_migrations.get(migration)
+        if token is not None:
+            return callback_pb2.Callback(token=token, target=self._target)
+
+        from ..resource import (
+            StateMigrationArgs,
+            StateMigrationResult,
+        )
+
+        async def cb(s: bytes) -> Message:
+            request: resource_pb2.StateMigrationRequest = (
+                resource_pb2.StateMigrationRequest.FromString(s)
+            )
+
+            args = StateMigrationArgs(
+                urn=request.urn,
+                old_state=json.loads(request.old_state),
+            )
+
+            with _state_migration_callback(request.urn):
+                maybeAwaitable = migration(args)
+                result: Optional[StateMigrationResult] = None
+                if isinstance(maybeAwaitable, Awaitable):
+                    result = await maybeAwaitable
+                else:
+                    result = maybeAwaitable
+
+            if result is None:
+                # No new state means the migration left the state unchanged.
+                return resource_pb2.StateMigrationResponse()
+
+            return resource_pb2.StateMigrationResponse(
+                new_state=json.dumps(result.new_state).encode("utf-8"),
+                successors=result.successors or {},
+            )
+
+        token = str(uuid.uuid4())
+        self._callbacks[token] = cb
+        self._state_migrations[migration] = token
         return callback_pb2.Callback(
             token=token,
             target=self._target,
@@ -381,6 +447,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             name=hook.name,
             callback=callback,
             on_dry_run=hook.opts.on_dry_run if hook.opts else False,
+            ignore_errors=hook.opts.ignore_errors if hook.opts else False,
         )
 
     def do_register_error_hook(
@@ -532,6 +599,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                 custom_timeouts.update = opts.custom_timeouts.update
             if opts.custom_timeouts.delete:
                 custom_timeouts.delete = opts.custom_timeouts.delete
+            if opts.custom_timeouts.read:
+                custom_timeouts.read = opts.custom_timeouts.read
             ropts.custom_timeouts = custom_timeouts
 
         if opts.deleted_with:
@@ -680,7 +749,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             for dependency in opts.replace_with:
                 urn = await dependency.urn.future()
                 if urn:
-                    result.replace_with.append(cast(str, urn))
+                    result.replace_with.append(urn)
         if opts.plugin_download_url:
             result.plugin_download_url = opts.plugin_download_url
         if opts.protect is not None:

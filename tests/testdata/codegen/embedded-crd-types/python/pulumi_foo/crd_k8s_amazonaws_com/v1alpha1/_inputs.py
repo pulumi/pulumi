@@ -20,14 +20,14 @@ __all__ = [
 ]
 
 class ENIConfigSpecArgsDict(TypedDict):
-    security_groups: NotRequired[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]
-    subnet: NotRequired[pulumi.Input[_builtins.str]]
+    security_groups: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]]]
+    subnet: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class ENIConfigSpecArgs:
     def __init__(__self__, *,
-                 security_groups: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]] = None,
-                 subnet: Optional[pulumi.Input[_builtins.str]] = None):
+                 security_groups: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
+                 subnet: pulumi.Input[Optional[_builtins.str]] = None):
         if security_groups is not None:
             pulumi.set(__self__, "security_groups", security_groups)
         if subnet is not None:
@@ -35,20 +35,20 @@ class ENIConfigSpecArgs:
 
     @_builtins.property
     @pulumi.getter(name="securityGroups")
-    def security_groups(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]:
+    def security_groups(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]]:
         return pulumi.get(self, "security_groups")
 
     @security_groups.setter
-    def security_groups(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]]):
+    def security_groups(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]]):
         pulumi.set(self, "security_groups", value)
 
     @_builtins.property
     @pulumi.getter
-    def subnet(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def subnet(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "subnet")
 
     @subnet.setter
-    def subnet(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def subnet(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "subnet", value)
 
 

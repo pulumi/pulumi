@@ -15,16 +15,19 @@
 package plugin
 
 import (
+	"encoding/base64"
 	"fmt"
 	"maps"
 	"reflect"
 	"slices"
+	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -45,32 +48,30 @@ type MarshalOptions struct {
 	UpgradeToOutputValues bool   // true if secrets and unknowns should be upgraded to output values.
 	WorkingDirectory      string // the optional working directory to use when serializing assets & archives.
 
+	// true if the receiver understands strings containing bytes that are not valid UTF-8, which are marshaled with
+	// the byte string signature. Otherwise marshaling such a string returns an error, since it cannot be
+	// transported as a protobuf string field without corruption.
+	KeepByteString bool
+
 	// true if a nil input should result in a nil output, false if it should result in an empty struct/map.
 	PropagateNil bool
+
+	// skipLogging suppresses the verbose per-property marshal logging. It is set when marshaling a
+	// property in order to build a log attribute, so that the marshal does not re-enter the logging
+	// path and recurse.
+	skipLogging bool
 }
 
+// Sentinels indicating that a property's value is not known, because it depends on a computation
+// with values whose values themselves are not yet known (e.g., dependent upon an output property).
 const (
-	// UnknownBoolValue is a sentinel indicating that a bool property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownBoolValue = "1c4a061d-8072-4f0a-a4cb-0ff528b18fe7"
-	// UnknownNumberValue is a sentinel indicating that a number property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownNumberValue = "3eeb2bf0-c639-47a8-9e75-3b44932eb421"
-	// UnknownStringValue is a sentinel indicating that a string property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownStringValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-	// UnknownArrayValue is a sentinel indicating that an array property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownArrayValue = "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2"
-	// UnknownAssetValue is a sentinel indicating that an asset property's value is not known, because it depends on
-	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownAssetValue = "030794c1-ac77-496b-92df-f27374a8bd58"
-	// UnknownArchiveValue is a sentinel indicating that an archive property's value is not known, because it depends
-	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownArchiveValue = "e48ece36-62e2-4504-bad9-02848725956a"
-	// UnknownObjectValue is a sentinel indicating that an archive property's value is not known, because it depends
-	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
-	UnknownObjectValue = "dd056dcd-154b-4c76-9bd3-c8f88648b5ff"
+	UnknownBoolValue    = sig.UnknownBoolValue
+	UnknownNumberValue  = sig.UnknownNumberValue
+	UnknownStringValue  = sig.UnknownStringValue
+	UnknownArrayValue   = sig.UnknownArrayValue
+	UnknownAssetValue   = sig.UnknownAssetValue
+	UnknownArchiveValue = sig.UnknownArchiveValue
+	UnknownObjectValue  = sig.UnknownObjectValue
 )
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
@@ -82,13 +83,22 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
-		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+		if !opts.skipLogging {
+			logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+		}
 		if opts.SkipNulls && v.IsNull() {
-			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
+			if !opts.skipLogging {
+				logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
+			}
 		} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(key) {
-			logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
+			if !opts.skipLogging {
+				logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
+			}
 		} else {
-			m, err := MarshalPropertyValue(key, v, opts)
+			// Only skip top level internal keys
+			copts := opts
+			copts.SkipInternalKeys = false
+			m, err := MarshalPropertyValue(key, v, copts)
 			if err != nil {
 				return nil, err
 			} else if m != nil {
@@ -120,7 +130,20 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			},
 		}, nil
 	} else if v.IsString() {
-		return MarshalString(v.StringValue(), opts), nil
+		s := v.StringValue()
+		if !utf8.ValidString(s) {
+			if !opts.KeepByteString {
+				return nil, fmt.Errorf(
+					"the value of property %q is a string that contains non-UTF8 bytes, which the receiver does not support",
+					key)
+			}
+			raw := resource.NewProperty(resource.PropertyMap{
+				resource.SigKey: resource.NewProperty(resource.ByteStringSig),
+				"value":         resource.NewProperty(base64.StdEncoding.EncodeToString([]byte(s))),
+			})
+			return MarshalPropertyValue(key, raw, opts)
+		}
+		return MarshalString(s, opts), nil
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
@@ -198,7 +221,9 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 		return MarshalPropertyValue(key, output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
-			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
+			if !opts.skipLogging {
+				logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
+			}
 			return MarshalPropertyValue(key, v.SecretValue().Element, opts)
 		}
 		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
@@ -221,7 +246,9 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			if !ref.ID.IsNull() {
 				return MarshalPropertyValue(key, ref.ID, opts)
 			}
-			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
+			if !opts.skipLogging {
+				logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
+			}
 			return MarshalString(val, opts), nil
 		}
 		m := resource.PropertyMap{
@@ -300,7 +327,10 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
 		pk := resource.PropertyKey(key)
-		v, err := UnmarshalPropertyValue(pk, props.Fields[key], opts)
+		// Only skip top level internal keys.
+		copts := opts
+		copts.SkipInternalKeys = false
+		v, err := UnmarshalPropertyValue(pk, props.Fields[key], copts)
 		if err != nil {
 			return nil, err
 		} else if v != nil {
@@ -435,6 +465,20 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 				return nil, fmt.Errorf("malformed RPC secret: missing value for %q", key)
 			}
 			return unmarshalSecretPropertyValue(value, opts), nil
+		case resource.ByteStringSig:
+			value, ok := obj["value"]
+			if !ok {
+				return nil, fmt.Errorf("malformed byte string for %q: missing value", key)
+			}
+			if !value.IsString() {
+				return nil, fmt.Errorf("malformed byte string for %q: value is not a string", key)
+			}
+			decoded, err := base64.StdEncoding.DecodeString(value.StringValue())
+			if err != nil {
+				return nil, fmt.Errorf("malformed byte string for %q: value is not valid base64: %w", key, err)
+			}
+			m := resource.NewProperty(string(decoded))
+			return &m, nil
 		case resource.ResourceReferenceSig:
 			urn, ok := obj["urn"]
 			if !ok {

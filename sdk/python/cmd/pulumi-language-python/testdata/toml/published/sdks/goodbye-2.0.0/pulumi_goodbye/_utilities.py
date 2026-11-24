@@ -13,15 +13,13 @@ import os
 import sys
 import typing
 import warnings
-import base64
 
 import pulumi
 import pulumi.runtime
 from pulumi.runtime.sync_await import _sync_await
-from pulumi.runtime.proto import resource_pb2
 
+from packaging.version import Version as PEP440Version
 from semver import VersionInfo as SemverVersion
-from parver import Version as PEP440Version
 
 C = typing.TypeVar("C", bound=typing.Callable)
 
@@ -76,15 +74,17 @@ def _get_semver_version():
     # responsibility as the library to convert our own PEP440 version into a valid semver string.
 
     pep440_version_string = importlib.metadata.version(root_package)
-    pep440_version = PEP440Version.parse(pep440_version_string)
+    pep440_version = PEP440Version(pep440_version_string)
     (major, minor, patch) = pep440_version.release
     prerelease = None
-    if pep440_version.pre_tag == 'a':
-        prerelease = f"alpha.{pep440_version.pre}"
-    elif pep440_version.pre_tag == 'b':
-        prerelease = f"beta.{pep440_version.pre}"
-    elif pep440_version.pre_tag == 'rc':
-        prerelease = f"rc.{pep440_version.pre}"
+    if pep440_version.pre is not None:
+        pre_tag, pre_number = pep440_version.pre
+        if pre_tag == 'a':
+            prerelease = f"alpha.{pre_number}"
+        elif pre_tag == 'b':
+            prerelease = f"beta.{pre_number}"
+        elif pre_tag == 'rc':
+            prerelease = f"rc.{pre_number}"
     elif pep440_version.dev is not None:
         # PEP440 has explicit support for dev builds, while semver encodes them as "prerelease" versions. To bridge
         # between the two, we convert our dev build version into a prerelease tag. This matches what all of our other
@@ -327,31 +327,13 @@ def get_plugin_download_url():
 def get_version():
     return "2.0.0"
 
-_package_lock = asyncio.Lock()
-_package_ref = ...
-async def get_package():
-	global _package_ref
-	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
-			async with _package_lock:
-				if _package_ref is ...:
-					monitor = pulumi.runtime.settings.get_monitor()
-					parameterization = resource_pb2.Parameterization(
-						name="goodbye",
-						version=get_version(),
-						value=base64.b64decode("R29vZGJ5ZQ=="),
-					)
-					registerPackageResponse = monitor.RegisterPackage(
-						resource_pb2.RegisterPackageRequest(
-							name="parameterized",
-							version="1.2.3",
-							download_url=get_plugin_download_url(),
-							parameterization=parameterization,
-						))
-					_package_ref = registerPackageResponse.ref
-	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
-	# using package with them.
-	if _package_ref is None or _package_ref is ...:
-		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
-	return _package_ref
+async def get_package() -> str:
+	return await pulumi.runtime.register_package(
+		base_provider_name="parameterized",
+		base_provider_version="1.2.3",
+		base_provider_download_url=get_plugin_download_url() or "",
+		package_name="goodbye",
+		package_version=get_version(),
+		base64_parameter="R29vZGJ5ZQ==",
+	)
 	

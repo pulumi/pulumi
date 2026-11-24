@@ -23,8 +23,8 @@ import (
 )
 
 // canonicalRoot returns root as an absolute, symlink-resolved path. Callers pass the
-// result as the containment anchor for resolveUnderRoot so that sandbox checks cannot be
-// bypassed by symlinks further down the tree.
+// result as the containment anchor for resolveUnderRoots so that sandbox checks cannot
+// be bypassed by symlinks further down the tree.
 func canonicalRoot(root string) (string, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -33,14 +33,18 @@ func canonicalRoot(root string) (string, error) {
 	return filepath.EvalSymlinks(abs)
 }
 
-// resolveUnderRoot resolves p to an absolute, symlink-free path and returns an error if
-// it escapes root. root must already be the output of canonicalRoot.
+// resolveUnderRoots resolves p to an absolute, symlink-free path under one of roots,
+// or returns an error if p escapes them all. Each entry in roots must already be the
+// output of canonicalRoot.
 //
 // When allowMissing is true, a missing leaf (or chain of missing intermediate directories)
 // is permitted: the closest existing ancestor is resolved and the missing tail is
 // re-joined. This supports write targets where the destination directory does not yet
 // exist.
-func resolveUnderRoot(root, p string, allowMissing bool) (string, error) {
+func resolveUnderRoots(roots []string, p string, allowMissing bool) (string, error) {
+	if len(roots) == 0 {
+		return "", fmt.Errorf("resolving %q: no allowed roots configured", p)
+	}
 	abs, err := filepath.Abs(p)
 	if err != nil {
 		return "", fmt.Errorf("resolving %q: %w", p, err)
@@ -55,14 +59,16 @@ func resolveUnderRoot(root, p string, allowMissing bool) (string, error) {
 			return "", fmt.Errorf("resolving %q: %w", p, err)
 		}
 	}
-	rel, err := filepath.Rel(root, resolved)
-	if err != nil {
-		return "", fmt.Errorf("resolving %q: %w", p, err)
+	for _, root := range roots {
+		rel, err := filepath.Rel(root, resolved)
+		if err != nil {
+			continue
+		}
+		if rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return resolved, nil
+		}
 	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("path %q is outside the working directory %q", p, root)
-	}
-	return resolved, nil
+	return "", fmt.Errorf("path %q is outside the allowed roots %v", p, roots)
 }
 
 // evalClosestAncestor walks up from abs until it finds an existing directory, resolves

@@ -20,19 +20,22 @@ import (
 	"strconv"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestRefreshBasicsWithLegacyDiff(t *testing.T) {
@@ -82,8 +85,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -95,7 +98,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false, urnA),
 		newResource(urnC, "2", false, urnA, urnB),
@@ -104,16 +107,20 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		newResource(urnC, "5", true, urnA, urnB),
 	}
 
+	emptyMap := property.Map{}
+	in1 := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	out4 := property.NewMap(map[string]property.Value{"baz": property.New("qux")})
+	in4 := property.NewMap(map[string]property.Value{"oof": property.New("zab")})
 	newStates := map[resource.ID]plugin.ReadResult{
 		// A::0 and A::3 will have no changes.
-		"0": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
-		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
+		"0": {Outputs: &emptyMap, Inputs: &emptyMap},
+		"3": {Outputs: &emptyMap, Inputs: &emptyMap},
 
 		// B::1 and A::4 will have changes. The latter will also have input changes.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1": {Outputs: &in1, Inputs: &emptyMap},
 		"4": {
-			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("zab")},
+			Outputs: &out4,
+			Inputs:  &in4,
 		},
 
 		// C::2 and C::5 will be deleted.
@@ -141,7 +148,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{{
@@ -175,7 +182,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 				} else {
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
+					if reflect.DeepEqual(old.Outputs, resource.ToResourcePropertyMap(*expected.Outputs)) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -185,8 +192,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 					new = new.Copy()
 
 					// Only the inputs and outputs should have changed (if anything changed).
-					old.Inputs = expected.Inputs
-					old.Outputs = expected.Outputs
+					old.Inputs = resource.ToResourcePropertyMap(*expected.Inputs)
+					old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
 
 					// Discard timestamps for refresh test.
 					new.Modified = nil
@@ -234,8 +241,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		// and timestamp.
 		old := oldResources[int(idx)]
 		if targetedForRefresh {
-			old.Inputs = expected.Inputs
-			old.Outputs = expected.Outputs
+			old.Inputs = resource.ToResourcePropertyMap(*expected.Inputs)
+			old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
 			old.Modified = r.Modified
 		}
 		assert.Equal(t, old, r)

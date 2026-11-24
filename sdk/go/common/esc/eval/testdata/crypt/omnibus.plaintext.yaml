@@ -1,0 +1,28 @@
+imports:
+  - a
+values:
+  fromBase64:
+    fn::fromBase64: ${toBase64}
+  fromJSON:
+    fn::fromJSON: ${toJSON}
+  join:
+    fn::join: [",", "${strings}"]
+  open:
+    fn::open::test:
+      a: null
+      b: true
+      c: 42
+      d: [hello]
+      baz: qux
+  secret:
+    fn::secret: hunter2
+  toBase64:
+    fn::toBase64: ${join}
+  toJSON:
+    fn::toJSON: ${open}
+  toString:
+    fn::toString: ${open}
+  open2:
+    fn::open::test: ${open}
+  interp: hello, ${toString}
+  access: ${open["baz"]}

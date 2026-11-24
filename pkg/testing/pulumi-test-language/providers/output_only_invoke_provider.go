@@ -22,9 +22,9 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type OutputOnlyInvokeProvider struct {
@@ -41,10 +41,6 @@ func (p *OutputOnlyInvokeProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *OutputOnlyInvokeProvider) Pkg() tokens.Package {
-	return "output-only-invoke"
 }
 
 func (p *OutputOnlyInvokeProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -66,8 +62,6 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 	}
 	resourceRequired := []string{"text"}
 
-	ref := func(b bool) *bool { return &b }
-
 	pkg := schema.PackageSpec{
 		Name:    "output-only-invoke",
 		Version: "24.0.0",
@@ -85,7 +79,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"output-only-invoke:index:myInvoke": {
-				Plain: ref(false),
+				Plain: new(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -112,7 +106,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 				},
 			},
 			"output-only-invoke:index:unit": {
-				Plain: ref(false),
+				Plain: new(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 				},
@@ -131,7 +125,7 @@ func (p *OutputOnlyInvokeProvider) GetSchema(
 				},
 			},
 			"output-only-invoke:index:secretInvoke": {
-				Plain: ref(false),
+				Plain: new(false),
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -179,26 +173,26 @@ func (p *OutputOnlyInvokeProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "24.0.0" {
+	if version.AsString() != "24.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 24.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 24.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -210,7 +204,7 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
 	case "output-only-invoke:index:myInvoke":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -233,12 +227,12 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(value.StringValue() + " world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(value.AsString() + " world"),
+			}),
 		}, nil
 	case "output-only-invoke:index:myInvokeScalar":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -263,24 +257,24 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 		// Single value returns work because SDKs automatically extract single value returns in their
 		// invoke implementations.
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty(true),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New(true),
+			}),
 		}, nil
 	case "output-only-invoke:index:unit":
-		if len(req.Args) > 0 {
+		if req.Args.Len() > 0 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
 			}, nil
 		}
 
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
-				"result": resource.NewProperty("Hello world"),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"result": property.New("Hello world"),
+			}),
 		}, nil
 	case "output-only-invoke:index:secretInvoke":
-		value, ok := req.Args["value"]
+		value, ok := req.Args.GetOk("value")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -300,7 +294,7 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 			}, nil
 		}
 
-		secretResponse, ok := req.Args["secretResponse"]
+		secretResponse, ok := req.Args.GetOk("secretResponse")
 		if !ok {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("secretResponse", "missing secretResponse"),
@@ -313,15 +307,15 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 		}
 
 		// if the secretResponse is true, wrap the response as a secret
-		response := resource.NewProperty(value.StringValue() + " world")
-		if secretResponse.BoolValue() {
-			response = resource.MakeSecret(response)
+		response := property.New(value.AsString() + " world")
+		if secretResponse.AsBool() {
+			response = response.WithSecret(true)
 		}
 		return plugin.InvokeResponse{
-			Properties: resource.PropertyMap{
+			Properties: property.NewMap(map[string]property.Value{
 				"response": response,
 				"secret":   secretResponse,
-			},
+			}),
 		}, nil
 	}
 	return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
@@ -330,19 +324,20 @@ func (p *OutputOnlyInvokeProvider) Invoke(
 func (p *OutputOnlyInvokeProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "output-only-invoke:index:StringResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *OutputOnlyInvokeProvider) Create(
@@ -361,9 +356,9 @@ func (p *OutputOnlyInvokeProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
-			"text": resource.NewProperty("Goodbye"),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"text": property.New("Goodbye"),
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

@@ -19,12 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -33,10 +35,10 @@ import (
 	"github.com/gofrs/uuid"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/azureblob"  // driver for azblob://
+	_ "gocloud.dev/blob/fileblob" // driver for file://
+	"gocloud.dev/blob/gcsblob"    // driver for gs://
+	_ "gocloud.dev/blob/s3blob"   // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -47,23 +49,24 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
+	"github.com/pulumi/pulumi/pkg/v3/util/terminalstatus"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -237,6 +240,8 @@ func newDIYBackend(
 		opts.Env = env.Global()
 	}
 
+	logging.AddGlobalSecretFilter(httputil.URLSecrets(originalURL), "[credential]")
+
 	if !IsDIYBackendURL(originalURL) {
 		return nil, fmt.Errorf("diy URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -263,9 +268,23 @@ func newDIYBackend(
 		}
 	}
 
+	// go-cloud's default azblob opener refuses to open buckets when
+	// AZURE_STORAGE_SAS_TOKEN is set and the URL overrides the service
+	// endpoint, e.g. via the storage_account query parameter. The backend URL
+	// is provided by the user at login rather than an untrusted source, so use
+	// a custom opener without that restriction to keep such URLs working.
+	if p.Scheme == azureblob.Scheme {
+		blobmux = &blob.URLMux{}
+		blobmux.RegisterBucket(azureblob.Scheme, &azureblob.URLOpener{
+			MakeClient:        azureblob.NewDefaultClient,
+			ServiceURLOptions: *azureblob.NewDefaultServiceURLOptions(),
+		})
+	}
+
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
+		return nil, fmt.Errorf("unable to open %s %s: %w",
+			stateStoreNoun(originalURL), describeBackendURL(originalURL, u, err), err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -341,23 +360,21 @@ func newDIYBackend(
 				"by this version of the Pulumi CLI", meta.Version)
 	}
 
-	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
-	// due to be removed.
-	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationWarning) {
-		d.Warningf(diag.Message("", `
+	// If we're not in project mode and the user hasn't disabled the warning, error that legacy mode is is no longer
+	// supported.
+	if !projectMode {
+		return nil, errors.New(`
 ================================================================================
-Legacy DIY state is deprecated, please upgrade your state to project mode using:
+Legacy DIY state is no longer supported, please use Pulumi v3.274.1 or earlier
+to upgrade your state to project mode using:
 'pulumi state upgrade'
 
-It is due to be removed in a future release before the end of this year (2026).
-If you have any feedback or concerns, please let us know by commenting on the
-issue at https://github.com/pulumi/pulumi/issues/19566.
-Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
-================================================================================`))
+See https://github.com/pulumi/pulumi/issues/19566.
+================================================================================`)
 	}
 
-	// If we're not in project mode, or we've disabled the warning, we're done.
-	if !projectMode || opts.Env.GetBool(env.DIYBackendNoLegacyWarning) {
+	// If we've disabled the warning, we're done.
+	if opts.Env.GetBool(env.DIYBackendNoLegacyWarning) {
 		return backend, nil
 	}
 	// Otherwise, warn about any old stack files.
@@ -554,11 +571,56 @@ func (b *diyBackend) upgradeStack(
 	return nil
 }
 
+// stateStoreNoun names what a backend URL points at, so that errors do not call a local
+// directory or a database a "bucket" — go-cloud's vocabulary rather than the user's.
+func stateStoreNoun(originalURL string) string {
+	switch {
+	case strings.HasPrefix(originalURL, FilePathPrefix):
+		return "state directory"
+	case strings.HasPrefix(originalURL, "postgres://"):
+		return "state database"
+	default:
+		return "bucket"
+	}
+}
+
+// describeBackendURL names the backend for an error message: the URL as configured, plus
+// the normalized form when normalization changed something the user did not write.
+func describeBackendURL(originalURL, normalized string, cause error) string {
+	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
+	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
+		return fmt.Sprintf("%q", originalURL)
+	}
+	return fmt.Sprintf("%q (resolved to %q)", originalURL, resolved)
+}
+
+// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds
+func withoutInjectedNoTmpDir(originalURL, normalized string) string {
+	if !strings.HasPrefix(originalURL, FilePathPrefix) || strings.Contains(originalURL, "no_tmp_dir") {
+		return normalized
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return normalized
+	}
+	query := u.Query()
+	if query.Get("no_tmp_dir") == "" {
+		return normalized
+	}
+	query.Del("no_tmp_dir")
+	u.RawQuery = query.Encode()
+	return u.String()
+}
+
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
-// can support.  Importantly, s3/azblob/gs paths should not be touched. This will only affect
-// file:// paths which have a few oddities around them that we want to ensure work properly.
+// can support.  For s3:// paths this translates AWS SDK v1-era query parameters to their v2
+// equivalents; azblob/gs paths are not touched. file:// paths have a few oddities around them that
+// we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
+		if strings.HasPrefix(path, "s3://") {
+			return translateLegacyS3Params(path)
+		}
 		// Not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
@@ -604,6 +666,13 @@ func massageBlobPath(path string) (string, error) {
 		}
 	}
 
+	// On Windows a URI like file:///C:/my/path leaves "/C:/my/path" once the scheme is
+	// stripped. Drop the leading slash so filepath.Abs below doesn't treat the path as
+	// relative to the current drive and duplicate the drive letter (C:\C:\my\path).
+	if os.PathSeparator != '/' && strings.HasPrefix(path, "/") && filepath.VolumeName(path[1:]) != "" {
+		path = path[1:]
+	}
+
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
@@ -618,6 +687,69 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	return FilePathPrefix + path + queryString, nil
+}
+
+// translateLegacyS3Params rewrites query parameters on s3:// URLs that were supported by the
+// AWS SDK v1-based s3blob driver in gocloud.dev before v0.46, so that backend URLs configured
+// before the upgrade keep working:
+//
+//   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
+//     query parameter. When the endpoint carries an explicit scheme, disableSSL is dropped
+//     instead: the v1 SDK only used it to pick a scheme for scheme-less endpoints, while
+//     disable_https unconditionally downgrades requests to HTTP.
+//   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
+//     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
+//     requires one.
+//   - when an endpoint is set (i.e. a third-party S3-compatible store rather than AWS),
+//     request_checksum_calculation defaults to when_required, unless it is configured
+//     explicitly via the URL or the AWS_REQUEST_CHECKSUM_CALCULATION environment variable.
+//     The v2 SDK's default of computing CRC32 checksums with aws-chunked streaming uploads
+//     is rejected by some third-party stores; the v1 SDK never sent them.
+//
+// The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
+// and need no translation.
+func translateLegacyS3Params(urlstr string) (string, error) {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return "", fmt.Errorf("parsing the provided URL: %w", err)
+	}
+	query := u.Query()
+	changed := false
+
+	disableSSL := false
+	if values, ok := query["disableSSL"]; ok {
+		disableSSL, err = strconv.ParseBool(values[len(values)-1])
+		if err != nil {
+			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
+		}
+		query.Del("disableSSL")
+		if !strings.Contains(query.Get("endpoint"), "://") {
+			query.Set("disable_https", strconv.FormatBool(disableSSL))
+		}
+		changed = true
+	}
+
+	if endpoint := query.Get("endpoint"); endpoint != "" {
+		if !strings.Contains(endpoint, "://") {
+			scheme := "https"
+			if disableSSL {
+				scheme = "http"
+			}
+			query.Set("endpoint", scheme+"://"+endpoint)
+			changed = true
+		}
+		if query.Get("request_checksum_calculation") == "" &&
+			os.Getenv("AWS_REQUEST_CHECKSUM_CALCULATION") == "" {
+			query.Set("request_checksum_calculation", "when_required")
+			changed = true
+		}
+	}
+
+	if !changed {
+		return urlstr, nil
+	}
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }
 
 func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
@@ -737,6 +869,9 @@ func (b *diyBackend) CreateStack(
 	if opts != nil && opts.Config != nil {
 		return nil, backend.ErrConfigNotSupported
 	}
+	if opts != nil && opts.ManagedEnvironment {
+		return nil, fmt.Errorf("%w by the DIY backend", backend.ErrManagedEnvironmentNotSupported)
+	}
 
 	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
 		return nil, err
@@ -768,7 +903,11 @@ func (b *diyBackend) CreateStack(
 	}
 
 	if initialState != nil {
-		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+			diyJSONMarshaler,
+			stackName,
+			initialState,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -779,10 +918,7 @@ func (b *diyBackend) CreateStack(
 		}
 	}
 
-	stack := newStack(diyStackRef, b)
-	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
-
-	return stack, nil
+	return newStack(diyStackRef, b), nil
 }
 
 func (b *diyBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
@@ -1016,20 +1152,23 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	if chk != nil && chk.Latest != nil {
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
-		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project)); err != nil {
+		oldProject, oldHas := oldRef.Project()
+		if !oldHas && len(chk.Latest.Resources) > 0 {
+			// Legacy refs carry no project, but their URNs still do; scope the rewrite to it.
+			oldProject = tokens.Name(chk.Latest.Resources[0].URN.Project())
+		}
+		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project),
+			edit.RenameStackOptions{
+				OldName:    oldRef.name,
+				OldProject: tokens.PackageName(oldProject),
+			}); err != nil {
 			return err
 		}
 	}
 
-	chkJSON, err := encoding.JSON.Marshal(chk)
+	versionedCheckpoint, err := marshalVersionedCheckpoint(version, features, *chk)
 	if err != nil {
-		return fmt.Errorf("marshalling checkpoint: %w", err)
-	}
-
-	versionedCheckpoint := &apitype.VersionedCheckpoint{
-		Version:    version,
-		Features:   features,
-		Checkpoint: json.RawMessage(chkJSON),
+		return err
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
@@ -1073,12 +1212,7 @@ func (b *diyBackend) PackPolicies(
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1095,7 +1229,7 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1106,18 +1240,18 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, snap, err := b.apply(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
-		return changes, err
+		return changes, snap, err
 	}
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
+	return backend.PreviewThenPromptThenExecuteImport(ctx, stack, op, b.apply, nil)
 }
 
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1131,7 +1265,7 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -1156,7 +1290,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -1170,33 +1304,35 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
 
-func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
-) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
-}
-
 // apply actually performs the provided type of update on a diy hosted stack.
 func (b *diyBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
 	stackRef := stack.Ref()
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+
+	if op.CoherenceWindow != "" {
+		return nil, nil, nil, errors.New("coherence windows are only supported by the Pulumi Cloud backend")
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
+	if op.Opts.Display.IsInteractive && !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
+		clearStatus := terminalstatus.Working(op.Opts.Display.Stderr, actionLabel)
+		defer clearStatus()
+	}
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1212,7 +1348,7 @@ func (b *diyBackend) apply(
 	// Start the update.
 	update, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, op)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Spawn a display loop to show events on the CLI.
@@ -1245,14 +1381,24 @@ func (b *diyBackend) apply(
 		Cancel:        scope.Context(),
 		Events:        engineEvents,
 		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+		SnapshotManagerCapabilities: engine.SnapshotManagerCapabilities{
+			StateMigrations: true,
+		},
 	}
-	// Create the management machinery.
-	// We only need a snapshot manager if we're doing an update.
-	var manager *backend.SnapshotManager
-	if kind != apitype.PreviewUpdate && !opts.DryRun {
-		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
-		engineCtx.SnapshotManager = manager
+	// Create the snapshot manager. We always install one (even for preview and dry-run) so that
+	// the engine mutates an in-memory snapshot we can return to callers. For dry-run operations
+	// we substitute a discarding persister so nothing is written to disk.
+	var persister backend.SnapshotPersister
+	if kind == apitype.PreviewUpdate || opts.DryRun {
+		persister = backend.DiscardPersister{}
+	} else {
+		persister = b.newSnapshotPersister(ctx, diyStackRef)
+	}
+	manager := backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
+	engineCtx.SnapshotManager = manager
+
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	// Perform the update
@@ -1290,17 +1436,18 @@ func (b *diyBackend) apply(
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	if manager != nil {
-		err = manager.Close()
-		// If the snapshot manager failed to close, we should return that error.
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
-		}
+	// Capture the final in-memory snapshot before closing the manager; Snap() reads the manager's
+	// resource list which is safe to call once the engine has returned.
+	snap := manager.Snap()
+	err = manager.Close()
+	// If the snapshot manager failed to close, we should return that error.
+	// Even though all the parts of the operation have potentially succeeded, a
+	// snapshotting failure is likely to rear its head on the next
+	// operation/invocation (e.g. an invalid snapshot that fails integrity
+	// checks, or a failure to write that means the snapshot is incomplete).
+	// Reporting now should make debugging and reporting easier.
+	if err != nil {
+		return plan, changes, snap, fmt.Errorf("writing snapshot: %w", err)
 	}
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
@@ -1335,20 +1482,21 @@ func (b *diyBackend) apply(
 
 	if updateErr != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return plan, changes, updateErr
+		return plan, changes, snap, updateErr
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return plan, changes, fmt.Errorf("saving update info: %w", saveErr)
+		return plan, changes, snap, fmt.Errorf("saving update info: %w", saveErr)
 	}
 
 	if backupErr != nil {
-		return plan, changes, fmt.Errorf("saving backup: %w", backupErr)
+		return plan, changes, snap, fmt.Errorf("saving backup: %w", backupErr)
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermalink && opts.ShowLink &&
+		!op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -1367,7 +1515,7 @@ func (b *diyBackend) apply(
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+				b.d.Warningf(diag.Message("", "Unable to create signed url for current backend to "+
 					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
 					"for more information\n"))
 			}
@@ -1380,7 +1528,7 @@ func (b *diyBackend) apply(
 		}
 	}
 
-	return plan, changes, nil
+	return plan, changes, snap, nil
 }
 
 func (b *diyBackend) GetHistory(
@@ -1398,46 +1546,6 @@ func (b *diyBackend) GetHistory(
 		return nil, err
 	}
 	return updates, nil
-}
-
-func (b *diyBackend) GetLogs(ctx context.Context,
-	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	diyStackRef, err := b.getReference(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := b.getTarget(ctx, secretsProvider, diyStackRef, cfg.Config, cfg.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetLogsForTarget(target, query)
-}
-
-// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
-	contract.Requiref(target != nil, "target", "must not be nil")
-
-	if target.Snapshot == nil {
-		// If the stack has not been deployed yet, return no logs.
-		return nil, nil
-	}
-
-	config, err := target.Config.Decrypt(target.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	components := operations.NewResourceTree(target.Snapshot.Resources)
-	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(query)
-	if logs == nil {
-		return nil, err
-	}
-	return *logs, err
 }
 
 func (b *diyBackend) ExportDeployment(ctx context.Context,
@@ -1480,7 +1588,11 @@ func (b *diyBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, diyStackRef)
 
 	stackName := diyStackRef.FullyQualifiedName()
-	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, deployment)
+	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		stackName,
+		deployment,
+	)
 	if err != nil {
 		return err
 	}
@@ -1516,27 +1628,11 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 
 	if diyStack, ok := stack.(*diyStack); ok {
 		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
+		maps.Copy(tagsCopy, tags)
 		diyStack.tags.Store(&tagsCopy)
 	}
 
 	return nil
-}
-
-func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack backend.Stack, secret string,
-) (*apitype.SecretValue, error) {
-	// The local backend does not support managing deployments.
-	return nil, errors.New("stack deployments not supported with diy backends")
-}
-
-func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	// The local backend does not support managing deployments.
-	return errors.New("stack deployments not supported with diy backends")
 }
 
 func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {

@@ -22,9 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a boolean, number, string, array, and map property.
@@ -43,10 +42,6 @@ func (p *OptionalPrimitiveProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *OptionalPrimitiveProvider) Pkg() tokens.Package {
-	return "optionalprimitive"
 }
 
 func (p *OptionalPrimitiveProvider) GetSchema(
@@ -100,26 +95,26 @@ func (p *OptionalPrimitiveProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "34.0.0" {
+	if version.AsString() != "34.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 34.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 34.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -129,6 +124,7 @@ func (p *OptionalPrimitiveProvider) CheckConfig(
 func (p *OptionalPrimitiveProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "optionalprimitive:index:Resource"
 	if req.URN.Type() != "optionalprimitive:index:Resource" {
 		return plugin.CheckResponse{
@@ -170,7 +166,7 @@ func (p *OptionalPrimitiveProvider) Check(
 	}
 
 	result := resource.PropertyMap{}
-	for key, value := range req.News {
+	for key, value := range news {
 		switch key {
 		case "boolean":
 			check := validate("boolean", value, resource.PropertyValue.IsBool, "boolean")
@@ -241,12 +237,13 @@ func (p *OptionalPrimitiveProvider) Check(
 		}
 	}
 
-	return plugin.CheckResponse{Properties: result}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
 }
 
 func (p *OptionalPrimitiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "optionalprimitive:index:Resource"
 	if req.URN.Type() != "optionalprimitive:index:Resource" {
 		return plugin.CreateResponse{
@@ -273,7 +270,7 @@ func (p *OptionalPrimitiveProvider) Create(
 	}
 
 	properties := resource.PropertyMap{}
-	for k, v := range req.Properties {
+	for k, v := range inputs {
 		if isMissingLike(v) {
 			continue
 		}
@@ -282,7 +279,7 @@ func (p *OptionalPrimitiveProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

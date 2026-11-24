@@ -13,13 +13,9 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import { fdir } from "fdir";
-// Picomatch is not used in this file, but the dependency is required for fdir
-// to support globbing. The import here serves as a marker so that we don't
-// accidentally remove the dependency from the package.json.
-import * as picomatch from "picomatch";
+import { glob } from "fs/promises";
 import normalize from "normalize-package-data";
-import * as arborist from "@npmcli/arborist";
+import { createRequire } from "module";
 import * as upath from "upath";
 import { log } from "../..";
 import * as asset from "../../asset";
@@ -120,8 +116,10 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
     // Construct the set of paths to include in the archive for upload.
 
     // Find folders for all packages requested by the user.  Note: all paths in this should
-    // be normalized.
-    const normalizedPathSet = await allFoldersForPackages(
+    // be normalized. Keys are the paths at which the packages are included in the archive,
+    // values are the on-disk paths the contents are read from. The two differ when a package
+    // is symlinked, e.g. with pnpm's virtual store or workspace packages.
+    const packagePaths = await allFoldersForPackages(
         new Set<string>(options.extraIncludePackages || []),
         new Set<string>(options.extraExcludePackages || []),
         options.logResource,
@@ -130,27 +128,29 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
     // Add all paths explicitly requested by the user
     const extraIncludePaths = options.extraIncludePaths || [];
     for (const path of extraIncludePaths) {
-        normalizedPathSet.add(upath.normalize(path));
+        const normalizedPath = upath.normalize(path);
+        packagePaths.set(normalizedPath, normalizedPath);
     }
 
     const codePaths: Map<string, asset.Asset | asset.Archive> = new Map();
 
     // For each of the required paths, add the corresponding FileArchive or FileAsset to the
     // AssetMap.
-    for (const normalizedPath of normalizedPathSet) {
+    const sourcePaths = new Set<string>(packagePaths.values());
+    for (const [archivePath, sourcePath] of packagePaths) {
         // Don't include a path if there is another path higher up that will include this one.
-        if (isSubsumedByHigherPath(normalizedPath, normalizedPathSet)) {
+        if (isSubsumedByHigherPath(sourcePath, sourcePaths)) {
             continue;
         }
 
         // The Asset model does not support a consistent way to embed a file-or-directory into an
         // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
         // Asset constructor.
-        const stats = fs.statSync(normalizedPath);
+        const stats = fs.statSync(sourcePath);
         if (stats.isDirectory()) {
-            codePaths.set(normalizedPath, new asset.FileArchive(normalizedPath));
+            codePaths.set(archivePath, new asset.FileArchive(sourcePath));
         } else {
-            codePaths.set(normalizedPath, new asset.FileAsset(normalizedPath));
+            codePaths.set(archivePath, new asset.FileAsset(sourcePath));
         }
     }
 
@@ -214,11 +214,12 @@ export async function findWorkspaceRoot(startingPath: string): Promise<string | 
         }
         const workspaces = parseWorkspaces(p);
         for (const workspace of workspaces) {
-            const globber = new fdir().withBasePath().glob(upath.join(currentDir, workspace, "package.json"));
-            const files = await globber.crawl(currentDir).withPromise();
+            const pattern = upath.join(currentDir, workspace, "package.json");
             const normalized = upath.normalizeTrim(upath.join(packageJSONDir, "package.json"));
-            if (files.map((f) => upath.normalizeTrim(f)).includes(normalized)) {
-                return currentDir;
+            for await (const f of glob(pattern)) {
+                if (upath.normalizeTrim(f) === normalized) {
+                    return currentDir;
+                }
             }
         }
         currentDir = nextDir;
@@ -239,14 +240,30 @@ function parseWorkspaces(packageJsonPath: string): string[] {
 }
 
 /**
- * Computes the set of package folders that are transitively required by the root
- * `dependencies` node in the client's `package.json` file.
+ * Computes the package folders that are transitively required by the root
+ * `dependencies` node in the client's `package.json` file. Returns a map from
+ * the path at which the package is included in the archive to the on-disk path
+ * of the package's contents.
+ *
+ * The two paths differ when packages are symlinked, most notably by pnpm,
+ * which lays out node_modules as symlinks into a versioned virtual store:
+ *
+ *     node_modules/foo -> node_modules/.pnpm/foo@1.0.0/node_modules/foo
+ *     node_modules/.pnpm/foo@1.0.0/node_modules/bar -> node_modules/.pnpm/bar@2.0.0/node_modules/bar
+ *
+ * The archive instead recreates the physical layout npm would produce:
+ * symlinks cannot be represented in the archive, store paths embed version
+ * numbers and would change on every upgrade, and the serialized code
+ * `require`s packages by name, which Node resolves from
+ * `node_modules/<name>`. Virtual store paths are therefore flattened to
+ * `node_modules/<name>`, and contents are read from the package's real
+ * directory. This also covers symlinked workspace packages.
  */
 async function allFoldersForPackages(
     includedPackages: Set<string>,
     excludedPackages: Set<string>,
     logResource: Resource | undefined,
-): Promise<Set<string>> {
+): Promise<Map<string, string>> {
     // the working directory is the directory containing the package.json file
     let workingDir = searchUp(".", "package.json");
     if (workingDir === null) {
@@ -270,19 +287,6 @@ async function allFoldersForPackages(
         }
     }
 
-    // Find the workspace root, fallback to current working directory if we are not in a workspaces setup.
-    let workspaceRoot = (await findWorkspaceRoot(workingDir)) || workingDir;
-    // Ensure workingDir is a relative path so we get relative paths in the
-    // output. If we have absolute paths, AWS lambda might not find the
-    // dependencies.
-    workspaceRoot = upath.relative(upath.resolve("."), workspaceRoot);
-
-    // Read package tree from the workspace root to ensure we can find all
-    // packages in the workspace.  We then call addPackageAndDependenciesToSet
-    // to recursively add all the dependencies of the referenced packages.
-    const arb = new arborist.Arborist({ path: workspaceRoot });
-    const root = await arb.loadActual();
-
     // package.json files can contain circularities.  For example es6-iterator depends
     // on es5-ext, which depends on es6-iterator, which depends on es5-ext:
     // https://github.com/medikoo/es6-iterator/blob/0eac672d3f4bb3ccc986bbd5b7ffc718a0822b74/package.json#L20
@@ -291,12 +295,37 @@ async function allFoldersForPackages(
     // So keep track of the paths we've looked and don't recurse if we hit something again.
     const seenPaths = new Set<string>();
 
-    const normalizedPackagePaths = new Set<string>();
+    const packagePaths = new Map<string, string>();
+
+    // Pre-claim the archive paths for the root's direct dependencies so that a transitive
+    // dependency processed earlier in the loop below can never claim `node_modules/<name>`
+    // with a different version of a package that is also a direct dependency.
     for (const pkg of referencedPackages) {
-        addPackageAndDependenciesToSet(root, pkg, seenPaths, normalizedPackagePaths, excludedPackages);
+        if (excludedPackages.has(pkg) || pkg.startsWith("@pulumi")) {
+            continue;
+        }
+        const child = findDependency(workingDir, pkg);
+        if (!child || child.package.pulumi) {
+            continue;
+        }
+        const { archivePath, sourcePath } = packageArchiveEntry(child);
+        if (!packagePaths.has(archivePath)) {
+            packagePaths.set(archivePath, sourcePath);
+        }
     }
 
-    return normalizedPackagePaths;
+    for (const pkg of referencedPackages) {
+        addPackageAndDependenciesToMap(
+            workingDir,
+            pkg,
+            seenPaths,
+            packagePaths,
+            excludedPackages,
+            /*dependentPath*/ undefined,
+        );
+    }
+
+    return packagePaths;
 }
 
 function computeDependenciesDirectlyFromPackageFile(path: string, logResource: Resource | undefined): any {
@@ -343,34 +372,53 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
 }
 
 /**
+ * Computes the path at which a package is included in the archive, and the
+ * on-disk path its contents are read from.
+ */
+function packageArchiveEntry(child: PackageInfo): { archivePath: string; sourcePath: string } {
+    const nominalPath = upath.relative(upath.resolve("."), upath.resolve(child.path));
+    const sourcePath = upath.relative(upath.resolve("."), upath.resolve(child.realpath));
+    return { archivePath: packageArchivePath(nominalPath, child.name), sourcePath };
+}
+
+/**
+ * Returns the path at which a package with the given nominal node_modules
+ * location should be included in the archive.
+ *
+ * @internal exported for testing.
+ */
+export function packageArchivePath(nominalPath: string, packageName: string): string {
+    if (nominalPath.split("/").includes(".pnpm")) {
+        return `node_modules/${packageName}`;
+    }
+    return nominalPath;
+}
+
+/**
  * Adds all required dependencies for the requested package name from the given
- * root package into the set. It will recurse into all dependencies of the
+ * root package into the map. It will recurse into all dependencies of the
  * package.
  */
-function addPackageAndDependenciesToSet(
-    root: arborist.Node,
+function addPackageAndDependenciesToMap(
+    directory: string,
     pkg: string,
     seenPaths: Set<string>,
-    normalizedPackagePaths: Set<string>,
+    packagePaths: Map<string, string>,
     excludedPackages: Set<string>,
+    dependentPath: string | undefined,
 ) {
     // Don't process this packages if it was in the set the user wants to exclude.
     if (excludedPackages.has(pkg)) {
         return;
     }
 
-    const child = findDependency(root, pkg);
+    const child = findDependency(directory, pkg);
     if (!child) {
-        console.warn(`Could not include required dependency '${pkg}' in '${upath.resolve(root.path)}'.`);
+        console.warn(`Could not include required dependency '${pkg}' in '${directory}'.`);
         return;
     }
 
-    // Don't process a child path if we've already encountered it.
-    const normalizedPath = upath.relative(upath.resolve("."), upath.resolve(child.path));
-    if (seenPaths.has(normalizedPath)) {
-        return;
-    }
-    seenPaths.add(normalizedPath);
+    const { archivePath, sourcePath } = packageArchiveEntry(child);
 
     if (child.package.pulumi) {
         // This was a pulumi deployment-time package.  Check if it had a:
@@ -379,61 +427,87 @@ function addPackageAndDependenciesToSet(
         //
         // section.  In this case, we don't want to add this specific package, but we do want to
         // include all the runtime dependencies it says are necessary.
-        recurse(child.package.pulumi.runtimeDependencies);
+        if (seenPaths.has(sourcePath)) {
+            return;
+        }
+        seenPaths.add(sourcePath);
+        recurse(child.package.pulumi.runtimeDependencies, dependentPath);
+        return;
     } else if (pkg.startsWith("@pulumi")) {
         // exclude it if it's an @pulumi package.  These packages are intended for deployment
         // time only and will only bloat up the serialized lambda package.  Note: this code can
         // be removed once all pulumi packages add a "pulumi" section to their package.json.
         return;
-    } else {
-        // Normal package.  Add the normalized path to it, and all transitively add all of its
-        // dependencies.
-        normalizedPackagePaths.add(normalizedPath);
-        recurse(child.package.dependencies);
     }
+
+    // Normal package. Determine where to place it in the archive, then transitively add all
+    // of its dependencies.
+    let childArchivePath = archivePath;
+    const existing = packagePaths.get(childArchivePath);
+    if (existing !== undefined && existing !== sourcePath && dependentPath !== undefined) {
+        // Another version of this package already occupies this location in the archive.
+        // Mirror npm's layout by nesting this copy under its dependent, so that Node's module
+        // resolution picks the right version at runtime.
+        childArchivePath = `${dependentPath}/node_modules/${child.name}`;
+    }
+    const nested = packagePaths.get(childArchivePath);
+    if (nested === undefined) {
+        packagePaths.set(childArchivePath, sourcePath);
+    } else if (nested !== sourcePath) {
+        log.warn(
+            `Cannot include multiple versions of package '${child.name}' at '${childArchivePath}': ` +
+                `keeping '${nested}', ignoring '${sourcePath}'.`,
+        );
+        return;
+    }
+
+    // Don't recurse into a package's dependencies if we've already done so.
+    if (seenPaths.has(sourcePath)) {
+        return;
+    }
+    seenPaths.add(sourcePath);
+    recurse(child.package.dependencies, childArchivePath);
 
     return;
 
-    function recurse(dependencies: any) {
+    function recurse(dependencies: any, parentArchivePath: string | undefined) {
         if (dependencies) {
             for (const dep of Object.keys(dependencies)) {
-                let next: arborist.Node;
-                if (child?.isLink) {
-                    next = child.target;
-                } else {
-                    next = child!;
-                }
-                addPackageAndDependenciesToSet(next!, dep, seenPaths, normalizedPackagePaths, excludedPackages);
+                addPackageAndDependenciesToMap(
+                    child!.realpath,
+                    dep,
+                    seenPaths,
+                    packagePaths,
+                    excludedPackages,
+                    parentArchivePath,
+                );
             }
         }
     }
 }
 
-/**
- * Searches the package tree starting at a root node (possibly a child) for a
- * match for the given name. It is assumed that the tree was correctly
- * constructed such that dependencies are resolved to compatible versions in the
- * closest available match starting at the provided root and walking up to the
- * head of the tree.
- */
-function findDependency(
-    root: arborist.Node | undefined | null,
-    name: string,
-): arborist.Node | arborist.Link | undefined {
-    while (root) {
-        for (const [childName, child] of root.children) {
-            if (childName === name) {
-                return child;
-            }
-        }
-        if (root.parent) {
-            root = root.parent;
-        } else if (root.root !== root) {
-            root = root.root; // jump up to the workspace root
-        } else {
-            break;
+interface PackageInfo {
+    name: string;
+    path: string;
+    realpath: string;
+    package: any;
+}
+
+function findDependency(directory: string, name: string): PackageInfo | undefined {
+    // Consider module.findPackageJSON once it is stable
+    // https://nodejs.org/api/module.html#modulefindpackagejsonspecifier-base
+    const require = createRequire(upath.join(directory, "package.json"));
+    for (const searchPath of require.resolve.paths(name) || []) {
+        const packagePath = upath.join(searchPath, name);
+        const manifestPath = upath.join(packagePath, "package.json");
+        if (fs.existsSync(manifestPath)) {
+            return {
+                name,
+                path: packagePath,
+                realpath: fs.realpathSync(packagePath),
+                package: JSON.parse(fs.readFileSync(manifestPath, "utf8")),
+            };
         }
     }
-
     return undefined;
 }

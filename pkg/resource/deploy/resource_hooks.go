@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -36,10 +37,10 @@ type ResourceHookFunction func(
 	typ tokens.Type,
 	oldOptions *pulumirpc.ResourceOptions,
 	newOptions *pulumirpc.ResourceOptions,
-	newInputs resource.PropertyMap,
-	oldInputs resource.PropertyMap,
-	newOutputs resource.PropertyMap,
-	oldOutputs resource.PropertyMap,
+	newInputs *property.Map,
+	oldInputs *property.Map,
+	newOutputs *property.Map,
+	oldOutputs *property.Map,
 ) error
 
 // ErrorHookFunction is the shape of an error hook.
@@ -53,18 +54,19 @@ type ErrorHookFunction func(
 	typ tokens.Type,
 	oldOptions *pulumirpc.ResourceOptions,
 	newOptions *pulumirpc.ResourceOptions,
-	newInputs resource.PropertyMap,
-	oldInputs resource.PropertyMap,
-	oldOutputs resource.PropertyMap,
+	newInputs *property.Map,
+	oldInputs *property.Map,
+	oldOutputs *property.Map,
 	failedOperation string,
 	errors []string,
 ) (bool, error)
 
 // ResourceHook represents a resource hook with its (wrapped) callback and options.
 type ResourceHook struct {
-	Name     string               // The unqiue name of the hook.
-	Callback ResourceHookFunction // The callback of the hook.
-	OnDryRun bool                 // Whether to run this hook for previews or not.
+	Name         string               // The unqiue name of the hook.
+	Callback     ResourceHookFunction // The callback of the hook.
+	OnDryRun     bool                 // Whether to run this hook for previews or not.
+	IgnoreErrors bool                 // If true, errors are logged as warnings instead of failing the program.
 }
 
 // ErrorHook represents an error hook with its (wrapped) callback and options.

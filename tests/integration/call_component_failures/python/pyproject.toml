@@ -1,0 +1,4 @@
+[project]
+name = "construct_component_failures_py"
+version = "0.0.0"
+dependencies = []

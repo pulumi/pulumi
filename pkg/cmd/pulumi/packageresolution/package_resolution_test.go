@@ -23,12 +23,19 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func installStateOf(has bool) pluginstorage.InstallState {
+	if has {
+		return pluginstorage.PluginInstalled
+	}
+	return pluginstorage.PluginNotInstalled
+}
 
 func TestResolvePackage(t *testing.T) {
 	t.Parallel()
@@ -86,6 +93,7 @@ func TestResolvePackage(t *testing.T) {
 					PluginDownloadURL: "https://example.com/download",
 					Kind:              apitype.ResourcePlugin,
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -109,6 +117,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 7, Minor: 14},
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -141,7 +150,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Pre: []semver.PRVersion{{VersionStr: "x123456"}}},
 					PluginDownloadURL: "git://github.com/example/plugin",
 				}},
-				InstalledInWorkspace: false,
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -162,6 +171,7 @@ func TestResolvePackage(t *testing.T) {
 					}},
 					PluginDownloadURL: "git://github.com/pulumi/component-test-providers/test-provider",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -205,6 +215,7 @@ func TestResolvePackage(t *testing.T) {
 					Source:  "aws",
 					Version: "7.14.0",
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -236,10 +247,10 @@ func TestResolvePackage(t *testing.T) {
 				Source: "installed-pkg", Version: "1.2.3",
 			},
 			workspace: pluginstorage.MockContext{
-				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
-					return spec.Name == "installed-pkg" &&
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) pluginstorage.InstallState {
+					return installStateOf(spec.Name == "installed-pkg" &&
 						spec.Version != nil &&
-						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3})
+						spec.Version.EQ(semver.Version{Major: 1, Minor: 2, Patch: 3}))
 				},
 			},
 			expected: PackageResolution{
@@ -252,7 +263,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 1, Minor: 2, Patch: 3},
 				}},
-				InstalledInWorkspace: true,
+				InstallState: pluginstorage.PluginInstalled,
 			},
 		},
 		{
@@ -260,15 +271,16 @@ func TestResolvePackage(t *testing.T) {
 			options: &Options{
 				AllowNonInvertableLocalWorkspaceResolution: true,
 				ResolveWithRegistry:                        true,
+				ResolveVersionWithLocalWorkspace:           true,
 			},
 			pluginSpec: workspace.PackageSpec{Source: "installed-pkg"},
 			workspace: pluginstorage.MockContext{
 				HasPluginGTEF: func(_ context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error) {
 					return spec.Name == "installed-pkg", &semver.Version{Major: 3}, nil
 				},
-				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
-					return spec.Name == "installed-pkg" &&
-						spec.Version != nil && spec.Version.EQ(semver.Version{Major: 3})
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) pluginstorage.InstallState {
+					return installStateOf(spec.Name == "installed-pkg" &&
+						spec.Version != nil && spec.Version.EQ(semver.Version{Major: 3}))
 				},
 			},
 			expected: PackageResolution{
@@ -281,7 +293,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:    apitype.ResourcePlugin,
 					Version: &semver.Version{Major: 3},
 				}},
-				InstalledInWorkspace: true,
+				InstallState: pluginstorage.PluginInstalled,
 			},
 		},
 		{
@@ -325,6 +337,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 1, Minor: 0, Patch: 0},
 					PluginDownloadURL: "https://example.com/download",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -368,6 +381,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 2, Minor: 0, Patch: 0},
 					PluginDownloadURL: "https://example.com/download",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -416,6 +430,56 @@ func TestResolvePackage(t *testing.T) {
 					},
 					ParameterizationArgs: []string{"arg1"},
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
+			},
+		},
+		{
+			name: "spec with extensions returns PluginResolution",
+			pluginSpec: workspace.PackageSpec{
+				Source:     "param-pkg",
+				Extensions: []string{"ext-arg1", "ext-arg2"},
+			},
+			workspace: pluginstorage.MockContext{},
+			registryResponse: func() (registry.Registry, error) {
+				meta := apitype.PackageMetadata{
+					Name:              "param-pkg",
+					Publisher:         "pulumi",
+					Source:            "pulumi",
+					Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
+					PluginDownloadURL: "https://example.com/param-pkg",
+				}
+				return registry.Mock{
+					GetPackageF: func(
+						ctx context.Context, source, publisher, name string, version *semver.Version,
+					) (apitype.PackageMetadata, error) {
+						if source == "pulumi" && publisher == "pulumi" && name == "param-pkg" {
+							return meta, nil
+						}
+						return apitype.PackageMetadata{}, registry.ErrNotFound
+					},
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {
+							yield(meta, nil)
+						}
+					},
+				}, nil
+			},
+			expected: PluginResolution{
+				Spec: workspace.PackageSpec{
+					Source:     "pulumi/pulumi/param-pkg",
+					Version:    "1.0.0",
+					Extensions: []string{"ext-arg1", "ext-arg2"},
+				},
+				Pkg: workspace.UnresolvedPackageDescriptor{
+					PluginDescriptor: workspace.PluginDescriptor{
+						Name:              "param-pkg",
+						Kind:              apitype.ResourcePlugin,
+						Version:           &semver.Version{Major: 1, Minor: 0, Patch: 0},
+						PluginDownloadURL: "https://example.com/param-pkg",
+					},
+					ParameterizationArgs: []string{"ext-arg1", "ext-arg2"},
+				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -518,6 +582,7 @@ func TestResolvePackage(t *testing.T) {
 						Value:   []byte(`{"region":"eu-west-1","tier":"premium"}`),
 					},
 				},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -531,10 +596,10 @@ func TestResolvePackage(t *testing.T) {
 					}
 					return false, nil, nil
 				},
-				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) bool {
-					return spec.Name == "major-match-pkg" &&
+				HasPluginF: func(_ context.Context, spec workspace.PluginDescriptor) pluginstorage.InstallState {
+					return installStateOf(spec.Name == "major-match-pkg" &&
 						spec.Version != nil &&
-						spec.Version.EQ(semver.Version{Major: 2, Minor: 1, Patch: 0})
+						spec.Version.EQ(semver.Version{Major: 2, Minor: 1, Patch: 0}))
 				},
 			},
 			registryResponse: func() (registry.Registry, error) {
@@ -577,7 +642,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 2, Minor: 1, Patch: 0},
 					PluginDownloadURL: "https://example.com/major-match-pkg",
 				}},
-				InstalledInWorkspace: true,
+				InstallState: pluginstorage.PluginInstalled,
 			},
 		},
 		{
@@ -635,7 +700,7 @@ func TestResolvePackage(t *testing.T) {
 					Version:           &semver.Version{Major: 2, Minor: 2, Patch: 0},
 					PluginDownloadURL: "https://example.com/major-match-not-in-registry",
 				}},
-				InstalledInWorkspace: false,
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -696,7 +761,7 @@ func TestResolvePackage(t *testing.T) {
 						"windows-amd64": []byte("ghi789"),
 					},
 				}},
-				InstalledInWorkspace: false,
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -719,6 +784,39 @@ func TestResolvePackage(t *testing.T) {
 					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "https://www.example.com/some-pkg.tar.gz",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
+			},
+		},
+		{
+			name: "pluginDownloadURL bypasses registry resolution",
+			options: &Options{
+				ResolveWithRegistry: true,
+			},
+			workspace: pluginstorage.MockContext{},
+			registryResponse: func() (registry.Registry, error) {
+				return registry.Mock{
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {
+							yield(apitype.PackageMetadata{}, errors.New("registry should not be called"))
+						}
+					},
+				}, nil
+			},
+			pluginSpec: workspace.PackageSpec{
+				Source:            "found-pkg",
+				PluginDownloadURL: "https://www.example.com/custom-found-pkg.tar.gz",
+			},
+			expected: PackageResolution{
+				Spec: workspace.PackageSpec{
+					Source:            "found-pkg",
+					PluginDownloadURL: "https://www.example.com/custom-found-pkg.tar.gz",
+				},
+				Pkg: workspace.PackageDescriptor{PluginDescriptor: workspace.PluginDescriptor{
+					Name:              "found-pkg",
+					Kind:              apitype.ResourcePlugin,
+					PluginDownloadURL: "https://www.example.com/custom-found-pkg.tar.gz",
+				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 		{
@@ -736,6 +834,7 @@ func TestResolvePackage(t *testing.T) {
 					Kind:              apitype.ResourcePlugin,
 					PluginDownloadURL: "github://api.github.com/pulumiverse",
 				}},
+				InstallState: pluginstorage.PluginNotInstalled,
 			},
 		},
 	}
@@ -807,6 +906,46 @@ func TestResolvePackage(t *testing.T) {
 			resolution, err := Resolve(t.Context(), reg, ws, resolvedSpec, env)
 			require.NoErrorf(t, err, "second resolution failed: resolving from %#v", resolvedSpec)
 			assert.Equal(t, tt.expected, resolution, "second resolution should be the same")
+		})
+	}
+}
+
+func TestVCSURLHint(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		source    string
+		expectHas bool
+	}{
+		{name: "unknown host", source: "https://example.com/owner/repo/sub", expectHas: false},
+		{name: "two-segment gitlab", source: "https://gitlab.com/owner/repo", expectHas: false},
+		{name: "two-segment github", source: "https://github.com/owner/repo", expectHas: false},
+		{name: "two-segment bitbucket", source: "https://bitbucket.org/owner/repo", expectHas: false},
+		{name: "gitlab with .git suffix", source: "https://gitlab.com/group/sub/repo.git", expectHas: false},
+		{name: "github with .git boundary", source: "https://github.com/owner/repo.git/sub", expectHas: false},
+		{name: "bitbucket with .git suffix", source: "https://bitbucket.org/ws/repo.git", expectHas: false},
+		{name: "ambiguous gitlab subgroup", source: "https://gitlab.com/group/sub/repo", expectHas: true},
+		{name: "ambiguous deep gitlab", source: "https://gitlab.com/a/b/c/d/repo", expectHas: true},
+		{name: "ambiguous github with subpath", source: "https://github.com/owner/repo/subdir", expectHas: true},
+		{name: "ambiguous bitbucket with subpath", source: "https://bitbucket.org/ws/repo/subdir", expectHas: true},
+		{name: "ambiguous with www prefix", source: "https://www.gitlab.com/g/sg/repo", expectHas: true},
+		{name: "valid azure devops", source: "https://dev.azure.com/org/proj/_git/repo", expectHas: false},
+		{name: "azure devops short path", source: "https://dev.azure.com/org/repo", expectHas: false},
+		{name: "azure devops missing _git", source: "https://dev.azure.com/org/proj/repo", expectHas: true},
+		{name: "empty", source: "", expectHas: false},
+		{name: "garbage", source: "://not-a-url", expectHas: false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			hint := vcsURLHint(tt.source)
+			if tt.expectHas {
+				assert.NotEmpty(t, hint)
+				assert.Contains(t, hint, "git")
+			} else {
+				assert.Empty(t, hint)
+			}
 		})
 	}
 }

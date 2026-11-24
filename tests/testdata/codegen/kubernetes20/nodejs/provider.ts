@@ -36,7 +36,7 @@ export class Provider extends pulumi.ProviderResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            resourceInputs["kubeClientSettings"] = pulumi.output(args ? (args.kubeClientSettings ? pulumi.output(args.kubeClientSettings).apply(inputs.kubeClientSettingsProvideDefaults) : undefined) : undefined).apply(JSON.stringify);
+            resourceInputs["kubeClientSettings"] = pulumi.output(args ? pulumi.output(args.kubeClientSettings).apply(v => v === undefined ? undefined : inputs.kubeClientSettingsProvideDefaults(v)) : undefined).apply(JSON.stringify);
             resourceInputs["kubeconfig"] = (args?.kubeconfig) ?? utilities.getEnv("KUBECONFIG");
             resourceInputs["namespace"] = args?.namespace;
         }
@@ -52,11 +52,11 @@ export interface ProviderArgs {
     /**
      * Options for tuning the Kubernetes client used by a Provider.
      */
-    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettings>;
+    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettings | undefined>;
     /**
      * The contents of a kubeconfig file or the path to a kubeconfig file.
      */
-    kubeconfig?: pulumi.Input<string>;
+    kubeconfig?: pulumi.Input<string | undefined>;
     /**
      * If present, the default namespace to use. This flag is ignored for cluster-scoped resources.
      *
@@ -65,5 +65,5 @@ export interface ProviderArgs {
      * 2. This `namespace` parameter.
      * 3. `namespace` set for the active context in the kubeconfig.
      */
-    namespace?: pulumi.Input<string>;
+    namespace?: pulumi.Input<string | undefined>;
 }

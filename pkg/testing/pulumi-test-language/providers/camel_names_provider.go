@@ -23,9 +23,9 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // CamelNamesProvider is used to test camel naming features in the Pulumi SDK, and that they are used
@@ -45,10 +45,6 @@ func (p *CamelNamesProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *CamelNamesProvider) Pkg() tokens.Package {
-	return "camelNames"
 }
 
 func (p *CamelNamesProvider) GetSchema(
@@ -100,26 +96,26 @@ func (p *CamelNamesProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "19.0.0" {
+	if version.AsString() != "19.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 19.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 19.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -129,6 +125,7 @@ func (p *CamelNamesProvider) CheckConfig(
 func (p *CamelNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "camelNames:CoolModule:SomeResource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -136,7 +133,7 @@ func (p *CamelNamesProvider) Check(
 	}
 
 	// Expect theInput (required) and optionally resourceName
-	value, ok := req.News["theInput"]
+	value, ok := news["theInput"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("theInput", "missing theInput"),
@@ -148,26 +145,27 @@ func (p *CamelNamesProvider) Check(
 		}, nil
 	}
 	expectedCount := 1
-	if _, hasName := req.News["resourceName"]; hasName {
-		if !req.News["resourceName"].IsString() && !req.News["resourceName"].IsComputed() {
+	if _, hasName := news["resourceName"]; hasName {
+		if !news["resourceName"].IsString() && !news["resourceName"].IsComputed() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("resourceName", "resourceName is not a string"),
 			}, nil
 		}
 		expectedCount = 2
 	}
-	if len(req.News) != expectedCount {
+	if len(news) != expectedCount {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *CamelNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "camelNames:CoolModule:SomeResource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -179,7 +177,7 @@ func (p *CamelNamesProvider) Create(
 		id = ""
 	}
 
-	value, ok := req.Properties["theInput"]
+	value, ok := inputs["theInput"]
 	if !ok {
 		return plugin.CreateResponse{}, errors.New("missing theInput property")
 	}
@@ -187,13 +185,13 @@ func (p *CamelNamesProvider) Create(
 	properties := resource.PropertyMap{
 		"theOutput": value,
 	}
-	if name, hasName := req.Properties["resourceName"]; hasName {
+	if name, hasName := inputs["resourceName"]; hasName {
 		properties["resourceName"] = name
 	}
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -261,15 +259,17 @@ func (p *CamelNamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
+	readInputs := property.NewMap(map[string]property.Value{
+		"theInput": property.New(true),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"theOutput": property.New(true),
+	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID: req.ID,
-			Inputs: resource.PropertyMap{
-				"theInput": resource.NewProperty(true),
-			},
-			Outputs: resource.PropertyMap{
-				"theOutput": resource.NewProperty(true),
-			},
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
 		},
 		Status: resource.StatusOK,
 	}, nil

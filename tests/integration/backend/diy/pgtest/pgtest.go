@@ -113,7 +113,7 @@ func New(t *testing.T) *Database {
 	pingCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		if err := db.PingContext(pingCtx); err == nil {
 			break
 		}
@@ -131,13 +131,13 @@ func New(t *testing.T) *Database {
 	if err != nil {
 		host = "unknown"
 	}
-	port, err := postgresContainer.MappedPort(ctx, "5432")
-	if err != nil {
-		port = "unknown"
+	port := "unknown"
+	if p, err := postgresContainer.MappedPort(ctx, "5432"); err == nil {
+		port = p.Port()
 	}
 
 	t.Logf("PostgreSQL 17 is ready. Connection: postgres://%s:****@%s:%s/%s?sslmode=disable",
-		user, host, port.Port(), dbName)
+		user, host, port, dbName)
 
 	// Set up cleanup
 	t.Cleanup(func() {

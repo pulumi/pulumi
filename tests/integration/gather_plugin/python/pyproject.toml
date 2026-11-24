@@ -1,0 +1,4 @@
+[project]
+name = "test-provider-url-python"
+version = "0.0.0"
+dependencies = []

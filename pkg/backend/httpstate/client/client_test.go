@@ -18,18 +18,32 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/blang/semver"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,7 +93,7 @@ func newMockClient(server *httptest.Server) *Client {
 
 	return &Client{
 		apiURL:   server.URL,
-		apiToken: "",
+		apiToken: apiAccessToken(""),
 		apiUser:  "",
 		diag:     nil,
 		restClient: &defaultRESTClient{
@@ -88,6 +102,405 @@ func newMockClient(server *httptest.Server) *Client {
 			},
 		},
 	}
+}
+
+func TestStartUpdateRequestsLatestJournalVersion(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_JOURNALING", "false")
+
+	var request apitype.StartUpdateRequest
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/stacks/organization/project/stack/update/update-id", req.URL.Path)
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+		require.NoError(t, json.NewEncoder(rw).Encode(apitype.StartUpdateResponse{
+			Version:        42,
+			Token:          "update-token",
+			JournalVersion: apitype.LatestJournalVersion,
+		}))
+	}))
+	t.Cleanup(server.Close)
+
+	client := newMockClient(server)
+	version, token, journalVersion, err := client.StartUpdate(t.Context(), UpdateIdentifier{
+		StackIdentifier: StackIdentifier{
+			Owner:   "organization",
+			Project: "project",
+			Stack:   tokens.MustParseStackName("stack"),
+		},
+		UpdateKind: apitype.UpdateUpdate,
+		UpdateID:   "update-id",
+	}, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, apitype.LatestJournalVersion, request.JournalVersion)
+	assert.Equal(t, 42, version)
+	assert.Equal(t, "update-token", token)
+	assert.Equal(t, apitype.LatestJournalVersion, journalVersion)
+}
+
+func TestSignupAgent(t *testing.T) {
+	t.Parallel()
+
+	validUntil := time.Now().UTC().Truncate(time.Second)
+	expiresAt := validUntil.Add(-time.Hour)
+	const challengeID = "challenge-1"
+	const challengeData = "v1:abcdef:8"
+	var requests []agentSignupRequest
+	var gotPaths, gotMethods, gotAuths []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotPaths = append(gotPaths, req.URL.Path)
+		gotMethods = append(gotMethods, req.Method)
+		gotAuths = append(gotAuths, req.Header.Get("Authorization"))
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+
+		switch len(gotMethods) {
+		case 1:
+			assert.Equal(t, http.MethodGet, req.Method)
+			assert.Empty(t, body)
+			err = json.NewEncoder(rw).Encode(AgentSignupChallenge{
+				ChallengeID:   challengeID,
+				ChallengeData: challengeData,
+			})
+			require.NoError(t, err)
+		case 2:
+			assert.Equal(t, http.MethodPost, req.Method)
+			var signupReq agentSignupRequest
+			require.NoError(t, json.Unmarshal(body, &signupReq))
+			requests = append(requests, signupReq)
+			assert.Equal(t, challengeID, signupReq.ChallengeID)
+			assert.Equal(t, "codex", signupReq.AgentName)
+			assert.Equal(t, "gpt-test", signupReq.AgentModel)
+			assert.GreaterOrEqual(t, signupReq.ChallengeSolveDurationMS, int64(0))
+			require.NoError(t, verifyAgentSignupChallenge(challengeData, signupReq.ChallengeResult))
+			err = json.NewEncoder(rw).Encode(AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: expiresAt,
+				ClaimToken:            "abc123",
+				ClaimTokenValidUntil:  validUntil,
+			})
+			require.NoError(t, err)
+		default:
+			t.Fatalf("unexpected signup request %d", len(gotMethods))
+		}
+	}))
+	defer server.Close()
+
+	resp, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{
+		Name:  "codex",
+		Model: "gpt-test",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, gotMethods)
+	assert.Equal(t, []string{"/api/agents/signup", "/api/agents/signup"}, gotPaths)
+	assert.Equal(t, []string{"", ""}, gotAuths)
+	require.Len(t, requests, 1)
+	assert.Equal(t, "agent-token", resp.AccessToken)
+	assert.Equal(t, "abc123", resp.ClaimToken)
+	assert.True(t, resp.AccessTokenValidUntil.Equal(expiresAt))
+	assert.True(t, resp.ClaimTokenValidUntil.Equal(validUntil))
+}
+
+func TestSignupAgentRequiresChallengeData(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(AgentSignupChallenge{})
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
+	require.ErrorContains(t, err, "signup response did not include challenge data")
+}
+
+func TestSignupAgentReturnsInitialSignupError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+}
+
+func TestSignupAgentReturnsChallengeError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(AgentSignupChallenge{
+			ChallengeID:   "challenge-1",
+			ChallengeData: "v2:abcdef:8",
+		})
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
+	require.ErrorContains(t, err, "invalid challenge data")
+}
+
+func TestSignupAgentReturnsFinalSignupError(t *testing.T) {
+	t.Parallel()
+
+	var requestCount int
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		requestCount++
+		if requestCount == 1 {
+			assert.Equal(t, http.MethodGet, req.Method)
+			err := json.NewEncoder(rw).Encode(AgentSignupChallenge{
+				ChallengeID:   "challenge-1",
+				ChallengeData: "v1:abcdef:8",
+			})
+			require.NoError(t, err)
+			return
+		}
+		assert.Equal(t, http.MethodPost, req.Method)
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.Equal(t, 2, requestCount)
+}
+
+func TestSignupAgentRequiresFinalSignupFields(t *testing.T) {
+	t.Parallel()
+
+	validUntil := time.Now().UTC().Truncate(time.Second)
+	tests := []struct {
+		name      string
+		response  AgentSignupResponse
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "missing access token",
+			response: AgentSignupResponse{
+				AccessTokenValidUntil: validUntil,
+				ClaimToken:            "claim-token",
+				ClaimTokenValidUntil:  validUntil,
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include an access token", i...)
+			},
+		},
+		{
+			name: "missing access token valid until",
+			response: AgentSignupResponse{
+				AccessToken:          "agent-token",
+				ClaimToken:           "claim-token",
+				ClaimTokenValidUntil: validUntil,
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include accessTokenValidUntil", i...)
+			},
+		},
+		{
+			name: "missing claim token",
+			response: AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: validUntil,
+				ClaimTokenValidUntil:  validUntil,
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include a claim token", i...)
+			},
+		},
+		{
+			name: "missing claim token valid until",
+			response: AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: validUntil,
+				ClaimToken:            "claim-token",
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include claimTokenValidUntil", i...)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requestCount int
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "/api/agents/signup", req.URL.Path)
+				requestCount++
+				if requestCount == 1 {
+					assert.Equal(t, http.MethodGet, req.Method)
+					err := json.NewEncoder(rw).Encode(AgentSignupChallenge{
+						ChallengeID:   "challenge-1",
+						ChallengeData: "v1:abcdef:8",
+					})
+					require.NoError(t, err)
+					return
+				}
+				assert.Equal(t, http.MethodPost, req.Method)
+				err := json.NewEncoder(rw).Encode(tt.response)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+
+			_, err := NewClient(server.URL, "", true, nil).SignupAgent(
+				t.Context(),
+				agentdetect.Metadata{Name: "codex"})
+			tt.assertErr(t, err)
+			assert.Equal(t, 2, requestCount)
+		})
+	}
+}
+
+func TestSolveAgentSignupChallengeHonorsCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	_, err := solveAgentSignupChallenge(ctx, "v1:abcdef:256")
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestValidateAgentClaim(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		statusCode    int
+		wantClaimable bool
+		wantErr       bool
+	}{
+		{
+			name:          "claimable",
+			statusCode:    http.StatusOK,
+			wantClaimable: true,
+		},
+		{
+			name:       "not found",
+			statusCode: http.StatusNotFound,
+		},
+		{
+			name:       "server error",
+			statusCode: http.StatusInternalServerError,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotAuth string
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, http.MethodGet, req.Method)
+				assert.Equal(t, "/api/agents/signup/validate/claim-token", req.URL.Path)
+				gotAuth = req.Header.Get("Authorization")
+				rw.WriteHeader(tt.statusCode)
+				if tt.statusCode >= 400 {
+					err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{
+						Code:    tt.statusCode,
+						Message: "validation failed",
+					})
+					require.NoError(t, err)
+				}
+			}))
+			defer server.Close()
+
+			claimable, err := NewClient(server.URL, "", true, nil).
+				ValidateAgentClaim(t.Context(), "claim-token")
+
+			if tt.wantErr {
+				require.Error(t, err) //nolint:forbidigo // pre-existing
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantClaimable, claimable)
+			assert.Empty(t, gotAuth)
+		})
+	}
+}
+
+func TestParseAgentSignupChallengeDifficulty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		data      string
+		want      int
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:      "valid",
+			data:      "v1:abcdef:8",
+			want:      8,
+			assertErr: require.NoError,
+		},
+		{
+			name:      "invalid version",
+			data:      "v2:abcdef:8",
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
+		},
+		{
+			name:      "missing part",
+			data:      "v1:abcdef",
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
+		},
+		{
+			name:      "invalid difficulty",
+			data:      "v1:abcdef:nope",
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
+		},
+		{
+			name:      "zero difficulty",
+			data:      "v1:abcdef:0",
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
+		},
+		{
+			name:      "excessive difficulty",
+			data:      "v1:abcdef:257",
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := parseAgentSignupChallengeDifficulty(tt.data)
+			tt.assertErr(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestLeadingZeroBits(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, 0, leadingZeroBits([]byte{0xff}))
+	assert.Equal(t, 4, leadingZeroBits([]byte{0x0f}))
+	assert.Equal(t, 12, leadingZeroBits([]byte{0x00, 0x0f}))
+	assert.Equal(t, 16, leadingZeroBits([]byte{0x00, 0x00}))
+}
+
+func verifyAgentSignupChallenge(data, result string) error {
+	difficulty, err := parseAgentSignupChallengeDifficulty(data)
+	if err != nil {
+		return err
+	}
+	hash := sha256.Sum256([]byte(data + ":" + result))
+	if leadingZeroBits(hash[:]) < difficulty {
+		return errors.New("insufficient work for challenge")
+	}
+	return nil
 }
 
 func TestAPIErrorResponses(t *testing.T) {
@@ -127,7 +540,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defaultErrorClient := newMockClient(defaultErrorServer)
 		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(t.Context(), nil)
 
-		assert.Error(t, defaultErrorErr)
+		assert.Error(t, defaultErrorErr) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -149,6 +562,27 @@ func TestAPIVersionResponses(t *testing.T) {
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
+}
+
+func TestAcceptAPIVersionHeader(t *testing.T) {
+	t.Parallel()
+
+	// This test pins the Accept header value the CLI sends. If this fails
+	// because you bumped `currentAPIVersion`, also append a row to the version
+	// history table in api.go (and update the matching version block in
+	// pulumi-service `cmd/service/api/rest/request.go`).
+	var handled atomic.Bool
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		handled.Store(true)
+		assert.Equal(t, "application/vnd.pulumi+9", req.Header.Get("Accept"))
+		return `{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0"}`
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	_, _, _, err := client.GetCLIVersionInfo(t.Context(), nil)
+	require.NoError(t, err)
+	assert.True(t, handled.Load(), "mock server handler did not run")
 }
 
 func TestAPIVersionMetadataHeaders(t *testing.T) {
@@ -302,10 +736,10 @@ func TestGetCapabilities(t *testing.T) {
 		actualResp := apitype.CapabilitiesResponse{
 			Capabilities: []apitype.APICapabilityConfig{{
 				Version:       3,
-				Capability:    apitype.DeltaCheckpointUploads,
+				Capability:    cloudapitype.AppAPICapabilityDeltaCheckpointUploads,
 				Configuration: json.RawMessage(cfgJSON),
 			}, {
-				Capability: apitype.BatchEncrypt,
+				Capability: cloudapitype.AppAPICapabilityBatchEncrypt,
 			}},
 		}
 		respJSON, err := json.Marshal(actualResp)
@@ -318,10 +752,10 @@ func TestGetCapabilities(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		require.Len(t, resp.Capabilities, 2)
-		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
+		assert.Equal(t, cloudapitype.AppAPICapabilityDeltaCheckpointUploads, resp.Capabilities[0].Capability)
 		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
 			string(resp.Capabilities[0].Configuration))
-		assert.Equal(t, resp.Capabilities[1].Capability, apitype.BatchEncrypt)
+		assert.Equal(t, resp.Capabilities[1].Capability, cloudapitype.AppAPICapabilityBatchEncrypt)
 
 		parsed, err := resp.Parse()
 		require.NoError(t, err)
@@ -634,7 +1068,6 @@ func TestListPackages(t *testing.T) {
 
 		// Call ListPackages and collect results
 		searchName := "my-package"
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(t.Context(), &searchName) {
 			require.NoError(t, err)
@@ -697,7 +1130,7 @@ func TestListPackages(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
 					Packages:          firstPagePackages,
-					ContinuationToken: ptr("next-page-token-1"),
+					ContinuationToken: new("next-page-token-1"),
 				})
 				require.NoError(t, err)
 			case 1:
@@ -707,7 +1140,7 @@ func TestListPackages(t *testing.T) {
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
 					Packages:          secondPagePackages,
-					ContinuationToken: ptr("next-page-token-2"),
+					ContinuationToken: new("next-page-token-2"),
 				})
 				require.NoError(t, err)
 			case 2:
@@ -729,20 +1162,17 @@ func TestListPackages(t *testing.T) {
 		mockClient := newMockClient(mockServer)
 
 		searchName := "my-package"
-		//nolint:prealloc // capacity unknown ahead of time
 		searchResults := []apitype.PackageMetadata{}
 		for pkg, err := range mockClient.ListPackages(t.Context(), &searchName) {
 			require.NoError(t, err)
 			searchResults = append(searchResults, pkg)
 		}
 
-		expectedPackages := append(append(firstPagePackages, secondPagePackages...), thirdPagePackages...)
+		expectedPackages := slices.Concat(firstPagePackages, secondPagePackages, thirdPagePackages)
 		assert.Equal(t, expectedPackages, searchResults)
 		assert.Equal(t, 3, requestCount) // Ensure both requests were made
 	})
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func TestCallCopilot(t *testing.T) {
 	t.Parallel()
@@ -885,7 +1315,7 @@ func TestCreateNeoTask(t *testing.T) {
 		resp, err := client.CreateNeoTask(
 			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Nil(t, resp)
 		assert.Contains(t, err.Error(), "creating Neo task")
 	})
@@ -900,7 +1330,7 @@ func TestCreateNeoTask(t *testing.T) {
 		resp, err := client.CreateNeoTask(
 			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Nil(t, resp)
 	})
 
@@ -933,6 +1363,9 @@ func TestCreateNeoTask(t *testing.T) {
 		assert.Equal(t, http.MethodPost, gotMethod)
 		assert.Equal(t, "/api/preview/agents/my-org/tasks", gotPath)
 		assert.Equal(t, "cli", gotBody["toolExecutionMode"])
+		// source must be "cli" on every task created via the CLI so the server can
+		// attribute the task to its origin (matches apitype.AgentTaskSourceCli).
+		assert.Equal(t, "cli", gotBody["source"], "CLI-originated tasks must send source:cli")
 		// approvalMode is omitempty — must not appear in the body when empty so the
 		// server falls back to its default (auto) mode.
 		assert.NotContains(t, gotBody, "approvalMode", "empty approvalMode must be omitted")
@@ -1039,6 +1472,268 @@ func TestCreateNeoTask(t *testing.T) {
 
 		assert.NotContains(t, gotBody, "planMode", "planMode must be omitted when false")
 	})
+
+	t.Run("PermissionModeReadOnlySerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// permissionMode is per-task and the cloud caps OBO token scopes when it
+		// reads "read-only". The wire tag is camelCase to match apitype.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_5"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+			PermissionMode:    NeoPermissionModeReadOnly,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "read-only", gotBody["permissionMode"])
+	})
+
+	t.Run("PermissionModeOmittedWhenEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		// An empty PermissionMode must not appear in the body so the server
+		// falls back to the org default rather than seeing an invalid value.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_6"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
+		require.NoError(t, err)
+
+		assert.NotContains(t, gotBody, "permissionMode")
+	})
+
+	t.Run("EnabledIntegrationsEmptyListSerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// The --disable-integrations opt-out must reach the wire as an explicit empty
+		// array, distinct from omitting the field entirely.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_7"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode:   "cli",
+			EnabledIntegrations: &[]string{},
+		})
+		require.NoError(t, err)
+
+		require.Contains(t, gotBody, "enabledIntegrations",
+			"an explicit opt-out must send enabledIntegrations, not omit it")
+		assert.Equal(t, []any{}, gotBody["enabledIntegrations"],
+			"enabledIntegrations must serialize as an empty JSON array")
+	})
+
+	t.Run("EnabledIntegrationsOmittedWhenNil", func(t *testing.T) {
+		t.Parallel()
+
+		// A nil pointer must omit the field so the server inherits the org default.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_8"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
+		require.NoError(t, err)
+
+		assert.NotContains(t, gotBody, "enabledIntegrations",
+			"a nil EnabledIntegrations must be omitted so the server inherits the org default")
+	})
+
+	t.Run("EnabledIntegrationsAllowlistSerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// A populated slice is the (future) allow-list state: named integrations
+		// must carry through verbatim.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_9"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode:   "cli",
+			EnabledIntegrations: &[]string{"honeycomb", "datadog"},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, []any{"honeycomb", "datadog"}, gotBody["enabledIntegrations"])
+	})
+}
+
+func TestUpdateNeoTask(t *testing.T) {
+	t.Parallel()
+
+	// UpdateNeoTask is the CLI's mid-session toggle path: it PATCHes /tasks/{id}
+	// with whichever mode fields the user just toggled. The pointer fields on
+	// UpdateNeoTaskOptions ensure that a single-axis toggle doesn't reset the
+	// other axis on the server side.
+
+	t.Run("ApprovalModeUpdate", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			gotPath   string
+			gotMethod string
+			gotBody   map[string]any
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			gotMethod = req.Method
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		mode := NeoApprovalModeBalanced
+		err := c.UpdateNeoTask(t.Context(), "my-org", "task_1", UpdateNeoTaskOptions{
+			ApprovalMode: &mode,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPatch, gotMethod)
+		assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1", gotPath)
+		assert.Equal(t, "balanced", gotBody["approvalMode"])
+		assert.NotContains(t, gotBody, "permissionMode",
+			"a single-axis toggle must not send the untouched axis")
+	})
+
+	t.Run("PermissionModeUpdate", func(t *testing.T) {
+		t.Parallel()
+
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		perm := NeoPermissionModeReadOnly
+		err := c.UpdateNeoTask(t.Context(), "my-org", "task_2", UpdateNeoTaskOptions{
+			PermissionMode: &perm,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "read-only", gotBody["permissionMode"])
+		assert.NotContains(t, gotBody, "approvalMode")
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		t.Parallel()
+
+		errorServer := newMockServer(http.StatusBadRequest, `{"message": "bad"}`)
+		defer errorServer.Close()
+
+		c := newMockClient(errorServer)
+		mode := NeoApprovalModeAuto
+		err := c.UpdateNeoTask(t.Context(), "my-org", "task_x", UpdateNeoTaskOptions{
+			ApprovalMode: &mode,
+		})
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "updating Neo task")
+	})
+}
+
+func TestGetNeoTask(t *testing.T) {
+	t.Parallel()
+
+	var (
+		gotMethod string
+		gotPath   string
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotMethod = req.Method
+		gotPath = req.URL.String()
+		rw.Header().Set("Content-Type", "application/json")
+		_, _ = rw.Write([]byte(`{
+			"taskId": "task_1",
+			"approvalMode": "balanced",
+			"permissionMode": "read-only"
+		}`))
+	}))
+	defer server.Close()
+
+	c := newMockClient(server)
+	task, err := c.GetNeoTask(t.Context(), "my-org", "task_1")
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodGet, gotMethod)
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1", gotPath)
+	assert.Equal(t, "task_1", task.TaskID)
+	assert.Equal(t, NeoApprovalModeBalanced, task.ApprovalMode)
+	assert.Equal(t, NeoPermissionModeReadOnly, task.PermissionMode)
+}
+
+func TestGetNeoTaskEvents(t *testing.T) {
+	t.Parallel()
+
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		paths = append(paths, req.URL.String())
+		rw.Header().Set("Content-Type", "application/json")
+		switch req.URL.Query().Get("continuationToken") {
+		case "":
+			_, _ = rw.Write([]byte(`{
+				"events": [
+					{"type": "agentResponse", "id": "evt-1"},
+					{"type": "userInput", "id": "evt-2"}
+				],
+				"continuationToken": "next-page"
+			}`))
+		case "next-page":
+			_, _ = rw.Write([]byte(`{
+				"events": [
+					{"type": "agentResponse", "id": "evt-3"}
+				]
+			}`))
+		default:
+			rw.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+
+	c := newMockClient(server)
+	events, tailID, err := c.GetNeoTaskEvents(t.Context(), "my-org", "task_1")
+	require.NoError(t, err)
+
+	assert.Equal(t, "evt-3", tailID)
+	require.Len(t, events, 3)
+	assert.Equal(t, "agentResponse", events[0].Type)
+	assert.Equal(t, "evt-1", events[0].ID)
+	assert.Equal(t, "userInput", events[1].Type)
+	assert.Equal(t, "evt-2", events[1].ID)
+	assert.Equal(t, "agentResponse", events[2].Type)
+	assert.Equal(t, "evt-3", events[2].ID)
+	require.Len(t, paths, 2)
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events?pageSize=1000", paths[0])
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events?pageSize=1000&continuationToken=next-page", paths[1])
 }
 
 func TestPostNeoTaskUserEvent(t *testing.T) {
@@ -1080,7 +1775,7 @@ func TestPostNeoTaskUserEvent(t *testing.T) {
 func TestStreamNeoTaskEvents(t *testing.T) {
 	t.Parallel()
 
-	t.Run("ParsesDataFramesAndIgnoresComments", func(t *testing.T) {
+	t.Run("ParsesDataFramesAndReportsComments", func(t *testing.T) {
 		t.Parallel()
 
 		// SSE framing: blank lines delimit events, lines that start with ":" are
@@ -1102,18 +1797,20 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
 		require.NoError(t, err)
 
-		got := make([][]byte, 0, 2)
+		got := make([]NeoStreamEvent, 0, 3)
 		for evt := range stream {
 			require.NoError(t, evt.Err)
-			got = append(got, evt.Data)
+			got = append(got, evt)
 		}
 		assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events/stream", gotPath)
-		require.Len(t, got, 2)
-		assert.Equal(t, `{"type":"agentResponse"}`, string(got[0]))
-		assert.Equal(t, "line1\nline2", string(got[1]))
+		require.Len(t, got, 3)
+		assert.True(t, got[0].KeepAlive)
+		assert.Empty(t, got[0].Data)
+		assert.Equal(t, `{"type":"agentResponse"}`, string(got[1].Data))
+		assert.Equal(t, "line1\nline2", string(got[2].Data))
 	})
 
 	t.Run("HTTPErrorSurfacesBeforeStreamStarts", func(t *testing.T) {
@@ -1125,10 +1822,70 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
-		require.Error(t, err)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, stream)
 		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("ParsesEventIDsAndSendsLastEventIDHeader", func(t *testing.T) {
+		t.Parallel()
+
+		// The Neo CLI tracks the last event ID it consumed and sends it back as
+		// `Last-Event-ID` on reconnect so the service can replay missed events.
+		// Verify both halves: outgoing header propagation and incoming `id:` parsing.
+		var gotLastEventID string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotLastEventID = req.Header.Get("Last-Event-ID")
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, ok := rw.(http.Flusher)
+			require.True(t, ok)
+			// First event carries id:42; second event omits id: — per the SSE spec
+			// the "last event ID buffer" persists, so the second event also reports 42.
+			_, _ = rw.Write([]byte("id: 42\ndata: a\n\n"))
+			_, _ = rw.Write([]byte("data: b\n\n"))
+			flusher.Flush()
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "17")
+		require.NoError(t, err)
+
+		got := make([]NeoStreamEvent, 0, 2)
+		for evt := range stream {
+			require.NoError(t, evt.Err)
+			got = append(got, evt)
+		}
+		assert.Equal(t, "17", gotLastEventID, "outgoing Last-Event-ID header")
+		require.Len(t, got, 2)
+		assert.Equal(t, "a", string(got[0].Data))
+		assert.Equal(t, "42", got[0].ID)
+		assert.Equal(t, "b", string(got[1].Data))
+		assert.Equal(t, "42", got[1].ID, "id buffer should persist across events without id:")
+	})
+
+	t.Run("OmitsLastEventIDHeaderWhenEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		// On the very first connection the caller has no event ID yet — make sure
+		// we don't send `Last-Event-ID:` (with an empty value), which some proxies
+		// reject.
+		var headerWasSet bool
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			_, headerWasSet = req.Header["Last-Event-Id"]
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
+		require.NoError(t, err)
+		for range stream {
+		}
+		assert.False(t, headerWasSet, "Last-Event-ID must not be sent when empty")
 	})
 
 	t.Run("ContextCancelClosesStream", func(t *testing.T) {
@@ -1156,7 +1913,7 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer cancel()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1", "")
 		require.NoError(t, err)
 
 		<-ready
@@ -1166,4 +1923,1176 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 			// Drain; just verifying the channel closes.
 		}
 	})
+}
+
+func TestRefreshAccessToken(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns the new access token on success", func(t *testing.T) {
+		t.Parallel()
+		var gotPath, gotMethod, gotContentType, gotBody string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			gotMethod = req.Method
+			gotContentType = req.Header.Get("Content-Type")
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			gotBody = string(body)
+
+			err = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:     "new-obo-access-token",
+				IssuedTokenType: "urn:ietf:params:oauth:token-type:access_token",
+				TokenType:       "Bearer",
+				ExpiresIn:       3600,
+				RefreshToken:    "rt-value", // server echoes the same refresh token (no rotation)
+			})
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		resp, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-value")
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/oauth/token", gotPath)
+		assert.Equal(t, "application/x-www-form-urlencoded", gotContentType)
+		assert.Contains(t, gotBody, "grant_type=refresh_token")
+		assert.Contains(t, gotBody, "refresh_token=rt-value")
+		assert.Equal(t, "new-obo-access-token", resp.AccessToken)
+		assert.Equal(t, "Bearer", resp.TokenType)
+		assert.Equal(t, int64(3600), resp.ExpiresIn)
+		assert.Equal(t, "rt-value", resp.RefreshToken)
+	})
+
+	t.Run("rejects an empty refresh token without hitting the server", func(t *testing.T) {
+		t.Parallel()
+		// Server fails the test if called — the empty-string check must short-circuit.
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			t.Errorf("server should not have been called for empty refresh token")
+		}))
+		defer server.Close()
+
+		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "refresh token is required")
+	})
+
+	t.Run("surfaces server-side invalid_grant errors verbatim", func(t *testing.T) {
+		t.Parallel()
+		// Mirrors what the service returns when the row is gone / wrong-type / soft-deleted (see
+		// cmd/service/api/oauth2/grant_type_refresh_token.go in the pulumi-service repo).
+		const errBody = `{"error":"invalid_grant","error_description":"refresh token is not valid"}`
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.WriteHeader(http.StatusBadRequest)
+			_, err := rw.Write([]byte(errBody))
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-revoked")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		// Caller must see both the status and the original error_description so they can branch
+		// on invalid_grant (give up, prompt for login) vs unsupported_grant_type (LD kill switch,
+		// retry later).
+		assert.Contains(t, err.Error(), "400")
+		assert.Contains(t, err.Error(), "invalid_grant")
+		assert.Contains(t, err.Error(), "refresh token is not valid")
+	})
+
+	t.Run("rejects an empty access_token in the response", func(t *testing.T) {
+		t.Parallel()
+		// Defensive: a malformed 200 with no access_token must not be silently treated as success.
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			_, err := rw.Write([]byte(`{"access_token":"","token_type":"Bearer"}`))
+			require.NoError(t, err)
+		}))
+		defer server.Close()
+
+		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-value")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "empty access_token")
+	})
+}
+
+func TestRefreshableAPIAccessToken(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Refresh replaces the access token and persists via writeback", func(t *testing.T) {
+		t.Parallel()
+
+		var seenRefreshToken, seenWriteAT, seenWriteRT string
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale-access",
+			refreshToken: "stale-refresh",
+			refresh: func(_ context.Context, rt string) (string, time.Time, string, error) {
+				seenRefreshToken = rt
+				return "new-access", time.Time{}, "new-refresh", nil
+			},
+			writeback: func(at string, _ time.Time, rt string) error {
+				seenWriteAT, seenWriteRT = at, rt
+				return nil
+			},
+		}
+
+		require.NoError(t, tok.Refresh(t.Context(), "stale-access"))
+
+		got, err := tok.Get(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, "new-access", got)
+		assert.Equal(t, "stale-refresh", seenRefreshToken)
+		assert.Equal(t, "new-access", seenWriteAT)
+		assert.Equal(t, "new-refresh", seenWriteRT)
+	})
+
+	t.Run("Refresh keeps the existing refresh token when the server returns empty (no rotation)", func(t *testing.T) {
+		t.Parallel()
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "stale-access",
+			refreshToken: "stable-refresh",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				return "new-access", time.Time{}, "", nil
+			},
+			writeback: func(at string, _ time.Time, rt string) error { return nil },
+		}
+		require.NoError(t, tok.Refresh(t.Context(), "stale-access"))
+
+		var seenSecondRefreshToken string
+		tok.refresh = func(_ context.Context, rt string) (string, time.Time, string, error) {
+			seenSecondRefreshToken = rt
+			return "newer-access", time.Time{}, "", nil
+		}
+		require.NoError(t, tok.Refresh(t.Context(), "new-access"))
+		assert.Equal(t, "stable-refresh", seenSecondRefreshToken,
+			"the wrapper continues to send the original refresh token across calls")
+	})
+
+	t.Run("Refresh failure surfaces the underlying error and leaves state untouched", func(t *testing.T) {
+		t.Parallel()
+
+		var writebackCalled bool
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "original-access",
+			refreshToken: "original-refresh",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				return "", time.Time{}, "", errors.New("invalid_grant")
+			},
+			writeback: func(at string, _ time.Time, rt string) error {
+				writebackCalled = true
+				return nil
+			},
+		}
+
+		err := tok.Refresh(t.Context(), "original-access")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "invalid_grant")
+		assert.False(t, writebackCalled, "writeback must not fire when the refresh attempt fails")
+
+		got, gerr := tok.Get(t.Context())
+		require.NoError(t, gerr)
+		assert.Equal(t, "original-access", got, "Get returns the original token when the refresh failed")
+	})
+
+	t.Run("Refresh surfaces writeback failure", func(t *testing.T) {
+		t.Parallel()
+
+		tok := &refreshableAPIAccessToken{
+			accessToken:  "original-access",
+			refreshToken: "original-refresh",
+			refresh: func(_ context.Context, _ string) (string, time.Time, string, error) {
+				return "new-access", time.Time{}, "new-refresh", nil
+			},
+			writeback: func(_ string, _ time.Time, _ string) error { return errors.New("disk full") },
+		}
+
+		err := tok.Refresh(t.Context(), "original-access")
+		require.Error(t, err) //nolint:forbidigo // pre-existing
+		assert.Contains(t, err.Error(), "disk full")
+	})
+}
+
+func TestGetPulumiAccountDetailsConcurrent(t *testing.T) {
+	t.Parallel()
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/user", r.URL.Path)
+		requests.Add(1)
+		_, _ = w.Write([]byte(`{"githubLogin":"alice","organizations":[{"githubLogin":"org"}],` +
+			`"tokenInfo":{"name":"token","organization":"org","team":"team"}}`))
+	}))
+	t.Cleanup(server.Close)
+	c := NewClient(server.URL, "token", false, nil)
+	start := make(chan struct{})
+	errs := make(chan error, 16)
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			<-start
+			user, orgs, info, err := c.GetPulumiAccountDetails(t.Context())
+			errs <- err
+			if err != nil {
+				return
+			}
+			assert.Equal(t, "alice", user)
+			assert.Equal(t, []string{"org"}, orgs)
+			assert.Equal(t, &workspace.TokenInformation{Name: "token", Organization: "org", Team: "team"}, info)
+		})
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int32(1), requests.Load())
+}
+
+func TestClient_WithRefresh(t *testing.T) {
+	t.Parallel()
+
+	t.Run("end-to-end: stale token triggers refresh and retry, writeback fires", func(t *testing.T) {
+		t.Parallel()
+
+		var apiCalls, refreshCalls atomic.Int32
+		var seenAuths []string
+		var mu sync.Mutex
+
+		srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			switch req.URL.Path {
+			case "/api/oauth/token":
+				refreshCalls.Add(1)
+				body, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+				assert.Contains(t, string(body), "grant_type=refresh_token")
+				assert.Contains(t, string(body), "refresh_token=stale-refresh")
+				_ = json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+					AccessToken:  "fresh-access",
+					TokenType:    "Bearer",
+					ExpiresIn:    3600,
+					RefreshToken: "stale-refresh",
+				})
+			case "/api/user":
+				mu.Lock()
+				seenAuths = append(seenAuths, req.Header.Get("Authorization"))
+				mu.Unlock()
+				n := apiCalls.Add(1)
+				if n == 1 {
+					rw.WriteHeader(http.StatusUnauthorized)
+					_ = json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+					return
+				}
+				_ = json.NewEncoder(rw).Encode(serviceUser{GitHubLogin: "alice"})
+			default:
+				rw.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer srv.Close()
+
+		var writeAT, writeRT string
+		var writeExpiresAt time.Time
+		pc := NewClient(srv.URL, "stale-access", true, nil)
+		pc.WithRefresh("stale-refresh", func(at string, expiresAt time.Time, rt string) error {
+			writeAT, writeRT, writeExpiresAt = at, rt, expiresAt
+			return nil
+		})
+
+		name, _, _, err := pc.GetPulumiAccountDetails(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, "alice", name)
+		assert.Equal(t, int32(2), apiCalls.Load(), "/api/user should be tried twice")
+		assert.Equal(t, int32(1), refreshCalls.Load())
+		require.Len(t, seenAuths, 2)
+		assert.Equal(t, "token stale-access", seenAuths[0])
+		assert.Equal(t, "token fresh-access", seenAuths[1])
+		assert.Equal(t, "fresh-access", writeAT, "writeback receives the refreshed access token")
+		assert.Equal(t, "stale-refresh", writeRT,
+			"writeback receives the still-current refresh token (no rotation in Phase 1)")
+		assert.False(t, writeExpiresAt.IsZero(),
+			"writeback receives the new access token's ExpiresAt derived from the grant's ExpiresIn")
+		assert.True(t, writeExpiresAt.After(time.Now().Add(50*time.Minute)),
+			"the new ExpiresAt is roughly now+ExpiresIn (3600s in this fixture)")
+	})
+
+	t.Run("empty refresh token leaves the plain access token in place", func(t *testing.T) {
+		t.Parallel()
+
+		pc := NewClient("https://api.example.com", "tok", false, nil)
+		pc.WithRefresh("", func(at string, _ time.Time, rt string) error { return nil })
+		_, isRefreshable := pc.apiToken.(refreshable)
+		assert.False(t, isRefreshable, "an empty refresh token must not swap in a refreshable wrapper")
+	})
+
+	t.Run("nil writeback with non-empty refresh token fails the precondition", func(t *testing.T) {
+		t.Parallel()
+
+		// A non-empty refresh token without a writeback is a programmer error — a refresh would
+		// crash at call time. Catch it at the wiring site, where the violated precondition can
+		// be named, rather than waiting for the first 401.
+		pc := NewClient("https://api.example.com", "tok", false, nil)
+		assert.Panics(t, func() { pc.WithRefresh("some-refresh", nil) })
+	})
+}
+
+func TestClientInsecure(t *testing.T) {
+	t.Parallel()
+
+	// Consumers such as the service secrets manager persist Insecure() into stack state and
+	// later rebuild a client from it, so the flag must survive construction.
+	assert.True(t, NewClient("https://api.example.com", "tok", true, nil).Insecure())
+	assert.False(t, NewClient("https://api.example.com", "tok", false, nil).Insecure())
+}
+
+func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
+	t.Parallel()
+
+	// A template download URL that isn't the configured api endpoint makes DownloadTemplate
+	// build a fresh client for that host. That client has to carry the caller's TLS setting,
+	// otherwise `pulumi new <template>` accepts any certificate for the foreign host even when
+	// the user never opted into insecure transport.
+	//
+	// The certificate of the server is self-signed, so only a client that does not verify
+	// certificates can download from it.
+	server := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	t.Run("secure", func(t *testing.T) {
+		t.Parallel()
+
+		pc := NewClient("https://api.example.com", "tok", false, nil)
+		_, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
+		var certErr *tls.CertificateVerificationError
+		require.ErrorAs(t, err, &certErr)
+	})
+
+	t.Run("insecure", func(t *testing.T) {
+		t.Parallel()
+
+		pc := NewClient("https://api.example.com", "tok", true, nil)
+		body, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
+		require.NoError(t, err)
+		require.NoError(t, body.Close())
+	})
+}
+
+func TestGetStackOutputs(t *testing.T) {
+	t.Parallel()
+
+	var gotPath, gotQuery string
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		gotPath, gotQuery = req.URL.Path, req.URL.RawQuery
+		return `{"outputs":{"foo":"bar"},"secretsProviders":{"type":"b64"}}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetStackOutputs(t.Context(), StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	}, "")
+	require.NoError(t, err)
+	assert.Equal(t, "/api/stacks/owner/project/stack/outputs", gotPath)
+	assert.Empty(t, gotQuery, "a read outside an update must not name a reading update")
+	assert.Equal(t, apitype.StackOutputsResponse{
+		Outputs:          map[string]any{"foo": "bar"},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
+	}, resp)
+}
+
+func TestCreateUpdateSendsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.UpdateProgramRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"updateID":"update-id"}`
+	})
+	defer server.Close()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	update, _, err := newMockClient(server).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, /* dryRun */
+		"d333a711-4aa0-402f-be6d-72af9665fc37", UpdateRequestOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "update-id", update.UpdateID)
+	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.CoherenceWindow)
+}
+
+func TestUpdateRequestsSendManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	cases := []struct {
+		name string
+		env  *apitype.UpdateProgramEnvironment
+		want string
+	}{
+		{
+			name: "draft revision zero with a change request",
+			env:  &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"},
+			want: `{"baseRevision":7,"changeRequestID":"cr-1","draftRevision":0}`,
+		},
+		{
+			name: "open revision",
+			env:  &apitype.UpdateProgramEnvironment{BaseRevision: 7},
+			want: `{"baseRevision":7,"draftRevision":0}`,
+		},
+		{name: "unmanaged"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var createBody map[string]json.RawMessage
+			createServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&createBody))
+				return `{"updateID":"update-id"}`
+			})
+			defer createServer.Close()
+			_, _, err := newMockClient(createServer).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+				config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, "",
+				UpdateRequestOptions{Environment: tc.env})
+			require.NoError(t, err)
+
+			var beginBody struct {
+				Program map[string]json.RawMessage `json:"program"`
+			}
+			beginServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&beginBody))
+				return `{"updateID":"update-id"}`
+			})
+			defer beginServer.Close()
+			_, err = newMockClient(beginServer).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+				config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, "",
+				UpdateRequestOptions{Environment: tc.env})
+			require.NoError(t, err)
+
+			for _, body := range []map[string]json.RawMessage{createBody, beginBody.Program} {
+				got, present := body["environment"]
+				if tc.env == nil {
+					assert.False(t, present)
+					continue
+				}
+				assert.JSONEq(t, tc.want, string(got))
+			}
+		})
+	}
+}
+
+func TestBeginUpdateSendsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.BeginUpdateRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"updateID":"update-id"}`
+	})
+	defer server.Close()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	resp, err := newMockClient(server).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, /* dryRun */
+		"d333a711-4aa0-402f-be6d-72af9665fc37", UpdateRequestOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "update-id", resp.UpdateID)
+	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.Program.CoherenceWindow)
+}
+
+func TestCompleteUpdateSendsOutputs(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.CompleteUpdateRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return ""
+	})
+	defer server.Close()
+
+	update := UpdateIdentifier{
+		StackIdentifier: StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")},
+		UpdateKind:      apitype.PreviewUpdate,
+		UpdateID:        "update-id",
+	}
+	outputs := &apitype.StackOutputsResponse{
+		Outputs:          map[string]any{"foo": "bar"},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
+	}
+
+	err := newMockClient(server).CompleteUpdate(
+		t.Context(), update, cloudapitype.AppUpdateStatusSucceeded, updateTokenStaticSource("update-token"), outputs)
+	require.NoError(t, err)
+	assert.Equal(t, cloudapitype.AppUpdateStatusSucceeded, gotBody.Status)
+	assert.Equal(t, map[string]any{"foo": "bar"}, gotBody.Outputs)
+	assert.Equal(t, &apitype.SecretsProvidersV1{Type: "b64"}, gotBody.SecretsProviders)
+}
+
+func TestGetStackOutputsInCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		gotQuery = req.URL.RawQuery
+		return `{"outputs":{"foo":"bar"}}`
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).GetStackOutputs(t.Context(), StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	}, "d333a711-4aa0-402f-be6d-72af9665fc37")
+	require.NoError(t, err)
+	assert.Equal(t, "readingUpdateID=d333a711-4aa0-402f-be6d-72af9665fc37", gotQuery)
+}
+
+func TestCreatePolicyGroup(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).CreatePolicyGroup(t.Context(), "acme", apitype.CreatePolicyGroupRequest{
+		Name:        "prod-policies",
+		EntityType:  new(cloudapitype.PolicyGroupEntityTypeStacks), //nolint:staticcheck
+		Mode:        new(apitype.PolicyGroupModePreventative),
+		AgentPoolID: jsonvalue.NotNull("pool-123"),
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups", path)
+	assert.JSONEq(t, `{
+		"name": "prod-policies",
+		"entityType": "stacks",
+		"mode": "preventative",
+		"agentPoolId": "pool-123"
+	}`, body)
+}
+
+func TestBatchUpdatePolicyGroup(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
+		[]cloudapitype.UpdatePolicyGroupRequest{
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{NewName: new("renamed")}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddStack: &apitype.PulumiStackReference{Name: "standalone"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddPolicyPack: &apitype.PolicyPackMetadata{
+					Name:       "aws-pack",
+					VersionTag: "1.2.3",
+					Config: map[string]*json.RawMessage{
+						"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+					},
+				},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"},
+			}},
+			{RemoveStackMatchRule: true},
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies/batch", path)
+	assert.JSONEq(t, `[
+		{"newName": "renamed"},
+		{"addStack": {"name": "prod", "routingProject": "web"}},
+		{"addStack": {"name": "standalone", "routingProject": ""}},
+		{"removeStack": {"name": "old", "routingProject": "api"}},
+		{"addPolicyPack": {
+			"name": "aws-pack",
+			"displayName": "",
+			"version": 0,
+			"versionTag": "1.2.3",
+			"config": {"s3-no-public": {"enforcementLevel": "mandatory", "tags": ["a", "b"]}}
+		}},
+		{"removePolicyPack": {"name": "tagging", "displayName": "", "version": 0, "versionTag": "1.0.0"}},
+		{"addInsightsAccount": {"name": "prod-aws"}},
+		{"removeInsightsAccount": {"name": "stale-gcp"}},
+		{"removeStackMatchRule": true}
+	]`, body)
+}
+
+func TestAuditLogsQueryParams(t *testing.T) {
+	t.Parallel()
+
+	var gotURLs []string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		gotURLs = append(gotURLs, req.URL.String())
+		return "{}"
+	})
+	defer server.Close()
+
+	client := NewClient(server.URL, "token", true, nil)
+	ctx := t.Context()
+
+	_, err := client.ListAuditLogs(ctx, "org", ListAuditLogsOptions{
+		EventType: "stack.create", User: "alice", StartTime: "1", EndTime: "2",
+	})
+	require.NoError(t, err)
+
+	body, err := client.ExportAuditLogs(ctx, "org", ExportAuditLogsOptions{
+		EventType: "stack.create", User: "alice", StartTime: "1", EndTime: "2",
+	})
+	require.NoError(t, err)
+	require.NoError(t, body.Close())
+
+	assert.Equal(t, []string{
+		"/api/orgs/org/auditlogs/v2?endTime=2&eventFilter=stack.create&startTime=1&userFilter=alice",
+		"/api/orgs/org/auditlogs/v2/export?endTime=2&eventFilter=stack.create&format=csv&startTime=1&userFilter=alice",
+	}, gotURLs)
+}
+
+func TestApplyPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).ApplyPolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "1.2.3",
+		map[string]*json.RawMessage{
+			"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`)),
+		}, []string{"policies/aws-creds@3"})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
+	assert.JSONEq(t, `{"addPolicyPack": {
+		"name": "aws-pack",
+		"displayName": "",
+		"version": 0,
+		"versionTag": "1.2.3",
+		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}},
+		"environments": ["policies/aws-creds@3"]
+	}}`, body)
+}
+
+func TestDisablePolicyPack(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).DisablePolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "")
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
+	assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack", "displayName": "", "version": 0, "versionTag": ""}}`, body)
+}
+
+func TestListPolicyIssues(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{
+		StartRow: 100,
+		EndRow:   200,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/issues", path)
+	assert.JSONEq(t, `{
+		"startRow": 100, "endRow": 200, "sortModel": null,
+		"rowGroupCols": null, "valueCols": null, "groupKeys": null, "filterModel": null}`, body)
+}
+
+func TestGetPolicyComplianceResults(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	size := 50
+	token := "next-page-token"
+	_, err := newMockClient(server).GetPolicyComplianceResults(t.Context(), "acme",
+		apitype.GetPolicyComplianceResultsRequest{
+			Entity:            "stack",
+			Size:              &size,
+			ContinuationToken: &token,
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/compliance", path)
+	assert.JSONEq(t, `{"entity": "stack", "size": 50, "continuationToken": "next-page-token"}`, body)
+}
+
+func TestGetPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/orgs/acme/policypacks/aws-guardrails/versions/1.2.0", req.URL.Path)
+		return `{"name":"aws-guardrails","displayName":"AWS Guardrails","version":3,"versionTag":"1.2.0","applied":true,` +
+			`"policies":[{"name":"s3-no-public","enforcementLevel":"mandatory","severity":"high","description":"d"}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetPolicyPack(t.Context(), "acme", "aws-guardrails", "1.2.0")
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, resp.Version)
+	require.Len(t, resp.Policies, 1)
+	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
+}
+
+func TestCreateStackManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	var request apitype.CreateStackRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "/api/stacks/acme/proj", req.URL.Path)
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+		return `{"managedEnvironment": "proj/renamed"}`
+	})
+	t.Cleanup(server.Close)
+
+	stack, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "proj",
+		Stack:   tokens.MustParseStackName("dev"),
+	}, nil, nil, nil, nil, true)
+	require.NoError(t, err)
+
+	assert.True(t, request.CreateManagedEnvironment)
+	assert.Equal(t, new("proj/renamed"), stack.ManagedEnvironment)
+}
+
+func TestCreateStackUnmanagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(200, func(*http.Request) string { return `{}` })
+	t.Cleanup(server.Close)
+
+	stack, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "proj",
+		Stack:   tokens.MustParseStackName("dev"),
+	}, nil, nil, nil, nil, false)
+	require.NoError(t, err)
+
+	assert.Nil(t, stack.ManagedEnvironment)
+}
+
+func TestListPolicyIssues_FilterAndSortModel(t *testing.T) {
+	t.Parallel()
+
+	var body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{
+		EndRow:      100,
+		FilterModel: &cloudapitype.AngularGridAdvancedFilterModel{Type: "AND"},
+		SortModel:   []apitype.PolicyIssueSortModel{{ColID: "observedAt", Sort: "desc"}},
+	})
+	require.NoError(t, err)
+
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(body), &fields))
+	assert.JSONEq(t, `[{"colId": "observedAt", "sort": "desc"}]`, string(fields["sortModel"]))
+	assert.Contains(t, string(fields["filterModel"]), `"AND"`)
+}
+
+func TestListPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("{}"))
+			}))
+			defer server.Close()
+
+			c := newMockClient(server)
+			_, err := c.ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{EndRow: 100, Closed: tt.closed})
+			require.NoError(t, err)
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
+}
+
+func getPolicyIssueFromServer(t *testing.T, body string) apitype.GetPolicyIssueResponse {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/orgs/acme/policyresults/issues/i1", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+
+	resp, err := newMockClient(server).GetPolicyIssue(t.Context(), "acme", "i1")
+	require.NoError(t, err)
+	return resp
+}
+
+func TestGetPolicyIssue_FullResponse(t *testing.T) {
+	t.Parallel()
+
+	resp := getPolicyIssueFromServer(t, `{
+		"policyIssue": {
+			"id": "i1",
+			"kind": "audit",
+			"priority": "p1",
+			"assignedTo": {"githubLogin": "alice", "name": "Alice"},
+			"policyGroupName": "prod",
+			"policyGroupType": "audit"
+		},
+		"policy": {
+			"name": "s3-no-public",
+			"description": "d",
+			"remediationSteps": "r",
+			"framework": {"name": "CIS", "version": "1.4", "reference": "2.1.5"}
+		}
+	}`)
+
+	require.NotNil(t, resp.Policy)
+	assert.Equal(t, "r", resp.Policy.RemediationSteps)
+	require.NotNil(t, resp.PolicyIssue.AssignedTo)
+	assert.Equal(t, "alice", resp.PolicyIssue.AssignedTo.GitHubLogin)
+}
+
+func TestGetStackPolicyGroups(t *testing.T) {
+	t.Parallel()
+
+	var method, path string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		return `{"policyGroups": [{"name": "prod-policies", "isOrgDefault": false, "numStacks": 3,
+			"numAccounts": 0, "entityType": "stacks", "mode": "preventative", "numEnabledPolicyPacks": 2}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetStackPolicyGroups(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodGet, method)
+	assert.Equal(t, "/api/stacks/acme/web/prod/policygroups", path)
+	assert.Equal(t, apitype.ListPolicyGroupsResponse{PolicyGroups: []apitype.PolicyGroupSummary{{
+		Name:                  "prod-policies",
+		NumStacks:             3,
+		EntityType:            apitype.Stacks,
+		Mode:                  apitype.PolicyGroupModePreventative,
+		NumEnabledPolicyPacks: 2,
+	}}}, resp)
+}
+
+func TestGetStackPolicyPacks(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		mode    apitype.PolicyGroupMode
+		wantURL string
+	}{
+		{"all modes", "", "/api/stacks/acme/web/prod/policypacks"},
+		{"audit", apitype.PolicyGroupModeAudit, "/api/stacks/acme/web/prod/policypacks?mode=audit"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var method, url string
+			server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+				method, url = req.Method, req.URL.String()
+				return `{"requiredPolicies": [{"name": "aws-guardrails", "version": 3, "versionTag": "1.2.0",
+					"displayName": "AWS Guardrails", "packLocation": "https://example.com/pack.tgz"}]}`
+			})
+			defer server.Close()
+
+			resp, err := newMockClient(server).GetStackPolicyPacks(t.Context(), StackIdentifier{
+				Owner:   "acme",
+				Project: "web",
+				Stack:   tokens.MustParseStackName("prod"),
+			}, tt.mode)
+			require.NoError(t, err)
+
+			assert.Equal(t, http.MethodGet, method)
+			assert.Equal(t, tt.wantURL, url)
+			assert.Equal(t, apitype.GetStackPolicyPacksResponse{RequiredPolicies: []apitype.RequiredPolicy{{
+				Name:         "aws-guardrails",
+				Version:      3,
+				VersionTag:   "1.2.0",
+				DisplayName:  "AWS Guardrails",
+				PackLocation: "https://example.com/pack.tgz",
+			}}}, resp)
+		})
+	}
+}
+
+func TestExportPolicyIssues(t *testing.T) {
+	t.Parallel()
+
+	var method, path, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+		}
+		method, path, gotBody = r.Method, r.URL.EscapedPath(), string(body)
+		w.Header().Set("Content-Type", "text/csv")
+		_, _ = w.Write([]byte("id,policyName\ni1,p\n"))
+	}))
+	defer server.Close()
+
+	stream, err := newMockClient(server).ExportPolicyIssues(
+		t.Context(), "acme", apitype.ListPolicyIssuesRequest{}, false)
+	require.NoError(t, err)
+	defer stream.Close()
+	data, err := io.ReadAll(stream)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/issues/export", path)
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(gotBody), &body))
+	assert.NotContains(t, body, "startRow")
+	assert.NotContains(t, body, "endRow")
+	assert.Equal(t, "id,policyName\ni1,p\n", string(data))
+}
+
+func TestExportPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				_, _ = w.Write([]byte("id\n"))
+			}))
+			defer server.Close()
+
+			stream, err := newMockClient(server).ExportPolicyIssues(
+				t.Context(), "acme", apitype.ListPolicyIssuesRequest{}, tt.closed)
+			require.NoError(t, err)
+			require.NoError(t, stream.Close())
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
+}
+
+func updatePolicyIssueAgainstServer(
+	t *testing.T, issueID string, req cloudapitype.UpdatePolicyIssueRequest, respBody string,
+) (cloudapitype.GetPolicyIssueResponse, string) {
+	t.Helper()
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPatch, r.Method)
+		assert.Equal(t, "/api/orgs/acme/policyresults/issues/"+url.PathEscape(issueID), r.URL.EscapedPath())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+			return
+		}
+		gotBody = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(respBody))
+	}))
+	t.Cleanup(server.Close)
+
+	resp, err := newMockClient(server).UpdatePolicyIssue(t.Context(), "acme", issueID, req)
+	require.NoError(t, err)
+	return resp, gotBody
+}
+
+func TestUpdatePolicyIssue(t *testing.T) {
+	t.Parallel()
+
+	status := cloudapitype.PolicyIssueStatusInProgress
+	resp, _ := updatePolicyIssueAgainstServer(t, "i/1",
+		cloudapitype.UpdatePolicyIssueRequest{Status: &status},
+		`{"policyIssue":{"id":"i/1","status":"in_progress","kind":"audit"}}`)
+
+	assert.Equal(t, cloudapitype.PolicyIssueStatusInProgress, resp.PolicyIssue.Status)
+	assert.Equal(t, cloudapitype.PolicyIssueKindAudit, resp.PolicyIssue.Kind)
+}
+
+func TestUpdatePolicyIssue_OnlySetFieldsSent(t *testing.T) {
+	t.Parallel()
+
+	p1 := cloudapitype.PolicyIssuePriorityP1
+	_, body := updatePolicyIssueAgainstServer(t, "i1",
+		cloudapitype.UpdatePolicyIssueRequest{Priority: &p1},
+		`{"policyIssue":{"id":"i1"}}`)
+
+	assert.JSONEq(t, `{"priority":"p1"}`, body)
+}
+
+func TestUpdatePolicyIssue_UnassignSendsEmptyString(t *testing.T) {
+	t.Parallel()
+
+	_, body := updatePolicyIssueAgainstServer(t, "i1",
+		cloudapitype.UpdatePolicyIssueRequest{AssignedTo: new("")},
+		`{"policyIssue":{"id":"i1"}}`)
+
+	assert.JSONEq(t, `{"assignedTo":""}`, body)
+}
+
+func TestCreatePolicyExceptionExisted(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		status  int
+		existed bool
+	}{{http.StatusCreated, false}, {http.StatusOK, true}} {
+		server := newMockServerRequestProcessor(tt.status, func(*http.Request) string {
+			return `{"id": "EXC-7", "policyPack": "aws"}`
+		})
+		client := NewClient(server.URL, "token", true, nil)
+
+		got, existed, err := client.CreatePolicyException(t.Context(), "org", cloudapitype.CreatePolicyExceptionRequest{})
+		server.Close()
+		require.NoError(t, err)
+		assert.Equal(t, "EXC-7", got.ID)
+		assert.Equal(t, tt.existed, existed, "status %d", tt.status)
+	}
+}
+
+func TestPolicyExceptionRequests(t *testing.T) {
+	t.Parallel()
+
+	var gotRequests []string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		gotRequests = append(gotRequests, strings.TrimSpace(req.Method+" "+req.URL.String()+" "+string(body)))
+		return `{"changeRequestId": "cr-1"}`
+	})
+	defer server.Close()
+
+	client := NewClient(server.URL, "token", true, nil)
+	ctx := t.Context()
+
+	_, err := client.ListPolicyExceptions(ctx, "org", ListPolicyExceptionsOptions{})
+	require.NoError(t, err)
+	_, err = client.ListPolicyExceptions(ctx, "org", ListPolicyExceptionsOptions{
+		PolicyPack:        "aws",
+		Policy:            "tags",
+		Stack:             "web/prod",
+		Status:            []string{"active", "removed"},
+		ContinuationToken: "next",
+	})
+	require.NoError(t, err)
+	createReq := cloudapitype.CreatePolicyExceptionRequest{PolicyPack: "aws"}
+	_, existed, err := client.CreatePolicyException(ctx, "org", createReq)
+	require.NoError(t, err)
+	assert.True(t, existed)
+	_, err = client.GetPolicyException(ctx, "org", "EXC-1")
+	require.NoError(t, err)
+	require.NoError(t, client.RemovePolicyException(ctx, "org", "EXC-1"))
+	draft, err := client.CreatePolicyExceptionDraft(ctx, "org", createReq)
+	require.NoError(t, err)
+	assert.Equal(t, "cr-1", draft.ChangeRequestID)
+
+	assert.Equal(t, []string{
+		"GET /api/orgs/org/policy/exceptions",
+		"GET /api/orgs/org/policy/exceptions?continuationToken=next&policy=tags&policyPack=aws" +
+			"&stack=web%2Fprod&status=active&status=removed",
+		`POST /api/orgs/org/policy/exceptions {"policyPack":"aws","match":null,"reason":""}`,
+		"GET /api/orgs/org/policy/exceptions/EXC-1",
+		"DELETE /api/orgs/org/policy/exceptions/EXC-1",
+		`POST /api/orgs/org/policy/exceptions/drafts {"policyPack":"aws","match":null,"reason":""}`,
+	}, gotRequests)
 }

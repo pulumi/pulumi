@@ -29,14 +29,14 @@ func TestFilterRead(t *testing.T) {
 	filter := func(i int) bool { return i < 10 }
 	filtered := FilterRead(ch, filter)
 	seenP := promise.Run(func() ([]int, error) {
-		var out []int //nolint:prealloc // capacity unknown ahead of time
+		var out []int
 		for i := range filtered {
 			out = append(out, i)
 		}
 		return out, nil
 	})
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		ch <- i
 	}
 	close(ch)

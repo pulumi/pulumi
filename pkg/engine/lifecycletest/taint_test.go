@@ -17,18 +17,22 @@ package lifecycletest
 import (
 	"context"
 	"strconv"
+	"sync/atomic"
 	"testing"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestTaintReplacement tests that a tainted resource is replaced on update.
@@ -60,14 +64,14 @@ func TestTaintReplacement(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Register the resource
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
@@ -80,7 +84,7 @@ func TestTaintReplacement(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // stack + resA
 
 	// Find resA and taint it
-	var resA *resource.State
+	var resA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			resA = r
@@ -97,7 +101,7 @@ func TestTaintReplacement(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // stack + replaced resA
 
 	// Verify the resource was replaced
-	var newResA *resource.State
+	var newResA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			newResA = r
@@ -115,7 +119,7 @@ func TestTaintMultipleResources(t *testing.T) {
 	t.Parallel()
 
 	createIDs := make(map[string]int)
-	var deleteCalls int
+	var deleteCalls atomic.Int32
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -129,7 +133,7 @@ func TestTaintMultipleResources(t *testing.T) {
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-					deleteCalls++
+					deleteCalls.Add(1)
 					assert.Contains(t, []resource.ID{"resA-v1", "resC-v1"}, req.ID,
 						"should be deleting a tainted resource")
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
@@ -142,9 +146,9 @@ func TestTaintMultipleResources(t *testing.T) {
 		// Register three resources
 		for _, name := range []string{"resA", "resB", "resC"} {
 			_, err := monitor.RegisterResource("pkgA:m:typA", name, true, deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
-					"name": resource.NewProperty(name),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"name": property.New(name),
+				}),
 			})
 			if err != nil {
 				return err
@@ -153,7 +157,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
@@ -193,7 +197,7 @@ func TestTaintMultipleResources(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 2, replacedCount, "should have replaced 2 resources")
-	assert.Equal(t, 2, deleteCalls, "should have deleted 2 resources")
+	assert.Equal(t, int32(2), deleteCalls.Load(), "should have deleted 2 resources")
 }
 
 // TestTaintWithPendingDelete tests that resources marked for deletion are not affected by taint.
@@ -220,14 +224,14 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Register the current resource
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
@@ -239,7 +243,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	// - One that is current and tainted
 	// - One that is pending deletion and also tainted (should be ignored)
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   resURN.Type(),
 				URN:    resURN,
@@ -279,7 +283,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	// - The deleted resource should be gone
 	// - The current resource should be replaced (due to taint)
 	// - There should be only one resource with this URN in the final snapshot
-	var finalResource *resource.State
+	var finalResource *pkgresource.State
 	resourceCount := 0
 	for _, r := range snap.Resources {
 		if r.URN == resURN {
@@ -328,14 +332,14 @@ func TestTaintNoChanges(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Register the same resource with same properties
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
@@ -352,7 +356,7 @@ func TestTaintNoChanges(t *testing.T) {
 	assert.Equal(t, 0, deleteCalls, "no replacement should occur without taint")
 
 	// Find resA and taint it
-	var resA *resource.State
+	var resA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			resA = r
@@ -369,7 +373,7 @@ func TestTaintNoChanges(t *testing.T) {
 	assert.Equal(t, 1, deleteCalls, "replacement should occur due to taint")
 
 	// Verify taint is cleared
-	var newResA *resource.State
+	var newResA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			newResA = r

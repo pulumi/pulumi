@@ -25,7 +25,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type exprTestCase struct {
@@ -146,7 +148,7 @@ func TestUnaryOpExrepssion(t *testing.T) {
 func TestArgumentTypeName(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	noneTypeName := g.argumentTypeName(model.NoneType, false /*isInput*/)
 	assert.Equal(t, "", noneTypeName)
 
@@ -191,7 +193,7 @@ func TestArgumentTypeName(t *testing.T) {
 	})
 
 	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
-	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
+	assert.Equal(t, "map[string]int", plainUniformObjectType)
 	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
 
@@ -210,6 +212,81 @@ func TestArgumentTypeName(t *testing.T) {
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
 
+	// A tuple of constants collapses to the array type of their values, at any depth of nesting.
+	intConst := func(n int64) model.Type { return model.NewConstType(model.IntType, cty.NumberIntVal(n)) }
+	one, two, three, four := intConst(1), intConst(2), intConst(3), intConst(4)
+	assert.Equal(t, "pulumi.IntArray", g.argumentTypeName(model.NewTupleType(one, two), true /*isInput*/))
+	assert.Equal(t, "[]int", g.argumentTypeName(model.NewTupleType(one, two), false /*isInput*/))
+	nestedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(three, four))
+	assert.Equal(t, "pulumi.IntArrayArray", g.argumentTypeName(nestedTuple, true /*isInput*/))
+	assert.Equal(t, "[][]int", g.argumentTypeName(nestedTuple, false /*isInput*/))
+	mixedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(model.StringType))
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(mixedTuple, true /*isInput*/))
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/25358:
+	// a tuple of optional string outputs is a pointer output (StringPtrOutput),
+	// which does not implement StringInput, so it cannot be a pulumi.StringArray.
+	optionalString := model.NewOptionalType(model.StringType)
+	optionalStringOutput := model.NewOutputType(optionalString)
+	optionalStringTuple := model.NewTupleType(optionalStringOutput, optionalStringOutput)
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(optionalStringTuple, true /*isInput*/))
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(
+		model.NewOutputType(optionalStringTuple), false /*isInput*/))
+	assert.Equal(t, "[]*string", g.argumentTypeName(
+		model.NewTupleType(optionalString, optionalString), false /*isInput*/))
+	nestedOptional := model.NewTupleType(optionalStringTuple, optionalStringTuple)
+	assert.Equal(t, "pulumi.ArrayArray", g.argumentTypeName(nestedOptional, true /*isInput*/))
+
+	// The same pointer-output fallback applies to the other scalar primitives.
+	for _, primitive := range []model.Type{model.NumberType, model.IntType, model.BoolType} {
+		optional := model.NewOutputType(model.NewOptionalType(primitive))
+		tuple := model.NewTupleType(optional, optional)
+		assert.Equal(t, "pulumi.Array", g.argumentTypeName(tuple, true /*isInput*/))
+	}
+
+	// Optional lists are not pointer outputs. A tuple of optional number-list
+	// outputs stays a Float64ArrayArray (pulumi/pulumi#25387).
+	optionalNumberList := model.NewOutputType(model.NewOptionalType(model.NewListType(model.NumberType)))
+	optionalNumberListTuple := model.NewTupleType(optionalNumberList, optionalNumberList)
+	assert.Equal(t, "pulumi.Float64ArrayArray", g.argumentTypeName(optionalNumberListTuple, true /*isInput*/))
+	optionalBoolMap := model.NewOutputType(model.NewOptionalType(model.NewMapType(model.BoolType)))
+	optionalBoolMapTuple := model.NewTupleType(optionalBoolMap, optionalBoolMap)
+	assert.Equal(t, "pulumi.BoolMapArray", g.argumentTypeName(optionalBoolMapTuple, true /*isInput*/))
+
+	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
+	// render bare names like []AssetMap which is invalid Go.
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, false /*isInput*/))
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, true /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, false /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, true /*isInput*/))
+	assert.Equal(t,
+		"pulumi.AssetOrArchiveArrayMap",
+		g.argumentTypeName(
+			model.NewObjectType(map[string]model.Type{"k": model.NewListType(pcl.AssetType)}),
+			true, /*isInput*/
+		))
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/24256:
+	// an object with a null (NoneType) property alongside typed nested data
+	// used to produce order-dependent output because Properties has random
+	// iteration order. The nested map type could "win" if visited first,
+	// yielding map[string]map[string]interface{} instead of the correct
+	// map[string]interface{}. Run many iterations to shake out map ordering.
+	// Freshly construct the map each iteration so Go's per-map iteration
+	// seed varies. In the input-side path (which does not consult
+	// anyOptional), a null (NoneType) property visited before typed
+	// entries used to leave elmType empty, letting the following typed
+	// value "win" and produce e.g. pulumi.StringMapMap instead of
+	// pulumi.Map.
+	for range 200 {
+		mixedNullObject := model.NewObjectType(map[string]model.Type{
+			"nested": model.NewObjectType(map[string]model.Type{"a": model.StringType}),
+			"null":   model.NoneType,
+		})
+		assert.Equal(t, "pulumi.Map",
+			g.argumentTypeName(mixedNullObject, true /*isInput*/))
+	}
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,
@@ -220,7 +297,7 @@ func TestArgumentTypeName(t *testing.T) {
 func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	notYetImplementedFunctions := []string{
 		"entries",
@@ -241,7 +318,7 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 func TestGeneratingGoOptionalFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	testCases := []struct {
 		expr      *model.FunctionCallExpression
@@ -311,7 +388,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 		{
 			hcl2Expr: "{foo = true ? 2.5 : 0.5}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]float64{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -333,17 +410,21 @@ func TestObjectConsExpression(t *testing.T) {
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
+			hcl2Expr: "{foo = 1.5, bar = \"baz\"}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n\"bar\": \"baz\",\n}",
+		},
+		{
 			// TODO probably a bug in the binder. Single value objects should just be maps
 			hcl2Expr: "{foo = 1.5}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{\"foo\" = 1.5}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{1 = 1.5}",
-			goCode:   "map[string]interface{}{\n\"1\": 1.5,\n}",
+			goCode:   "map[string]float64{\n\"1\": 1.5,\n}",
 		},
 		{
 			hcl2Expr: "{(a) = 1.5}",
@@ -362,7 +443,7 @@ func TestObjectConsExpression(t *testing.T) {
 func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	var index bytes.Buffer
 
 	expr := pcl.NewConvertCall(
@@ -372,6 +453,72 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 
 	g.Fgenf(&index, "%v", expr)
 	assert.Equal(t, "pulumi.String(notSecret)", index.String())
+}
+
+// Regression test for pulumi/pulumi#22256.
+func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var index bytes.Buffer
+
+	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
+	// schema.InputType.
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "bucketName", VariableType: model.StringType}),
+		inputType,
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(bucketName)", index.String())
+}
+
+// An ID output is a string input in Go, so string destinations take it as is. Other scalars parse it.
+func TestIntrinsicConvertIDOutputToScalarInput(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		to       model.Type
+		schemaTo schema.Type
+		expected string
+	}{
+		{model.StringType, schema.StringType, "resourceID"},
+		{model.BoolType, schema.BoolType, "resourceID.ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput)"},
+		{model.IntType, schema.IntType, "resourceID.ToStringOutput().ApplyT(strconv.Atoi).(pulumi.IntOutput)"},
+		{
+			model.NumberType, schema.NumberType,
+			"resourceID.ToStringOutput().ApplyT(func(id string) (float64, error) {" +
+				" return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output)",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.to.String(), func(t *testing.T) {
+			t.Parallel()
+
+			g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+			var index bytes.Buffer
+
+			inputType := model.NewUnionTypeAnnotated(
+				[]model.Type{c.to, model.NewOutputType(c.to)},
+				&schema.InputType{ElementType: c.schemaTo},
+			)
+			expr := pcl.NewConvertCall(
+				model.VariableReference(&model.Variable{
+					Name:         "resourceID",
+					VariableType: model.NewOutputType(model.IDType),
+				}),
+				inputType,
+			)
+
+			g.Fgenf(&index, "%v", expr)
+			assert.Equal(t, c.expected, index.String())
+		})
+	}
 }
 
 func TestTupleConsExpression(t *testing.T) {
@@ -418,7 +565,7 @@ func testGenerateExpression(
 		t.Parallel()
 
 		// test program is only for schema info
-		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+		g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
 		if gen != nil {
@@ -429,4 +576,26 @@ func testGenerateExpression(
 
 		assert.Equal(t, goCode, index.String())
 	})
+}
+
+// TestConvertLiteralToOutputNumberIsNotLifted pins the behavior of lowering an expression that
+// compares an output-typed number against an int literal: `v > 5` where v: output<number>. In this
+// position the binder's rewriteConversions wraps `5` in `__convert(5, InputType(number))` because
+// int is not strictly assignable to number.
+func TestConvertLiteralToOutputNumberIsNotLifted(t *testing.T) {
+	t.Parallel()
+
+	env := environment(map[string]any{
+		"v": model.NewOutputType(model.NumberType),
+	})
+	scope := env.scope()
+	genFunc := func(w io.Writer, g *generator, e model.Expression) {
+		e, temps := g.lowerExpression(e, model.NewOutputType(model.BoolType))
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%v", e)
+	}
+	testGenerateExpression(t,
+		"v > 5",
+		"v.ApplyT(func(v float64) (bool, error) {\nreturn v > 5, nil\n}).(pulumi.BoolOutput)",
+		scope, genFunc)
 }

@@ -277,6 +277,8 @@ export namespace AnalyzerResourceOptions {
         setUpdate(value: number): CustomTimeouts;
         getDelete(): number;
         setDelete(value: number): CustomTimeouts;
+        getRead(): number;
+        setRead(value: number): CustomTimeouts;
 
         serializeBinary(): Uint8Array;
         toObject(includeInstance?: boolean): CustomTimeouts.AsObject;
@@ -293,6 +295,7 @@ export namespace AnalyzerResourceOptions {
             create: number,
             update: number,
             pb_delete: number,
+            read: number,
         }
     }
 

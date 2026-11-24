@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package automation is the production boilerplate that hosts the generated
-// CLI wrapper methods. The generator copies this file into
-// output/automation/api.go and appends one method per executable CLI
-// command/menu underneath.
+// Package automation hosts the auto-generated wrappers around the Pulumi
+// CLI. API.New takes a PulumiCommand and exposes one Go method per CLI
+// subcommand; methods live in commands.go alongside this file. Regenerate
+// from the repo root with `make generate-go-automation-api`.
 package automation
 
 import (
@@ -23,7 +23,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 )
 
 // API wraps a PulumiCommand and exposes one Go method per pulumi CLI
@@ -40,12 +40,6 @@ func New(cmd base.PulumiCommand) *API {
 // run is the single choke point through which every generated method reaches
 // the CLI. Callers hand in their accumulated base options and the resolved
 // argument vector; run adapts those into the shape PulumiCommand expects.
-//
-// The generator appends method declarations to a copy of this file in
-// output/automation/, where `run` becomes used. The linter sees this file
-// in isolation and cannot tell.
-//
-//nolint:unused
 func (a *API) run(
 	ctx context.Context,
 	opts base.BaseOptions,

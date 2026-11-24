@@ -22,9 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type AssetArchiveProvider struct {
@@ -41,10 +40,6 @@ func (p *AssetArchiveProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *AssetArchiveProvider) Pkg() tokens.Package {
-	return "asset-archive"
 }
 
 func (p *AssetArchiveProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
@@ -107,20 +102,20 @@ func (p *AssetArchiveProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "version is not a string")}, nil
 	}
-	if version.StringValue() != "5.0.0" {
-		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 5.0.0")}, nil
+	if version.AsString() != "5.0.0" {
+		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "version is not 5.0.0")}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -130,12 +125,13 @@ func (p *AssetArchiveProvider) CheckConfig(
 func (p *AssetArchiveProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	isAsset, err := p.checkType(req.URN)
 	if err != nil {
 		return plugin.CheckResponse{Failures: makeCheckFailure("", err.Error())}, nil
 	}
 
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{Failures: makeCheckFailure("value", "missing value")}, nil
 	}
@@ -149,16 +145,17 @@ func (p *AssetArchiveProvider) Check(
 		}
 	}
 
-	if len(req.News) != 1 {
-		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News))}, nil
+	if len(news) != 1 {
+		return plugin.CheckResponse{Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news))}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *AssetArchiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	_, err := p.checkType(req.URN)
 	if err != nil {
 		return plugin.CreateResponse{Status: resource.StatusUnknown}, err
@@ -171,7 +168,7 @@ func (p *AssetArchiveProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

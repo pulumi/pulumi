@@ -22,8 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -35,7 +35,7 @@ type EnumProvider struct {
 
 var _ plugin.Provider = (*EnumProvider)(nil)
 
-func (p *EnumProvider) Pkg() tokens.Package {
+func (p *EnumProvider) pkg() tokens.Package {
 	return "enum"
 }
 
@@ -47,7 +47,7 @@ func (p *EnumProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
-		Name:      p.Pkg().String(),
+		Name:      p.pkg().String(),
 		Version:   p.version().String(),
 		Resources: map[string]schema.ResourceSpec{},
 		Types:     map[string]schema.ComplexTypeSpec{},
@@ -87,6 +87,66 @@ func (p *EnumProvider) GetSchema(
 	add("mod")
 	add("mod/nested")
 
+	numberEnumToken := pkg.Name + ":index:NumberEnum"
+	pkg.Types[numberEnumToken] = schema.ComplexTypeSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{Type: "number"},
+		Enum: []schema.EnumValueSpec{
+			{Name: "ZeroPointOne", Value: 0.1},
+			{Name: "One", Value: 1.0},
+		},
+	}
+
+	// Values without names, requiring the generators to mangle the values into
+	// identifiers.
+	wordyEnumToken := pkg.Name + ":index:WordyEnum"
+	pkg.Types[wordyEnumToken] = schema.ComplexTypeSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
+		Enum: []schema.EnumValueSpec{
+			{Value: "A Value With Spaces."},
+			{Value: "It's got apostrophes"},
+			{Value: "_UNDERSCORE_PREFIX"},
+			{Name: "Named", Value: "plain"},
+		},
+	}
+
+	intEnumToken := pkg.Name + ":index:IntEnum"
+	stringEnumToken := pkg.Name + ":index:StringEnum"
+
+	holderToken := pkg.Name + ":index:Holder"
+	pkg.Types[holderToken] = schema.ComplexTypeSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"size":  {TypeSpec: schema.TypeSpec{Ref: "#/types/" + intEnumToken}},
+				"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + stringEnumToken}},
+			},
+		},
+	}
+
+	deluxeProps := map[string]schema.PropertySpec{
+		"numberEnum": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + numberEnumToken}},
+		"wordyEnum":  {TypeSpec: schema.TypeSpec{Ref: "#/types/" + wordyEnumToken}},
+		"arrayOfEnum": {TypeSpec: schema.TypeSpec{
+			Type:  "array",
+			Items: &schema.TypeSpec{Ref: "#/types/" + stringEnumToken},
+		}},
+		"mapOfEnum": {TypeSpec: schema.TypeSpec{
+			Type:                 "object",
+			AdditionalProperties: &schema.TypeSpec{Ref: "#/types/" + intEnumToken},
+		}},
+		"holder": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + holderToken}},
+		"unionEnum": {TypeSpec: schema.TypeSpec{
+			OneOf: []schema.TypeSpec{
+				{Ref: "#/types/" + wordyEnumToken},
+				{Type: "string"},
+			},
+		}},
+	}
+	pkg.Resources[pkg.Name+":index:Deluxe"] = schema.ResourceSpec{
+		ObjectTypeSpec:  schema.ObjectTypeSpec{Properties: deluxeProps},
+		InputProperties: deluxeProps,
+	}
+
 	jsonBytes, err := json.Marshal(pkg)
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
@@ -109,7 +169,7 @@ func (p *EnumProvider) CheckConfig(
 
 func (p *EnumProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 
@@ -138,11 +198,13 @@ func (p *EnumProvider) DiffConfig(
 func (p *EnumProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod/nested:Res", p.Pkg()):
-		return plugin.CheckResponse{Properties: req.News}, nil
+	case fmt.Sprintf("%s:index:Res", p.pkg()),
+		fmt.Sprintf("%s:mod:Res", p.pkg()),
+		fmt.Sprintf("%s:mod/nested:Res", p.pkg()),
+		fmt.Sprintf("%s:index:Deluxe", p.pkg()):
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -153,13 +215,15 @@ func (p *EnumProvider) Check(
 func (p *EnumProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
-	case fmt.Sprintf("%s:index:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod:Res", p.Pkg()),
-		fmt.Sprintf("%s:mod/nested:Res", p.Pkg()):
+	case fmt.Sprintf("%s:index:Res", p.pkg()),
+		fmt.Sprintf("%s:mod:Res", p.pkg()),
+		fmt.Sprintf("%s:mod/nested:Res", p.pkg()),
+		fmt.Sprintf("%s:index:Deluxe", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	default:

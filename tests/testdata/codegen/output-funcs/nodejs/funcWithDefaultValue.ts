@@ -11,7 +11,7 @@ export function funcWithDefaultValue(args: FuncWithDefaultValueArgs, opts?: pulu
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithDefaultValue", {
         "a": args.a,
-        "b": args.b,
+        "b": (args.b) ?? "b-default",
     }, opts);
 }
 
@@ -30,11 +30,11 @@ export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs,
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithDefaultValue", {
         "a": args.a,
-        "b": args.b,
+        "b": (args.b) ?? "b-default",
     }, opts);
 }
 
 export interface FuncWithDefaultValueOutputArgs {
     a: pulumi.Input<string>;
-    b?: pulumi.Input<string>;
+    b?: pulumi.Input<string | undefined>;
 }

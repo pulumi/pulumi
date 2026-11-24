@@ -21,8 +21,8 @@ __all__ = ['CatArgs', 'Cat']
 @pulumi.input_type
 class CatArgs:
     def __init__(__self__, *,
-                 age: Optional[pulumi.Input[_builtins.int]] = None,
-                 pet: Optional[pulumi.Input['PetArgs']] = None):
+                 age: pulumi.Input[Optional[_builtins.int]] = None,
+                 pet: pulumi.Input[Optional['PetArgs']] = None):
         """
         The set of arguments for constructing a Cat resource.
         """
@@ -33,20 +33,20 @@ class CatArgs:
 
     @_builtins.property
     @pulumi.getter
-    def age(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def age(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "age")
 
     @age.setter
-    def age(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def age(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "age", value)
 
     @_builtins.property
     @pulumi.getter
-    def pet(self) -> Optional[pulumi.Input['PetArgs']]:
+    def pet(self) -> pulumi.Input[Optional['PetArgs']]:
         return pulumi.get(self, "pet")
 
     @pet.setter
-    def pet(self, value: Optional[pulumi.Input['PetArgs']]):
+    def pet(self, value: pulumi.Input[Optional['PetArgs']]):
         pulumi.set(self, "pet", value)
 
 
@@ -56,8 +56,8 @@ class Cat(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 age: Optional[pulumi.Input[_builtins.int]] = None,
-                 pet: Optional[pulumi.Input[Union['PetArgs', 'PetArgsDict']]] = None,
+                 age: pulumi.Input[Optional[_builtins.int]] = None,
+                 pet: pulumi.Input[Optional[Union['PetArgs', 'PetArgsDict']]] = None,
                  __props__=None):
         """
         Create a Cat resource with the given unique name, props, and options.
@@ -89,8 +89,8 @@ class Cat(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 age: Optional[pulumi.Input[_builtins.int]] = None,
-                 pet: Optional[pulumi.Input[Union['PetArgs', 'PetArgsDict']]] = None,
+                 age: pulumi.Input[Optional[_builtins.int]] = None,
+                 pet: pulumi.Input[Optional[Union['PetArgs', 'PetArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -127,6 +127,12 @@ class Cat(pulumi.CustomResource):
 
         __props__.__dict__["name"] = None
         return Cat(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'example::Cat', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

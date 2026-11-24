@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 func TestGoTransformations(t *testing.T) {
@@ -34,7 +35,7 @@ func TestGoTransformations(t *testing.T) {
 					"github.com/pulumi/pulumi/sdk/v3",
 				},
 				LocalProviders: []integration.LocalDependency{
-					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+					{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 				},
 				Quick:                  true,
 				ExtraRuntimeValidation: Validator,

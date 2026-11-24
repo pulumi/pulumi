@@ -5,8 +5,8 @@ const explicitProv = new call.Provider("explicitProv", {value: "explicitProvValu
 const explicitRes = new call.Custom("explicitRes", {value: "explicitValue"}, {
     provider: explicitProv,
 });
-export const explicitProviderValue = explicitRes.providerValue().apply(call => call.result);
-export const explicitProvFromIdentity = explicitProv.identity().apply(call => call.result);
+export const explicitProviderValue = explicitRes.providerValue().result;
+export const explicitProvFromIdentity = explicitProv.identity().result;
 export const explicitProvFromPrefixed = explicitProv.prefixed(({
     prefix: "call-prefix-",
-})).apply(call => call.result);
+})).result;

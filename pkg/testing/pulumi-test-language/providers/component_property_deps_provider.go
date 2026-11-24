@@ -23,10 +23,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -54,10 +54,6 @@ func (p *ComponentPropertyDepsProvider) Close() error {
 
 func (p *ComponentPropertyDepsProvider) SignalCancellation(context.Context) error {
 	return nil
-}
-
-func (p *ComponentPropertyDepsProvider) Pkg() tokens.Package {
-	return "component-property-deps"
 }
 
 func (p *ComponentPropertyDepsProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -251,28 +247,28 @@ func (p *ComponentPropertyDepsProvider) CheckConfig(
 	_ context.Context,
 	req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
 
-	if version.StringValue() != "1.33.7" {
+	if version.AsString() != "1.33.7" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 1.33.7"),
+			Failures: makeCheckConfigFailure("version", "version is not 1.33.7"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -295,8 +291,9 @@ func (p *ComponentPropertyDepsProvider) Check(
 	_ context.Context,
 	req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() == "component-property-deps:index:Custom" {
-		value, ok := req.News["value"]
+		value, ok := news["value"]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -309,13 +306,13 @@ func (p *ComponentPropertyDepsProvider) Check(
 			}, nil
 		}
 
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 			}, nil
 		}
 
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	}
 
 	return plugin.CheckResponse{
@@ -333,15 +330,16 @@ func (p *ComponentPropertyDepsProvider) Create(
 	_ context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() == "component-property-deps:index:Custom" {
-		id := "id-" + req.Properties["value"].StringValue()
+		id := "id-" + properties["value"].StringValue()
 		if req.Preview {
 			id = ""
 		}
 
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}
@@ -398,7 +396,7 @@ func (p *ComponentPropertyDepsProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(component.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+		Outputs: property.NewMap(map[string]property.Value{
 			"propertyDeps": p.convertMapToObjectProperty(req.Options.PropertyDependencies),
 		}),
 	}, nil
@@ -413,20 +411,20 @@ func (p *ComponentPropertyDepsProvider) Call(
 	}
 
 	return plugin.CallResponse{
-		Return: resource.PropertyMap{
+		Return: property.NewMap(map[string]property.Value{
 			"result": p.convertMapToObjectProperty(req.Options.ArgDependencies),
-		},
+		}),
 	}, nil
 }
 
 func (p *ComponentPropertyDepsProvider) convertMapToObjectProperty(
 	m map[resource.PropertyKey][]resource.URN,
-) resource.PropertyValue {
+) property.Value {
 	fields := make(map[string]any)
 	for key, urns := range m {
 		fields[string(key)] = urns
 	}
-	return resource.NewProperty(resource.NewPropertyMapFromMap(fields))
+	return resource.FromResourcePropertyValue(resource.NewProperty(resource.NewPropertyMapFromMap(fields)))
 }
 
 func (p *ComponentPropertyDepsProvider) convertMapToStruct(

@@ -57,7 +57,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	generateInitHash := func() string {
-		pkg, err := schema.ImportSpec(pkgSpec, nil, schema.ValidationOptions{
+		pkg, err := schema.ImportSpec(pkgSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{
 			AllowDanglingReferences: true,
 		})
 		if err != nil {
@@ -81,7 +81,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	h1 := generateInitHash()
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		assert.Equal(t, h1, generateInitHash())
 	}
 }

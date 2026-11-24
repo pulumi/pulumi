@@ -99,13 +99,13 @@ class Foo(pulumi.ComponentResource):
             bool_value_required: pulumi.Input[_builtins.bool],
             name_required: pulumi.Input['pulumi_random.RandomPet'],
             string_value_required: pulumi.Input[_builtins.str],
-            baz: Optional[pulumi.Input['_nested.BazArgs']] = None,
+            baz: pulumi.Input[Optional['_nested.BazArgs']] = None,
             baz_plain: Optional['_nested.BazArgs'] = None,
-            bool_value: Optional[pulumi.Input[_builtins.bool]] = None,
+            bool_value: pulumi.Input[Optional[_builtins.bool]] = None,
             bool_value_plain: Optional[_builtins.bool] = None,
-            name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
+            name: pulumi.Input[Optional['pulumi_random.RandomPet']] = None,
             name_plain: Optional['pulumi_random.RandomPet'] = None,
-            string_value: Optional[pulumi.Input[_builtins.str]] = None,
+            string_value: pulumi.Input[Optional[_builtins.str]] = None,
             string_value_plain: Optional[_builtins.str] = None) -> pulumi.Output['Foo.BarResult']:
         """
         A description of bar.

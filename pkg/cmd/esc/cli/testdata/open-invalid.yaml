@@ -1,0 +1,9 @@
+run: esc open default/test --format=flat
+error: exit status 1
+
+---
+> esc open default/test --format=flat
+
+---
+> esc open default/test --format=flat
+Error: unknown output format "flat"

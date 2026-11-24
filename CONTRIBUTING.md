@@ -36,23 +36,23 @@ For contributors we use the [standard fork based workflow](https://gist.github.c
 Before you open a pull request, make sure all lint checks pass:
 
 ```bash
-$ make lint
+make lint
 ```
 
-If you see formatting failures, fix them by running [gofumpt](https://github.com/mvdan/gofumpt) on your code:
+If you see formatting failures, fix them with `make format`. To format a single file or directory directly:
 
 ```bash
-$ gofumpt -w path/to/file.go
+golangci-lint fmt path/to/file.go
 # or
-$ gofumpt -w path/to/dir
+golangci-lint fmt path/to/dir
 ```
 
-We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
+We require a changelog entry for all PRs that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
 
 ```bash
-$ make changelog
-````
-…and follow the prompts on screen.
+make changelog
+```
+…and follow the prompts on screen. This requires [changie](https://changie.dev/guide/installation/) to be installed. If you use [mise](https://mise.jdx.dev/), it is included in `.mise.toml` and will be installed automatically. Otherwise, install it manually (`brew install changie` on macOS, or `go install github.com/miniscruff/changie@v1.21` otherwise).
 
 ### Pull Request Descriptions
 
@@ -77,10 +77,12 @@ Good examples for changelog entries are:
 - Exit immediately from state edit when no change was made
 - Fix root and program paths to always be absolute
 
-Here's some examples of what we're trying to avoid:
+Here are some examples of what we're trying to avoid:
 - Fixes a bug
 - Adds a feature
 - Feature now does something
+
+Keep changelog messages short and to the point, one sentence is usually enough. Don't overdescribe a feature in the changelog, to keep the whole log scannable quickly by end users.
 
 ### Downloading Pulumi from contributed pull requests
 
@@ -124,17 +126,12 @@ If you're using an AI coding assistant to contribute:
 
 Whenever a new PR is merged in this repository, the latest draft release on the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) is updated with the latest binaries.  To release one of those draft releases a few steps are necessary:
 
-If `sdk/.version` is the version we want to release, we need to "freeze" that draft release.  To do that update the version in `pulumi/pulumi` using `scripts/set-version.py <next-patch-version>`.  This stops the draft release for the current version from being updated, and thus it is ready to be released.
+A weekly job runs every Wednesday.  It bumps `sdk/.version` to the next minor version and opens a PR containing the changelog the release is expected to publish, which is approved and queued to merge automatically.  Merging that PR "freezes" the draft release for the previous version, which is the one we are about to publish.
 
-If `sdk/.version` is not the version we want to release yet, usually in the case of a minor release, bump the version to the right version first, and merge that first (always using `scripts/set-version.py`).  Once that's merged the current release can be frozen as above.
+To cut a patch release instead, bump `sdk/.version` to the next patch version by hand using `scripts/set-version.py <next-patch-version>`, and merge that.
 
-For these version bump PRs it's useful for reviewers if the expected changelog is included.  This can be generated using `GITHUB_REPOSITORY=pulumi/pulumi go run github.com/pulumi/go-change@v0.1.3 render`, at the root of the repository.
+Once the freeze PR is on `master`, the `publish frozen release` job in `on-push.yml` runs the [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) suite against the frozen build.  If it passes, the job publishes the draft release of the version we froze, marking it as the latest release and creating a discussion for it in the "Releases" category.  Either way, it posts the outcome to `#team-iac-core`.
 
-The next step, to gain some additional confidence in the release is to run the [Test examples](https://github.com/pulumi/examples/actions/workflows/test-examples.yml), and [Test templates](https://github.com/pulumi/templates/actions/workflows/test-templates.yml) test suites.  These run the tests in the `pulumi/examples` and `pulumi/templates` repositories using the latest `pulumi/pulumi` dev version, thus including all the latest changes.
+If the job fails, fix the problem and publish the release by hand: navigate to the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) and edit the release of the version named in the Slack message, which is usually the second in the list.  Untick "Set as a pre-release", and tick both "Set as the latest release" and "Create a discussion for this release" in the "Releases" category at the bottom of the page, before clicking "Publish release".
 
-Finally to create the release, navigate to the [GitHub Releases page](https://github.com/pulumi/pulumi/releases) and edit the release of the version we froze just before.  Untick "Set as a pre-release", and tick both "Set as the latest release" and "Create a discussion for this release" in the "Releases" category at the bottom of the page, before clicking "Publish release".
-
-> [!CAUTION]
-> Double-check the version number of the release. The most recent release in [the releases list](https://github.com/pulumi/pulumi/releases) tracks changes to `master`, and might not be the one you want to release if PRs have been merged since the freeze. For this reason, the version you want to release may be the second one in the list. The version should be the one that was in `sdk/.version` *before* the freeze PR was merged.
-
-Finally `pulumi-bot` will create another PR to update with `go.mod` updates and changelog cleanups.  This PR needs to be approved, and will then auto-merge.
+Publishing the release tags `sdk/vX` and `pkg/vX` at the release commit.  `pulumi-bot` then creates a PR that moves the released changelog entries into `CHANGELOG.md` on `master`.  This PR is approved and queued to merge automatically. The next freeze PR can't merge until this one has, so a release never goes out with a stale changelog.

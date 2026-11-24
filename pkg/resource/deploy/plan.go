@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,13 +26,14 @@ import (
 	"github.com/mitchellh/copystructure"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A Plan is a mapping from URNs to ResourcePlans. The plan defines an expected set of resources and the expected
@@ -89,13 +91,7 @@ type PlanDiff struct {
 
 // Returns true if the Deletes array contains the given key
 func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
-	found := false
-	for i := range planDiff.Deletes {
-		if planDiff.Deletes[i] == key {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(planDiff.Deletes, key)
 	return found
 }
 
@@ -103,6 +99,7 @@ func (planDiff *PlanDiff) MakeError(
 	key resource.PropertyKey,
 	actualOperation string,
 	actualValue *resource.PropertyValue,
+	showSecrets bool,
 ) string {
 	// diff wants to do 'actualOperation' (one of '+', '~', '-', '=') but plan differs. This function looks up what
 	// key wanted to do to print a more useful error message
@@ -121,13 +118,17 @@ func (planDiff *PlanDiff) MakeError(
 	} else {
 		expectedOperation = "="
 	}
+	render := resource.PropertyValue.RedactSecrets
+	if showSecrets {
+		render = resource.PropertyValue.String
+	}
 	diff := ""
 	if actualValue != nil && expectedValue != nil {
-		diff = "[" + expectedValue.String() + "!=" + actualValue.String() + "]"
+		diff = "[" + render(*expectedValue) + "!=" + render(*actualValue) + "]"
 	} else if actualValue != nil {
-		diff = "[" + actualValue.String() + "]"
+		diff = "[" + render(*actualValue) + "]"
 	} else if expectedValue != nil {
-		diff = "[" + expectedValue.String() + "]"
+		diff = "[" + render(*expectedValue) + "]"
 	}
 	return expectedOperation + actualOperation + string(key) + diff
 }
@@ -158,7 +159,7 @@ type GoalPlan struct {
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool
 	// a list of property names to ignore during changes.
-	IgnoreChanges []property.Glob
+	IgnoreChanges []string
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
 	// Structured Alias objects to be assigned to this resource
@@ -169,23 +170,36 @@ type GoalPlan struct {
 	CustomTimeouts resource.CustomTimeouts
 }
 
-func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
-	var adds resource.PropertyMap
-	var deletes []resource.PropertyKey
-	var updates resource.PropertyMap
+// isInternalPlanKey reports whether a property key is internal and should be excluded from plan constraints. Providers
+// may inject bookkeeping properties like "__defaults" during Check whose values are not stable across runs, so treating
+// them as plan constraints would produce spurious plan violations.
+func isInternalPlanKey(key resource.PropertyKey) bool {
+	return strings.HasPrefix(string(key), "_")
+}
 
+func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	var diff PlanDiff
 	if inputDiff != nil {
-		adds = inputDiff.Adds
-		updates = make(resource.PropertyMap)
+		adds := make(resource.PropertyMap)
+		for k, v := range inputDiff.Adds {
+			if isInternalPlanKey(k) {
+				continue
+			}
+			adds[k] = v
+		}
+		updates := make(resource.PropertyMap)
 		for k := range inputDiff.Updates {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			updates[k] = inputDiff.Updates[k].New
 		}
-		deletes = make([]resource.PropertyKey, len(inputDiff.Deletes))
-		i := 0
+		deletes := make([]resource.PropertyKey, 0, len(inputDiff.Deletes))
 		for k := range inputDiff.Deletes {
-			deletes[i] = k
-			i = i + 1
+			if isInternalPlanKey(k) {
+				continue
+			}
+			deletes = append(deletes, k)
 		}
 
 		diff = PlanDiff{Adds: adds, Deletes: deletes, Updates: updates}
@@ -194,7 +208,7 @@ func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	return diff
 }
 
-func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
+func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *pkgresource.Goal) *GoalPlan {
 	if goal == nil {
 		return nil
 	}
@@ -237,27 +251,13 @@ type ResourcePlan struct {
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
-	stringsA := make([]string, len(a))
-	for i, urn := range a {
-		stringsA[i] = string(urn)
-	}
-	stringsB := make([]string, len(b))
-	for i, urn := range b {
-		stringsB[i] = string(urn)
-	}
+	stringsA := slice.Cast[string](a)
+	stringsB := slice.Cast[string](b)
 	return rp.diffStringSets(stringsA, stringsB)
 }
 
 func (rp *ResourcePlan) diffPropertyKeys(a, b []resource.PropertyKey) (message string, changed bool) {
-	stringsA := make([]string, len(a))
-	for i, key := range a {
-		stringsA[i] = string(key)
-	}
-	stringsB := make([]string, len(a))
-	for i, key := range b {
-		stringsB[i] = string(key)
-	}
-	return rp.diffStringSets(stringsA, stringsB)
+	return rp.diffStringSets(slice.Cast[string](a), slice.Cast[string](b))
 }
 
 func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed bool) {
@@ -347,9 +347,10 @@ func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, chan
 // This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
 // This simple checks that we're not changing anything.
 func checkMissingPlan(
-	oldState *resource.State,
+	oldState *pkgresource.State,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal,
+	programGoal *pkgresource.Goal,
+	showSecrets bool,
 ) error {
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
@@ -372,29 +373,35 @@ func checkMissingPlan(
 	}
 
 	rp := ResourcePlan{Goal: goal}
-	return rp.checkGoal(oldState.Inputs, newInputs, programGoal)
+	return rp.checkGoal(oldState.Inputs, newInputs, programGoal, showSecrets)
 }
 
-func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
+func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff, showSecrets bool) error {
 	changes := []string{}
 	var diff *resource.ObjectDiff
 	if diff = olds.DiffIncludeUnknowns(news); diff != nil {
 		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			actual := diff.Adds[k]
 			if expected, has := planDiff.Adds[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to add this with value X but constraint wants to add with value Y
-					changes = append(changes, planDiff.MakeError(k, "+", &actual))
+					changes = append(changes, planDiff.MakeError(k, "+", &actual, showSecrets))
 				}
 			} else {
 				// diff wants to add this, but not listed as an add in the constraints
-				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+				changes = append(changes, planDiff.MakeError(k, "+", &actual, showSecrets))
 			}
 		}
 
 		// Check that any removes are in the goal for removes
 		for k := range diff.Deletes {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			if !planDiff.ContainsDelete(k) {
 				// diff wants to delete this, but not listed as a delete in the constraints
 
@@ -405,11 +412,11 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 						// a delete, this is not a plan violation
 					} else {
 						// diff wants to delete this, plan wants to update it
-						changes = append(changes, planDiff.MakeError(k, "-", nil))
+						changes = append(changes, planDiff.MakeError(k, "-", nil, showSecrets))
 					}
 				} else {
 					// diff wants to delete this, but not listed as a delete in the constraints
-					changes = append(changes, planDiff.MakeError(k, "-", nil))
+					changes = append(changes, planDiff.MakeError(k, "-", nil, showSecrets))
 				}
 			}
 		}
@@ -420,20 +427,23 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 		// This is similar to how if we have a Create resource constraint we don't consider it
 		// a violation to just update it instead of creating it.
 		for k := range diff.Updates {
+			if isInternalPlanKey(k) {
+				continue
+			}
 			actual := diff.Updates[k].New
 			if expected, has := planDiff.Updates[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to change this with value X but constraint wants to change with value Y
-					changes = append(changes, planDiff.MakeError(k, "~", &actual))
+					changes = append(changes, planDiff.MakeError(k, "~", &actual, showSecrets))
 				}
 			} else if expected, has := planDiff.Adds[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to change this with value X but constraint wants to add with value Y
-					changes = append(changes, planDiff.MakeError(k, "~", &actual))
+					changes = append(changes, planDiff.MakeError(k, "~", &actual, showSecrets))
 				}
 			} else {
 				// diff wants to update this, but not listed as an update in the constraints
-				changes = append(changes, planDiff.MakeError(k, "~", &actual))
+				changes = append(changes, planDiff.MakeError(k, "~", &actual, showSecrets))
 			}
 		}
 	} else {
@@ -457,7 +467,7 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 			if actual, has := news[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to same this with value X but constraint wants to add with value Y
-					changes = append(changes, planDiff.MakeError(k, "=", &actual))
+					changes = append(changes, planDiff.MakeError(k, "=", &actual, showSecrets))
 				}
 			} else {
 				// Not a same, update or an add but constraint wants to add it
@@ -465,7 +475,7 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 				// Check if this was <computed> origionally because that could of resolved to undefined
 				// and thus it's ok to be missing, else this is a real missing property
 				if !expected.IsComputed() {
-					changes = append(changes, planDiff.MakeError(k, "-", nil))
+					changes = append(changes, planDiff.MakeError(k, "-", nil, showSecrets))
 				}
 			}
 		}
@@ -482,12 +492,12 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 			// Check if this was in adds, it's not ok to have an update constraint but actually do an add
 			if actual, has := diff.Adds[k]; has {
 				// Constraint wants to update it, but diff wants to add it
-				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+				changes = append(changes, planDiff.MakeError(k, "+", &actual, showSecrets))
 			} else if actual, has := news[k]; has {
 				// It wasn't in the diff as an add so check we have a same
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to same this with value X but constraint wants to update with value Y
-					changes = append(changes, planDiff.MakeError(k, "=", &actual))
+					changes = append(changes, planDiff.MakeError(k, "=", &actual, showSecrets))
 				}
 			} else {
 				// Not a same or an update but constraint wants to update it
@@ -495,7 +505,7 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 				// Check if this was <computed> origionally because that could of resolved to undefined
 				// and thus it's ok to be missing, else this is a real missing property
 				if !expected.IsComputed() {
-					changes = append(changes, planDiff.MakeError(k, "-", nil))
+					changes = append(changes, planDiff.MakeError(k, "-", nil, showSecrets))
 				}
 			}
 		}
@@ -511,13 +521,13 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 			// See if this is an add, update, or same
 			if actual, has := diff.Adds[k]; has {
 				// Constraint wants to delete this but diff wants to add it
-				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+				changes = append(changes, planDiff.MakeError(k, "+", &actual, showSecrets))
 			} else if actual, has := diff.Updates[k]; has {
 				// Constraint wants to delete this but diff wants to update it
-				changes = append(changes, planDiff.MakeError(k, "~", &actual.New))
+				changes = append(changes, planDiff.MakeError(k, "~", &actual.New, showSecrets))
 			} else if actual, has := diff.Sames[k]; has {
 				// Constraint wants to delete this but diff wants to leave it same
-				changes = append(changes, planDiff.MakeError(k, "=", &actual))
+				changes = append(changes, planDiff.MakeError(k, "=", &actual, showSecrets))
 			}
 		}
 	}
@@ -534,17 +544,19 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 func (rp *ResourcePlan) checkOutputs(
 	oldOutputs resource.PropertyMap,
 	newOutputs resource.PropertyMap,
+	showSecrets bool,
 ) error {
 	contract.Assertf(rp.Goal != nil, "resource plan goal must be set")
 
 	// Check that the property diffs meet the constraints set in the plan.
-	return checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff)
+	return checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff, showSecrets)
 }
 
 func (rp *ResourcePlan) checkGoal(
 	oldInputs resource.PropertyMap,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal,
+	programGoal *pkgresource.Goal,
+	showSecrets bool,
 ) error {
 	contract.Requiref(programGoal != nil, "programGoal", "must not be nil")
 	// rp.Goal may be nil, but if it isn't Type and Name should match
@@ -630,13 +642,12 @@ func (rp *ResourcePlan) checkGoal(
 		return fmt.Errorf("update timeout changed (expected %v)", rp.Goal.CustomTimeouts.Update)
 	case rp.Goal.CustomTimeouts.Delete != programGoal.CustomTimeouts.Delete:
 		return fmt.Errorf("delete timeout changed (expected %v)", rp.Goal.CustomTimeouts.Delete)
+	case rp.Goal.CustomTimeouts.Read != programGoal.CustomTimeouts.Read:
+		return fmt.Errorf("read timeout changed (expected %v)", rp.Goal.CustomTimeouts.Read)
 	}
 
 	// Check that the ignoreChanges sets are identical.
-	if message, changed := rp.diffStringSets(
-		globsToStrings(rp.Goal.IgnoreChanges),
-		globsToStrings(programGoal.IgnoreChanges),
-	); changed {
+	if message, changed := rp.diffStringSets(rp.Goal.IgnoreChanges, programGoal.IgnoreChanges); changed {
 		return fmt.Errorf("ignoreChanges changed: %v", message)
 	}
 
@@ -657,7 +668,7 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the property diffs meet the constraints set in the plan
-	if err := checkDiff(oldInputs, newInputs, rp.Goal.InputDiff); err != nil {
+	if err := checkDiff(oldInputs, newInputs, rp.Goal.InputDiff, showSecrets); err != nil {
 		return err
 	}
 

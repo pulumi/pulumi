@@ -38,6 +38,7 @@ from .settings import (
     Settings,
     configure,
     is_dry_run,
+    register_package,
     reset_options,
     get_root_resource,
     get_root_directory,
@@ -66,6 +67,10 @@ from ._json import (
     to_json,
 )
 
+from .resource import (
+    exists_resource,
+)
+
 from .rpc import (
     ResourceModule,
     ResourcePackage,
@@ -92,6 +97,7 @@ __all__ = [
     "Settings",
     "configure",
     "is_dry_run",
+    "register_package",
     "reset_options",
     "get_root_resource",
     "get_root_directory",
@@ -112,6 +118,8 @@ __all__ = [
     "call_single",
     # _json
     "to_json",
+    # resource
+    "exists_resource",
     # rpc
     "ResourceModule",
     "ResourcePackage",

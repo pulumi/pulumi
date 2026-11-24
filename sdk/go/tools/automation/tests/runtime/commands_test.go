@@ -22,29 +22,22 @@
 // surrounding tree stays green without needing the output/ tree to exist
 // yet. The outer generator tests regenerate output/ and spawn this package
 // with the tag enabled.
-// and the API singleton; running them in parallel provides no benefit and
-// just muddles the output.
-//
-//nolint:paralleltest // These tests share the generated output directory
 package runtime_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optcancel"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optorgsearch"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optorgsearchai"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optstatemove"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optorgsearch"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optorgsearchai"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optstatemove"
 )
 
 // newAPI constructs an API wired to the testing boilerplate, which
 // renders invocations instead of executing them. Using the New constructor
 // keeps the public surface stable if we ever change the struct's fields.
 func newAPI() *automation.API { return automation.New(nil) }
-
-func strPtr(s string) *string { return &s }
 
 // runStdout invokes fn and returns the rendered CLI command line. It is a
 // thin wrapper that fails the test on error so individual cases stay
@@ -59,9 +52,11 @@ func runStdout(t *testing.T, fn func() (stdout string, err error)) string {
 }
 
 func TestCancel_Empty(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(context.Background(), nil)
+		r, err := api.Cancel(t.Context(), nil)
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes"
@@ -71,9 +66,11 @@ func TestCancel_Empty(t *testing.T) {
 }
 
 func TestCancel_WithStackName(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(context.Background(), strPtr("my-stack"))
+		r, err := api.Cancel(t.Context(), new("my-stack"))
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes -- my-stack"
@@ -83,21 +80,25 @@ func TestCancel_WithStackName(t *testing.T) {
 }
 
 func TestCancel_WithStackFlag(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(context.Background(), nil, optcancel.WithStack("dev"))
+		r, err := api.Cancel(t.Context(), nil, optcancel.Stack("dev"))
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes --stack dev"
 	if got != want {
-		t.Fatalf("Cancel(WithStack=dev) = %q, want %q", got, want)
+		t.Fatalf("Cancel(Stack=dev) = %q, want %q", got, want)
 	}
 }
 
 func TestOrg_ExecutableMenu(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Org(context.Background())
+		r, err := api.Org(t.Context())
 		return r.Stdout, err
 	})
 	want := "pulumi org"
@@ -107,9 +108,11 @@ func TestOrg_ExecutableMenu(t *testing.T) {
 }
 
 func TestOrgGetDefault(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.OrgGetDefault(context.Background())
+		r, err := api.OrgGetDefault(t.Context())
 		return r.Stdout, err
 	})
 	want := "pulumi org get-default"
@@ -119,9 +122,11 @@ func TestOrgGetDefault(t *testing.T) {
 }
 
 func TestOrgSetDefault(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.OrgSetDefault(context.Background(), "my-org")
+		r, err := api.OrgSetDefault(t.Context(), "my-org")
 		return r.Stdout, err
 	})
 	want := "pulumi org set-default -- my-org"
@@ -131,11 +136,13 @@ func TestOrgSetDefault(t *testing.T) {
 }
 
 func TestOrgSearch_RepeatableQuery(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearch(
-			context.Background(),
-			optorgsearch.WithQuery([]string{"foo", "bar"}),
+			t.Context(),
+			optorgsearch.Query([]string{"foo", "bar"}),
 		)
 		return r.Stdout, err
 	})
@@ -145,25 +152,29 @@ func TestOrgSearch_RepeatableQuery(t *testing.T) {
 	}
 }
 
-func TestOrgSearchAi_SingleQuery(t *testing.T) {
+func TestOrgSearchAI_SingleQuery(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.OrgSearchAi(
-			context.Background(),
-			optorgsearchai.WithQuery("hello"),
+		r, err := api.OrgSearchAI(
+			t.Context(),
+			optorgsearchai.Query("hello"),
 		)
 		return r.Stdout, err
 	})
 	want := "pulumi org search ai --query hello"
 	if got != want {
-		t.Fatalf("OrgSearchAi(query=hello) = %q, want %q", got, want)
+		t.Fatalf("OrgSearchAI(query=hello) = %q, want %q", got, want)
 	}
 }
 
 func TestStateMove_VariadicOnly(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.StateMove(context.Background(), []string{"urn:1", "urn:2"})
+		r, err := api.StateMove(t.Context(), []string{"urn:1", "urn:2"})
 		return r.Stdout, err
 	})
 	want := "pulumi state move --yes -- urn:1 urn:2"
@@ -173,9 +184,11 @@ func TestStateMove_VariadicOnly(t *testing.T) {
 }
 
 func TestStateMove_EmptyVariadic(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.StateMove(context.Background(), nil)
+		r, err := api.StateMove(t.Context(), nil)
 		return r.Stdout, err
 	})
 	want := "pulumi state move --yes"
@@ -185,12 +198,14 @@ func TestStateMove_EmptyVariadic(t *testing.T) {
 }
 
 func TestStateMove_WithBooleanFlag(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(
-			context.Background(),
+			t.Context(),
 			[]string{"urn:1"},
-			optstatemove.WithIncludeParents(true),
+			optstatemove.IncludeParents(true),
 		)
 		return r.Stdout, err
 	})
@@ -201,13 +216,15 @@ func TestStateMove_WithBooleanFlag(t *testing.T) {
 }
 
 func TestStateMove_WithSourceAndDest(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(
-			context.Background(),
+			t.Context(),
 			[]string{"urn:1"},
-			optstatemove.WithSource("dev"),
-			optstatemove.WithDest("prod"),
+			optstatemove.Source("dev"),
+			optstatemove.Dest("prod"),
 		)
 		return r.Stdout, err
 	})

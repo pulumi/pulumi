@@ -46,8 +46,17 @@ type GetMappingRequest struct {
 	PulumiProvider string `protobuf:"bytes,2,opt,name=pulumi_provider,json=pulumiProvider,proto3" json:"pulumi_provider,omitempty"`
 	// An optional parameterization that should be used on the named plugin before asking it for mappings.
 	ParameterizationHint *MapperParameterizationHint `protobuf:"bytes,3,opt,name=parameterization_hint,json=parameterizationHint,proto3" json:"parameterization_hint,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The ecosystem whose mappings are being requested (e.g. "terraform"). This identifies the source ecosystem
+	// the caller consumes, which is not necessarily the caller's own name -- the hcl converter, for instance,
+	// executes Terraform programs and so requests "terraform" mappings. If left empty, the mapper falls back to
+	// the conversion key it was configured with: most mapper instances (those served to `plugin run` and to
+	// providers and language runtimes) default to "terraform", while `pulumi convert` and `pulumi import` default
+	// it to the source converter's plugin name. Setting this field lets a caller request a specific ecosystem
+	// regardless of that configured default, which is particularly useful for `plugin run` and providers
+	// accessing the mapper.
+	Ecosystem     string `protobuf:"bytes,4,opt,name=ecosystem,proto3" json:"ecosystem,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMappingRequest) Reset() {
@@ -99,6 +108,13 @@ func (x *GetMappingRequest) GetParameterizationHint() *MapperParameterizationHin
 		return x.ParameterizationHint
 	}
 	return nil
+}
+
+func (x *GetMappingRequest) GetEcosystem() string {
+	if x != nil {
+		return x.Ecosystem
+	}
+	return ""
 }
 
 // `MapperPackageParameterizationHint` is the type of hints that may be passed to [](codegen.Mapper.GetMapping) when it
@@ -220,11 +236,12 @@ var File_pulumi_codegen_mapper_proto protoreflect.FileDescriptor
 
 const file_pulumi_codegen_mapper_proto_rawDesc = "" +
 	"\n" +
-	"\x1bpulumi/codegen/mapper.proto\x12\acodegen\"\xb2\x01\n" +
+	"\x1bpulumi/codegen/mapper.proto\x12\acodegen\"\xd0\x01\n" +
 	"\x11GetMappingRequest\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12'\n" +
 	"\x0fpulumi_provider\x18\x02 \x01(\tR\x0epulumiProvider\x12X\n" +
-	"\x15parameterization_hint\x18\x03 \x01(\v2#.codegen.MapperParameterizationHintR\x14parameterizationHint\"`\n" +
+	"\x15parameterization_hint\x18\x03 \x01(\v2#.codegen.MapperParameterizationHintR\x14parameterizationHint\x12\x1c\n" +
+	"\tecosystem\x18\x04 \x01(\tR\tecosystem\"`\n" +
 	"\x1aMapperParameterizationHint\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +

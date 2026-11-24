@@ -13,7 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
-import pulumi_kubernetes
+import pulumi_other
 
 __all__ = ['WorkloadArgs', 'Workload']
 
@@ -98,8 +98,14 @@ class Workload(pulumi.CustomResource):
         __props__.__dict__["pod"] = None
         return Workload(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'example::Workload', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
-    def pod(self) -> pulumi.Output[Optional['pulumi_kubernetes.core.v1.outputs.Pod']]:
+    def pod(self) -> pulumi.Output[Optional['pulumi_other.module.outputs.Config']]:
         return pulumi.get(self, "pod")
 

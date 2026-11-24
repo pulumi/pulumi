@@ -1,0 +1,5 @@
+name: l2-invoke-default-argument
+runtime:
+  name: nodejs
+  options:
+    typescript: false

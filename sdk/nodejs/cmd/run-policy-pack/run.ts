@@ -13,18 +13,17 @@
 // limitations under the License.
 
 // The tsnode import is used for type-checking only. Do not reference it in the emitted code.
-import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as semver from "semver";
-import * as tsutils from "../../tsutils";
+import * as tsnode from "ts-node";
 import { ResourceError, RunError } from "../../errors";
-import { defaultErrorMessage } from "../run/error";
 import * as log from "../../log";
 import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
-import * as stack from "../../runtime/stack";
+import * as tsutils from "../../tsutils";
+import { defaultErrorMessage } from "../run/error";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -145,7 +144,6 @@ export interface RunOpts {
     argv: minimist.ParsedArgs;
     programStarted: () => void;
     reportLoggedError: (err: Error) => void;
-    runInStack: boolean;
     typeScript: boolean;
 }
 
@@ -295,5 +293,5 @@ ${errMsg}`,
         }
     };
 
-    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
+    return runProgram();
 }

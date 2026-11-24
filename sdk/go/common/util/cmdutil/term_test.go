@@ -113,7 +113,7 @@ func TestTerminate_gracefulShutdown_exitError(t *testing.T) {
 
 	ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
 	assert.True(t, ok, "child process did not exit gracefully")
-	require.Error(t, err, "child process must exit with non-zero code")
+	require.Error(t, err, "child process must exit with non-zero code") //nolint:forbidigo // pre-existing
 
 	var exitErr *exec.ExitError
 	if assert.ErrorAs(t, err, &exitErr, "expected ExitError from child process") {
@@ -179,7 +179,7 @@ func TestTerminate_forceKill(t *testing.T) {
 			}
 
 			require.NoError(t,
-				waitPidDead(pid, 100*time.Millisecond),
+				waitPidDead(t, pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
 	}
@@ -238,7 +238,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 
 	for _, pid := range []int{pid, childPid} {
 		require.NoError(t,
-			waitPidDead(pid, 100*time.Millisecond),
+			waitPidDead(t, pid, 100*time.Millisecond),
 			"error waiting for process to die")
 	}
 }
@@ -284,7 +284,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 
 				ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
 				assert.True(t, ok, "child process did not exit gracefully")
-				assert.Error(t, err, "child process should have exited with an error")
+				assert.Error(t, err, "child process should have exited with an error") //nolint:forbidigo // pre-existing
 			}()
 
 			select {
@@ -297,7 +297,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			}
 
 			require.NoError(t,
-				waitPidDead(pid, 100*time.Millisecond),
+				waitPidDead(t, pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
 	}
@@ -406,7 +406,7 @@ func (p testProgram) Build(t *testing.T) (cmd *exec.Cmd) {
 			t.Skipf("Skipping test: could not find python3 or python executable")
 			return nil
 		}
-		return exec.Command(pythonBin, append([]string{src}, p.args...)...) //nolint:gosec
+		return exec.Command(pythonBin, append([]string{src}, p.args...)...)
 
 	default:
 		t.Fatalf("unknown test program kind: %v", p.kind)
@@ -445,8 +445,8 @@ func (b *lockedBuffer) Len() int {
 // or the given timeout has elapsed.
 //
 // Returns an error if the timeout has elapsed.
-func waitPidDead(pid int, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func waitPidDead(t *testing.T, pid int, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	var (

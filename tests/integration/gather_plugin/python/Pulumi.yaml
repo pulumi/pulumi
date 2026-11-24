@@ -2,7 +2,7 @@ name: test-provider-url-python
 runtime:
   name: python
   options:
-    virtualenv: venv
+    toolchain: uv
 description: A minimal Python Pulumi program
 plugins:
   providers:

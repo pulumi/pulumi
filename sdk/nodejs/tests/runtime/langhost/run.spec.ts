@@ -30,7 +30,6 @@ const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
 const resproto = require("../../../proto/resource_pb.js");
-const providerproto = require("../../../proto/provider_pb.js");
 
 interface RunCase {
     only?: boolean;
@@ -478,6 +477,27 @@ describe("rpc", () => {
                         throw new Error("Unexpected error: " + message);
                     }
                 }
+            },
+        },
+        serialization_error: {
+            pwd: path.join(base, "081.serialization_error"),
+            expectResourceCount: 0,
+            expectError: "",
+            expectBail: true,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: any, message: string) => {
+                assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
+                assert.ok(
+                    message.includes('serializing property "bad"'),
+                    `expected the failing property name in the log, got: ${message}`,
+                );
+                assert.ok(
+                    message.includes("serialization goes boom"),
+                    `expected the original error in the log, got: ${message}`,
+                );
             },
         },
         // A simple test of the read resource behavior.
@@ -1291,6 +1311,35 @@ describe("rpc", () => {
                 assert.deepStrictEqual(outputs, { a: 1 });
             },
         },
+        // A whole resource exported as a stack output must be serialized the same way in previews and updates.
+        stack_export_resource: {
+            pwd: path.join(base, "082.stack_export_resource"),
+            expectResourceCount: 2,
+            showRootResourceRegistration: true,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                if (t === "pulumi:pulumi:Stack") {
+                    ctx.stackUrn = makeUrn(t, name);
+                    return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                }
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource");
+                return { urn: makeUrn(t, name), id: name, props: res };
+            },
+            registerResourceOutputs: (
+                ctx: any,
+                dryrun: boolean,
+                urn: URN,
+                t: string,
+                name: string,
+                res: any,
+                outputs: any | undefined,
+            ) => {
+                assert.strictEqual(t, "pulumi:pulumi:Stack");
+                assert.strictEqual(outputs.res.urn, makeUrn("test:index:MyResource", "testResource"));
+                assert.strictEqual(outputs.res.foo, "bar");
+                assert.ok(!("@isPulumiResource" in outputs.res), `unexpected marker in ${JSON.stringify(outputs)}`);
+            },
+        },
         provider_invokes: {
             pwd: path.join(base, "060.provider_invokes"),
             expectResourceCount: 1,
@@ -1764,7 +1813,7 @@ describe("rpc", () => {
                     opts,
                     // Invoke callback
                     (call: any, callback: any) => {
-                        const resp = new providerproto.InvokeResponse();
+                        const resp = new resproto.ResourceInvokeResponse();
                         if (opts.invoke) {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();

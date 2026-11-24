@@ -22,6 +22,16 @@ export class Res extends pulumi.CustomResource {
         return new Res(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing Res resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("urnid:index:Res", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'urnid:index:Res';
 
@@ -64,6 +74,6 @@ export class Res extends pulumi.CustomResource {
  * The set of arguments for constructing a Res resource.
  */
 export interface ResArgs {
-    id?: pulumi.Input<string>;
-    urn?: pulumi.Input<string>;
+    id?: pulumi.Input<string | undefined>;
+    urn?: pulumi.Input<string | undefined>;
 }

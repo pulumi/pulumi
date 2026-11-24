@@ -44,9 +44,9 @@ func TestWorkerPool_reusable(t *testing.T) {
 	// Each enqueue-wait cycle is called a "phase".
 	// We run multiple phases to verify that the pool
 	// is re-usable and does not get stuck after the first phase.
-	for phase := 0; phase < numPhases; phase++ {
+	for range numPhases {
 		var count atomic.Int64
-		for task := 0; task < numTasks; task++ {
+		for range numTasks {
 			pool.Enqueue(func() error {
 				count.Add(1)
 				return nil
@@ -78,7 +78,7 @@ func TestWorkerPool_error(t *testing.T) {
 	}
 
 	err := pool.Wait()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Validate that the returned error matches
 	// the errors returned by the tasks.
@@ -95,7 +95,7 @@ func TestWorkerPool_oneError(t *testing.T) {
 
 	const numTasks = 10
 	giveErr := errors.New("great sadness")
-	for i := 0; i < numTasks; i++ {
+	for i := range numTasks {
 		pool.Enqueue(func() error {
 			if i == 7 {
 				return giveErr
@@ -105,7 +105,7 @@ func TestWorkerPool_oneError(t *testing.T) {
 	}
 
 	err := pool.Wait()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -173,7 +173,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 
 		// Runs a random sequence of actions from the
 		// map of actions.
-		t.Run(map[string]func(*rapid.T){
+		t.Repeat(map[string]func(*rapid.T){
 			"enqueue": func(t *rapid.T) {
 				pending.Add(1)
 

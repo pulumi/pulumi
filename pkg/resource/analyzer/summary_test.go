@@ -17,9 +17,9 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,8 +49,8 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				Passed:            nil,
+				Failed:            nil,
 			},
 		},
 		{
@@ -76,7 +76,7 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Passed:            []string{"resource-policy"},
-				Failed:            []string{},
+				Failed:            nil,
 			},
 		},
 		{
@@ -106,7 +106,7 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
+				Passed:            nil,
 				Failed:            []string{"resource-policy"},
 			},
 		},
@@ -132,8 +132,8 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				Passed:            nil,
+				Failed:            nil,
 			},
 		},
 		{
@@ -163,8 +163,8 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				Passed:            nil,
+				Failed:            nil,
 			},
 		},
 		{
@@ -231,7 +231,7 @@ func TestNewAnalyzePolicySummary(t *testing.T) {
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Passed:            []string{"unknown-type-policy"},
-				Failed:            []string{},
+				Failed:            nil,
 			},
 		},
 	}
@@ -272,8 +272,8 @@ func TestNewRemediatePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				Passed:            nil,
+				Failed:            nil,
 			},
 		},
 		{
@@ -303,7 +303,7 @@ func TestNewRemediatePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
+				Passed:            nil,
 				Failed:            []string{"resource-policy"},
 			},
 		},
@@ -394,7 +394,7 @@ func TestNewRemediatePolicySummary(t *testing.T) {
 				URN:               "urn:pulumi:test::project::Type::resource",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
+				Passed:            nil,
 				Failed:            []string{"active-policy"},
 			},
 		},
@@ -434,8 +434,8 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 				URN:               "",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
-				Failed:            []string{},
+				Passed:            nil,
+				Failed:            nil,
 			},
 		},
 		{
@@ -460,7 +460,7 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Passed:            []string{"stack-policy"},
-				Failed:            []string{},
+				Failed:            nil,
 			},
 		},
 		{
@@ -488,7 +488,7 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 				URN:               "",
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
-				Passed:            []string{},
+				Passed:            nil,
 				Failed:            []string{"stack-policy"},
 			},
 		},
@@ -568,7 +568,7 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Passed:            []string{"active-stack-policy"},
-				Failed:            []string{},
+				Failed:            nil,
 			},
 		},
 		{
@@ -593,7 +593,7 @@ func TestNewAnalyzeStackPolicySummary(t *testing.T) {
 				PolicyPackName:    "test-pack",
 				PolicyPackVersion: "1.0.0",
 				Passed:            []string{"unknown-type-policy"},
-				Failed:            []string{},
+				Failed:            nil,
 			},
 		},
 	}

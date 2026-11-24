@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -85,7 +85,7 @@ func TestBusy_NoFlickerOnCLIToolHandoff(t *testing.T) {
 	model, _ = model.Update(UIToolProgress{Name: "filesystem__read", Message: "reading"})
 	assert.True(t, model.(Model).busy)
 
-	// Step 4: first tool completes; inter-tool gap uses a thinking verb.
+	// Step 4: first tool completes; inter-tool gap shows the thinking label.
 	model, _ = model.Update(UIToolCompleted{Name: "filesystem__read", Args: json.RawMessage(`{"file_path":"/x"}`)})
 	assert.True(t, model.(Model).busy)
 
@@ -107,28 +107,29 @@ func TestBusy_NoFlickerOnCLIToolHandoff(t *testing.T) {
 	assert.GreaterOrEqual(t, m.findBlockKind(blockAssistantFinal), 0)
 }
 
-// TestBusy_NonFinalStreamingKeepsSpinnerOn — under the old rule, a non-final
+// TestBusy_NonFinalKeepsSpinnerOn — under the old rule, a non-final
 // assistant_message explicitly removed the busy block. The declarative rule
-// keeps the spinner on throughout streaming so there is no gap before the
-// next tool or the truly-final message.
-func TestBusy_NonFinalStreamingKeepsSpinnerOn(t *testing.T) {
+// keeps the spinner on across non-final messages so there is no gap before
+// the next tool or the truly-final message.
+func TestBusy_NonFinalKeepsSpinnerOn(t *testing.T) {
 	t.Parallel()
 
 	ch := make(chan UIEvent, 4)
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, Busy: true}))
 
-	model, _ = model.Update(UIAssistantMessage{Content: "thinking...", IsFinal: false})
+	model, _ = model.Update(UIAssistantMessage{Content: "first turn", IsFinal: false})
 	assert.True(t, model.(Model).busy, "non-final assistant_message must leave spinner on")
 	m := model.(Model)
-	assert.GreaterOrEqual(t, m.findBlockKind(blockAssistantStreaming), 0, "streaming content renders as a streaming block")
+	assert.GreaterOrEqual(t, m.findBlockKind(blockAssistantFinal), 0,
+		"non-final content commits as a final block")
 	assert.GreaterOrEqual(t, m.findBlockKind(blockBusy), 0, "spinner block is still present")
 
-	// More streaming text — still non-final, still busy.
-	model, _ = model.Update(UIAssistantMessage{Content: "thinking harder", IsFinal: false})
+	// Another non-final turn — still busy.
+	model, _ = model.Update(UIAssistantMessage{Content: "second turn", IsFinal: false})
 	assert.True(t, model.(Model).busy)
 
 	// Truly final — spinner off.
-	model, _ = model.Update(UIAssistantMessage{Content: "thinking harder. Done.", IsFinal: true})
+	model, _ = model.Update(UIAssistantMessage{Content: "Done.", IsFinal: true})
 	assert.False(t, model.(Model).busy)
 }
 
@@ -144,7 +145,7 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
 
 	// Press ESC mid-turn.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
 	assert.True(t, m.cancelling, "ESC must set the cancelling flag")
 	assert.True(t, m.busy, "spinner stays on while we wait for the backend to confirm")
@@ -164,8 +165,8 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	require.NotEqual(t, -1, idx)
 	assert.Equal(t, "Cancelling...", m.blocks[idx].label)
 
-	// Any non-final event while cancelling keeps the cancelling label, not a
-	// fresh thinking verb or tool label.
+	// Any non-final event while cancelling keeps the cancelling label, not the
+	// thinking label or a tool label.
 	model, _ = model.Update(UIToolStarted{Name: "filesystem__read"})
 	m = model.(Model)
 	idx = m.findBlockKind(blockBusy)
@@ -181,6 +182,39 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	assert.Equal(t, -1, m.findBlockKind(blockBusy))
 }
 
+// TestBusy_LateToolCompletionAfterCancelStaysIdle — a killed tool's
+// UIToolCompleted lands after the backend's cancelled event has ended the
+// turn; it must not resurrect the spinner, or the TUI stays busy forever.
+func TestBusy_LateToolCompletionAfterCancelStaysIdle(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 8)
+	outCh := make(chan outboundEvent, 4)
+	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
+
+	model, _ = model.Update(UIAssistantMessage{IsFinal: true, HasPendingCLIWork: true})
+	model, _ = model.Update(UIToolStarted{Name: "shell__shell_execute", Args: json.RawMessage(`{"command":"sleep 180"}`)})
+	require.True(t, model.(Model).busy)
+
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	model, _ = model.Update(UICancelled{})
+	require.False(t, model.(Model).busy, "cancelled event must clear busy")
+
+	model, _ = model.Update(UIToolCompleted{
+		Name:    "shell__shell_execute",
+		Args:    json.RawMessage(`{"command":"sleep 180"}`),
+		IsError: true,
+	})
+	m := model.(Model)
+	assert.False(t, m.busy, "late tool completion must not resurrect the spinner")
+	assert.Equal(t, -1, m.findBlockKind(blockBusy))
+
+	model, _ = model.Update(UIToolStarted{Name: "shell__shell_execute"})
+	assert.False(t, model.(Model).busy, "late tool start must not resurrect the spinner")
+	model, _ = model.Update(UIToolProgress{Name: "shell__shell_execute", Message: "tick"})
+	assert.False(t, model.(Model).busy, "late tool progress must not resurrect the spinner")
+}
+
 // TestBusy_EscIgnoredWhenIdle — ESC while the TUI is idle is a no-op. We
 // don't want to post a spurious user_cancel.
 func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
@@ -191,7 +225,7 @@ func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh}))
 	assert.False(t, model.(Model).busy)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
 	assert.False(t, m.cancelling)
 	assert.False(t, m.busy)
@@ -200,6 +234,47 @@ func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
 	case <-outCh:
 		t.Fatal("ESC when idle must not post a user event")
 	default:
+	}
+}
+
+// TestBusy_EscClearsDraftBeforeCancel — ESC with a draft in the textarea
+// wipes the draft instead of cancelling, so users can scrap a half-typed
+// message without taking down the agent's current turn. The cancel branch
+// only fires once the textarea is empty (see TestBusy_CancellingSubstate).
+func TestBusy_EscClearsDraftBeforeCancel(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		busy bool
+	}{
+		{"idle", false},
+		{"busy", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ch := make(chan UIEvent, 4)
+			outCh := make(chan outboundEvent, 4)
+			model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: tc.busy}))
+			m := model.(Model)
+			m.textInput.SetValue("half-written draft")
+			require.Equal(t, "half-written draft", m.textInput.Value())
+
+			model, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+			um := model.(Model)
+
+			assert.Equal(t, "", um.textInput.Value(), "ESC with content must clear the textarea")
+			assert.False(t, um.cancelling, "ESC must not cancel while the textarea has a draft")
+			assert.Equal(t, tc.busy, um.busy, "ESC must not change the busy flag when clearing a draft")
+
+			select {
+			case ev := <-outCh:
+				t.Fatalf("ESC must not post any user event when clearing a draft, got %T", ev.event)
+			default:
+			}
+		})
 	}
 }
 
@@ -217,12 +292,88 @@ func TestBusy_EscIgnoredWhileApprovalPending(t *testing.T) {
 	require.True(t, model.(Model).pendingApproval)
 
 	// ESC must not post anything.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	assert.False(t, model.(Model).cancelling)
 	select {
 	case <-outCh:
 		t.Fatal("ESC during pending approval must not post a user event")
 	default:
+	}
+}
+
+// TestBusy_EscRetryableAfterCancelPostFailure — pulumi/pulumi-service#44059:
+// when the dispatcher gives up delivering a cancel and reports UICancelFailed,
+// the cancelling substate must clear so a later ESC can retry instead of
+// being swallowed and leaving the TUI in "Cancelling..." forever.
+func TestBusy_EscRetryableAfterCancelPostFailure(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	outCh := make(chan outboundEvent, 4)
+	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
+
+	// First ESC posts a cancel and enters the cancelling substate.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	require.True(t, model.(Model).cancelling)
+	select {
+	case ev := <-outCh:
+		_, ok := ev.event.(apitype.AgentUserEventCancel)
+		require.True(t, ok, "first ESC must post an AgentUserEventCancel")
+	default:
+		t.Fatal("first ESC did not post any user event")
+	}
+
+	// The dispatcher exhausted its cancel retries and reported the failure.
+	model, _ = model.Update(UICancelFailed{
+		Message: "[409] Conflict: cannot respond while a request is still ongoing",
+	})
+	m := model.(Model)
+	require.False(t, m.cancelling, "UICancelFailed must clear the cancelling substate")
+	require.True(t, m.busy, "the turn is still live after a failed cancel")
+
+	// A second ESC must retry the cancel instead of being swallowed.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
+	select {
+	case ev := <-outCh:
+		_, ok := ev.event.(apitype.AgentUserEventCancel)
+		require.True(t, ok, "retry ESC must post an AgentUserEventCancel, got %T", ev.event)
+	default:
+		t.Fatalf("ESC after a failed cancel POST must retry the cancel (cancelling=%v)", m.cancelling)
+	}
+}
+
+// TestBusy_EscWithFullOutChannelNotSilentlyDropped — pulumi/pulumi-service#44059:
+// ESC must not claim to be cancelling when the cancel event was never
+// enqueued. sendOut is a non-blocking send, so with a full outbound channel
+// the model must stay out of the cancelling substate and let the next ESC
+// retry.
+func TestBusy_EscWithFullOutChannelNotSilentlyDropped(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	outCh := make(chan outboundEvent, 1)
+	outCh <- outboundEvent{event: apitype.AgentUserEventUserMessage{}} // fill the channel
+	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
+
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m := model.(Model)
+
+	// Drain the channel and look for the cancel.
+	foundCancel := false
+	for {
+		select {
+		case ev := <-outCh:
+			if _, ok := ev.event.(apitype.AgentUserEventCancel); ok {
+				foundCancel = true
+			}
+			continue
+		default:
+		}
+		break
+	}
+	if m.cancelling && !foundCancel {
+		t.Fatal("ESC entered the cancelling state without a cancel event ever being enqueued")
 	}
 }
 

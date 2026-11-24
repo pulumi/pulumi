@@ -26,9 +26,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -570,6 +570,12 @@ func (c *convertTestConverter) ConvertProgram(
 		0o600,
 	)
 	return &plugin.ConvertProgramResponse{}, err
+}
+
+func (c *convertTestConverter) ConvertSnippet(
+	_ context.Context, _ *plugin.ConvertSnippetRequest,
+) (*plugin.ConvertSnippetResponse, error) {
+	return nil, errors.New("not implemented")
 }
 
 // TestL2ResourceSimple_ConvertPath verifies that when ConverterPluginTarget is set, the engine

@@ -32,10 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
-func boolPointer(b bool) *bool {
-	return &b
-}
-
 // TestEmptyPython simply tests that we can run an empty Python project.
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
@@ -92,7 +88,7 @@ func TestDynamicPython(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: new(false),
 	})
 }
 
@@ -121,7 +117,7 @@ func TestDynamicPythonReadInputs(t *testing.T) {
 				}
 			}
 		},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: new(false),
 	})
 }
 
@@ -130,7 +126,7 @@ func TestConstructPython(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -141,12 +137,12 @@ func TestConstructPython(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
@@ -184,7 +180,7 @@ func optsForConstructPython(
 			"secret": "this super secret is encrypted",
 		},
 		Quick:               true,
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: new(false),
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -465,7 +461,6 @@ func TestUv(t *testing.T) {
 		// On windows, when running in parallel, we can run into issues when Uv tries
 		// to write the same cache file concurrently. This is the same issue we see
 		// for Poetry https://github.com/pulumi/pulumi/pull/17337
-		//nolint:paralleltest
 		t.Run(test.template, func(t *testing.T) {
 			if runtime.GOOS != "windows" {
 				t.Parallel()
@@ -757,7 +752,7 @@ func TestUvWindowsError(t *testing.T) {
 	go func() {
 		e.ImportDirectory(filepath.Join("python", "uv-with-error"))
 		e.RunCommand("pulumi", "install")
-		e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
 		stdout, _ = e.RunCommandExpectError("pulumi", "preview")

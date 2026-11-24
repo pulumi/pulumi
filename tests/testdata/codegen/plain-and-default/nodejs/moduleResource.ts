@@ -20,6 +20,16 @@ export class ModuleResource extends pulumi.CustomResource {
         return new ModuleResource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing ModuleResource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("foobar::ModuleResource", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'foobar::ModuleResource';
 
@@ -100,11 +110,11 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
-    optionalBool?: pulumi.Input<boolean>;
-    optionalConst?: pulumi.Input<"val">;
-    optionalEnum?: pulumi.Input<enums.EnumThing>;
-    optionalNumber?: pulumi.Input<number>;
-    optionalString?: pulumi.Input<string>;
+    optionalBool?: pulumi.Input<boolean | undefined>;
+    optionalConst?: pulumi.Input<"val" | undefined>;
+    optionalEnum?: pulumi.Input<enums.EnumThing | undefined>;
+    optionalNumber?: pulumi.Input<number | undefined>;
+    optionalString?: pulumi.Input<string | undefined>;
     plainOptionalBool?: boolean;
     plainOptionalConst?: "val";
     plainOptionalNumber?: number;

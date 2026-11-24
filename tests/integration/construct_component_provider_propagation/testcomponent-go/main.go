@@ -1,6 +1,18 @@
-// Copyright 2016, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -9,14 +21,13 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 )
 
 func main() {
-	if err := provider.ComponentMain("testcomponent", "0.0.1", nil /* schema */, construct); err != nil {
+	if err := pulumiprovider.ComponentMain("testcomponent", "0.0.1", nil, construct); err != nil {
 		cmdutil.Exit(err)
 	}
 }
@@ -105,7 +116,7 @@ type RandomArgs struct {
 
 // ElementType implements the pulumi.Input interface.
 func (RandomArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*randomArgs)(nil)).Elem()
+	return reflect.TypeFor[randomArgs]()
 }
 
 type randomArgs struct {

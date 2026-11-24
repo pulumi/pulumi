@@ -17,13 +17,14 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type NestedObjectProvider struct {
@@ -44,10 +45,6 @@ func (p *NestedObjectProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *NestedObjectProvider) Pkg() tokens.Package {
-	return "nestedobject"
 }
 
 func (p *NestedObjectProvider) GetSchema(
@@ -172,10 +169,63 @@ func (p *NestedObjectProvider) GetSchema(
 				RequiredInputs: []string{"details"},
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			// getValues echoes its input list back. It exists so that a program can
+			// obtain a computed list from an invoke and range over it.
+			"nestedobject:index:getValues": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"names": {
+							TypeSpec: schema.TypeSpec{
+								Type:  "array",
+								Items: &schema.TypeSpec{Type: "string"},
+							},
+						},
+					},
+					Required: []string{"names"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"results": {
+								TypeSpec: schema.TypeSpec{
+									Type:  "array",
+									Items: &schema.TypeSpec{Type: "string"},
+								},
+							},
+						},
+						Required: []string{"results"},
+					},
+				},
+			},
+		},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
+}
+
+func (p *NestedObjectProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "nestedobject:index:getValues" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+
+	names, ok := req.Args.GetOk("names")
+	if !ok || !names.IsArray() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("names", "missing names list"),
+		}, nil
+	}
+
+	return plugin.InvokeResponse{
+		Properties: property.NewMap(map[string]property.Value{
+			"results": names,
+		}),
+	}, nil
 }
 
 func (p *NestedObjectProvider) CheckConfig(
@@ -187,22 +237,24 @@ func (p *NestedObjectProvider) CheckConfig(
 func (p *NestedObjectProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	return plugin.CheckResponse{Properties: req.News}, nil
+	news := resource.ToResourcePropertyMap(req.NewInputs)
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *NestedObjectProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
 	}
 
-	outputs := req.Properties.Copy()
+	outputs := properties.Copy()
 
 	if req.URN.Type() == "nestedobject:index:Container" {
 		// Compute details from inputs: for each input, create a detail object.
-		inputs := req.Properties["inputs"]
+		inputs := properties["inputs"]
 		if inputs.IsArray() {
 			details := make([]resource.PropertyValue, len(inputs.ArrayValue()))
 			for i, input := range inputs.ArrayValue() {
@@ -217,7 +269,7 @@ func (p *NestedObjectProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -233,7 +285,7 @@ func (p *NestedObjectProvider) Update(
 
 func (p *NestedObjectProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(p.version()),
+		Version: new(p.version()),
 	}, nil
 }
 
@@ -275,8 +327,8 @@ func (p *NestedObjectProvider) Read(_ context.Context, req plugin.ReadRequest) (
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
-			Inputs:  req.Inputs,
-			Outputs: req.State,
+			Inputs:  &req.Inputs,
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil

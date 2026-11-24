@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,21 +32,23 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
 )
 
 type Options struct {
@@ -58,14 +61,15 @@ type Options struct {
 func New(
 	packageresolution pluginstorage.Context,
 	pkgworkspace pkgWorkspace.Context,
-	host plugin.Host, stdout, stderr io.Writer,
+	pctx *plugin.Context, stdout, stderr io.Writer,
 	parentSpan opentracing.Span, options Options,
 ) Workspace {
 	return Workspace{
 		packageresolution,
 		pkgworkspace,
-		host, stdout, stderr,
+		pctx, stdout, stderr,
 		options, parentSpan,
+		progress.NewGroup(stderr),
 		new(sync.Mutex),
 		map[string][]schema.PackageReference{},
 	}
@@ -79,10 +83,11 @@ type (
 type Workspace struct {
 	pluginStorageContext
 	pkgWorkspaceContext
-	host           plugin.Host
+	pctx           *plugin.Context
 	stdout, stderr io.Writer
 	options        Options
 	parentSpan     opentracing.Span
+	bars           *progress.Group
 
 	unlinkedProjectsM *sync.Mutex
 	unlinkedProjects  map[string][]schema.PackageReference
@@ -102,7 +107,7 @@ func (Workspace) GetPluginPath(ctx context.Context, spec workspace.PluginDescrip
 // InstallPlugin should assume that all dependencies of the plugin are already
 // installed.
 func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error {
-	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
+	lang, err := w.pctx.Host.LanguageRuntime(w.pctx, project.Runtime.Name())
 	if err != nil {
 		return err
 	}
@@ -115,7 +120,7 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	}
 
 	info := plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options())
-	return cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+	return cmdutil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: w.options.UseLanguageVersionTools,
 		IsPlugin:                true,
@@ -125,19 +130,19 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 // Get a list of packages required by the source based plugin at dirPath.
 func (w Workspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
-) ([]workspace.PackageDescriptor, error) {
-	lang, err := w.host.LanguageRuntime(project.Runtime.Name())
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
+	lang, err := w.pctx.Host.LanguageRuntime(w.pctx, project.Runtime.Name())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !filepath.IsAbs(dirPath) {
 		dirPath, err = filepath.Abs(dirPath)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return lang.GetRequiredPackages(plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
+	return lang.GetRequiredPackages(ctx, plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
 }
 
 // IsExecutable returns if the file at binaryPath can be executed.
@@ -159,14 +164,13 @@ func (Workspace) IsExecutable(ctx context.Context, binaryPath string) (bool, err
 // Download a plugin onto disk, returning the path the plugin was downloaded to.
 func (w Workspace) DownloadPlugin(
 	ctx context.Context, pluginSpec workspace.PluginDescriptor,
-) (string, func(done bool), error) {
+) (string, func(done bool) error, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := diagutils.StartSpan(ctx, tracer, "download-plugin",
 		trace.WithAttributes(attribute.String("plugin", pluginSpec.Name)))
 	defer span.End()
 
 	util.SetKnownPluginDownloadURL(&pluginSpec)
-	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
@@ -176,9 +180,9 @@ func (w Workspace) DownloadPlugin(
 	}
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
-		fmt.Fprintf(w.stderr, "Downloading provider: %s\n", pluginSpec.Name)
-		return stream
+		// Renders a progress bar to stderr in interactive terminals and prints a plain message otherwise.
+		return w.bars.Wrap(
+			stream, size, "Downloading provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
@@ -186,22 +190,31 @@ func (w Workspace) DownloadPlugin(
 			"Will retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	logging.V(1).Infof("downloading provider %s", pluginSpec.Name)
+	slog.InfoContext(ctx, "downloading provider", "provider", pluginSpec.Name)
 	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
 	if err != nil {
 		return "", nil, err
 	}
 
-	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
+	slog.InfoContext(ctx, "unpacking provider", "provider", pluginSpec.Name)
+	// Wrap the downloaded tarball with a progress bar sized by the downloaded tarball, so extraction shows progress
+	// during unpacking. [pluginstorage.UnpackContents] closes the content (and thus this stream) when it returns, which
+	// is what finishes the bar.
+	var unpackStream io.ReadCloser = downloadedFile
+	if fi, statErr := downloadedFile.Stat(); statErr == nil {
+		unpackStream = w.bars.Wrap(
+			downloadedFile, fi.Size(),
+			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
+	}
 	cleanup, err := pluginstorage.UnpackContents(
-		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), true, /* reinstall */
+		ctx, pluginSpec, pluginstorage.TarPlugin(unpackStream), false, /* reinstall */
 	)
 	if err != nil {
 		return "", nil, err
 	}
 	outDir, err := pluginSpec.DirPath()
 	if err != nil {
-		cleanup(false)
+		contract.IgnoreError(cleanup(false))
 		return "", nil, err
 	}
 	return filepath.Join(outDir, pluginSpec.SubDir()), cleanup, nil
@@ -212,6 +225,11 @@ func (w Workspace) GenerateLocalSDK(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	provider plugin.Provider,
 ) (workspace.LinkablePackageDescriptor, error) {
+	if runtimeInfo.Name() == "" {
+		return workspace.LinkablePackageDescriptor{}, errors.New(
+			"cannot generate an SDK for a project without a runtime")
+	}
+
 	tracer := otel.Tracer("pulumi-cli")
 
 	ctx, schemaSpan := diagutils.StartSpan(ctx, tracer, "get-schema")
@@ -226,7 +244,20 @@ func (w Workspace) GenerateLocalSDK(
 		return workspace.LinkablePackageDescriptor{}, err
 	}
 
-	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.host))
+	// Mirror the plugin-version fallback in [schema.pluginLoader.LoadPackageReferenceV2]: if the provider
+	// didn't embed a version in its schema, use the resolved plugin version so SupportPack binding has
+	// something to validate against. Parameterized schemas have their own decoupled version.
+	if schemaSpec.Version == "" && schemaSpec.Parameterization == nil {
+		info, err := provider.GetPluginInfo(ctx)
+		if err != nil {
+			return workspace.LinkablePackageDescriptor{}, err
+		}
+		if info.Version != nil {
+			schemaSpec.Version = info.Version.String()
+		}
+	}
+
+	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.pctx))
 	if err != nil {
 		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to bind schema: %w", err)
 	}
@@ -297,6 +328,10 @@ func (w Workspace) LinkIntoProject(
 	runtimeInfo *workspace.ProjectRuntimeInfo, projectDir string,
 	packageDescriptors []workspace.LinkablePackageDescriptor,
 ) error {
+	if runtimeInfo.Name() == "" {
+		return errors.New("cannot link packages into a project without a runtime")
+	}
+
 	w.unlinkedProjectsM.Lock()
 	refs := w.unlinkedProjects[projectDir]
 	delete(w.unlinkedProjects, projectDir)
@@ -316,9 +351,10 @@ func (w Workspace) LinkIntoProject(
 	}
 
 	instructions, err := servers.lang.Link(
+		ctx,
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
 		packageDescriptors,
-		servers.grpc.Addr(),
+		servers.pctx.LoaderAddr(),
 	)
 	if err != nil {
 		return errors.Join(fmt.Errorf("linking package: %w", err), servers.Close())
@@ -330,13 +366,13 @@ func (w Workspace) LinkIntoProject(
 type servers struct {
 	pctx *plugin.Context
 	lang plugin.LanguageRuntime
-	grpc *plugin.GrpcServer
 }
 
 func (s servers) Close() error {
 	// We do not call s.lang.Close() since that closes the original host,
-	// and thus effectively closes the Workspace.
-	return errors.Join(s.grpc.Close(), s.pctx.Close())
+	// and thus effectively closes the Workspace. The context's loader service dies with the
+	// context.
+	return s.pctx.Close()
 }
 
 func (w Workspace) servers(
@@ -346,7 +382,7 @@ func (w Workspace) servers(
 	tracer := otel.Tracer("pulumi-cli")
 	_, langSpan := diagutils.StartSpan(ctx, tracer, "load-language-host",
 		trace.WithAttributes(attribute.String("language", language)))
-	languageRuntime, err := w.host.LanguageRuntime(language)
+	languageRuntime, err := w.pctx.Host.LanguageRuntime(w.pctx, language)
 	langSpan.End()
 	if err != nil {
 		return servers{}, err
@@ -361,18 +397,30 @@ func (w Workspace) servers(
 		refs[v.Identity()] = v
 	}
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, noopCloseHost{w.host}, dir, dir, w.parentSpan)
-	loader := schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx.Host), refs)
-	loaderServer := schema.NewLoaderServer(loader)
-	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
+	host := cachedLoaderHost{Host: w.pctx.Host, refs: refs}
+	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan, w.pctx.CloudCredentialEnv)
 	if err != nil {
 		return servers{}, err
 	}
 	return servers{
 		pctx: pctx,
 		lang: languageRuntime,
-		grpc: grpcServer,
 	}, nil
+}
+
+// cachedLoaderHost overrides Loader to serve a schema loader pre-seeded with the given package
+// references, delegating every other host method to the embedded host. The seeded references let
+// SDK generation resolve packages that are not yet installed.
+type cachedLoaderHost struct {
+	plugin.Host
+	refs map[string]schema.PackageReference
+}
+
+func (h cachedLoaderHost) Loader(pctx *plugin.Context) (*plugin.GrpcServer, error) {
+	return plugin.NewServer(pctx, func(srv *grpc.Server) {
+		codegenrpc.RegisterLoaderServer(srv,
+			schema.NewLoaderServer(schema.NewCachedLoaderWithEntries(schema.NewPluginLoader(pctx), h.refs)))
+	})
 }
 
 func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Package) (string, error) {
@@ -397,7 +445,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
-	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.pctx.LoaderAddr(), nil, true /* local */)
 	if err != nil {
 		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}
@@ -412,13 +460,12 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 
 // Run a package from a directory, parameterized by params.
 func (w Workspace) RunPackage(
-	ctx context.Context, rootDir, pluginPath string, pkgName tokens.Package, params plugin.ParameterizeParameters,
+	ctx context.Context, rootDir, pluginPath string, params plugin.ParameterizeParameters,
 	originalSpec workspace.PackageSpec,
 ) (plugin.Provider, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := diagutils.StartSpan(ctx, tracer, "run-plugin",
 		trace.WithAttributes(
-			attribute.String("plugin", string(pkgName)),
 			attribute.String("path", pluginPath),
 		))
 	defer span.End()
@@ -427,8 +474,14 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx := plugin.NewContextWithHost(ctx, d, d, w.host, rootDir, rootDir, w.parentSpan)
-	p, err := plugin.NewProviderFromPath(w.host, pctx, pkgName, pluginPath)
+	pctx, err := plugin.NewContextWithHost(
+		ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan, w.pctx.CloudCredentialEnv)
+	if err != nil {
+		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
+	}
+	pctx.DialOptions = w.pctx.DialOptions
+	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
+	p, err := w.pctx.Host.ProviderFromPath(pctx, pluginPath, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}
@@ -453,7 +506,7 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 		return nil, err
 	}
 	if diags.HasErrors() {
-		return nil, diags
+		return nil, errors.Join(diags.Errs()...)
 	}
 	return pkg, nil
 }
@@ -483,39 +536,54 @@ func (p pluginProvider) GetSchema(
 		return plugin.GetSchemaResponse{}, err
 	}
 
-	// Git based plugins are allowed to not be self-referential: know their version
-	// and pluginDownloadURL. That requires the launching infrastructure to inject
-	// that information into the returned schema.
+	// Git based plugins and plugins with an explicit pluginDownloadURL are allowed to
+	// not be self-referential: know their version and pluginDownloadURL. That requires
+	// the launching infrastructure to inject that information into the returned
+	// schema, mirroring what [packages.SchemaFromSchemaSource] does for `package add`.
 	//
 	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
 	// allow us to push this deeper through the plugin loading process.
-
-	var pkgSpec schema.PackageSpec
-	if json.Unmarshal(resp.Schema, &pkgSpec) != nil {
-		// If we can't un-marshal, give up.
-		return resp, nil
-	}
 	source := p.originalSpec.Source
 	if p.originalSpec.Version != "" {
 		source += "@" + p.originalSpec.Version
 	}
-	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
-	if err == nil && pd.IsGitPlugin() {
-		pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
-		if pd.Version != nil {
-			pkgSpec.Version = pd.Version.String()
-		}
+	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil,
+		p.originalSpec.PluginDownloadURL, nil)
+	if err != nil || pd.PluginDownloadURL == "" {
+		return resp, nil
+	}
 
-		if pkgSpec.Namespace == "" {
-			namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
-			matches := namespaceRegex.FindStringSubmatch(pd.PluginDownloadURL)
-			if len(matches) == 2 {
-				pkgSpec.Namespace = strings.ToLower(matches[1])
-			}
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := tracer.Start(ctx, "packageworkspace.injectSchemaMetadata")
+	defer span.End()
+
+	var pkgSpec schema.PartialPackageSpec
+	_, unmarshalSpan := tracer.Start(ctx, "packageworkspace.unmarshalSchema")
+	unmarshalErr := json.Unmarshal(resp.Schema, &pkgSpec)
+	unmarshalSpan.End()
+	if unmarshalErr != nil {
+		// If we can't un-marshal, give up.
+		return resp, nil
+	}
+
+	pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
+	// Git based plugins don't know their own version, so inject it. Other plugins
+	// self-report their version in their schema, which we leave alone.
+	if pd.IsGitPlugin() && pd.Version != nil {
+		pkgSpec.Version = pd.Version.String()
+	}
+	if pkgSpec.Namespace == "" {
+		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+		matches := namespaceRegex.FindStringSubmatch(pd.PluginDownloadURL)
+		if len(matches) == 2 {
+			pkgSpec.Namespace = strings.ToLower(matches[1])
 		}
 	}
+
+	_, marshalSpan := tracer.Start(ctx, "packageworkspace.marshalSchema")
 	bytes, err := json.Marshal(pkgSpec)
-	contract.AssertNoErrorf(err, "schema.PackageSpec is safe to marshal")
+	marshalSpan.End()
+	contract.AssertNoErrorf(err, "schema.PartialPackageSpec is safe to marshal")
 	return plugin.GetSchemaResponse{Schema: bytes}, nil
 }
 
@@ -527,9 +595,3 @@ func (p pluginProvider) Parameterize(
 	}
 	return p.Provider.Parameterize(ctx, req)
 }
-
-type noopCloseHost struct {
-	plugin.Host
-}
-
-func (h noopCloseHost) Close() error { return nil }

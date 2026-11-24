@@ -55,7 +55,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	// properties), we can query the type's annotations to find the linked resource node. From there we can retrieve the
 	// schema and use this later on to resolve the method, etc.
 	self := args[0]
-	var selfRes *Resource
+	var selfRes BaseResource
 	if objectType, ok := self.Type().(*model.ObjectType); ok {
 		if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
 			selfRes = annotation.Node
@@ -84,17 +84,24 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 
 	// Look up the method in the receiver's method list.
 	methodName := lit.Value.AsString()
+	schemaResource := selfRes.GetSchema()
+	if schemaResource == nil {
+		return b.zeroCallSignature(), hcl.Diagnostics{
+			errorf(args[0].SyntaxNode().Range(), "call's receiver must be a typed resource"),
+		}
+	}
 	var method *schema.Method
-	for _, m := range selfRes.Schema.Methods {
+	for _, m := range schemaResource.Methods {
 		if m.Name == methodName {
 			method = m
 			break
 		}
 	}
 	if method == nil {
+		token, _ := selfRes.GetToken()
 		return b.zeroCallSignature(), hcl.Diagnostics{errorf(
 			args[1].SyntaxNode().Range(),
-			"resource type %q has no method %q", selfRes.token, methodName,
+			"resource type %q has no method %q", token, methodName,
 		)}
 	}
 

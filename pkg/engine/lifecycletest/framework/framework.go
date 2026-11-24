@@ -32,8 +32,9 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
-	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,7 +45,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -54,12 +57,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -100,8 +102,10 @@ func (NopPluginManager) IsExternalURL(ctx context.Context, source string) bool {
 	return workspace.IsExternalURL(source)
 }
 
-func (NopPluginManager) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
-	return true
+func (NopPluginManager) HasPlugin(
+	ctx context.Context, spec workspace.PluginDescriptor,
+) pluginstorage.InstallState {
+	return pluginstorage.PluginInstalled
 }
 
 func (NopPluginManager) HasPluginGTE(
@@ -133,6 +137,10 @@ func (NopPluginManager) InstallPlugin(
 	reinstall bool,
 ) error {
 	return nil
+}
+
+func (NopPluginManager) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	return []workspace.PluginInfo{}, nil
 }
 
 func NewUpdateInfo(project workspace.Project, target deploy.Target) engine.UpdateInfo {
@@ -214,6 +222,7 @@ func (op TestOp) runWithContext(
 	info := NewUpdateInfo(project, target)
 
 	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	defer cancelSrc.Terminate()
 	done := make(chan bool)
 	defer close(done)
 	go func() {
@@ -229,7 +238,7 @@ func (op TestOp) runWithContext(
 		originalBase = &deploy.Snapshot{
 			Manifest:          target.Snapshot.Manifest,
 			SecretsManager:    target.Snapshot.SecretsManager,
-			Resources:         slice.Map(target.Snapshot.Resources, (*resource.State).Copy),
+			Resources:         slice.Map(target.Snapshot.Resources, (*pkgresource.State).Copy),
 			PendingOperations: target.Snapshot.PendingOperations,
 			Metadata:          target.Snapshot.Metadata,
 		}
@@ -263,11 +272,13 @@ func (op TestOp) runWithContext(
 
 		var err error
 		journaler, err = backend.NewSnapshotJournaler(
-			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot,
+		)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil)
-		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		journalSnapshotManager, err := engine.NewJournalSnapshotManagerWithVersion(
+			journaler, target.Snapshot, secretsManager, apitype.LatestJournalVersion)
 		require.NoError(opts.T, err)
 
 		combined = &engine.CombinedManager{
@@ -275,23 +286,39 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	pluginManager := opts.PluginManager
+	if pluginManager == nil {
+		pluginManager = NopPluginManager{}
+	}
 	ctx := &engine.Context{
-		Cancel:          cancelCtx,
-		Events:          events,
-		SnapshotManager: combined,
-		BackendClient:   backendClient,
-		PluginManager:   NopPluginManager{},
+		Cancel:                      cancelCtx,
+		Events:                      events,
+		BackendClient:               backendClient,
+		PluginManager:               pluginManager,
+		SnapshotManagerCapabilities: opts.SnapshotManagerCapabilities,
+	}
+	// Avoid storing a typed-nil interface value in SnapshotManager — the engine's preview actions
+	// now consult this field and would call methods on a nil receiver.
+	if combined != nil {
+		ctx.SnapshotManager = combined
 	}
 
 	updateOpts := opts.Options()
 	// We want to always run with plan generation to ensure that plans _can_ be generated.
 	// This is to prevent regressions such as https://github.com/pulumi/pulumi/pull/19750.
 	updateOpts.GeneratePlan = true
-	defer func() {
-		if updateOpts.Host != nil {
-			contract.IgnoreClose(updateOpts.Host)
+	// The engine builds the host from HostFactory and closes it when its cancel source terminates.
+	// This harness roots that source at context.Background() (it never terminates), so the engine's
+	// close never fires here -- build the host up front and close it ourselves.
+	if opts.HostF != nil {
+		host := opts.HostF()
+		defer contract.IgnoreClose(host)
+		updateOpts.HostFactory = func(
+			context.Context, diag.Sink, diag.Sink, plugin.DebugContext,
+		) (plugin.Host, error) {
+			return host, nil
 		}
-	}()
+	}
 
 	// Begin draining events.
 	firedEventsPromise := promise.Run(func() ([]engine.Event, error) {
@@ -386,7 +413,8 @@ func (op TestOp) runWithContext(
 		// the snapshot here before serializing it.
 		snap.SecretsManager = secretsManager
 		serializedSnap, _, _, err = stack.SerializeDeploymentWithMetadata(
-			context.TODO(), snap, false)
+			context.TODO(), snap, false,
+		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
 		}
@@ -728,7 +756,8 @@ func assertProgressDisplay(
 			Stderr:               &stderr,
 			DeterministicOutput:  true,
 			ShowLinkToNeo:        false,
-		}, false)
+		}, false,
+	)
 
 	for _, e := range events {
 		eventChannel <- e
@@ -771,20 +800,21 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 type TestUpdateOptions struct {
 	engine.UpdateOptions
 	// a factory to produce a plugin host for an update operation.
-	HostF            deploytest.PluginHostFactory
-	T                TB
-	SkipDisplayTests bool
+	HostF deploytest.PluginHostFactory
+	// PluginManager overrides the engine.Context.PluginManager used by the run. Defaults to NopPluginManager{}.
+	PluginManager engine.PluginManager
+	// SnapshotManagerCapabilities configures the test backend's persistence capabilities.
+	SnapshotManagerCapabilities engine.SnapshotManagerCapabilities
+	T                           TB
+	SkipDisplayTests            bool
 }
 
 // Options produces UpdateOptions for an update operation.
 func (o TestUpdateOptions) Options() engine.UpdateOptions {
 	opts := o.UpdateOptions
-	if o.HostF != nil {
-		opts.Host = o.HostF()
-	}
 	// Set a sensible parallel count because most tests leave this zero.
 	if opts.Parallel == 0 {
-		opts.Parallel = int32(runtime.NumCPU()) //nolint:gosec // NumCPU isn't going to overflow int32
+		opts.Parallel = int32(runtime.NumCPU())
 	}
 
 	return opts
@@ -794,6 +824,7 @@ type TestPlan struct {
 	Project        string
 	Stack          string
 	Runtime        string
+	NoRuntime      bool
 	RuntimeOptions map[string]any
 	Config         config.Map
 	Decrypter      config.Decrypter
@@ -810,7 +841,7 @@ func (p *TestPlan) getNames() (stack tokens.StackName, project tokens.PackageNam
 		project = "test"
 	}
 	runtime = p.Runtime
-	if runtime == "" {
+	if runtime == "" && !p.NoRuntime {
 		runtime = "test"
 	}
 	stack = tokens.MustParseStackName("test")
@@ -836,10 +867,11 @@ func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resour
 func (p *TestPlan) GetProject() workspace.Project {
 	_, projectName, runtime := p.getNames()
 
-	return workspace.Project{
-		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
+	project := workspace.Project{Name: projectName}
+	if runtime != "" {
+		project.Runtime = workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions)
 	}
+	return project
 }
 
 func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
@@ -865,7 +897,8 @@ func (p *TestPlan) GetTarget(t TB, snapshot *deploy.Snapshot) deploy.Target {
 func CloneSnapshot(t TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	t.Helper()
 	if snap != nil {
-		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
+		copiedSnap, ok := deepcopy.Copy(*snap).(deploy.Snapshot)
+		assert.True(t, ok, "failed to copy snapshot")
 		assert.True(t, reflect.DeepEqual(*snap, copiedSnap))
 		return &copiedSnap
 	}
@@ -886,9 +919,10 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 			// Don't run validate on the preview step
 			_, err := step.Op.RunStep(
 				project, previewTarget, p.Options, true, p.BackendClient, nil,
-				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run))
+				fmt.Sprintf("%s-%d-%d-preview", name, i, p.run),
+			)
 			if step.ExpectFailure {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				continue
 			}
 
@@ -900,7 +934,7 @@ func (p *TestPlan) RunWithName(t TB, snapshot *deploy.Snapshot, name string) *de
 		snap, err = step.Op.RunStep(project, target, p.Options, false, p.BackendClient, step.Validate,
 			fmt.Sprintf("%s-%d-%d", name, i, p.run))
 		if step.ExpectFailure {
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			continue
 		}
 
@@ -1058,7 +1092,8 @@ func (b *TestBuilder) WithProvider(name string, version string, prov *deploytest
 	loader := deploytest.NewProviderLoader(
 		tokens.Package(name), semver.MustParse(version), func() (plugin.Provider, error) {
 			return prov, nil
-		})
+		},
+	)
 	b.loaders = append(b.loaders, loader)
 	return b
 }
@@ -1072,7 +1107,7 @@ func (b *TestBuilder) RunUpdate(
 	program func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error, skipDisplayTests bool,
 ) *Result {
 	programF := deploytest.NewLanguageRuntimeF(program)
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, b.loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, b.loaders...)
 
 	p := &TestPlan{
 		Options: TestUpdateOptions{T: b.t, HostF: hostF, SkipDisplayTests: skipDisplayTests},
@@ -1081,7 +1116,8 @@ func (b *TestBuilder) RunUpdate(
 	// Run an update for initial state.
 	var err error
 	snap, err := TestOp(engine.Update).Run(
-		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil)
+		p.GetProject(), p.GetTarget(b.t, b.snap), p.Options, false, p.BackendClient, nil,
+	)
 	return &Result{
 		snap: snap,
 		err:  err,

@@ -46,7 +46,7 @@ func TestConstructNode(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string

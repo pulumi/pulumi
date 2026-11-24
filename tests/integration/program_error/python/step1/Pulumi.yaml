@@ -1,3 +1,6 @@
 name: program-error-python
 description: A program that throws an error
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

@@ -99,12 +99,22 @@ func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 		return nil, fmt.Errorf("failed to ping PostgreSQL: %w", err)
 	}
 
-	// Create table if it doesn't exist
-	// SECURITY NOTE: tableName is from connection string config, not user input - safe from SQL injection
-	createTableSQL := fmt.Sprintf(tableSchema, tableName, tableName, tableName)
-	if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
+	// Create the table if it doesn't exist. We check for the table first, rather than always running the schema's
+	// CREATE ... IF NOT EXISTS statements, because those require CREATE privileges even when the table already exists.
+	// This allows roles that only have read access to an existing table (e.g. for `pulumi preview`) to use the backend.
+	// to_regclass resolves the name the same way the queries below do, honoring search_path and schema-qualified names.
+	var existingTable sql.NullString
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass($1)::text", tableName).Scan(&existingTable); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("failed to create table %s: %w", tableName, err)
+		return nil, fmt.Errorf("failed to check for table %s: %w", tableName, err)
+	}
+	if !existingTable.Valid {
+		// SECURITY NOTE: tableName is from connection string config, not user input - safe from SQL injection
+		createTableSQL := fmt.Sprintf(tableSchema, tableName, tableName, tableName)
+		if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to create table %s: %w", tableName, err)
+		}
 	}
 
 	bucket := &Bucket{
@@ -393,7 +403,12 @@ func (d *postgresBucketDriver) NewTypedWriter(
 }
 
 // Delete implements driver.Bucket.Delete.
-func (d *postgresBucketDriver) Delete(ctx context.Context, key string) error {
+func (d *postgresBucketDriver) Delete(ctx context.Context, key string, opts *driver.DeleteOptions) error {
+	if opts != nil && opts.BeforeDelete != nil {
+		if err := opts.BeforeDelete(func(any) bool { return false }); err != nil {
+			return err
+		}
+	}
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf("DELETE FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
 	result, err := d.bucket.db.ExecContext(ctx, query, key)

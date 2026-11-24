@@ -19,13 +19,14 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -104,9 +105,11 @@ func TestHostEngine(t *testing.T) {
 
 			for _, ephemeral := range []bool{true, false} {
 				for _, tt := range tests {
-					tt.req.Ephemeral = ephemeral
-					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
-						output, err := hostEngine.Log(t.Context(), tt.req)
+					t.Run(tt.name, func(t *testing.T) {
+						t.Parallel()
+						req := proto.Clone(tt.req).(*pulumirpc.LogRequest)
+						req.Ephemeral = ephemeral
+						output, err := hostEngine.Log(t.Context(), req)
 						assert.Equal(t, tt.expectedError, err)
 						assert.Equal(t, tt.expectedOutput, output)
 					})
@@ -122,7 +125,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Parallel()
 		expectedVersion := semver.MustParse("1.0.0")
 		host := &pluginHost{}
-		_, err := host.Provider(workspace.PluginDescriptor{
+		_, err := host.Provider(nil, workspace.PluginDescriptor{
 			Name:    "pkgA",
 			Version: &expectedVersion,
 		}, nil)
@@ -133,7 +136,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("Provider", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.Provider(workspace.PluginDescriptor{
+			_, err := host.Provider(nil, workspace.PluginDescriptor{
 				Name:    "pkgA",
 				Version: &semver.Version{},
 			}, nil)
@@ -142,7 +145,7 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("LanguageRuntime", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.LanguageRuntime("")
+			_, err := host.LanguageRuntime(nil, "")
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("SignalCancellation", func(t *testing.T) {
@@ -151,21 +154,10 @@ func TestPluginHostProvider(t *testing.T) {
 			err := host.SignalCancellation()
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
-		t.Run("Analyzer", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			_, err := host.Analyzer("")
-			assert.ErrorIs(t, err, ErrHostIsClosed)
-		})
-		t.Run("EnsurePlugins", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			assert.ErrorIs(t, host.EnsurePlugins(nil, 0), ErrHostIsClosed)
-		})
 		t.Run("PolicyAnalyzer", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.PolicyAnalyzer("", "", nil)
+			_, err := host.PolicyAnalyzer(nil, "", "", nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 	})
@@ -178,7 +170,7 @@ func TestPluginHostProvider(t *testing.T) {
 			},
 		}
 
-		_, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
+		_, _, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
 		assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 	})
 	t.Run("Close", func(t *testing.T) {

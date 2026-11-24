@@ -1,0 +1,47 @@
+run: |
+  esc env init default/test
+  esc env set default/test path "[a" --string
+  esc env get default/test
+  esc env set default/test path hi$'\x05'world --string
+  esc env get default/test
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test path [a --string
+> esc env get default/test
+# Value
+```json
+{
+  "path": "[a"
+}
+```
+# Definition
+```yaml
+values:
+  path: '[a'
+
+```
+
+> esc env set default/test path hiworld --string
+> esc env get default/test
+# Value
+```json
+{
+  "path": "hi\u0005world"
+}
+```
+# Definition
+```yaml
+values:
+  path: "hi\x05world"
+
+```
+
+
+---
+> esc env init default/test
+> esc env set default/test path [a --string
+> esc env get default/test
+> esc env set default/test path hiworld --string
+> esc env get default/test

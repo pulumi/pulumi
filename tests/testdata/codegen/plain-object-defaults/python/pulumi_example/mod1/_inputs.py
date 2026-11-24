@@ -23,12 +23,12 @@ class TypArgsDict(TypedDict):
     """
     A test for namespaces (mod 1)
     """
-    val: NotRequired[pulumi.Input[_builtins.str]]
+    val: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class TypArgs:
     def __init__(__self__, *,
-                 val: Optional[pulumi.Input[_builtins.str]] = None):
+                 val: pulumi.Input[Optional[_builtins.str]] = None):
         """
         A test for namespaces (mod 1)
         """
@@ -39,11 +39,11 @@ class TypArgs:
 
     @_builtins.property
     @pulumi.getter
-    def val(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def val(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "val")
 
     @val.setter
-    def val(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def val(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "val", value)
 
 

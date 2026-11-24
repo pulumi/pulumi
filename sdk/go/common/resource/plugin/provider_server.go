@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -38,6 +39,11 @@ type providerServer struct {
 	provider                       Provider
 	acceptSecrets, sendSecrets     bool
 	acceptResources, sendResources bool
+
+	// True if the caller accepts strings containing bytes that are not valid UTF-8. Unlike the other
+	// capabilities this defaults to false: it is only enabled when the caller advertises it via Handshake or
+	// Configure, since older engines cannot decode the encoding.
+	sendByteString bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -62,11 +68,12 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 
 func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
-		KeepSecrets:   p.sendSecrets,
-		KeepResources: p.sendResources,
-		PropagateNil:  true,
+		Label:          label,
+		KeepUnknowns:   true,
+		KeepSecrets:    p.sendSecrets,
+		KeepResources:  p.sendResources,
+		KeepByteString: p.sendByteString,
+		PropagateNil:   true,
 	}
 }
 
@@ -151,6 +158,10 @@ func (p *providerServer) Handshake(
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		MapperTarget:                req.MapperTarget,
+		LoaderTarget:                req.LoaderTarget,
+		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		return nil, err
@@ -158,12 +169,16 @@ func (p *providerServer) Handshake(
 
 	p.acceptSecrets = res.AcceptSecrets
 	p.acceptResources = res.AcceptResources
+	p.sendByteString = req.AcceptsByteString
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
 		AcceptResources:                 res.AcceptResources,
 		AcceptOutputs:                   res.AcceptOutputs,
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		// providerServer unmarshals byte string into plain Go strings before handing them to the wrapped
+		// provider, so it can shim support regardless of the provider's own answer.
+		AcceptsByteString: true,
 	}, nil
 }
 
@@ -301,6 +316,12 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
+// CheckConfig2 is not supported by this package, so callers fall back to CheckConfig.
+func (p *providerServer) CheckConfig2(context.Context, *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "CheckConfig2 is not yet implemented")
+}
+
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
@@ -364,7 +385,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		inputs = args
 	} else {
 		inputs = make(resource.PropertyMap)
-		for k, v := range req.GetVariables() {
+		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
 			key, err := config.ParseKey(k)
 			if err != nil {
 				return nil, err
@@ -620,6 +641,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		ID:                    requestID,
 		Inputs:                inputs,
 		State:                 state,
+		Timeout:               req.GetTimeout(),
 		ResourceStatusAddress: req.GetResourceStatusAddress(),
 		ResourceStatusToken:   req.GetResourceStatusToken(),
 		OldViews:              oldViews,
@@ -644,6 +666,58 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Inputs:              rpcInputs,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
+}
+
+func (p *providerServer) List(
+	req *pulumirpc.ListRequest,
+	stream grpc.ServerStreamingServer[pulumirpc.ListResponse],
+) error {
+	query, err := UnmarshalProperties(req.GetQuery(), p.unmarshalOptions("list.query", false))
+	if err != nil {
+		return err
+	}
+	listStream, err := p.provider.List(stream.Context(), ListRequest{
+		Token:             tokens.Type(req.GetToken()),
+		Query:             query,
+		Limit:             req.GetLimit(),
+		PageSize:          req.GetPageSize(),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return err
+	}
+	for result, err := range listStream.Items {
+		if err != nil {
+			return err
+		}
+		if err := stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{
+					Id:   string(result.ID),
+					Name: result.Name,
+				},
+			},
+		}); err != nil {
+			return err
+		}
+	}
+	if listStream.Computed {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Computed_{
+				Computed: &pulumirpc.ListResponse_Computed{},
+			},
+		})
+	}
+	if listStream.ContinuationToken != "" {
+		return stream.Send(&pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Continuation_{
+				Continuation: &pulumirpc.ListResponse_Continuation{
+					ContinuationToken: listStream.ContinuationToken,
+				},
+			},
+		})
+	}
+	return nil
 }
 
 func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
@@ -829,16 +903,10 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		aliases[i] = result
 	}
-	dependencies := make([]resource.URN, len(req.GetDependencies()))
-	for i, urn := range req.GetDependencies() {
-		dependencies[i] = resource.URN(urn)
-	}
+	dependencies := slice.Cast[resource.URN](req.GetDependencies())
 	propertyDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetInputDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
-		}
+		urns := slice.Cast[resource.URN](deps.Urns)
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
 
@@ -855,10 +923,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		hooks[resource.OnError] = binding.GetOnError()
 	}
 
-	replaceWith := make([]resource.URN, len(req.GetReplaceWith()))
-	for i, urn := range req.GetReplaceWith() {
-		replaceWith[i] = resource.URN(urn)
-	}
+	replaceWith := slice.Cast[resource.URN](req.GetReplaceWith())
 
 	var replacementTrigger resource.PropertyValue
 	if trigger := req.GetReplacementTrigger(); trigger != nil {
@@ -881,7 +946,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		ResourceHooks:        hooks,
 		DeletedWith:          resource.URN(req.DeletedWith),
 		ReplaceWith:          replaceWith,
-		ReplacementTrigger:   replacementTrigger,
+		ReplacementTrigger:   resource.FromResourcePropertyValue(replacementTrigger),
 		IgnoreChanges:        req.GetIgnoreChanges(),
 		ReplaceOnChanges:     req.GetReplaceOnChanges(),
 	}
@@ -907,10 +972,7 @@ func (p *providerServer) Construct(ctx context.Context,
 
 	outputDependencies := map[string]*pulumirpc.ConstructResponse_PropertyDependencies{}
 	for name, deps := range resp.OutputDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		outputDependencies[string(name)] = &pulumirpc.ConstructResponse_PropertyDependencies{Urns: urns}
 	}
 
@@ -977,10 +1039,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
-		}
+		urns := slice.Cast[resource.URN](deps.Urns)
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
 	options := CallOptions{
@@ -1007,10 +1066,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
 	for name, deps := range result.ReturnDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 

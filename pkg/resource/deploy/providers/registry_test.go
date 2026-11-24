@@ -16,109 +16,37 @@ package providers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/blang/semver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type testPluginHost struct {
-	t             *testing.T
-	provider      func(descriptor workspace.PluginDescriptor) (plugin.Provider, error)
-	closeProvider func(provider plugin.Provider) error
-}
-
-func (host *testPluginHost) SignalCancellation() error {
-	return nil
-}
-
-func (host *testPluginHost) Close() error {
-	return nil
-}
-
-func (host *testPluginHost) ServerAddr() string {
-	host.t.Fatalf("Host RPC address not available")
-	return ""
-}
-
-func (host *testPluginHost) LoaderAddr() string {
-	host.t.Fatalf("Loader RPC address not available")
-	return ""
-}
-
-func (host *testPluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
-}
-
-func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
-}
-
-func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
-	opts *plugin.PolicyAnalyzerOptions,
-) (plugin.Analyzer, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
-	return nil
-}
-
-func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-	return host.provider(descriptor)
-}
-
-func (host *testPluginHost) LanguageRuntime(root string) (plugin.LanguageRuntime, error) {
-	return nil, errors.New("unsupported")
-}
-
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plugin.Flags) error {
-	return nil
-}
-
-func (host *testPluginHost) ResolvePlugin(
-	spec workspace.PluginDescriptor,
-) (*workspace.PluginInfo, error) {
-	return nil, nil
-}
-
-func (host *testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
-	return nil
-}
-
-func (host *testPluginHost) GetRequiredPlugins(project string, info plugin.ProgramInfo,
-	kinds plugin.Flags,
-) ([]workspace.PluginInfo, error) {
-	return nil, nil
-}
-
-func (host *testPluginHost) StartDebugging(info plugin.DebuggingInfo) error {
-	return nil
-}
-
-func (host *testPluginHost) AttachDebugger(_ plugin.DebugSpec) bool {
-	return false
+// testLogF routes a host's log lines to the test's log, matching the behavior the registry tests
+// relied on before they used plugin.MockHost.
+func testLogF(t *testing.T) func(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+	return func(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
+		t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
+	}
 }
 
 type testProvider struct {
@@ -127,14 +55,10 @@ type testProvider struct {
 	pkg         tokens.Package
 	version     semver.Version
 	configured  bool
-	checkConfig func(resource.URN, resource.PropertyMap,
-		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
+	checkConfig func(resource.URN, property.Map,
+		property.Map, bool) (property.Map, []plugin.CheckConfigFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
-	config     func(resource.PropertyMap) error
-}
-
-func (prov *testProvider) Pkg() tokens.Package {
-	return prov.pkg
+	config     func(property.Map) error
 }
 
 func (prov *testProvider) GetSchema(
@@ -153,7 +77,13 @@ func (prov *testProvider) CheckConfig(
 func (prov *testProvider) DiffConfig(
 	_ context.Context, req plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
-	return prov.diffConfig(req.URN, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
+	return prov.diffConfig(
+		req.URN,
+		resource.ToResourcePropertyMap(req.OldOutputs),
+		resource.ToResourcePropertyMap(req.NewInputs),
+		req.AllowUnknowns,
+		req.IgnoreChanges,
+	)
 }
 
 func (prov *testProvider) Configure(
@@ -190,10 +120,16 @@ type providerLoader struct {
 	load    func() (plugin.Provider, error)
 }
 
+// newTestContext wraps a test host in a plugin context for constructing a Registry.
+func newTestContext(host plugin.Host) *plugin.Context {
+	return &plugin.Context{Host: host}
+}
+
 func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
-	return &testPluginHost{
-		t: t,
-		provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+	return &plugin.MockHost{
+		LogF:       testLogF(t),
+		LogStatusF: testLogF(t),
+		ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
 			var best *providerLoader
 			for _, l := range loaders {
 				if string(l.pkg) != descriptor.Name {
@@ -211,9 +147,6 @@ func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 				return nil, nil
 			}
 			return best.load()
-		},
-		closeProvider: func(provider plugin.Provider) error {
-			return nil
 		},
 	}
 }
@@ -236,9 +169,9 @@ func newLoader(t *testing.T, pkg, version string,
 	}
 }
 
-func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.PropertyMap) error) *providerLoader {
+func newSimpleLoader(t *testing.T, pkg, version string, config func(property.Map) error) *providerLoader {
 	if config == nil {
-		config = func(resource.PropertyMap) error {
+		config = func(property.Map) error {
 			return nil
 		}
 	}
@@ -247,8 +180,8 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 			pkg:     pkg,
 			version: ver,
 			checkConfig: func(urn resource.URN, olds,
-				news resource.PropertyMap, allowUnknowns bool,
-			) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				news property.Map, allowUnknowns bool,
+			) (property.Map, []plugin.CheckConfigFailure, error) {
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -261,13 +194,13 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 	})
 }
 
-func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *resource.State {
+func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMap) *pkgresource.State {
 	typ := providers.MakeProviderType(tokens.Package(pkg))
 	urn := resource.NewURN("test", "test", "", typ, name)
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
 	}
-	return &resource.State{
+	return &pkgresource.State{
 		Type:   typ,
 		URN:    urn,
 		Custom: true,
@@ -280,17 +213,17 @@ func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMa
 func TestNewRegistryNoOldState(t *testing.T) {
 	t.Parallel()
 
-	r := NewRegistry(&testPluginHost{}, false, nil)
+	r := NewRegistry(newTestContext(&plugin.MockHost{}), false, nil)
 	require.NotNil(t, r)
 
-	r = NewRegistry(&testPluginHost{}, true, nil)
+	r = NewRegistry(newTestContext(&plugin.MockHost{}), true, nil)
 	require.NotNil(t, r)
 }
 
 func TestNewRegistryOldState(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		// Two providers from package A, each with a unique name and ID
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgA", "b", "id2", false, nil),
@@ -313,7 +246,7 @@ func TestNewRegistryOldState(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	for _, old := range olds {
@@ -335,7 +268,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.True(t, p.(*testProvider).configured)
 
-		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 
 		ver, err := GetProviderVersion(old.Inputs)
 		require.NoError(t, err)
@@ -350,7 +283,7 @@ func TestNewRegistryOldState(t *testing.T) {
 func TestCRUD(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
 		newProviderState("pkgC", "a", "id1", false, nil),
@@ -362,7 +295,7 @@ func TestCRUD(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	for _, old := range olds {
@@ -382,7 +315,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 		require.NotNil(t, p)
 
-		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 	}
 
 	// Create a new provider for each package.
@@ -394,12 +327,12 @@ func TestCRUD(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
@@ -419,7 +352,7 @@ func TestCRUD(t *testing.T) {
 		assert.NotEqual(t, "", create.ID)
 		assert.NotEqual(t, UnconfiguredID, create.ID)
 		assert.NotEqual(t, UnknownID, create.ID)
-		assert.Equal(t, resource.PropertyMap{}, create.Properties)
+		assert.Equal(t, property.Map{}, create.Properties)
 		assert.Equal(t, resource.StatusOK, create.Status)
 
 		p2, ok := r.GetProvider(mustNewReference(urn, create.ID))
@@ -440,12 +373,12 @@ func TestCRUD(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
@@ -458,8 +391,8 @@ func TestCRUD(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -473,12 +406,12 @@ func TestCRUD(t *testing.T) {
 		update, err := r.Update(t.Context(), plugin.UpdateRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
 			NewInputs:  check.Properties,
 			Timeout:    timeout,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{}, update.Properties)
+		assert.Equal(t, property.Map{}, update.Properties)
 		assert.Equal(t, resource.StatusOK, update.Status)
 
 		p3, ok := r.GetProvider(mustNewReference(urn, id))
@@ -500,8 +433,8 @@ func TestCRUD(t *testing.T) {
 		resp, err := r.Delete(t.Context(), plugin.DeleteRequest{
 			URN:     urn,
 			ID:      id,
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
+			Inputs:  property.Map{},
+			Outputs: property.Map{},
 			Timeout: timeout,
 		})
 		require.NoError(t, err)
@@ -515,7 +448,7 @@ func TestCRUD(t *testing.T) {
 func TestCRUDPreview(t *testing.T) {
 	t.Parallel()
 
-	olds := []*resource.State{
+	olds := []*pkgresource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
 		newProviderState("pkgC", "a", "id1", false, nil),
@@ -530,8 +463,8 @@ func TestCRUDPreview(t *testing.T) {
 				pkg:     pkg,
 				version: ver,
 				checkConfig: func(urn resource.URN, olds,
-					news resource.PropertyMap, allowUnknowns bool,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					news property.Map, allowUnknowns bool,
+				) (property.Map, []plugin.CheckConfigFailure, error) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
@@ -540,7 +473,7 @@ func TestCRUDPreview(t *testing.T) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},
-				config: func(inputs resource.PropertyMap) error {
+				config: func(inputs property.Map) error {
 					return nil
 				},
 			}, nil
@@ -548,7 +481,7 @@ func TestCRUDPreview(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, true, nil)
+	r := NewRegistry(newTestContext(host), true, nil)
 	require.NotNil(t, r)
 
 	for _, old := range olds {
@@ -568,7 +501,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 		require.NotNil(t, p)
 
-		assert.Equal(t, providers.GetProviderPackage(old.Type), p.Pkg())
+		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 	}
 
 	// Create a new provider for each package.
@@ -579,12 +512,12 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should not be configured: configuration will occur during the previewed Create.
@@ -604,12 +537,12 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
@@ -622,8 +555,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -646,12 +579,12 @@ func TestCRUDPreview(t *testing.T) {
 
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: olds,
-			News: news,
+			URN:       urn,
+			OldInputs: resource.FromResourcePropertyMap(olds),
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, check.Properties)
+		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
@@ -664,8 +597,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: olds,
-			NewInputs:  news,
+			OldOutputs: resource.FromResourcePropertyMap(olds),
+			NewInputs:  resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.True(t, diff.Replace())
@@ -683,7 +616,7 @@ func TestCRUDNoProviders(t *testing.T) {
 
 	host := newPluginHost(t, []*providerLoader{})
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -692,13 +625,13 @@ func TestCRUDNoProviders(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDWrongPackage(t *testing.T) {
@@ -709,7 +642,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -718,13 +651,13 @@ func TestCRUDWrongPackage(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDWrongVersion(t *testing.T) {
@@ -735,7 +668,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -744,13 +677,13 @@ func TestCRUDWrongVersion(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDBadVersionNotString(t *testing.T) {
@@ -761,7 +694,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -770,14 +703,14 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	require.NoError(t, err)
 	require.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
 func TestCRUDBadVersion(t *testing.T) {
@@ -788,7 +721,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType("pkgA")
@@ -797,17 +730,16 @@ func TestCRUDBadVersion(t *testing.T) {
 
 	// Check
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: olds,
-		News: news,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(olds),
+		NewInputs: resource.FromResourcePropertyMap(news),
 	})
 	require.NoError(t, err)
 	require.Len(t, check.Failures, 1)
 	assert.Equal(t, "version", string(check.Failures[0].Property))
-	assert.Nil(t, check.Properties)
+	assert.Equal(t, property.Map{}, check.Properties)
 }
 
-//nolint:paralleltest
 func TestLoadProvider_missingError(t *testing.T) {
 	var count int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -834,7 +766,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			t.Context(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */, nil)
+			nil, newTestContext(host), nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v1.2.3")
 		assert.Equal(t, 0, count)
@@ -846,7 +778,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		_, err := loadProvider(
 			t.Context(),
 			"myplugin", &version, srv.URL,
-			nil, host, nil /* builtins */, nil)
+			nil, newTestContext(host), nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
 			"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
 		assert.ErrorContains(t, err,
@@ -866,13 +798,13 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 	require.NotNil(t, r)
 
 	// We're going to create a few thousand providers in parallel, registering a load of aliases for each of
 	// them.
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -880,7 +812,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			typ := providers.MakeProviderType("pkgA")
 			providerURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d", i))
 
-			for j := 0; j < 1000; j++ {
+			for j := range 1000 {
 				aliasURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d_%d", i, j))
 				r.RegisterAlias(providerURN, aliasURN)
 			}
@@ -890,14 +822,14 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 
 			// Check
 			check, err := r.Check(t.Context(), plugin.CheckRequest{
-				URN:  providerURN,
-				Olds: olds,
-				News: news,
+				URN:       providerURN,
+				OldInputs: resource.FromResourcePropertyMap(olds),
+				NewInputs: resource.FromResourcePropertyMap(news),
 			})
 			require.NoError(t, err)
 			require.Len(t, check.Failures, 1)
 			assert.Equal(t, "version", string(check.Failures[0].Property))
-			assert.Nil(t, check.Properties)
+			assert.Equal(t, property.Map{}, check.Properties)
 		}(i)
 	}
 }
@@ -910,11 +842,6 @@ func TestRegistry(t *testing.T) {
 		assert.Nil(t, r.Close())
 		// Ensure idempotent.
 		assert.Nil(t, r.Close())
-	})
-	t.Run("Pkg", func(t *testing.T) {
-		t.Parallel()
-		r := &Registry{}
-		assert.Equal(t, tokens.Package("pulumi"), r.Pkg())
 	})
 	t.Run("GetSchema", func(t *testing.T) {
 		t.Parallel()
@@ -1096,7 +1023,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		}
 		host := newPluginHost(t, loaders)
 
-		r := NewRegistry(host, false, nil)
+		r := NewRegistry(newTestContext(host), false, nil)
 		require.NotNil(t, r)
 
 		// Same the provider
@@ -1125,7 +1052,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		}
 		host := newPluginHost(t, loaders)
 
-		r := NewRegistry(host, false, nil)
+		r := NewRegistry(newTestContext(host), false, nil)
 		require.NotNil(t, r)
 
 		typ := providers.MakeProviderType(tokens.Package("testPackage"))
@@ -1138,15 +1065,15 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 
 		// Check should succeed and preserve the mappings
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: resource.PropertyMap{},
-			News: news,
+			URN:       urn,
+			OldInputs: property.Map{},
+			NewInputs: resource.FromResourcePropertyMap(news),
 		})
 		require.NoError(t, err)
 		assert.Empty(t, check.Failures)
 
 		// The returned properties should contain the mappings
-		retrieved, err := GetEnvironmentVariableMappings(check.Properties)
+		retrieved, err := GetEnvironmentVariableMappings(resource.ToResourcePropertyMap(check.Properties))
 		require.NoError(t, err)
 		assert.Equal(t, mappings, retrieved)
 	})
@@ -1159,7 +1086,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		}
 		host := newPluginHost(t, loaders)
 
-		r := NewRegistry(host, false, nil)
+		r := NewRegistry(newTestContext(host), false, nil)
 		require.NotNil(t, r)
 
 		typ := providers.MakeProviderType(tokens.Package("testPackage"))
@@ -1172,9 +1099,9 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 
 		// Call Check first
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
-			URN:  urn,
-			Olds: resource.PropertyMap{},
-			News: inputs,
+			URN:       urn,
+			OldInputs: property.Map{},
+			NewInputs: resource.FromResourcePropertyMap(inputs),
 		})
 		require.NoError(t, err)
 
@@ -1196,47 +1123,37 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 	})
 }
 
-// testPluginHostWithEnvCapture is a test host that captures the env passed to Provider()
-type testPluginHostWithEnvCapture struct {
-	testPluginHost
-	capturedEnv env.Env
-}
-
-//nolint:lll
-func (host *testPluginHostWithEnvCapture) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-	host.capturedEnv = e
-	return host.provider(descriptor)
-}
-
 func TestEnvMappingsPassedToHost(t *testing.T) {
 	// Set SOURCE_VAR in the environment so the mapping can be tested
 	t.Setenv("CUSTOM_VAR", "use-this-value")
 
 	// Create a host that captures the environment passed to Provider()
-	customHost := &testPluginHostWithEnvCapture{
-		testPluginHost: testPluginHost{
-			t: t,
-			provider: func(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
-				return &testProvider{
-					pkg:     tokens.Package(descriptor.Name),
-					version: semver.MustParse("1.0.0"),
-					//nolint:lll
-					checkConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
-						return news, nil, nil
-					},
-					//nolint:lll
-					diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-						return plugin.DiffResult{}, nil
-					},
-					config: func(inputs resource.PropertyMap) error {
-						return nil
-					},
-				}, nil
-			},
+	var capturedEnv env.Env
+	customHost := &plugin.MockHost{
+		LogF:       testLogF(t),
+		LogStatusF: testLogF(t),
+		//nolint:lll
+		ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+			capturedEnv = e
+			return &testProvider{
+				pkg:     tokens.Package(descriptor.Name),
+				version: semver.MustParse("1.0.0"),
+				//nolint:lll
+				checkConfig: func(urn resource.URN, olds, news property.Map, allowUnknowns bool) (property.Map, []plugin.CheckConfigFailure, error) {
+					return news, nil, nil
+				},
+				//nolint:lll
+				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				config: func(inputs property.Map) error {
+					return nil
+				},
+			}, nil
 		},
 	}
 
-	r := NewRegistry(customHost, false, nil)
+	r := NewRegistry(newTestContext(customHost), false, nil)
 	require.NotNil(t, r)
 
 	typ := providers.MakeProviderType(tokens.Package("testPackage"))
@@ -1247,16 +1164,16 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 
 	// Load the provider and pass env to host
 	_, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: resource.PropertyMap{},
-		News: inputs,
+		URN:       urn,
+		OldInputs: property.Map{},
+		NewInputs: resource.FromResourcePropertyMap(inputs),
 	})
 	require.NoError(t, err)
 
 	// Verify that an env was passed to the host
-	require.NotNil(t, customHost.capturedEnv, "Environment should be passed to host.Provider()")
+	require.NotNil(t, capturedEnv, "Environment should be passed to host.Provider()")
 
-	store := customHost.capturedEnv.GetStore()
+	store := capturedEnv.GetStore()
 	require.NotNil(t, store, "Environment should have a store")
 
 	targetValue, ok := store.Raw("PROVIDER_VAR")
@@ -1303,8 +1220,8 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
-						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						urn resource.URN, olds, news property.Map, allowUnknowns bool,
+					) (property.Map, []plugin.CheckConfigFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1312,7 +1229,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 					) (plugin.DiffResult, error) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					},
-					config: func(resource.PropertyMap) error { return nil },
+					config: func(property.Map) error { return nil },
 				},
 			}
 			providersMu.Lock()
@@ -1323,7 +1240,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	}
 	host := newPluginHost(t, []*providerLoader{loader})
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 
 	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
 	id := resource.ID("id1")
@@ -1332,24 +1249,24 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 
 	// First, do the Check/Diff/Update flow to register the provider with new config.
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: oldInputs,
-		News: newInputs,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs: resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
 	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  newInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
 	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
 		NewInputs:  check.Properties,
 	})
 	require.NoError(t, err)
@@ -1391,8 +1308,8 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 					pkg:     "pkgA",
 					version: semver.MustParse("1.0.0"),
 					checkConfig: func(
-						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						urn resource.URN, olds, news property.Map, allowUnknowns bool,
+					) (property.Map, []plugin.CheckConfigFailure, error) {
 						return news, nil, nil
 					},
 					diffConfig: func(
@@ -1400,7 +1317,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 					) (plugin.DiffResult, error) {
 						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 					},
-					config: func(resource.PropertyMap) error { return nil },
+					config: func(property.Map) error { return nil },
 				},
 			}
 			providersMu.Lock()
@@ -1411,7 +1328,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	}
 	host := newPluginHost(t, []*providerLoader{loader})
 
-	r := NewRegistry(host, false, nil)
+	r := NewRegistry(newTestContext(host), false, nil)
 
 	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
 	id := resource.ID("id1")
@@ -1432,17 +1349,17 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 
 	// Now do the Check/Diff/Update flow.
 	check, err := r.Check(t.Context(), plugin.CheckRequest{
-		URN:  urn,
-		Olds: oldInputs,
-		News: newInputs,
+		URN:       urn,
+		OldInputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs: resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
 	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
-		NewInputs:  newInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+		NewInputs:  resource.FromResourcePropertyMap(newInputs),
 	})
 	require.NoError(t, err)
 
@@ -1455,7 +1372,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
-		OldOutputs: oldInputs,
+		OldOutputs: resource.FromResourcePropertyMap(oldInputs),
 		NewInputs:  check.Properties,
 	})
 	require.NoError(t, err)
@@ -1476,7 +1393,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 	t.Parallel()
 
 	// Run the test multiple times to increase chance of hitting race conditions.
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		func() {
 			// Create a loader that returns closable providers so we can track closes.
 			var createdProviders []*closableTestProvider
@@ -1490,8 +1407,8 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 							pkg:     "pkgA",
 							version: semver.MustParse("1.0.0"),
 							checkConfig: func(
-								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
-							) (resource.PropertyMap, []plugin.CheckFailure, error) {
+								urn resource.URN, olds, news property.Map, allowUnknowns bool,
+							) (property.Map, []plugin.CheckConfigFailure, error) {
 								return news, nil, nil
 							},
 							diffConfig: func(
@@ -1499,7 +1416,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 							) (plugin.DiffResult, error) {
 								return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 							},
-							config: func(resource.PropertyMap) error { return nil },
+							config: func(property.Map) error { return nil },
 						},
 					}
 					providersMu.Lock()
@@ -1510,7 +1427,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 			}
 			host := newPluginHost(t, []*providerLoader{loader})
 
-			r := NewRegistry(host, false, nil)
+			r := NewRegistry(newTestContext(host), false, nil)
 
 			urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
 			id := resource.ID("id1")
@@ -1519,17 +1436,17 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 
 			// Do Check first (outside of goroutines) since Update depends on it.
 			check, err := r.Check(t.Context(), plugin.CheckRequest{
-				URN:  urn,
-				Olds: oldInputs,
-				News: newInputs,
+				URN:       urn,
+				OldInputs: resource.FromResourcePropertyMap(oldInputs),
+				NewInputs: resource.FromResourcePropertyMap(newInputs),
 			})
 			require.NoError(t, err)
 
 			_, err = r.Diff(t.Context(), plugin.DiffRequest{
 				URN:        urn,
 				ID:         id,
-				OldOutputs: oldInputs,
-				NewInputs:  newInputs,
+				OldOutputs: resource.FromResourcePropertyMap(oldInputs),
+				NewInputs:  resource.FromResourcePropertyMap(newInputs),
 			})
 			require.NoError(t, err)
 
@@ -1548,7 +1465,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 				_, _ = r.Update(t.Context(), plugin.UpdateRequest{
 					URN:        urn,
 					ID:         id,
-					OldOutputs: oldInputs,
+					OldOutputs: resource.FromResourcePropertyMap(oldInputs),
 					NewInputs:  check.Properties,
 				})
 			}()

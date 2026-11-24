@@ -23,17 +23,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
-//go:embed pulumipus.ans
-var pulumipusArt string
+//go:embed neo.ans
+var neoArt string
 
 // welcomeModel holds the data needed to render the startup banner.
 type welcomeModel struct {
 	org        string
 	workDir    string
 	username   string
+	version    string // CLI version, e.g. "v3.235.0"; empty in dev builds
 	consoleURL string
 	termWidth  int
 	greeting   string // cached greeting, picked once at creation
@@ -90,9 +93,10 @@ func pickGreeting(name string) string {
 	return fmt.Sprintf(templates[rand.Intn(len(templates))], boldName) //nolint:gosec
 }
 
-// View renders the welcome box with the Pulumipus mascot art.
+// View renders the welcome banner with the Neo art.
 func (w welcomeModel) View() string {
 	magenta := lipgloss.Color("5")
+	bracketStyle := lipgloss.NewStyle().Foreground(magenta)
 	dim := lipgloss.NewStyle().Faint(true)
 
 	displayDir := w.workDir
@@ -102,39 +106,38 @@ func (w welcomeModel) View() string {
 		}
 	}
 
-	// Total box width (incl. border) = termWidth - 2 outer indent.
-	// contentWidth = total - 2 border - 4 horizontal padding.
-	totalWidth := max(w.termWidth, 30)
-	contentWidth := max(totalWidth-2-2-4, 20)
+	// Content width caps how aggressively the info line gets truncated when
+	// path + org won't fit. The bracket gutter ("│ ") is 2 cols, and we leave
+	// another small cushion so nothing ends at the wrap boundary.
+	contentWidth := max(w.termWidth-4, 20)
 
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(magenta).
-		Width(contentWidth).
-		Align(lipgloss.Center)
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(magenta)
 
-	infoText := displayDir
+	suffix := ""
 	if w.org != "" {
-		infoText += " · org: " + w.org
+		suffix += " · org: " + w.org
 	}
-	if lipgloss.Width(infoText) > contentWidth && w.org != "" {
-		orgSuffix := " · org: " + w.org
-		maxPath := contentWidth - lipgloss.Width(orgSuffix)
+	if w.version != "" {
+		suffix += " · " + w.version
+	}
+	infoText := displayDir + suffix
+	if lipgloss.Width(infoText) > contentWidth && suffix != "" {
+		maxPath := contentWidth - lipgloss.Width(suffix)
 		if maxPath > 3 {
 			pathRunes := []rune(displayDir)
 			if len(pathRunes) > maxPath {
 				displayDir = string(pathRunes[:maxPath-3]) + "..."
 			}
-			infoText = displayDir + orgSuffix
+			infoText = displayDir + suffix
 		}
 	}
 
 	parts := []string{
+		strings.TrimRight(neoArt, "\n"),
+		"",
 		titleStyle.Render("Pulumi Neo"),
 		"",
 		w.greeting,
-		"",
-		strings.TrimRight(pulumipusArt, "\n"),
 		"",
 		dim.Render(infoText),
 	}
@@ -145,15 +148,8 @@ func (w welcomeModel) View() string {
 		if len([]rune(linkText)) > maxLink && maxLink > 3 {
 			linkText = string([]rune(linkText)[:maxLink-3]) + "..."
 		}
-		hyperlink := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", w.consoleURL, linkText)
-		parts = append(parts, dim.Render("⟡ "+hyperlink))
+		parts = append(parts, dim.Render("⟡ "+colors.Always.Hyperlink(w.consoleURL, linkText)))
 	}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(magenta).
-		Padding(1, 2).
-		Margin(1, 0, 1, 2).
-		Width(contentWidth).
-		Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
+	return renderLeftBracket(bracketStyle, strings.Join(parts, "\n"))
 }

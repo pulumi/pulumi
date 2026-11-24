@@ -1,0 +1,36 @@
+run: |
+  esc env run --draft=EXAMPLE default/test dump-env
+process:
+  commands:
+    dump-env: |
+      echo "secret: $SECRET, plain: $PLAIN, bool: $BOOL, num: $NUM, file: $FILE, boolFile: $BOOL_FILE, numFile: $NUM_FILE"
+    echo: |
+      echo $*
+    source-file: |
+      source $FILE
+      echo "secret: $F_SECRET, plain: $F_PLAIN"
+environments:
+  test-user/default/test_DRAFT:
+    values:
+      secret: {"fn::secret": "hunter2"}
+      plain: plaintext
+      yup: true
+      pi: 3.14
+      environmentVariables:
+        SECRET: ${secret}
+        PLAIN: ${plain}
+        BOOL: ${yup}
+        NUM: ${pi}
+      files:
+        FILE: |
+          export F_SECRET=${secret}
+          export F_PLAIN=${plain}
+        BOOL_FILE: ${yup}
+        NUM_FILE: ${pi}
+
+---
+> esc env run --draft=EXAMPLE default/test dump-env
+secret: [secret], plain: plaintext, bool: true, num: 3.14, file: temp/esc-temp-1, boolFile: temp/esc-temp-0, numFile: temp/esc-temp-2
+
+---
+> esc env run --draft=EXAMPLE default/test dump-env

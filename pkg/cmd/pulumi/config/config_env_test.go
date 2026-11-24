@@ -19,11 +19,10 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"testing"
 
-	"github.com/acarl005/stripansi"
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/eval"
-	"github.com/pulumi/esc/syntax"
+	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -33,9 +32,14 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/require"
 )
 
 func newConfigEnvCmdForTest(
@@ -84,13 +88,20 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 	newStackYAML *string,
 ) *configEnvCmd {
 	stackRef := "stack"
+	configFile := ""
 	return &configEnvCmd{
 		stdin:       stdin,
 		stdout:      stdout,
 		interactive: true,
 
+		prompt: func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+			surveyAskOpts ...survey.AskOpt,
+		) string {
+			return defaultOption
+		},
+
 		ws: &pkgWorkspace.MockContext{
-			ReadProjectF: func() (*workspace.Project, string, error) {
+			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
 				if err != nil {
 					return nil, "", err
@@ -106,6 +117,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			stackName string,
 			lopt cmdStack.LoadOption,
 			opts display.Options,
+			configFile string,
 		) (backend.Stack, error) {
 			return &backend.MockStack{
 				RefF: func() backend.StackReference {
@@ -133,11 +145,11 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 
 		loadProjectStack: func(
-			_ context.Context, d diag.Sink, p *workspace.Project, _ backend.Stack,
+			_ context.Context, d diag.Sink, p *workspace.Project, _ backend.Stack, configFile string,
 		) (*workspace.ProjectStack, error) {
 			return workspace.LoadProjectStackBytes(d, p, []byte(projectStackYAML), "Pulumi.stack.yaml", encoding.YAML)
 		},
-		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack) error {
+		saveProjectStack: func(_ context.Context, _ backend.Stack, ps *workspace.ProjectStack, configFile string) error {
 			b, err := encoding.YAML.Marshal(ps)
 			if err != nil {
 				return err
@@ -145,7 +157,8 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 			*newStackYAML = string(b)
 			return nil
 		},
-		stackRef: &stackRef,
+		stackRef:   &stackRef,
+		configFile: &configFile,
 	}
 }
 
@@ -186,12 +199,16 @@ func mapEvalDiags(diags syntax.Diagnostics) apitype.EnvironmentDiagnostics {
 type envDefMap map[string]string
 
 // LoadEnvironment loads the definition for the environment with the given name.
-func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, eval.Decrypter, error) {
+func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, string, eval.Decrypter, error) {
 	def, ok := m[name]
 	if !ok {
-		return nil, nil, errors.New("not found")
+		return nil, "", nil, errors.New("not found")
 	}
-	return []byte(def), nil, nil
+	return []byte(def), name, nil, nil
+}
+
+func (m envDefMap) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
 }
 
 func newConfigEnvCmdForInitTest(
@@ -218,7 +235,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, err
 			}
-			_, checkDiags := eval.CheckEnvironment(ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false)
+			_, checkDiags := eval.CheckEnvironment(
+				ctx, name, decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			if len(diags) != 0 {
 				return mapEvalDiags(diags), nil
@@ -235,7 +254,9 @@ func newConfigEnvCmdForInitTest(
 			if err != nil {
 				return nil, nil, err
 			}
-			env, checkDiags := eval.CheckEnvironment(ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false)
+			env, checkDiags := eval.CheckEnvironment(
+				ctx, "<yaml>", decl, nil, nil, envs, &esc.ExecContext{}, false, eval.EvalOptions{},
+			)
 			diags.Extend(checkDiags...)
 			return env, mapEvalDiags(diags), nil
 		},
@@ -243,11 +264,38 @@ func newConfigEnvCmdForInitTest(
 	)
 }
 
-// The library sending the confirmation prompt may be able to print the prompt
-// in full before recognizing the character we send to stdin for the test.
-// There's nothing really wrong with that other than it makes the tests flake.
-// This cleans the extra output from stdout in case it happens, as it either
-// happening or not happening is fine.
-func cleanStdoutIncludingPrompt(stdout string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(stripansi.Strip(stdout), "\r", ""), "Save? ▸Yes  No", "")
+// cleanStdout strips ANSI escape codes and carriage returns from captured output so
+// assertions can compare plain text.
+func cleanStdout(stdout string) string {
+	return strings.ReplaceAll(ansi.Strip(stdout), "\r", "")
+}
+
+func TestConfigEnvEditRejectsConfigFileOnManagedStack(t *testing.T) {
+	t.Parallel()
+
+	newManagedCmd := func(saved *string) *configEnvCmd {
+		cmd := newConfigEnvCmdForTest(nil, io.Discard, "name: app\nruntime: yaml",
+			"environment:\n  imports:\n    - proj/base\n", &esc.Environment{}, nil, saved)
+		withManagedEnvironment(t, cmd)
+		configFile := "Pulumi.alt.yaml"
+		cmd.configFile = &configFile
+		return cmd
+	}
+	const expected = "--config-file is not supported on stacks with an ESC-managed environment yet"
+
+	t.Run("add", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		add := &configEnvAddCmd{parent: newManagedCmd(&saved), yes: true}
+		require.EqualError(t, add.run(t.Context(), []string{"proj/other"}), expected)
+		require.Empty(t, saved)
+	})
+
+	t.Run("rm", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		rm := &configEnvRmCmd{parent: newManagedCmd(&saved), yes: true}
+		require.EqualError(t, rm.run(t.Context(), []string{"proj/base"}), expected)
+		require.Empty(t, saved)
+	})
 }

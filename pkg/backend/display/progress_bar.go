@@ -93,7 +93,7 @@ func renderASCIIProgressBar(width int, completed int64, total int64) string {
 	var b strings.Builder
 	b.Grow(width)
 	b.WriteRune('[')
-	for i := 0; i < innerWidth; i++ {
+	for i := range innerWidth {
 		if i == offset {
 			b.WriteRune('>')
 		} else if i < offset {
@@ -126,7 +126,7 @@ func renderUnicodeProgressBar(width int, completed int64, total int64) string {
 	var b strings.Builder
 	b.Grow(width)
 	b.WriteRune('[')
-	for i := 0; i < innerWidth; i++ {
+	for i := range innerWidth {
 		if i == offset {
 			if subOffset == 0 {
 				b.WriteRune(' ')

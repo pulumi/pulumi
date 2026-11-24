@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // containsAllRunes returns true if every rune in want appears in s. Lipgloss
@@ -34,40 +33,11 @@ func containsAllRunes(s, want string) bool {
 	return true
 }
 
-func TestPickThinkingVerb(t *testing.T) {
-	t.Parallel()
-
-	// Every draw must be either "Thinking" or one of the curated themed verbs —
-	// the function must never leak an out-of-list string (e.g. from a slice
-	// index off-by-one after the list is edited). With the global math/rand
-	// auto-seeded, 200 draws are enough to hit both the 60% "Thinking" branch
-	// and the 40% themed branch with overwhelming probability; the allowlist
-	// check itself is deterministic regardless of the seed.
-	allowed := map[string]bool{"Thinking": true}
-	for _, v := range thinkingVerbs {
-		allowed[v] = true
-	}
-
-	sawThinking := false
-	sawThemed := false
-	for range 200 {
-		got := pickThinkingVerb()
-		require.True(t, allowed[got], "unexpected verb: %q", got)
-		if got == "Thinking" {
-			sawThinking = true
-		} else {
-			sawThemed = true
-		}
-	}
-	assert.True(t, sawThinking, "expected at least one \"Thinking\" draw in 200 iterations")
-	assert.True(t, sawThemed, "expected at least one themed-verb draw in 200 iterations")
-}
-
 func TestShimmerLabel_EmptyText(t *testing.T) {
 	t.Parallel()
 
-	assert.Empty(t, shimmerLabel("", shimmerVerb, 0))
-	assert.Empty(t, shimmerLabel("", shimmerWave, 5))
+	assert.Empty(t, shimmerLabel("", shimmerVerb, 0, true))
+	assert.Empty(t, shimmerLabel("", shimmerWave, 5, true))
 }
 
 func TestShimmerLabel_Dispatch(t *testing.T) {
@@ -80,16 +50,16 @@ func TestShimmerLabel_Dispatch(t *testing.T) {
 	const text = "hello"
 	const frame = 3
 
-	wave := shimmerLabel(text, shimmerWave, frame)
-	spot := shimmerLabel(text, shimmerVerb, frame)
-	unknown := shimmerLabel(text, shimmerKind(999), frame)
+	wave := shimmerLabel(text, shimmerWave, frame, true)
+	spot := shimmerLabel(text, shimmerVerb, frame, true)
+	unknown := shimmerLabel(text, shimmerKind(999), frame, true)
 
 	// shimmerLabel is a thin dispatcher; each branch must return exactly what
 	// the underlying builder returns. Comparing against the raw builders both
 	// proves dispatch and pins the fall-through: an unknown kind must behave
 	// like the spotlight (the zero value / default arm), not crash or fall
 	// back to empty.
-	assert.Equal(t, buildWave(text, frame), wave)
+	assert.Equal(t, buildWave(text, frame, true), wave)
 	assert.Equal(t, buildSpotlight(text, frame), spot)
 	assert.Equal(t, spot, unknown, "unknown shimmerKind must fall back to spotlight")
 }
@@ -116,8 +86,8 @@ func TestBuildSpotlight_PositionWraps(t *testing.T) {
 
 func TestBuildWave_EmptyText(t *testing.T) {
 	t.Parallel()
-	assert.Empty(t, buildWave("", 0))
-	assert.Empty(t, buildWave("", 42))
+	assert.Empty(t, buildWave("", 0, true))
+	assert.Empty(t, buildWave("", 42, true))
 }
 
 func TestBuildWave_PreservesRunes(t *testing.T) {
@@ -125,8 +95,12 @@ func TestBuildWave_PreservesRunes(t *testing.T) {
 
 	const text = "read_file ..."
 	for frame := range 20 {
-		got := buildWave(text, frame)
-		assert.Truef(t, containsAllRunes(got, text), "frame %d: missing runes from %q", frame, got)
+		// Cover both palettes — runes must survive regardless of bg polarity.
+		for _, dark := range []bool{true, false} {
+			got := buildWave(text, frame, dark)
+			assert.Truef(t, containsAllRunes(got, text),
+				"frame %d (hasDarkBackground=%v): missing runes from %q", frame, dark, got)
+		}
 	}
 }
 
@@ -139,6 +113,6 @@ func TestBuildWave_CyclesWithPeriod(t *testing.T) {
 	// drift.
 	text := "abcdef"
 	period := len([]rune(text)) + len(waveStyles)
-	assert.Equal(t, buildWave(text, 0), buildWave(text, period))
-	assert.Equal(t, buildWave(text, 2), buildWave(text, 2+period))
+	assert.Equal(t, buildWave(text, 0, true), buildWave(text, period, true))
+	assert.Equal(t, buildWave(text, 2, true), buildWave(text, 2+period, true))
 }

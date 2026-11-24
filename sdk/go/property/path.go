@@ -38,17 +38,6 @@ func PathFromSegments(segments ...PathSegment) Path {
 	return Path{pathReprFromSegments(segments), struct{}{}}
 }
 
-// MustParsePath parses text into a [Path], panicking on parse errors.
-//
-// It is intended for tests and other contexts where the input is a known-good literal.
-func MustParsePath(text string) Path {
-	var p Path
-	if err := p.UnmarshalText([]byte(text)); err != nil {
-		panic(err)
-	}
-	return p
-}
-
 var (
 	_ encoding.TextMarshaler   = Path{}
 	_ encoding.TextUnmarshaler = &Path{}
@@ -65,7 +54,7 @@ func (p *Path) UnmarshalText(text []byte) error {
 	}
 	*p = Path{}
 	for v := range g.segments {
-		if _, ok := v.(SplatSegment); ok {
+		if _, ok := v.(splat); ok {
 			return errors.New("splat not allowed in non-glob paths")
 		}
 	}
@@ -173,7 +162,7 @@ func NewSegment[T interface{ string | int }](v T) PathSegment {
 		return KeySegment{v}
 	case int:
 		contract.Assertf(v >= 0, "index must be non-negative, got %d", v)
-		return IndexSegment{uint64(v)} //nolint:gosec // checked above
+		return IndexSegment{uint64(v)}
 	default:
 		panic("impossible")
 	}
@@ -215,11 +204,11 @@ type IndexSegment struct {
 	i uint64
 }
 
-func (k IndexSegment) Index() int { return int(k.i) } //nolint:gosec // will always fit
+func (k IndexSegment) Index() int { return int(k.i) }
 
 func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsArray() {
-		i := int(k.i) //nolint:gosec // will always fit
+		i := int(k.i)
 		a := v.AsArray()
 		if i >= a.Len() {
 			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: i}
@@ -298,4 +287,25 @@ func (g Path) Segments(yield func(PathSegment) bool) {
 			return
 		}
 	}
+}
+
+// AppendSegment returns a new [Path] with seg appended to its segments. The receiver is
+// not modified.
+//
+// For the common cases of appending a map key or array index, prefer [Path.AppendKey]
+// or [Path.AppendIndex] to avoid the explicit [NewSegment] wrapping.
+func (p Path) AppendSegment(seg PathSegment) Path {
+	return Path{p.appendGlobSegment(seg), struct{}{}}
+}
+
+// AppendKey returns a new [Path] with a [KeySegment] for key appended. The receiver is
+// not modified. It is sugar for p.AppendSegment(NewSegment(key)).
+func (p Path) AppendKey(key string) Path {
+	return p.AppendSegment(KeySegment{key})
+}
+
+// AppendIndex returns a new [Path] with an [IndexSegment] for i appended. The receiver
+// is not modified. It is sugar for p.AppendSegment(NewSegment(i)).
+func (p Path) AppendIndex(i int) Path {
+	return p.AppendSegment(IndexSegment{uint64(i)})
 }

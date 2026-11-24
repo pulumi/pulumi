@@ -33,7 +33,7 @@ func ToResourcePropertyMap(v property.Map) PropertyMap {
 	return rMap
 }
 
-// Translate a Value into a PropertyValue.
+// Translate a [property.Value] into a [PropertyValue].
 //
 // This is a lossless transition, such that this will be true:
 //
@@ -71,26 +71,26 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		})
 	case v.IsNull():
 		r = NewNullProperty()
+	case v.IsComputed():
+		r = MakeComputed(NewProperty(""))
 	}
 
 	switch {
-	case len(v.Dependencies()) > 0 || (v.Secret() && v.IsComputed()):
+	case len(v.Dependencies()) > 0:
 		r = NewProperty(Output{
 			Element:      r,
 			Known:        !v.IsComputed(),
-			Secret:       v.Secret(),
+			Secret:       v.IsSecret(),
 			Dependencies: v.Dependencies(),
 		})
-	case v.Secret():
+	case v.IsSecret():
 		r = MakeSecret(r)
-	case v.IsComputed():
-		r = MakeComputed(NewProperty(""))
 	}
 
 	return r
 }
 
-// Translate a [PropertyValue] into a [property.Value].
+// Translate a [PropertyMap] into a [property.Map].
 //
 // This is a normalizing transition, such that the last expression will be true:
 //
@@ -104,7 +104,7 @@ func FromResourcePropertyMap(v PropertyMap) property.Map {
 	return property.NewMap(rMap)
 }
 
-// Translate a PropertyValue into a Value.
+// Translate a [PropertyValue] into a [property.Value].
 //
 // This is a normalizing transition, such that the last expression will be true:
 //
@@ -175,37 +175,99 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 	}
 }
 
-func FromResourcePropertyPath(path PropertyPath) property.Glob {
-	var dst []property.GlobSegment
-	for _, s := range path {
-		switch s := s.(type) {
-		case int:
-			dst = append(dst, property.NewSegment(s))
-		case string:
-			if s == "*" {
-				dst = append(dst, property.Splat)
-			} else {
-				dst = append(dst, property.NewSegment(s))
-			}
-		}
+func FromResourcePropertyPath(v PropertyPath) property.Path {
+	str, err := v.MarshalText()
+	contract.AssertNoErrorf(err, "Failed to marshal PropertyPath %v", v)
+	var p property.Path
+	if err := p.UnmarshalText(str); err != nil {
+		contract.Failf("Failed to unmarshal property.Path %v: %v", v, err)
 	}
-	return property.GlobFromSegments(dst...)
+	return p
 }
 
-func ToResourcePropertyPath(path property.Glob) PropertyPath {
-	if path == (property.Glob{}) {
+func ToResourcePropertyPath(v property.Path) PropertyPath {
+	str, err := v.MarshalText()
+	contract.AssertNoErrorf(err, "Failed to marshal property.Path %v", v)
+	var p PropertyPath
+	if err := p.UnmarshalText(str); err != nil {
+		contract.Failf("Failed to unmarshal PropertyPath %v: %v", v, err)
+	}
+	return p
+}
+
+func toResourceArrayDiff(v *property.ArrayDiff) *ArrayDiff {
+	if v == nil {
 		return nil
 	}
-	var dst PropertyPath
-	for s := range path.Segments {
-		switch s := s.(type) {
-		case property.IndexSegment:
-			dst = append(dst, s.Index())
-		case property.KeySegment:
-			dst = append(dst, s.Key())
-		case property.SplatSegment:
-			dst = append(dst, "*")
+
+	adds := make(map[int]PropertyValue, len(v.Adds))
+	for k, v := range v.Adds {
+		adds[k] = ToResourcePropertyValue(v)
+	}
+
+	deletes := make(map[int]PropertyValue, len(v.Deletes))
+	for k, v := range v.Deletes {
+		deletes[k] = ToResourcePropertyValue(v)
+	}
+
+	sames := make(map[int]PropertyValue, len(v.Sames))
+	for k, v := range v.Sames {
+		sames[k] = ToResourcePropertyValue(v)
+	}
+
+	updates := make(map[int]ValueDiff, len(v.Updates))
+	for k, v := range v.Updates {
+		updates[k] = ValueDiff{
+			Old:    ToResourcePropertyValue(v.Old),
+			New:    ToResourcePropertyValue(v.New),
+			Array:  toResourceArrayDiff(v.Array),
+			Object: ToResourceObjectDiff(v.Object),
 		}
 	}
-	return dst
+
+	return &ArrayDiff{
+		Adds:    adds,
+		Deletes: deletes,
+		Sames:   sames,
+		Updates: updates,
+	}
+}
+
+// Translate a [property.ObjectDiff] into an [ObjectDiff].
+func ToResourceObjectDiff(v *property.ObjectDiff) *ObjectDiff {
+	if v == nil {
+		return nil
+	}
+
+	adds := make(map[PropertyKey]PropertyValue, len(v.Adds))
+	for k, v := range v.Adds {
+		adds[PropertyKey(k)] = ToResourcePropertyValue(v)
+	}
+
+	deletes := make(map[PropertyKey]PropertyValue, len(v.Deletes))
+	for k, v := range v.Deletes {
+		deletes[PropertyKey(k)] = ToResourcePropertyValue(v)
+	}
+
+	sames := make(map[PropertyKey]PropertyValue, len(v.Sames))
+	for k, v := range v.Sames {
+		sames[PropertyKey(k)] = ToResourcePropertyValue(v)
+	}
+
+	updates := make(map[PropertyKey]ValueDiff, len(v.Updates))
+	for k, v := range v.Updates {
+		updates[PropertyKey(k)] = ValueDiff{
+			Old:    ToResourcePropertyValue(v.Old),
+			New:    ToResourcePropertyValue(v.New),
+			Array:  toResourceArrayDiff(v.Array),
+			Object: ToResourceObjectDiff(v.Object),
+		}
+	}
+
+	return &ObjectDiff{
+		Adds:    adds,
+		Deletes: deletes,
+		Sames:   sames,
+		Updates: updates,
+	}
 }

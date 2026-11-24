@@ -24,9 +24,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -52,18 +52,19 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 	err := os.WriteFile(mappingFile, []byte("entrydata"), 0o600)
 	require.NoError(t, err)
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		[]string{mappingFile},
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -80,7 +81,7 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 			{
 				Name:    "provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -105,18 +106,71 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
+
+	// Assert.
+	require.NoError(t, err)
+	assert.Equal(t, []byte("data"), data)
+}
+
+// Tests that an ecosystem supplied on the request overrides the mapper's configured conversion key.
+func TestBasePluginMapper_EcosystemOverridesConversionKey(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "provider",
+				Kind:    apitype.ResourcePlugin,
+				Version: new(semver.MustParse("1.0.0")),
+			},
+		},
+	}
+
+	testProvider := &testProvider{
+		pkg: "provider",
+		GetMappingF: func(key, provider string) ([]byte, string, error) {
+			// The request ecosystem ("terraform") takes precedence over the configured key ("key").
+			assert.Equal(t, "terraform", key)
+			return []byte("data"), "provider", nil
+		},
+	}
+
+	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		return testProvider, nil
+	}
+
+	installPlugin := func(pluginName string) *semver.Version {
+		t.Fatal("should not be called")
+		return nil
+	}
+
+	mapper, err := newBasePluginMapper(
+		ws,
+		"key", /*conversionKey*/
+		providerFactory,
+		installPlugin,
+		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
+
+	// Act.
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "terraform" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -134,7 +188,7 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 			{
 				Name:    "pulumiProvider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -166,18 +220,19 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(t.Context(), "otherProvider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "otherProvider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
@@ -196,7 +251,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 			{
 				Name:    "pulumiProvider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -223,22 +278,22 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 		assert.Equal(t, "yetAnotherProvider", pluginName)
 		installCalled = true
 
-		ver := semver.MustParse("1.0.0")
-		return &ver
+		return new(semver.MustParse("1.0.0"))
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(t.Context(), "yetAnotherProvider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "yetAnotherProvider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
@@ -257,12 +312,12 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 			{
 				Name:    "otherProvider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -287,18 +342,19 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -316,12 +372,12 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "pulumiProviderGcp",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -373,18 +429,19 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.Equal(t, 1, installCalls, "installPlugin should have been called once")
@@ -392,7 +449,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	assert.Equal(t, []byte("datagcp"), data)
 
 	// Act.
-	data, err = mapper.GetMapping(t.Context(), "aws", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "aws", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.Equal(t, 2, installCalls, "installPlugin should have been called twice")
@@ -411,12 +468,12 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "pulumiProviderGcp",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -441,12 +498,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -454,7 +512,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 	// Act.
 	data, err := mapper.GetMapping(t.Context(), "gcp", &MapperPackageHint{
 		PluginName: "pulumiProviderGcp",
-	})
+	}, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -473,12 +531,12 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 			{
 				Name:    "terraform-provider",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -509,12 +567,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -527,7 +586,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 			Version: semver.MustParse("2.0.0"),
 			Value:   []byte("value"),
 		},
-	})
+	}, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -545,7 +604,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -573,12 +632,13 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -591,7 +651,7 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 			Version: semver.MustParse("2.0.0"),
 			Value:   []byte("value"),
 		},
-	})
+	}, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -608,7 +668,7 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 			{
 				Name:    "pulumiProviderAws",
 				Kind:    apitype.ResourcePlugin,
-				Version: semverMustParse("1.0.0"),
+				Version: new(semver.MustParse("1.0.0")),
 			},
 		},
 	}
@@ -640,12 +700,13 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 		return nil
 	}
 
-	mapper, err := NewBasePluginMapper(
+	mapper, err := newBasePluginMapper(
 		ws,
 		"key", /*conversionKey*/
 		providerFactory,
 		installPlugin,
 		nil, /*mappings*/
+		mapperCacheOptions{disableFileCache: true},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mapper)
@@ -653,19 +714,20 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 	// Act.
 
 	// Attempt to get the mapping for the GCP provider, which we don't have a plugin for.
-	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 }
 
-// testWorkspace implements the Workspace interface with a fixed set of plugins.
+// testWorkspace implements the pluginstorage.Context interface with a fixed set of plugins.
 type testWorkspace struct {
+	pluginstorage.MockContext
 	infos []workspace.PluginInfo
 }
 
-func (ws *testWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
+func (ws *testWorkspace) GetPlugins(_ context.Context) ([]workspace.PluginInfo, error) {
 	return ws.infos, nil
 }
 
@@ -677,10 +739,6 @@ type testProvider struct {
 
 	GetMappingF  func(key, provider string) ([]byte, string, error)
 	GetMappingsF func(key string) ([]string, error)
-}
-
-func (prov *testProvider) Pkg() tokens.Package {
-	return tokens.Package(prov.pkg)
 }
 
 func (prov *testProvider) GetMapping(
@@ -703,9 +761,4 @@ func (prov *testProvider) GetMappings(
 	}
 	keys, err := prov.GetMappingsF(req.Key)
 	return plugin.GetMappingsResponse{Keys: keys}, err
-}
-
-func semverMustParse(s string) *semver.Version {
-	v := semver.MustParse(s)
-	return &v
 }

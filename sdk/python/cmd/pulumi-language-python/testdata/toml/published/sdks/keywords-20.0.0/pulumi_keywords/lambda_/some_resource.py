@@ -63,9 +63,9 @@ class SomeResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 builtins: Optional[pulumi.Input[_builtins.str]] = None,
-                 lambda_: Optional[pulumi.Input[_builtins.str]] = None,
-                 property: Optional[pulumi.Input[_builtins.str]] = None,
+                 builtins: pulumi.Input[Optional[_builtins.str]] = None,
+                 lambda_: pulumi.Input[Optional[_builtins.str]] = None,
+                 property: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a SomeResource resource with the given unique name, props, and options.
@@ -97,9 +97,9 @@ class SomeResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 builtins: Optional[pulumi.Input[_builtins.str]] = None,
-                 lambda_: Optional[pulumi.Input[_builtins.str]] = None,
-                 property: Optional[pulumi.Input[_builtins.str]] = None,
+                 builtins: pulumi.Input[Optional[_builtins.str]] = None,
+                 lambda_: pulumi.Input[Optional[_builtins.str]] = None,
+                 property: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -144,6 +144,12 @@ class SomeResource(pulumi.CustomResource):
         __props__.__dict__["lambda_"] = None
         __props__.__dict__["property"] = None
         return SomeResource(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'keywords:lambda:SomeResource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

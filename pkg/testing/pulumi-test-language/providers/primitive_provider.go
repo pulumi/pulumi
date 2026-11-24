@@ -22,9 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // A small provider with a single resource "Resource" that has a boolean, number, string, array, and map property.
@@ -43,10 +42,6 @@ func (p *PrimitiveProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *PrimitiveProvider) Pkg() tokens.Package {
-	return "primitive"
 }
 
 func (p *PrimitiveProvider) GetSchema(
@@ -119,26 +114,26 @@ func (p *PrimitiveProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "7.0.0" {
+	if version.AsString() != "7.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 7.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 7.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -148,6 +143,7 @@ func (p *PrimitiveProvider) CheckConfig(
 func (p *PrimitiveProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "primitive:index:Resource"
 	if req.URN.Type() != "primitive:index:Resource" {
 		return plugin.CheckResponse{
@@ -173,7 +169,7 @@ func (p *PrimitiveProvider) Check(
 	assertField := func(key resource.PropertyKey, typ string,
 		assertType func(resource.PropertyValue) bool,
 	) *plugin.CheckResponse {
-		v, ok := req.News[key]
+		v, ok := news[key]
 		if !ok {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing value"),
@@ -215,7 +211,7 @@ func (p *PrimitiveProvider) Check(
 		return *check, nil
 	}
 	// Check the array is numbers
-	numberArray := unsecret(req.News["numberArray"])
+	numberArray := unsecret(news["numberArray"])
 	for _, v := range numberArray.ArrayValue() {
 		v = unsecret(v)
 		if v.IsComputed() {
@@ -233,7 +229,7 @@ func (p *PrimitiveProvider) Check(
 		return *check, nil
 	}
 	// Check the map values are booleans
-	booleanMap := unsecret(req.News["booleanMap"])
+	booleanMap := unsecret(news["booleanMap"])
 	for _, v := range booleanMap.ObjectValue() {
 		v = unsecret(v)
 		if v.IsComputed() {
@@ -247,18 +243,19 @@ func (p *PrimitiveProvider) Check(
 		}
 	}
 
-	if len(req.News) != 6 {
+	if len(news) != 6 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *PrimitiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "primitive:index:Resource"
 	if req.URN.Type() != "primitive:index:Resource" {
 		return plugin.CreateResponse{
@@ -282,7 +279,7 @@ func (p *PrimitiveProvider) Create(
 		}
 		return v
 	}
-	str := unsecret(req.Properties["string"])
+	str := unsecret(properties["string"])
 	var id string
 	if str.IsString() {
 		id = str.StringValue()
@@ -296,7 +293,7 @@ func (p *PrimitiveProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -324,13 +321,13 @@ func (p *PrimitiveProvider) Invoke(
 		assertField := func(key resource.PropertyKey, typ string,
 			assertType func(resource.PropertyValue) bool,
 		) *plugin.InvokeResponse {
-			v, ok := req.Args[key]
+			v, ok := req.Args.GetOk(string(key))
 			if !ok {
 				return &plugin.InvokeResponse{
 					Failures: makeCheckFailure(key, "missing value"),
 				}
 			}
-			if !assertType(unsecret(v)) {
+			if !assertType(unsecret(resource.ToResourcePropertyValue(v))) {
 				return &plugin.InvokeResponse{
 					Failures: makeCheckFailure(key, "value is not a "+typ),
 				}
@@ -359,7 +356,7 @@ func (p *PrimitiveProvider) Invoke(
 		if check != nil {
 			return *check, nil
 		}
-		for _, v := range unsecret(req.Args["numberArray"]).ArrayValue() {
+		for _, v := range unsecret(resource.ToResourcePropertyValue(req.Args.Get("numberArray"))).ArrayValue() {
 			if !unsecret(v).IsNumber() {
 				return plugin.InvokeResponse{
 					Failures: makeCheckFailure("numberArray", "array element is not a number"),
@@ -370,7 +367,7 @@ func (p *PrimitiveProvider) Invoke(
 		if check != nil {
 			return *check, nil
 		}
-		for _, v := range unsecret(req.Args["booleanMap"]).ObjectValue() {
+		for _, v := range unsecret(resource.ToResourcePropertyValue(req.Args.Get("booleanMap"))).ObjectValue() {
 			if !unsecret(v).IsBool() {
 				return plugin.InvokeResponse{
 					Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
@@ -378,7 +375,7 @@ func (p *PrimitiveProvider) Invoke(
 			}
 		}
 
-		if len(req.Args) != 6 {
+		if req.Args.Len() != 6 {
 			return plugin.InvokeResponse{
 				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
 			}, nil

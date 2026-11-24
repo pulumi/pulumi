@@ -16,10 +16,14 @@ package workspace
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,4 +107,18 @@ config:
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewValue(""))
 	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewValue(""))
+}
+
+func TestEmptyRuntime(t *testing.T) {
+	t.Parallel()
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "Pulumi.yaml")
+	err := os.WriteFile(path, []byte("name: test"), 0o600)
+	require.NoError(t, err)
+
+	proj, err := LoadProject(path)
+	require.NoError(t, err)
+	assert.Equal(t, tokens.PackageName("test"), proj.Name)
+	assert.Empty(t, proj.Runtime.Name())
 }

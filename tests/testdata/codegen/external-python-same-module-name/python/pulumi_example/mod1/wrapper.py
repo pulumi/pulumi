@@ -20,8 +20,8 @@ __all__ = ['WrapperArgs', 'Wrapper']
 @pulumi.input_type
 class WrapperArgs:
     def __init__(__self__, *,
-                 configs: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_goalias.mod1.v1.ConfigArgs']]]] = None,
-                 res: Optional[pulumi.Input['pulumi_goalias.mod1.v1.Res']] = None):
+                 configs: pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_goalias.mod1.v1.ConfigArgs']]]] = None,
+                 res: pulumi.Input[Optional['pulumi_goalias.mod1.v1.Res']] = None):
         """
         The set of arguments for constructing a Wrapper resource.
         """
@@ -32,20 +32,20 @@ class WrapperArgs:
 
     @_builtins.property
     @pulumi.getter
-    def configs(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_goalias.mod1.v1.ConfigArgs']]]]:
+    def configs(self) -> pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_goalias.mod1.v1.ConfigArgs']]]]:
         return pulumi.get(self, "configs")
 
     @configs.setter
-    def configs(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_goalias.mod1.v1.ConfigArgs']]]]):
+    def configs(self, value: pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_goalias.mod1.v1.ConfigArgs']]]]):
         pulumi.set(self, "configs", value)
 
     @_builtins.property
     @pulumi.getter
-    def res(self) -> Optional[pulumi.Input['pulumi_goalias.mod1.v1.Res']]:
+    def res(self) -> pulumi.Input[Optional['pulumi_goalias.mod1.v1.Res']]:
         return pulumi.get(self, "res")
 
     @res.setter
-    def res(self, value: Optional[pulumi.Input['pulumi_goalias.mod1.v1.Res']]):
+    def res(self, value: pulumi.Input[Optional['pulumi_goalias.mod1.v1.Res']]):
         pulumi.set(self, "res", value)
 
 
@@ -55,8 +55,8 @@ class Wrapper(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 configs: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_goalias.mod1.v1.ConfigArgs']]]]] = None,
-                 res: Optional[pulumi.Input['pulumi_goalias.mod1.v1.Res']] = None,
+                 configs: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_goalias.mod1.v1.ConfigArgs']]]]] = None,
+                 res: pulumi.Input[Optional['pulumi_goalias.mod1.v1.Res']] = None,
                  __props__=None):
         """
         Create a Wrapper resource with the given unique name, props, and options.
@@ -88,8 +88,8 @@ class Wrapper(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 configs: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_goalias.mod1.v1.ConfigArgs']]]]] = None,
-                 res: Optional[pulumi.Input['pulumi_goalias.mod1.v1.Res']] = None,
+                 configs: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_goalias.mod1.v1.ConfigArgs']]]]] = None,
+                 res: pulumi.Input[Optional['pulumi_goalias.mod1.v1.Res']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

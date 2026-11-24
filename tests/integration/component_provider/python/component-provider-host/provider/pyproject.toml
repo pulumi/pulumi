@@ -1,0 +1,4 @@
+[project]
+name = "provider"
+version = "0.0.0"
+dependencies = []

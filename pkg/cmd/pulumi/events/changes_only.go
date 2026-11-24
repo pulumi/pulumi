@@ -77,8 +77,7 @@ func filterChangesOnly(evt apitype.EngineEvent) *apitype.EngineEvent {
 		md = &evt.ResOpFailedEvent.Metadata
 	default:
 		// Non-resource event: pass through a shallow copy so callers still own a fresh pointer.
-		cp := evt
-		return &cp
+		return new(evt)
 	}
 
 	if md.Op == apitype.OpSame {

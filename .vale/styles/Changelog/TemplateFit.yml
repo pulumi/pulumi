@@ -1,0 +1,8 @@
+extends: existence
+message: "'%s' does not fit the 'This change will ...' template - rephrase as 'No longer ...', 'Avoid ...', or 'Stop ...'"
+link: https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md#changelog-messages
+level: warning
+ignorecase: false
+scope: raw
+raw:
+  - '^(?:Don''t|Do not|Doesn''t|Won''t|Isn''t|Can''t|Cannot)\b'

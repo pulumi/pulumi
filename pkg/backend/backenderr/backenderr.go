@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -30,6 +30,9 @@ var (
 	// ErrLoginRequired is returned when a command requires logging in.
 	ErrLoginRequired LoginRequiredError
 	ErrForbidden     ForbiddenError
+	// ErrNonInteractiveRequiresYes is returned when a command is run
+	// non-interactively without --yes.
+	ErrNonInteractiveRequiresYes NonInteractiveRequiresYesError
 )
 
 // StackNotFoundError is returned when a named stack cannot be found in the backend.
@@ -175,6 +178,20 @@ func (err NotFoundError) Is(other error) bool {
 	}
 }
 
+// DefaultOrgError indicates that an operation failed because the organization taken from
+// the default organization setting does not exist or cannot be accessed by the current user.
+type DefaultOrgError struct {
+	Org string
+	Err error
+}
+
+func (err DefaultOrgError) Error() string {
+	return fmt.Sprintf("the organization %q set as the default organization does not exist or you do not have "+
+		"access to it; use `pulumi org set-default` to change the default organization: %v", err.Org, err.Err)
+}
+
+func (err DefaultOrgError) Unwrap() error { return err.Err }
+
 type ForbiddenError struct{ Err error }
 
 func (err ForbiddenError) Unwrap() error {
@@ -246,4 +263,14 @@ func (LoginRequiredError) Is(other error) bool {
 	default:
 		return false
 	}
+}
+
+// IsAuthError reports whether err represents an authentication or
+// authorization failure (login required, forbidden, or a missing env var
+// required for non-interactive auth).
+func IsAuthError(err error) bool {
+	_, isLoginRequired := errors.AsType[LoginRequiredError](err)
+	_, isForbidden := errors.AsType[ForbiddenError](err)
+	_, isMissingEnvVar := errors.AsType[MissingEnvVarForNonInteractiveError](err)
+	return isLoginRequired || isForbidden || isMissingEnvVar
 }

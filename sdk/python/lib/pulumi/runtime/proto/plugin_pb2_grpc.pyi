@@ -22,6 +22,7 @@ import grpc
 import grpc.aio
 import typing
 import grpc.aio
+import pulumi.plugin_pb2
 import typing
 
 _T = typing.TypeVar("_T")
@@ -30,3 +31,53 @@ class _MaybeAsyncIterator(collections.abc.AsyncIterator[_T], collections.abc.Ite
 
 class _ServicerContext(grpc.ServicerContext, grpc.aio.ServicerContext):  # type: ignore[misc, type-arg]
     ...
+
+class PackageResolverStub:
+    """`PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+    registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+    downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+    provider handshake so they can resolve packages the same way the CLI does.
+
+    This is currently unstable and experimental.
+    """
+
+    def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
+    ResolvePackage: grpc.UnaryUnaryMultiCallable[
+        pulumi.plugin_pb2.PackageSpec,
+        pulumi.plugin_pb2.PackageDependency,
+    ]
+    """`ResolvePackage` resolves the given package specification to a concrete package dependency."""
+
+class PackageResolverAsyncStub:
+    """`PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+    registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+    downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+    provider handshake so they can resolve packages the same way the CLI does.
+
+    This is currently unstable and experimental.
+    """
+
+    ResolvePackage: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.plugin_pb2.PackageSpec,
+        pulumi.plugin_pb2.PackageDependency,
+    ]
+    """`ResolvePackage` resolves the given package specification to a concrete package dependency."""
+
+class PackageResolverServicer(metaclass=abc.ABCMeta):
+    """`PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+    registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+    downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+    provider handshake so they can resolve packages the same way the CLI does.
+
+    This is currently unstable and experimental.
+    """
+
+    
+    def ResolvePackage(
+        self,
+        request: pulumi.plugin_pb2.PackageSpec,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.plugin_pb2.PackageDependency, collections.abc.Awaitable[pulumi.plugin_pb2.PackageDependency]]:
+        """`ResolvePackage` resolves the given package specification to a concrete package dependency."""
+
+def add_PackageResolverServicer_to_server(servicer: PackageResolverServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

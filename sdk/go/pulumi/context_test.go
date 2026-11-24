@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +30,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -50,7 +53,7 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 	t.Parallel()
 
 	// Usually panics on iteration 100-200
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
@@ -97,7 +100,7 @@ func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
 	t.Parallel()
 
 	// Usually panics on iteration 100-200
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
@@ -152,7 +155,7 @@ func NewLoggingTestResource(
 func TestWaitingCausesNoPanics(t *testing.T) {
 	t.Parallel()
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			o, set, _ := ctx.NewOutput()
@@ -164,6 +167,26 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 		}, WithMocks("project", "stack", mocks))
 		require.NoError(t, err)
 	}
+}
+
+func TestRegisterResourceMarshalErrorLogged(t *testing.T) {
+	t.Parallel()
+
+	var loggedErr error
+	logError := func(_ *Context, err error) { loggedErr = err }
+
+	mocks := &testMonitor{}
+	err := runErrInner(func(ctx *Context) error {
+		out, _, rejectOut := ctx.NewOutput()
+		rejectOut(errors.New("intentional marshaling error"))
+		var res struct{ CustomResourceState }
+		return ctx.RegisterResource("test:index:res", "test", Map{"badProp": out}, &res)
+	}, logError, WithMocks("project", "stack", mocks))
+
+	require.Error(t, err)       //nolint:forbidigo // pre-existing
+	require.Error(t, loggedErr) //nolint:forbidigo // pre-existing
+	assert.Contains(t, loggedErr.Error(), "marshaling properties")
+	assert.Contains(t, loggedErr.Error(), "badProp")
 }
 
 func TestCollapseAliases(t *testing.T) {
@@ -358,7 +381,6 @@ func TestMergeProviders(t *testing.T) {
 			expected:  []string{"t2"},
 		},
 	}
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			t.Parallel()
@@ -541,9 +563,9 @@ type resmonClientWithFeatures struct {
 	notFeatures map[string]struct{}
 }
 
-// resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
+// resourceMonitorClientWithoutFeatures builds a ResourceMonitorClient
 // that reports the provided feature names as not supported
-// even if it is supported in the client
+// even if they are supported by the client.
 func resourceMonitorClientWithoutFeatures(
 	cl pulumirpc.ResourceMonitorClient,
 	features ...string,
@@ -558,6 +580,16 @@ func resourceMonitorClientWithoutFeatures(
 	}
 }
 
+// GetDeploymentInfo returns Unimplemented so that feature detection falls back to
+// SupportsFeature, where notFeatures is applied.
+func (c *resmonClientWithFeatures) GetDeploymentInfo(
+	ctx context.Context,
+	req *emptypb.Empty,
+	opts ...grpc.CallOption,
+) (*pulumirpc.DeploymentInfo, error) {
+	return nil, status.Error(codes.Unimplemented, "GetDeploymentInfo is not implemented")
+}
+
 func (c *resmonClientWithFeatures) SupportsFeature(
 	ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest,
@@ -569,6 +601,62 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 		}, nil
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
+}
+
+func TestGetStackTraceAndSourcePosition(t *testing.T) {
+	t.Parallel()
+
+	// Stack captured from a run of this test before applying skip
+	//   runtime.Callers                                    always skipped
+	//   (*Context).getStackTrace                           always skipped
+	//   TestGetStackTraceAndSourcePosition.func1 (capture) skip=0 starts here
+	//   TestGetStackTraceAndSourcePosition.func2 (middle)  skip=1 starts here
+	//   TestGetStackTraceAndSourcePosition.func3 (outer)   skip=2 starts here
+	//   TestGetStackTraceAndSourcePosition
+	//   testing.tRunner
+	//   runtime.goexit
+	ctx := &Context{}
+	var stackCaptureLine, positionCaptureLine, middleLine, outerLine int
+	capture := func(skip int) (*pulumirpc.StackTrace, *pulumirpc.SourcePosition) {
+		_, _, line, _ := runtime.Caller(0)
+		stackCaptureLine, positionCaptureLine = line+2, line+3 // 2 and 3 lines below the call to runtime.Caller(0)
+		stack := ctx.getStackTrace(skip)
+		position := ctx.getSourcePosition(skip)
+		return stack, position
+	}
+	middle := func(skip int) (*pulumirpc.StackTrace, *pulumirpc.SourcePosition) {
+		_, _, line, _ := runtime.Caller(0)
+		middleLine = line + 2
+		return capture(skip)
+	}
+	outer := func(skip int) (*pulumirpc.StackTrace, *pulumirpc.SourcePosition) {
+		_, _, line, _ := runtime.Caller(0)
+		outerLine = line + 2
+		return middle(skip)
+	}
+
+	noSkip, positionNoSkip := outer(0)
+	require.GreaterOrEqual(t, len(noSkip.Frames), 3)
+	assert.True(t, strings.HasSuffix(noSkip.Frames[0].GetPc().GetUri(), "/context_test.go"))
+	assert.Equal(t, int32(stackCaptureLine), noSkip.Frames[0].GetPc().GetLine())
+	assert.Equal(t, int32(middleLine), noSkip.Frames[1].GetPc().GetLine())
+	assert.Equal(t, int32(outerLine), noSkip.Frames[2].GetPc().GetLine())
+	require.NotNil(t, positionNoSkip)
+	assert.Equal(t, noSkip.Frames[0].GetPc().GetUri(), positionNoSkip.Uri)
+	assert.Equal(t, int32(positionCaptureLine), positionNoSkip.Line)
+
+	skipOne, positionSkipOne := outer(1)
+	require.NotEmpty(t, skipOne.Frames)
+	assert.Equal(t, int32(middleLine), skipOne.Frames[0].GetPc().GetLine())
+	assert.Equal(t, skipOne.Frames[0].GetPc(), positionSkipOne)
+
+	skipTwo, positionSkipTwo := outer(2)
+	require.NotEmpty(t, skipTwo.Frames)
+	assert.Equal(t, int32(outerLine), skipTwo.Frames[0].GetPc().GetLine())
+	assert.Equal(t, skipTwo.Frames[0].GetPc(), positionSkipTwo)
+
+	assert.Empty(t, ctx.getStackTrace(1000).Frames)
+	assert.Nil(t, ctx.getSourcePosition(1000))
 }
 
 func TestSourcePosition(t *testing.T) {
@@ -699,7 +787,7 @@ type callOutput struct {
 }
 
 func (c callOutput) ElementType() reflect.Type {
-	return reflect.TypeOf(callOutputType{})
+	return reflect.TypeFor[callOutputType]()
 }
 
 type callInput struct {
@@ -707,7 +795,7 @@ type callInput struct {
 }
 
 func (c callInput) ElementType() reflect.Type {
-	return reflect.TypeOf(callInputType{})
+	return reflect.TypeFor[callInputType]()
 }
 
 type callInputType struct {
@@ -860,7 +948,7 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 		res := result{}
 		return ctx.Invoke("test:invoke:success", args, &res)
 	}, WithMocks("project", "stack", mocks))
-	require.ErrorContains(t, err, "cannot marshal an input of type")
+	require.ErrorContains(t, err, "cannot marshal Output value of type pulumi.StringOutput")
 }
 
 // This test ensures that ctx.RegisterResourceOutputs is a no-op on subsequent
@@ -911,6 +999,190 @@ func TestRegisterResourceOutputs(t *testing.T) {
 	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
 }
 
+// This test checks that transforms and hooks are no-ops under the mock monitor, rather than errors/panics.
+func TestHooksAndTransformsNoop(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResourceTransform(func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			return &ResourceTransformResult{Props: args.Props, Opts: args.Opts}
+		})
+		require.NoError(t, err)
+
+		hook, err := ctx.RegisterResourceHook("test-hook", func(args *ResourceHookArgs) error {
+			return nil
+		}, nil)
+		require.NoError(t, err)
+
+		transform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			return &ResourceTransformResult{Props: args.Props, Opts: args.Opts}
+		}
+
+		_, err = NewLoggingTestResource(t, ctx, "res", String("A"),
+			Transforms([]ResourceTransform{transform}),
+			ResourceHooks(&ResourceHookBinding{
+				BeforeCreate: []*ResourceHook{hook},
+				AfterCreate:  []*ResourceHook{hook},
+			}),
+		)
+		require.NoError(t, err)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+}
+
+type transformsTestMonitor struct {
+	testMonitor
+	transforms       []ResourceTransform
+	invokeTransforms []InvokeTransform
+}
+
+func (m *transformsTestMonitor) RegisterTransform(t ResourceTransform) {
+	m.transforms = append(m.transforms, t)
+}
+
+func (m *transformsTestMonitor) RegisterInvokeTransform(t InvokeTransform) {
+	m.invokeTransforms = append(m.invokeTransforms, t)
+}
+
+func TestMockTransformsNotRun(t *testing.T) {
+	t.Parallel()
+
+	var inputs resource.PropertyMap
+	var resourceTransforms []ResourceTransform
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			if args.Name == "res" {
+				inputs = args.Inputs
+				resourceTransforms = args.Transforms
+			}
+			return args.Name + "_id", args.Inputs, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		transform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			props := args.Props
+			props["foo"] = String("transformed")
+			return &ResourceTransformResult{Props: props, Opts: args.Opts}
+		}
+		err := ctx.RegisterResourceTransform(transform)
+		require.NoError(t, err)
+
+		var res testResource2
+		return ctx.RegisterResource("test:resource:type", "res", &testResource2Inputs{Foo: String("orig")}, &res,
+			Transforms([]ResourceTransform{transform}))
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+
+	require.Equal(t, resource.NewProperty("orig"), inputs["foo"])
+
+	require.Len(t, resourceTransforms, 1)
+	result := resourceTransforms[0](t.Context(), &ResourceTransformArgs{
+		Custom: true,
+		Type:   "test:resource:type",
+		Name:   "res",
+		Props:  Map{"foo": String("orig")},
+		Opts:   ResourceOptions{},
+	})
+	require.NotNil(t, result)
+	require.Equal(t, Map{"foo": String("transformed")}, result.Props)
+}
+
+func TestMockTransformsExposed(t *testing.T) {
+	t.Parallel()
+
+	mock := &transformsTestMonitor{}
+	var gotProps Map
+	mock.NewResourceF = func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+		if args.Name != "res" {
+			return args.Name + "_id", args.Inputs, nil
+		}
+		props := Map{"foo": String(args.Inputs["foo"].StringValue())}
+		for _, transform := range append(append([]ResourceTransform{}, args.Transforms...), mock.transforms...) {
+			result := transform(t.Context(), &ResourceTransformArgs{
+				Custom: args.Custom,
+				Type:   args.TypeToken,
+				Name:   args.Name,
+				Props:  props,
+				Opts:   ResourceOptions{},
+			})
+			if result != nil {
+				props = result.Props
+			}
+		}
+		gotProps = props
+		return args.Name + "_id", args.Inputs, nil
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResourceTransform(
+			func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+				props := args.Props
+				props["stack"] = String("yes")
+				return &ResourceTransformResult{Props: props, Opts: args.Opts}
+			})
+		require.NoError(t, err)
+
+		ownTransform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			props := args.Props
+			props["own"] = String("yes")
+			return &ResourceTransformResult{Props: props, Opts: args.Opts}
+		}
+
+		var res testResource2
+		return ctx.RegisterResource("test:resource:type", "res", &testResource2Inputs{Foo: String("orig")}, &res,
+			Transforms([]ResourceTransform{ownTransform}))
+	}, WithMocks("project", "stack", mock))
+	require.NoError(t, err)
+
+	require.Equal(t, Map{
+		"foo":   String("orig"),
+		"own":   String("yes"),
+		"stack": String("yes"),
+	}, gotProps)
+}
+
+func TestMockInvokeTransformExposed(t *testing.T) {
+	t.Parallel()
+
+	mock := &transformsTestMonitor{}
+	var gotArgs Map
+	mock.CallF = func(args MockCallArgs) (resource.PropertyMap, error) {
+		callArgs := Map{"bang": String(args.Args["bang"].StringValue())}
+		for _, transform := range mock.invokeTransforms {
+			result := transform(t.Context(), &InvokeTransformArgs{
+				Token: args.Token,
+				Args:  callArgs,
+				Opts:  InvokeOptions{},
+			})
+			if result != nil {
+				callArgs = result.Args
+			}
+		}
+		gotArgs = callArgs
+		return resource.PropertyMap{"foo": resource.NewProperty("result")}, nil
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterInvokeTransform(
+			func(_ context.Context, args *InvokeTransformArgs) *InvokeTransformResult {
+				newArgs := args.Args
+				newArgs["extra"] = String("added")
+				return &InvokeTransformResult{Args: newArgs, Opts: args.Opts}
+			})
+		require.NoError(t, err)
+
+		var result invokeResult
+		return ctx.Invoke("test:index:MyFunction", invokeArgs{Bang: "3", Bar: "4"}, &result)
+	}, WithMocks("project", "stack", mock))
+	require.NoError(t, err)
+
+	require.Equal(t, Map{"bang": String("3"), "extra": String("added")}, gotArgs)
+}
+
 // packageRefMonitor is a mock monitor that tracks RegisterPackage calls and
 // returns configurable refs. It embeds mockMonitor for the full interface.
 type packageRefMonitor struct {
@@ -932,9 +1204,9 @@ func (m *packageRefMonitor) RegisterPackage(_ context.Context, _ *pulumirpc.Regi
 
 // newTestContextWithMonitor creates a minimal Context for testing with
 // the given monitor and supportsParameterization enabled.
-func newTestContextWithMonitor(monitor pulumirpc.ResourceMonitorClient) *Context {
+func newTestContextWithMonitor(t *testing.T, monitor pulumirpc.ResourceMonitorClient) *Context {
 	return &Context{
-		ctx: context.Background(),
+		ctx: t.Context(),
 		state: &contextState{
 			monitor:                  monitor,
 			supportsParameterization: true,
@@ -960,7 +1232,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("returns registered ref", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-1"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		ref, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 
@@ -972,7 +1244,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("caches ref for same key", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-1"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		ref1, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 		require.NoError(t, err)
@@ -986,7 +1258,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("different keys register separately", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-1"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		_, err := ctx.GetOrRegisterPackageRef("pkg-a:1.0", dummyRegisterReq)
 		require.NoError(t, err)
@@ -1000,7 +1272,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		t.Parallel()
 		expectedErr := errors.New("registration failed")
 		mon := &packageRefMonitor{err: expectedErr}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		_, err1 := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 		_, err2 := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
@@ -1014,8 +1286,8 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		t.Parallel()
 		monA := &packageRefMonitor{ref: "uuid-A"}
 		monB := &packageRefMonitor{ref: "uuid-B"}
-		ctxA := newTestContextWithMonitor(monA)
-		ctxB := newTestContextWithMonitor(monB)
+		ctxA := newTestContextWithMonitor(t, monA)
+		ctxB := newTestContextWithMonitor(t, monB)
 
 		refA, err := ctxA.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 		require.NoError(t, err)
@@ -1031,7 +1303,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("concurrent goroutines same key single registration", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-concurrent"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		const goroutines = 50
 		var wg sync.WaitGroup
@@ -1039,7 +1311,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		refs := make([]string, goroutines)
 		errs := make([]error, goroutines)
 
-		for i := 0; i < goroutines; i++ {
+		for i := range goroutines {
 			go func(idx int) {
 				defer wg.Done()
 				refs[idx], errs[idx] = ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
@@ -1047,10 +1319,97 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		}
 		wg.Wait()
 
-		for i := 0; i < goroutines; i++ {
+		for i := range goroutines {
 			require.NoError(t, errs[i])
 			assert.Equal(t, "uuid-concurrent", refs[i])
 		}
 		assert.Equal(t, int32(1), mon.calls.Load(), "concurrent calls should result in single registration")
 	})
+}
+
+func TestExistsResource(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var res testResource
+		require.NoError(t, ctx.RegisterResource("pkg:index:Resource", "existing", nil, &res))
+		_, _, _, _, err := await(res.ID())
+		require.NoError(t, err)
+
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", String("existing"), nil, ""))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, true, exists)
+
+		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", String("missing"), nil, ""))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, false, exists)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}
+
+type invokeSourceMonitor struct {
+	pulumirpc.ResourceMonitorClient
+	requests chan *pulumirpc.ResourceInvokeRequest
+}
+
+func (m *invokeSourceMonitor) Invoke(_ context.Context, req *pulumirpc.ResourceInvokeRequest,
+	_ ...grpc.CallOption,
+) (*pulumirpc.ResourceInvokeResponse, error) {
+	m.requests <- req
+	return &pulumirpc.ResourceInvokeResponse{}, nil
+}
+
+func TestInvokeSourceContext(t *testing.T) {
+	t.Parallel()
+	variants := map[string]func(*Context) error{
+		"Invoke": func(ctx *Context) error {
+			var result map[string]any
+			return ctx.Invoke("test:index:lookup", nil, &result)
+		},
+		"InvokePackage": func(ctx *Context) error {
+			var result map[string]any
+			return ctx.InvokePackage("test:index:lookup", nil, &result, "")
+		},
+		"InvokePackageRaw": func(ctx *Context) error {
+			var result map[string]any
+			_, err := ctx.InvokePackageRaw("test:index:lookup", nil, &result, "")
+			return err
+		},
+		"InvokeOutput": func(ctx *Context) error {
+			output := ctx.InvokeOutput("test:index:lookup", nil, AnyOutput{}, InvokeOutputOptions{})
+			_, _, _, _, err := await(output)
+			return err
+		},
+	}
+	for name, invoke := range variants {
+		for _, handle := range []string{"", "caller-stack"} {
+			t.Run(name+"/"+handle, func(t *testing.T) {
+				t.Parallel()
+				requests := make(chan *pulumirpc.ResourceInvokeRequest, 1)
+				var sourceLine int
+				err := RunErr(func(ctx *Context) error {
+					_, _, _, _, err := await(ctx.state.stack.URN())
+					require.NoError(t, err)
+					ctx.state.monitor = &invokeSourceMonitor{ctx.state.monitor, requests}
+					ctx.state.parentStackTraceHandle = handle
+					_, _, line, _ := runtime.Caller(0)
+					sourceLine = line + 2 // The invoke call below is two lines below runtime.Caller
+					return invoke(ctx)
+				}, WithMocks("project", "stack", &testMonitor{}))
+				require.NoError(t, err)
+				require.Len(t, requests, 1)
+				req := <-requests
+				require.NotNil(t, req.SourcePosition)
+				assert.True(t, strings.HasSuffix(req.SourcePosition.Uri, "/context_test.go"), req.SourcePosition.Uri)
+				assert.Equal(t, int32(sourceLine), req.SourcePosition.Line)
+				require.NotEmpty(t, req.GetStackTrace().GetFrames())
+				assert.True(t, strings.HasSuffix(req.StackTrace.Frames[0].GetPc().GetUri(), "/context.go"))
+				assert.Contains(t, req.StackTrace.Frames, &pulumirpc.StackFrame{Pc: req.SourcePosition})
+				assert.Equal(t, handle, req.ParentStackTraceHandle)
+			})
+		}
+	}
 }

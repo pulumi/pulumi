@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -33,7 +35,7 @@ func TestStackGraphCmd(t *testing.T) {
 	t.Run("Single node graph", func(t *testing.T) {
 		t.Parallel()
 		snap := deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:  "urn:pulumi",
 					Type: resource.RootStackType,
@@ -87,7 +89,7 @@ func TestStackGraphCmd(t *testing.T) {
 		child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::child")
 
 		snap := deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:  provider,
 					ID:   "provider-id",
@@ -162,7 +164,7 @@ func TestStackGraphCmd(t *testing.T) {
 		resD := resource.URN("urn:pulumi:dev::test::pkg:mod:ResD::d")
 
 		snap := deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{URN: resA, ID: "a-id", Type: "pkg:mod:ResA"},
 				{URN: resB, ID: "b-id", Type: "pkg:mod:ResB", Dependencies: []resource.URN{resA}},
 				{URN: resC, ID: "c-id", Type: "pkg:mod:ResC", Dependencies: []resource.URN{resA, resB}},

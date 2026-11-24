@@ -67,14 +67,13 @@ func TestContinueOnErrorEnvVar(t *testing.T) {
 
 //nolint:paralleltest // Changes environment variables
 func TestParallelEnvVar(t *testing.T) {
-	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4 //nolint:gosec
+	osDefaultParallel := int32(runtime.GOMAXPROCS(0)) * 4
 	commands := []func() *cobra.Command{
 		NewUpCmd,
 		NewPreviewCmd,
 		NewRefreshCmd,
 		NewDestroyCmd,
 		NewImportCmd,
-		NewWatchCmd,
 	}
 	testCases := []struct {
 		EnvVarValue string

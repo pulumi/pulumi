@@ -22,9 +22,8 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type ReplaceOnChangesProvider struct {
@@ -41,10 +40,6 @@ func (p *ReplaceOnChangesProvider) Configure(
 	context.Context, plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
 	return plugin.ConfigureResponse{}, nil
-}
-
-func (p *ReplaceOnChangesProvider) Pkg() tokens.Package {
-	return "replaceonchanges"
 }
 
 func (p *ReplaceOnChangesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
@@ -112,26 +107,26 @@ func (p *ReplaceOnChangesProvider) GetSchema(
 func (p *ReplaceOnChangesProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not a string"),
+			Failures: makeCheckConfigFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "25.0.0" {
+	if version.AsString() != "25.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 25.0.0"),
+			Failures: makeCheckConfigFailure("version", "version is not 25.0.0"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
@@ -141,6 +136,7 @@ func (p *ReplaceOnChangesProvider) CheckConfig(
 func (p *ReplaceOnChangesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	urnType := req.URN.Type()
 	if urnType != "replaceonchanges:index:ResourceA" && urnType != "replaceonchanges:index:ResourceB" {
 		return plugin.CheckResponse{
@@ -148,7 +144,7 @@ func (p *ReplaceOnChangesProvider) Check(
 		}, nil
 	}
 
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
@@ -161,16 +157,16 @@ func (p *ReplaceOnChangesProvider) Check(
 	}
 
 	if urnType == "replaceonchanges:index:ResourceA" {
-		if len(req.News) < 1 || len(req.News) > 2 {
+		if len(news) < 1 || len(news) > 2 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("wrong number of properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("wrong number of properties: %v", news)),
 			}, nil
 		}
-		if len(req.News) == 2 {
-			replaceProp, ok := req.News["replaceProp"]
+		if len(news) == 2 {
+			replaceProp, ok := news["replaceProp"]
 			if !ok {
 				return plugin.CheckResponse{
-					Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+					Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 				}, nil
 			}
 			if !replaceProp.IsBool() && !replaceProp.IsComputed() {
@@ -180,19 +176,20 @@ func (p *ReplaceOnChangesProvider) Check(
 			}
 		}
 	} else {
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 			}, nil
 		}
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ReplaceOnChangesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	urnType := req.URN.Type()
 	if urnType != "replaceonchanges:index:ResourceA" && urnType != "replaceonchanges:index:ResourceB" {
 		return plugin.CreateResponse{
@@ -207,7 +204,7 @@ func (p *ReplaceOnChangesProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -243,6 +243,22 @@
                 }
             },
             "required": ["4dabf18193072939515e22adb298388d", "value"]
+        },
+        {
+            "title": "Byte string property values",
+            "description": "Serialized representation of string values containing bytes that are not valid UTF-8, which cannot be represented directly in JSON.",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Byte string signature",
+                    "const": "803fd3297a5875dc03ca845dda5d2a98"
+                },
+                "value": {
+                    "description": "The base64 encoding of the string's bytes.",
+                    "type": "string"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d", "value"]
         }
     ]
 }

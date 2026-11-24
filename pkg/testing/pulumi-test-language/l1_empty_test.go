@@ -242,7 +242,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 			SnapshotDirectory:    "./tests/testdata/snapshots",
 			CoreSdkDirectory:     "sdk/dir",
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, "language plugin name must be specified")
 	})
 
@@ -255,7 +255,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 			SnapshotDirectory:  "./tests/testdata/snapshots",
 			CoreSdkDirectory:   "sdk/dir",
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, "language plugin target must be specified")
 	})
 
@@ -268,7 +268,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 			SnapshotDirectory:    "./tests/testdata/snapshots",
 			CoreSdkDirectory:     "sdk/dir",
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, "temporary directory must be specified")
 	})
 
@@ -281,7 +281,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 			TemporaryDirectory:   tempDir,
 			CoreSdkDirectory:     "sdk/dir",
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, "snapshot directory must be specified")
 	})
 
@@ -295,7 +295,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 			SnapshotDirectory:    "./tests/testdata/snapshots",
 			CoreSdkDirectory:     "sdk/dir",
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, "pack core SDK: boom")
 	})
 }

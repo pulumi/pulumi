@@ -30,5 +30,17 @@ func TestMain(m *testing.M) {
 		fmt.Println("Skip tests on windows until they are fixed")
 		os.Exit(0)
 	}
+
+	// The OS credential store holds one key for all credentials files. A test that reaches it can
+	// delete the key that protects the real credentials of the developer. Remove the mode that
+	// the developer set, and install a machine that has no OS credential store.
+	//
+	//nolint:forbidigo // TestMain has no t
+	if err := os.Unsetenv("PULUMI_CREDENTIAL_STORE"); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	stores = &fakeStores{}
+
 	os.Exit(m.Run())
 }

@@ -95,11 +95,13 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l3-deferred-outputs": "incorrectly detects cycle",
-	"l3-component-nested": "nested component outputs are not propagated correctly",
-	"l1-builtin-min-max":  "cannot pin the current commit",
 }
 
 func TestLanguage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	t.Parallel()
 
 	engineAddress, engine := runTestingHost(t)
@@ -159,8 +161,8 @@ func TestLanguage(t *testing.T) {
 			for _, msg := range result.Messages {
 				t.Log(msg)
 			}
-			ptesting.LogTruncated(t, "stdout", result.Stdout)
-			ptesting.LogTruncated(t, "stderr", result.Stderr)
+			ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+			ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 			assert.True(t, result.Success)
 		})
 	}

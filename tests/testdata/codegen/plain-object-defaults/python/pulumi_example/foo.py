@@ -23,8 +23,8 @@ class FooArgs:
     def __init__(__self__, *,
                  backup_kube_client_settings: pulumi.Input['KubeClientSettingsArgs'],
                  argument: Optional[_builtins.str] = None,
-                 kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
-                 settings: Optional[pulumi.Input['LayeredTypeArgs']] = None):
+                 kube_client_settings: pulumi.Input[Optional['KubeClientSettingsArgs']] = None,
+                 settings: pulumi.Input[Optional['LayeredTypeArgs']] = None):
         """
         The set of arguments for constructing a Foo resource.
 
@@ -63,26 +63,26 @@ class FooArgs:
 
     @_builtins.property
     @pulumi.getter(name="kubeClientSettings")
-    def kube_client_settings(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+    def kube_client_settings(self) -> pulumi.Input[Optional['KubeClientSettingsArgs']]:
         """
         Options for tuning the Kubernetes client used by a Provider.
         """
         return pulumi.get(self, "kube_client_settings")
 
     @kube_client_settings.setter
-    def kube_client_settings(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+    def kube_client_settings(self, value: pulumi.Input[Optional['KubeClientSettingsArgs']]):
         pulumi.set(self, "kube_client_settings", value)
 
     @_builtins.property
     @pulumi.getter
-    def settings(self) -> Optional[pulumi.Input['LayeredTypeArgs']]:
+    def settings(self) -> pulumi.Input[Optional['LayeredTypeArgs']]:
         """
         describing things
         """
         return pulumi.get(self, "settings")
 
     @settings.setter
-    def settings(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
+    def settings(self, value: pulumi.Input[Optional['LayeredTypeArgs']]):
         pulumi.set(self, "settings", value)
 
 
@@ -93,18 +93,17 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[_builtins.str] = None,
-                 backup_kube_client_settings: Optional[pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 kube_client_settings: Optional[pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 settings: Optional[pulumi.Input[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']]] = None,
+                 backup_kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
+                 kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
+                 settings: pulumi.Input[Optional[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']]] = None,
                  __props__=None):
         """
         test new feature with resoruces
 
-
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
-        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']] settings: describing things
         """
         ...
@@ -115,7 +114,6 @@ class Foo(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         test new feature with resoruces
-
 
         :param str resource_name: The name of the resource.
         :param FooArgs args: The arguments to use to populate this resource's properties.
@@ -133,9 +131,9 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[_builtins.str] = None,
-                 backup_kube_client_settings: Optional[pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 kube_client_settings: Optional[pulumi.Input[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict']]] = None,
-                 settings: Optional[pulumi.Input[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']]] = None,
+                 backup_kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
+                 kube_client_settings: pulumi.Input[Optional[Union['KubeClientSettingsArgs', 'KubeClientSettingsArgsDict', 'outputs.KubeClientSettings']]] = None,
+                 settings: pulumi.Input[Optional[Union['LayeredTypeArgs', 'LayeredTypeArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -176,6 +174,12 @@ class Foo(pulumi.CustomResource):
 
         __props__.__dict__["default_kube_client_settings"] = None
         return Foo(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'example:index:Foo', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="defaultKubeClientSettings")

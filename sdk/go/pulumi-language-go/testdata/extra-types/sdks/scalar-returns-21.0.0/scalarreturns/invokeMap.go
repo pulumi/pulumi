@@ -30,19 +30,15 @@ type InvokeMapArgs struct {
 }
 
 func InvokeMapOutput(ctx *pulumi.Context, args InvokeMapOutputArgs, opts ...pulumi.InvokeOption) pulumi.StringMapOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (pulumi.StringMapOutput, error) {
-			args := v.(InvokeMapArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			rv := ctx.InvokeOutput("scalar-returns:index:invokeMap", args, pulumi.StringMapMapOutput{}, options).(pulumi.StringMapMapOutput)
-			return rv.ApplyT(func(rv map[string]map[string]string) map[string]string {
-				var result map[string]string
-				for _, v := range rv {
-					result = v
-				}
-				return result
-			}).(pulumi.StringMapOutput), nil
-		}).(pulumi.StringMapOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	rv := ctx.InvokeOutput("scalar-returns:index:invokeMap", args, pulumi.StringMapMapOutput{}, options).(pulumi.StringMapMapOutput)
+	return rv.ApplyT(func(rv map[string]map[string]string) map[string]string {
+		var result map[string]string
+		for _, v := range rv {
+			result = v
+		}
+		return result
+	}).(pulumi.StringMapOutput)
 }
 
 type InvokeMapOutputArgs struct {

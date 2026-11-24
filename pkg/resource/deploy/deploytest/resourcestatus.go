@@ -18,12 +18,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -71,15 +72,9 @@ func (rs *ResourceStatus) PublishViewSteps(token string, steps []ViewStep) error
 }
 
 func (rs *ResourceStatus) marshalStep(step ViewStep) (*pulumirpc.ViewStep, error) {
-	keys := slice.Prealloc[string](len(step.Keys))
-	for _, key := range step.Keys {
-		keys = append(keys, string(key))
-	}
+	keys := slice.Cast[string](step.Keys)
 
-	diffs := slice.Prealloc[string](len(step.Diffs))
-	for _, diff := range step.Diffs {
-		diffs = append(diffs, string(diff))
-	}
+	diffs := slice.Cast[string](step.Diffs)
 
 	detailedDiff := rs.unmarshalDetailedDiff(step.DetailedDiff)
 
@@ -184,20 +179,26 @@ func (rs *ResourceStatus) marshalState(state *ViewStepState) *pulumirpc.ViewStep
 		return nil
 	}
 
-	inputs, err := plugin.MarshalProperties(state.Inputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	inputs, err := plugin.MarshalProperties(
+		resource.ToResourcePropertyMap(state.Inputs),
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		},
+	)
 	if err != nil {
 		panic(fmt.Errorf("marshaling inputs: %w", err))
 	}
 
-	outputs, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	outputs, err := plugin.MarshalProperties(
+		resource.ToResourcePropertyMap(state.Outputs),
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		},
+	)
 	if err != nil {
 		panic(fmt.Errorf("marshaling outputs: %w", err))
 	}
@@ -228,6 +229,6 @@ type ViewStepState struct {
 	Name       string
 	ParentType tokens.Type
 	ParentName string
-	Inputs     resource.PropertyMap
-	Outputs    resource.PropertyMap
+	Inputs     property.Map
+	Outputs    property.Map
 }

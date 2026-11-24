@@ -18,23 +18,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var matchAnsiControlCodes = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
@@ -108,6 +108,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			EnforcementLevel:     string(p.EnforcementLevel),
 			Severity:             string(p.Severity),
+			Exceptions:           p.Exceptions,
 		}
 
 	case engine.PolicyRemediationEvent:
@@ -119,9 +120,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		// Serialize properties, ignoring errors, as with other event types.
 		ctx := context.TODO()
 		encrypter := config.BlindingCrypter
-		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
+		before, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.Before), encrypter, showSecrets)
 		contract.IgnoreError(err)
-		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
+		after, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.After), encrypter, showSecrets)
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
@@ -183,9 +184,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		// Convert the config bag.
 		cfg := make(map[string]string)
-		for k, v := range p.Config {
-			cfg[k] = v
-		}
+		maps.Copy(cfg, p.Config)
 		apiEvent.PreludeEvent = &apitype.PreludeEvent{
 			Config: cfg,
 		}
@@ -206,6 +205,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		}
 
 	case engine.ResourcePreEvent:
@@ -237,6 +237,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Status:   int(p.Status),
 			Steps:    int(p.Steps),
+			Awaited:  p.Awaited,
 		}
 
 	case engine.PolicyLoadEvent:
@@ -264,6 +265,10 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Error: p.Error,
 		}
 
+	case engine.UpdateStartedEvent:
+		// Internal to in-process callers; it has no wire representation.
+		return apiEvent, fmt.Errorf("event type %q is not serializable", e.Type)
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}
@@ -272,15 +277,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 }
 
 func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) apitype.StepEventMetadata {
-	keys := make([]string, len(md.Keys))
-	for i, v := range md.Keys {
-		keys[i] = string(v)
-	}
-
-	diffs := slice.Prealloc[string](len(md.Diffs))
-	for _, v := range md.Diffs {
-		diffs = append(diffs, string(v))
-	}
+	keys := slice.Cast[string](md.Keys)
+	diffs := slice.Cast[string](md.Diffs)
 
 	var detailedDiff map[string]apitype.PropertyDiff
 	if md.DetailedDiff != nil {
@@ -340,10 +338,10 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 
 	ctx := context.TODO()
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(ctx, md.Inputs, encrypter, showSecrets)
+	inputs, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(md.Inputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
+	outputs, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(md.Outputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
@@ -362,9 +360,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs: slice.Map(md.HideDiffs, func(p resource.PropertyPath) resource.BackCompatPropertyPath {
-			return resource.BackCompatPropertyPath(resource.FromResourcePropertyPath(p))
-		}),
+		HideDiffs:      md.HideDiffs,
 	}
 }
 
@@ -410,6 +406,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackVersion: p.PolicyPackVersion,
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
 			Severity:          apitype.PolicySeverity(p.Severity),
+			Exceptions:        p.Exceptions,
 		})
 
 	case apiEvent.PolicyRemediationEvent != nil:
@@ -429,8 +426,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyName:        p.PolicyName,
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Before:            before,
-			After:             after,
+			Before:            resource.FromResourcePropertyMap(before),
+			After:             resource.FromResourcePropertyMap(after),
 		})
 
 	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
@@ -483,6 +480,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:
@@ -504,7 +502,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		event = engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
-			Steps:    int32(p.Steps), //nolint:gosec // We only ever write int32 sized values to the API.
+			Steps:    int32(p.Steps),
+			Awaited:  p.Awaited,
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:
@@ -541,14 +540,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 }
 
 func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEventMetadata {
-	keys := make([]resource.PropertyKey, len(md.Keys))
-	for i, v := range md.Keys {
-		keys[i] = resource.PropertyKey(v)
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(md.Diffs))
-	for _, v := range md.Diffs {
-		diffs = append(diffs, resource.PropertyKey(v))
-	}
+	keys := slice.Cast[resource.PropertyKey](md.Keys)
+	diffs := slice.Cast[resource.PropertyKey](md.Diffs)
 	var detailedDiff map[string]plugin.PropertyDiff
 	if md.DetailedDiff != nil {
 		detailedDiff = make(map[string]plugin.PropertyDiff)
@@ -631,11 +624,9 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Taint:          md.Taint,
 		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
-		Inputs:         inputs,
-		Outputs:        outputs,
+		Inputs:         resource.FromResourcePropertyMap(inputs),
+		Outputs:        resource.FromResourcePropertyMap(outputs),
 		InitErrors:     md.InitErrors,
-		HideDiffs: slice.Map(md.HideDiffs, func(p resource.BackCompatPropertyPath) resource.PropertyPath {
-			return resource.ToResourcePropertyPath(property.Glob(p))
-		}),
+		HideDiffs:      md.HideDiffs,
 	}
 }

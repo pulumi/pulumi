@@ -158,7 +158,7 @@ class ProjectSettings:
     """A Pulumi project manifest. It describes metadata applying to all sub-stacks created from the project."""
 
     name: str
-    runtime: Union[str, ProjectRuntimeInfo]
+    runtime: Optional[Union[str, ProjectRuntimeInfo]]
     main: Optional[str] = None
     description: Optional[str] = None
     author: Optional[str] = None
@@ -171,7 +171,7 @@ class ProjectSettings:
     def __init__(
         self,
         name: str,
-        runtime: Union[str, ProjectRuntimeInfo],
+        runtime: Optional[Union[str, ProjectRuntimeInfo]] = None,
         main: Optional[str] = None,
         description: Optional[str] = None,
         author: Optional[str] = None,
@@ -181,16 +181,6 @@ class ProjectSettings:
         template: Optional[ProjectTemplate] = None,
         backend: Optional[ProjectBackend] = None,
     ):
-        if isinstance(runtime, str) and runtime not in [
-            "nodejs",
-            "python",
-            "go",
-            "dotnet",
-        ]:
-            raise ValueError(
-                f"Invalid value {runtime!r} for runtime. "
-                f"Must be one of: 'nodejs', 'python', 'go', 'dotnet'."
-            )
         self.name = name
         self.runtime = runtime
         self.main = main
@@ -205,7 +195,7 @@ class ProjectSettings:
     @staticmethod
     def from_dict(data: dict[str, Any]) -> "ProjectSettings":
         """Deserialize a ProjectSettings from a dictionary."""
-        runtime = data["runtime"]
+        runtime = data.get("runtime")
         if isinstance(runtime, dict):
             runtime = ProjectRuntimeInfo.from_dict(runtime)
 

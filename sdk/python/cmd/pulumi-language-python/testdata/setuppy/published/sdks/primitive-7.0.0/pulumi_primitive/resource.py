@@ -96,12 +96,12 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 boolean: Optional[pulumi.Input[_builtins.bool]] = None,
-                 boolean_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[_builtins.bool]]]] = None,
-                 float: Optional[pulumi.Input[_builtins.float]] = None,
-                 integer: Optional[pulumi.Input[_builtins.int]] = None,
-                 number_array: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.float]]]] = None,
-                 string: Optional[pulumi.Input[_builtins.str]] = None,
+                 boolean: pulumi.Input[Optional[_builtins.bool]] = None,
+                 boolean_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.bool]]]] = None,
+                 float: pulumi.Input[Optional[_builtins.float]] = None,
+                 integer: pulumi.Input[Optional[_builtins.int]] = None,
+                 number_array: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.float]]]] = None,
+                 string: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -133,12 +133,12 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 boolean: Optional[pulumi.Input[_builtins.bool]] = None,
-                 boolean_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[_builtins.bool]]]] = None,
-                 float: Optional[pulumi.Input[_builtins.float]] = None,
-                 integer: Optional[pulumi.Input[_builtins.int]] = None,
-                 number_array: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.float]]]] = None,
-                 string: Optional[pulumi.Input[_builtins.str]] = None,
+                 boolean: pulumi.Input[Optional[_builtins.bool]] = None,
+                 boolean_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.bool]]]] = None,
+                 float: pulumi.Input[Optional[_builtins.float]] = None,
+                 integer: pulumi.Input[Optional[_builtins.int]] = None,
+                 number_array: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.float]]]] = None,
+                 string: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -195,6 +195,12 @@ class Resource(pulumi.CustomResource):
         __props__.__dict__["number_array"] = None
         __props__.__dict__["string"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
+
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'primitive:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

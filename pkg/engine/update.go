@@ -20,26 +20,34 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 
+	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ResolvedPolicyEnvironment holds resolved ESC environment data for a policy pack.
@@ -63,8 +71,8 @@ type PolicyEnvironmentResolver interface {
 // prefix and the policy name. Keys may be "policyName" or "packName:policyName".
 // This mirrors pulumiConfig's optional namespace pattern (e.g., "aws:region").
 func parsePolicyConfigKey(key string) (packName, policyName string) {
-	if i := strings.IndexByte(key, ':'); i >= 0 {
-		return key[:i], key[i+1:]
+	if before, after, ok := strings.Cut(key, ":"); ok {
+		return before, after
 	}
 	return "", key
 }
@@ -84,9 +92,7 @@ func mergePolicyConfig(
 		return base
 	}
 	merged := make(map[string]*json.RawMessage, len(base)+len(escConfig))
-	for k, v := range base {
-		merged[k] = v
-	}
+	maps.Copy(merged, base)
 	for rawKey, v := range escConfig {
 		packPrefix, policyName := parsePolicyConfigKey(rawKey)
 		if packPrefix != "" && packPrefix != packName {
@@ -160,9 +166,7 @@ func mergeAnalyzerConfig(
 		return base
 	}
 	result := make(map[string]plugin.AnalyzerPolicyConfig, len(base)+len(overlay))
-	for k, v := range base {
-		result[k] = v
-	}
+	maps.Copy(result, base)
 	for k, ov := range overlay {
 		bv, exists := result[k]
 		if !exists {
@@ -177,9 +181,7 @@ func mergeAnalyzerConfig(
 		// Clone base properties first to avoid mutating the original map.
 		if len(ov.Properties) > 0 {
 			merged := make(map[string]any, len(bv.Properties)+len(ov.Properties))
-			for pk, pv := range bv.Properties {
-				merged[pk] = pv
-			}
+			maps.Copy(merged, bv.Properties)
 			deepMergeMap(merged, ov.Properties)
 			bv.Properties = merged
 		}
@@ -194,23 +196,22 @@ type RequiredPolicy interface {
 	Name() string
 	// Version of the PolicyPack.
 	Version() string
-	// Installed returns true if the PolicyPack is already installed locally.
-	Installed() bool
 	// LocalPath returns the local path of the PolicyPack.
 	LocalPath() (string, error)
-	// Download the PolicyPack.
-	Download(
-		ctx context.Context,
-		wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-	) (io.ReadCloser, int64, error)
-	// Install the PolicyPack. content is the tarball of the PolicyPack.
-	// stdout and stderr are used for dependency installation output.
-	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
+	// Ensure that the policy is downloaded & installed on disk.
+	EnsureInstalled(
+		ctx *plugin.Context,
+		downloadWrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+		installWriter io.Writer,
+	) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
 	// ResolveEnvironments opens any referenced ESC environments and returns
 	// resolved config and environment variables. Returns nil, nil if no environments are referenced.
 	ResolveEnvironments(ctx context.Context) (*ResolvedPolicyEnvironment, error)
+	// Exceptions returns the PolicyPack's active policy exceptions, keyed by exception ID.
+	// Each value should be an apitype.PolicyException.
+	Exceptions() map[string]json.RawMessage
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -292,22 +293,24 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
-		info, err := analyzer.GetAnalyzerInfo()
+		info, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 		if err != nil {
 			return nil, err
 		}
+		var configFromFile map[string]plugin.AnalyzerPolicyConfig
+		if pack.Config != "" {
+			file, err := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
+			if err != nil {
+				return nil, err
+			}
+			configFromFile = file.Config
+		}
+		// Exceptions apply to every pack, but other config needs the pack's support.
 		if !info.SupportsConfig {
-			if pack.Config != "" {
+			if len(configFromFile) > 0 {
 				return nil, fmt.Errorf("policy pack %q at %q does not support config", info.Name, pack.Path)
 			}
 		} else {
-			var configFromFile map[string]plugin.AnalyzerPolicyConfig
-			if pack.Config != "" {
-				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
-				if err != nil {
-					return nil, err
-				}
-			}
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
 				info.Policies, info.InitialConfig, configFromFile)
 			if err != nil {
@@ -318,7 +321,7 @@ func LoadLocalPolicyPackAnalyzers(
 				return nil, fmt.Errorf("validating policy config for %q: %s",
 					info.Name, strings.Join(validationErrors, "; "))
 			}
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				return nil, fmt.Errorf("configuring policy pack %q: %w", info.Name, err)
 			}
 		}
@@ -327,6 +330,41 @@ func LoadLocalPolicyPackAnalyzers(
 	return analyzers, nil
 }
 
+// LocalPolicyPackExceptions reads the policy exceptions from the local policy packs' config files, keyed by their
+// analyzers, and warns about exceptions that name policies the pack doesn't have. analyzers[i] must be the analyzer of
+// packs[i], as LoadLocalPolicyPackAnalyzers returns them.
+func LocalPolicyPackExceptions(
+	ctx context.Context,
+	sink diag.Sink,
+	packs []LocalPolicyPack,
+	analyzers []plugin.Analyzer,
+) (map[plugin.Analyzer]resourceanalyzer.PolicyExceptions, error) {
+	result := map[plugin.Analyzer]resourceanalyzer.PolicyExceptions{}
+	for i, pack := range packs {
+		if pack.Config == "" {
+			continue
+		}
+		file, err := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
+		if err != nil {
+			return nil, err
+		}
+		info, err := analyzers[i].GetAnalyzerInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range file.Exceptions.UnknownPolicyWarnings(info.Name, info.Policies) {
+			sink.Warningf(diag.Message("", "%s"), w)
+		}
+		result[analyzers[i]] = file.Exceptions
+	}
+	return result, nil
+}
+
+// HostFactory constructs the plugin host for a deployment.
+type HostFactory func(
+	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
+) (plugin.Host, error)
+
 // UpdateOptions contains all the settings for customizing how an update (deploy, preview, or destroy) is performed.
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
@@ -334,6 +372,8 @@ func LoadLocalPolicyPackAnalyzers(
 //
 //nolint:structcheck
 type UpdateOptions struct {
+	// CloudCredentialEnv overrides the Pulumi backend credentials passed to plugins.
+	CloudCredentialEnv map[string]string
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 
@@ -368,6 +408,9 @@ type UpdateOptions struct {
 	// Specific resources to update during a deployment.
 	Targets deploy.UrnTargets
 
+	// Specific snippet UUIDs to target during a deployment. Applied in addition to Targets.
+	TargetSnippets []string
+
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.
 	TargetDependents bool
@@ -394,8 +437,23 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
-	// the plugin host to use for this update
-	Host plugin.Host
+	// true if the engine should not advertise the INVOKE_OUTPUT_VALUES monitor feature. SDKs that check the
+	// feature list before opting in will fall back to the legacy union-of-arg-deps behaviour on Invoke. Test-only
+	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_invoke`.
+	DisableInvokeOutputValues bool
+
+	// true if the engine should not advertise the CALL_OUTPUT_VALUES monitor feature. SDKs that check the
+	// feature list before opting in will fall back to the legacy union-of-arg-deps behaviour on Call. Test-only
+	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_call`.
+	DisableCallOutputValues bool
+
+	// true if the engine should not advertise the REGISTER_RESOURCE_OUTPUT_VALUES monitor feature. SDKs that
+	// check the feature list before opting in will fall back to sending propertyDependencies maps instead of
+	// OutputValues on RegisterResource inputs. Test-only knob for exercising the legacy path.
+	DisableRegisterResourceOutputValues bool
+
+	// HostFactory builds the plugin host for this operation.
+	HostFactory HostFactory
 
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
@@ -413,6 +471,10 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
+	// IgnoreProtect is true if the engine should ignore the protect option on resources, allowing
+	// protected resources to be deleted or replaced by this operation.
+	IgnoreProtect bool
+
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 
@@ -424,6 +486,94 @@ type UpdateOptions struct {
 
 	// ShowSecrets is true if the engine should display secrets in the CLI.
 	ShowSecrets bool
+
+	// SkipPluginPreInstall is true if the engine should skip the up-front plugin install step that
+	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
+	// the provider registry when they are actually requested.
+	SkipPluginPreInstall bool
+
+	// Snippets updates the PCL snippets stored in the stack snapshot as part of this deployment. Keys are snippet
+	// UUIDs. A new UUID adds a snippet, an existing UUID replaces that snippet when the value is non-nil, and an
+	// existing UUID with a nil value deletes that snippet.
+	Snippets map[uuid.UUID]*resource.Snippet
+}
+
+func applySnippetUpdates(base []resource.Snippet, updates map[uuid.UUID]*resource.Snippet) ([]resource.Snippet, error) {
+	if len(updates) == 0 {
+		return base, nil
+	}
+
+	byUUID := make(map[uuid.UUID]int, len(base))
+	result := make([]resource.Snippet, 0, len(base)+len(updates))
+	for i, snippet := range base {
+		id, err := uuid.FromString(snippet.UUID)
+		if err != nil {
+			return nil, fmt.Errorf("snippet at index %d has invalid uuid %q", i, snippet.UUID)
+		}
+		if other, ok := byUUID[id]; ok {
+			return nil, fmt.Errorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+		}
+		byUUID[id] = len(result)
+		result = append(result, snippet)
+	}
+
+	keys := make([]uuid.UUID, 0, len(updates))
+	for id := range updates {
+		if id == uuid.Nil {
+			return nil, errors.New("snippet update contains nil uuid")
+		}
+		keys = append(keys, id)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].String() < keys[j].String()
+	})
+
+	for _, id := range keys {
+		snippet := updates[id]
+		existing, exists := byUUID[id]
+		if snippet == nil {
+			if !exists {
+				return nil, fmt.Errorf("cannot delete snippet %q: no such snippet in snapshot", id)
+			}
+			result = append(result[:existing], result[existing+1:]...)
+			delete(byUUID, id)
+			for i := existing; i < len(result); i++ {
+				parsed, err := uuid.FromString(result[i].UUID)
+				contract.AssertNoErrorf(err, "validated snippet UUID changed")
+				byUUID[parsed] = i
+			}
+			continue
+		}
+
+		updated := *snippet
+		if updated.UUID != "" && updated.UUID != id.String() {
+			return nil, fmt.Errorf("snippet %q has mismatched uuid %q", id, updated.UUID)
+		}
+		updated.UUID = id.String()
+		if exists {
+			result[existing] = updated
+		} else {
+			byUUID[id] = len(result)
+			result = append(result, updated)
+		}
+	}
+
+	return result, nil
+}
+
+func targetWithSnippets(target *deploy.Target, snippets []resource.Snippet) *deploy.Target {
+	if target == nil {
+		return nil
+	}
+	next := *target
+	if next.Snapshot == nil {
+		next.Snapshot = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, snippets, nil)
+		return &next
+	}
+	snapshot := *next.Snapshot
+	snapshot.Snippets = snippets
+	next.Snapshot = &snapshot
+	return &next
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -446,6 +596,45 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
+	var baseSnippets []resource.Snippet
+	if u.Target != nil && u.Target.Snapshot != nil {
+		baseSnippets = u.Target.Snapshot.Snippets
+	}
+	effectiveSnippets, err := applySnippetUpdates(baseSnippets, opts.Snippets)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Snippet deletions are held back until the resources they registered are gone: removing a
+	// snippet whose resource delete then fails would orphan the resource with no way to retry
+	// the deletion.
+	var snippetsPre []resource.Snippet
+	var snippetDeletions *snippetDeletionTracker
+	if len(opts.Snippets) > 0 {
+		u.Target = targetWithSnippets(u.Target, effectiveSnippets)
+
+		upserts := make(map[uuid.UUID]*resource.Snippet, len(opts.Snippets))
+		deleted := map[string]bool{}
+		for id, snippet := range opts.Snippets {
+			if snippet == nil {
+				deleted[id.String()] = true
+				continue
+			}
+			upserts[id] = snippet
+		}
+		snippetsPre = effectiveSnippets
+		if len(deleted) > 0 {
+			snippetsPre, err = applySnippetUpdates(baseSnippets, upserts)
+			if err != nil {
+				return nil, nil, err
+			}
+			var oldResources []*pkgresource.State
+			if u.Target != nil && u.Target.Snapshot != nil {
+				oldResources = u.Target.Snapshot.Resources
+			}
+			snippetDeletions = newSnippetDeletionTracker(deleted, oldResources)
+		}
+	}
+
 	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
@@ -464,14 +653,99 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, &deploymentOptions{
-		UpdateOptions: opts,
-		SourceFunc:    newUpdateSource,
-		Events:        emitter,
-		Diag:          newEventSink(emitter, false),
-		StatusDiag:    newEventSink(emitter, true),
-		DryRun:        dryRun,
-		pluginManager: ctx.PluginManager,
+		UpdateOptions:      opts,
+		SourceFunc:         newUpdateSource,
+		Events:             emitter,
+		Diag:               newEventSink(emitter, false),
+		StatusDiag:         newEventSink(emitter, true),
+		DryRun:             dryRun,
+		pluginManager:      ctx.PluginManager,
+		snippetsPrePersist: snippetsPre,
+		snippetDeletions:   snippetDeletions,
 	})
+}
+
+// snippetDeletionTracker counts, for each snippet being deleted, how many old resources it
+// registered are still in the stack. A snippet's deletion is only persisted once its count
+// reaches zero, so a failed resource delete keeps its snippet and can be retried.
+type snippetDeletionTracker struct {
+	mu        sync.Mutex
+	surviving map[string]int
+}
+
+func newSnippetDeletionTracker(deleted map[string]bool, oldResources []*pkgresource.State) *snippetDeletionTracker {
+	t := &snippetDeletionTracker{surviving: make(map[string]int, len(deleted))}
+	for id := range deleted {
+		t.surviving[id] = 0
+	}
+	for _, r := range oldResources {
+		if r == nil || r.ViewOf != "" || r.Delete {
+			continue
+		}
+		if _, ok := t.surviving[r.SnippetID]; ok {
+			t.surviving[r.SnippetID]++
+		}
+	}
+	return t
+}
+
+// recordStep notes when a successfully applied step removed a resource registered by one of the
+// tracked snippets.
+func (t *snippetDeletionTracker) recordStep(step deploy.Step) {
+	if step.Op() != deploy.OpDelete && step.Op() != deploy.OpRemovePendingReplace {
+		return
+	}
+	old := step.Old()
+	if old == nil || old.ViewOf != "" || old.Delete {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if _, ok := t.surviving[old.SnippetID]; ok {
+		t.surviving[old.SnippetID]--
+	}
+}
+
+// remaining filters snippets down to those that must still be persisted, dropping the tracked
+// deletions whose resources are all gone. The second return value reports whether anything was
+// dropped.
+func (t *snippetDeletionTracker) remaining(snippets []resource.Snippet) ([]resource.Snippet, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	dropped := false
+	out := slice.Prealloc[resource.Snippet](len(snippets))
+	for _, s := range snippets {
+		if n, ok := t.surviving[s.UUID]; ok && n <= 0 {
+			dropped = true
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, dropped
+}
+
+// persistValidatedSnippets validates the snippets in validate and persists the persist list on
+// the snapshot manager; the two differ for deletions, which are persisted only after the
+// deployment succeeds.
+func persistValidatedSnippets(
+	ctx context.Context,
+	manager SnapshotManager,
+	validate, persist []resource.Snippet,
+	plugctx *plugin.Context,
+) error {
+	if manager == nil {
+		return nil
+	}
+	loader := schema.NewPluginLoader(plugctx)
+	for _, snippet := range validate {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := deploy.ValidateSnippet(ctx, snippet, loader); err != nil {
+			return err
+		}
+	}
+	return manager.SetSnippets(persist)
 }
 
 func installPlugins(
@@ -521,12 +795,17 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
-		false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
-		if returnInstallErrors {
-			return nil, nil, err
+	//
+	// When SkipPluginPreInstall is set we skip this up-front install attempt — the provider registry will install
+	// plugins lazily when they are actually requested.
+	if opts == nil || !opts.SkipPluginPreInstall {
+		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.ProjectPlugins(),
+			false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
+			if returnInstallErrors {
+				return nil, nil, err
+			}
+			logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 		}
-		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
 	if waitNeeded {
@@ -553,13 +832,13 @@ func loadPolicyAnalyzer(
 	ctx context.Context, plugctx *plugin.Context,
 	name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	analyzer, err := plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err := plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err == nil {
 		return analyzer, nil
 	}
 
-	var me *workspace.MissingError
-	if !errors.As(err, &me) {
+	me, ok := errors.AsType[*workspace.MissingError](err)
+	if !ok {
 		return nil, err
 	}
 
@@ -571,16 +850,15 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromHost)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext, plugctx.CloudCredentialEnv)
 	if installErr != nil {
 		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
 			string(name), installErr, me)
 	}
 
-	analyzer, err = plugctx.Host.PolicyAnalyzer(name, path, opts)
+	analyzer, err = plugctx.Host.PolicyAnalyzer(plugctx, name, path, opts)
 	if err != nil {
-		var retryMe *workspace.MissingError
-		if errors.As(err, &retryMe) {
+		if retryMe, ok := errors.AsType[*workspace.MissingError](err); ok {
 			return nil, policyAnalyzerMissingError(name, retryMe)
 		}
 		return nil, err
@@ -610,7 +888,17 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		}
 	}
 
-	var wg sync.WaitGroup
+	var (
+		wg               sync.WaitGroup
+		analyzersMu      sync.Mutex
+		loadedAnalyzers  []plugin.Analyzer
+		policyExceptions = map[plugin.Analyzer]resourceanalyzer.PolicyExceptions{}
+	)
+	addAnalyzer := func(a plugin.Analyzer) {
+		analyzersMu.Lock()
+		loadedAnalyzers = append(loadedAnalyzers, a)
+		analyzersMu.Unlock()
+	}
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 
 	// Load required policy packs (installation already completed above).
@@ -635,7 +923,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 				}
 				if len(resolved.Secrets) > 0 {
-					logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+					logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 				}
 			}
 
@@ -652,11 +940,20 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			analyzerInfo, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 			if err != nil {
 				errs <- err
 				return
 			}
+
+			// Invalid exceptions from the service are skipped, so the violations they match still fail the run.
+			exceptions, parseErrs := resourceanalyzer.ParsePolicyExceptions(policy.Exceptions())
+			for _, err := range parseErrs {
+				plugctx.Diag.Warningf(diag.Message("", "policy pack %q: %v; ignoring it"), analyzerInfo.Name, err)
+			}
+			analyzersMu.Lock()
+			policyExceptions[analyzer] = exceptions
+			analyzersMu.Unlock()
 
 			// Merge ESC policyConfig under API config (API config wins on conflict).
 			var escConfig map[string]*json.RawMessage
@@ -670,6 +967,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				if len(mergedConfig) > 0 {
 					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
 				}
+				addAnalyzer(analyzer)
 				return
 			}
 			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(mergedConfig)
@@ -684,10 +982,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
+			addAnalyzer(analyzer)
 		}(policy)
 	}
 
@@ -703,16 +1002,17 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			// Load config and ESC environment references from the config file.
+			// Load config, ESC environment references and exceptions from the config file.
 			var configFromFile map[string]plugin.AnalyzerPolicyConfig
 			var environments []string
+			var exceptions resourceanalyzer.PolicyExceptions
 			if pack.Config != "" {
-				var loadErr error
-				configFromFile, environments, loadErr = resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(pack.Config)
+				file, loadErr := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
 				if loadErr != nil {
 					errs <- loadErr
 					return
 				}
+				configFromFile, environments, exceptions = file.Config, file.Environments, file.Exceptions
 			}
 
 			// Resolve ESC environments if present.
@@ -737,7 +1037,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 						policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 					}
 					if len(resolved.Secrets) > 0 {
-						logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+						logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 					}
 				}
 			}
@@ -752,7 +1052,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			// Update the Policy Pack names now that we have loaded the plugins and can access the name.
-			analyzerInfo, err := analyzer.GetAnalyzerInfo()
+			analyzerInfo, err := analyzer.GetAnalyzerInfo(plugctx.Request())
 			if err != nil {
 				errs <- err
 				return
@@ -762,12 +1062,21 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
 			deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
 
-			// Load config, reconcile & validate it, and pass it to the policy pack.
+			for _, w := range exceptions.UnknownPolicyWarnings(analyzerInfo.Name, analyzerInfo.Policies) {
+				plugctx.Diag.Warningf(diag.Message("", "%s"), w)
+			}
+			analyzersMu.Lock()
+			policyExceptions[analyzer] = exceptions
+			analyzersMu.Unlock()
+
+			// Load config, reconcile & validate it, and pass it to the policy pack. Exceptions apply to every
+			// pack, but other config needs the pack's support.
 			if !analyzerInfo.SupportsConfig {
-				if pack.Config != "" {
+				if len(configFromFile) > 0 {
 					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 					return
 				}
+				addAnalyzer(analyzer)
 				return
 			}
 
@@ -793,10 +1102,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
-			if err = analyzer.Configure(config); err != nil {
+			if err = analyzer.Configure(plugctx.Request(), config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
 			}
+			addAnalyzer(analyzer)
 		}(i, pack)
 	}
 
@@ -817,6 +1127,8 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		return errors.New("validating policy config")
 	}
 
+	deployOpts.LoadedAnalyzers = loadedAnalyzers
+	deployOpts.PolicyExceptions = policyExceptions
 	return nil
 }
 
@@ -887,21 +1199,70 @@ func newUpdateSource(ctx context.Context,
 		args = []string{plugctx.Host.ServerAddr()}
 	}
 
-	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+	runinfo := &deploy.EvalRunInfo{
 		Proj:        proj,
 		Pwd:         pwd,
 		Program:     main,
 		ProjectRoot: projectRoot,
 		Args:        args,
 		Target:      target,
-	}, defaultProviderVersions, resourceHooks, deploy.EvalSourceOptions{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		AttachDebugger:            opts.AttachDebugger,
-	}, panicErrs), nil
+	}
+
+	evalOpts := deploy.EvalSourceOptions{
+		DryRun:                              opts.DryRun,
+		Parallel:                            opts.Parallel,
+		DisableResourceReferences:           opts.DisableResourceReferences,
+		DisableOutputValues:                 opts.DisableOutputValues,
+		DisableInvokeOutputValues:           opts.DisableInvokeOutputValues,
+		DisableCallOutputValues:             opts.DisableCallOutputValues,
+		DisableRegisterResourceOutputValues: opts.DisableRegisterResourceOutputValues,
+		AttachDebugger:                      opts.AttachDebugger,
+		SupportsStateMigrations:             opts.supportsStateMigrations,
+		ShowSecrets:                         opts.ShowSecrets,
+	}
+
+	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
+
+	var observer *deploy.RegistrationObserver
+	// Now create sources for snippets in the snapshot and mux them with the main source.
+	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
+		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
+		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
+		// consume them when their Snippet.References needs to read another resource's outputs.
+		observer = deploy.NewRegistrationObserver()
+
+		// We need a loader for snippets
+		loader := schema.NewPluginLoader(plugctx)
+
+		// When the operation targets specific snippets, evaluate only those; everything else is
+		// carried forward from old state, so references into it are resolved from that state
+		// (matching what an untargeted replay would publish).
+		replaySnippets := target.Snapshot.Snippets
+		if len(opts.TargetSnippets) > 0 {
+			replaySnippets = slice.Prealloc[resource.Snippet](len(target.Snapshot.Snippets))
+			for _, snippet := range target.Snapshot.Snippets {
+				if slices.Contains(opts.TargetSnippets, snippet.UUID) {
+					replaySnippets = append(replaySnippets, snippet)
+				}
+			}
+			for _, r := range target.Snapshot.Resources {
+				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
+					observer.Resolve(r.URN, r.ID, resource.FromResourcePropertyMap(r.Outputs))
+				}
+			}
+		}
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(replaySnippets))
+		for i, snippet := range replaySnippets {
+			snippetSources[i] = deploy.NewSnippetSource(
+				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
+		}
+		program = deploy.NewMuxSource(ctx, observer, program, snippetSources...)
+	}
+
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
+	return deploy.NewEvalSource(plugctx, runinfo,
+		defaultProviderVersions, resourceHooks, evalOpts, panicErrs, observer, program), nil
 }
 
 func update(
@@ -909,6 +1270,12 @@ func update(
 	info *deploymentContext,
 	opts *deploymentOptions,
 ) (*deploy.Plan, display.ResourceChanges, error) {
+	// Ensure we have a plugin host for the operation. Constructed here (when not test-injected)
+	// because the host's diag sinks are the engine's event sinks; newDeployment closes it.
+	if err := ensureHost(ctx.Cancel.Base(), opts, info.TracingSpan); err != nil {
+		return nil, nil, err
+	}
+
 	// Create an appropriate set of event listeners.
 	var actions runActions
 	if opts.DryRun {
@@ -926,6 +1293,14 @@ func update(
 
 	// Execute the deployment.
 	plan, changes, err := deployment.run(ctx)
+
+	if !opts.DryRun && opts.snippetDeletions != nil && ctx.SnapshotManager != nil {
+		if remaining, dropped := opts.snippetDeletions.remaining(opts.snippetsPrePersist); dropped {
+			if serr := ctx.SnapshotManager.SetSnippets(remaining); serr != nil {
+				err = errors.Join(err, fmt.Errorf("persist snippet deletions: %w", serr))
+			}
+		}
+	}
 
 	if ctx.FinalizeUpdateFunc != nil {
 		ctx.FinalizeUpdateFunc()
@@ -991,6 +1366,21 @@ func (acts *updateActions) OnRebuiltBaseState() error {
 	return acts.Context.SnapshotManager.RebuiltBaseState()
 }
 
+func (acts *updateActions) OnStateMigration(transaction *deploy.StateMigrationTransaction) error {
+	manager := acts.Context.SnapshotManager
+	if manager == nil || !manager.SupportsStateMigrations() {
+		return deploy.ErrStateMigrationsUnsupported
+	}
+	if err := manager.StateMigration(transaction); err != nil {
+		return err
+	}
+	// TODO[https://github.com/pulumi/pulumi/issues/24714]: Replace with display event
+	acts.Opts.Diag.Infof(diag.Message(transaction.RootURN,
+		"State migration applied (state entries: %d before, %d after)."),
+		len(transaction.PriorSubtree), len(transaction.ResultSubtree))
+	return nil
+}
+
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
@@ -1034,11 +1424,19 @@ func (acts *updateActions) OnResourceStepPost(
 			errorURN = step.URN()
 		}
 
-		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		// Issue a diagnostic for true bonafide errors. Await failures get none: the resource's
+		// status and the summary already report it as awaiting.
+		_, awaited := errors.AsType[*plugin.AwaitError](err)
+		if !awaited {
+			acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		}
 		steps := atomic.LoadInt32(&acts.Steps)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, awaited, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
+		if t := acts.Opts.snippetDeletions; t != nil {
+			t.recordStep(step)
+		}
+
 		op, record := step.Op(), step.Logical()
 		if acts.Opts.isRefresh && op == deploy.OpRefresh {
 			// Refreshes are handled specially.
@@ -1069,10 +1467,10 @@ func (acts *updateActions) OnResourceStepPost(
 		// the Pulumi program, as component resources only report outputs via calls to RegisterResourceOutputs.
 		// Deletions emit the resourceOutputEvent so the display knows when to stop the time elapsed counter.
 		// Additionally, emit the event for views with outputs.
-		if step.Res().Custom ||
+		if res := step.Res(); res != nil && (res.Custom ||
 			acts.Opts.Refresh && step.Op() == deploy.OpRefresh ||
 			step.Op() == deploy.OpDelete ||
-			step.Res().ViewOf != "" {
+			res.ViewOf != "") {
 			acts.Opts.Events.resourceOutputsEvent(
 				op,
 				step,
@@ -1104,9 +1502,7 @@ func (acts *updateActions) OnResourceStepPost(
 		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")
 		contract.Assertf(old != nil, "old state should not be nil for partially-failed update")
 		new.Inputs = make(resource.PropertyMap)
-		for key, value := range old.Inputs {
-			new.Inputs[key] = value
-		}
+		maps.Copy(new.Inputs, old.Inputs)
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -1135,12 +1531,14 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }
 
-func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, d)
+func (acts *updateActions) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
+	acts.Opts.Events.policyViolationEvent(urn, d, exceptions)
 }
 
 func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+	before property.Map, after property.Map,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
@@ -1174,7 +1572,9 @@ type previewActions struct {
 }
 
 func isInternalStep(step deploy.Step) bool {
-	if step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step) {
+	if step.Op() == deploy.OpRemovePendingReplace ||
+		step.Op() == deploy.OpExtendParameterize ||
+		isDefaultProviderStep(step) {
 		return true
 	}
 	refreshStep, ok := step.(*deploy.RefreshStep)
@@ -1211,6 +1611,14 @@ func (acts *previewActions) OnRebuiltBaseState() error {
 	return nil
 }
 
+func (acts *previewActions) OnStateMigration(transaction *deploy.StateMigrationTransaction) error {
+	// TODO[https://github.com/pulumi/pulumi/issues/24714]: Replace with display event
+	acts.Opts.Diag.Infof(diag.Message(transaction.RootURN,
+		"State migration planned (state entries: %d before, %d after)."),
+		len(transaction.PriorSubtree), len(transaction.ResultSubtree))
+	return nil
+}
+
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 	acts.MapLock.Lock()
 	acts.Seen[step.URN()] = step
@@ -1223,6 +1631,13 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 		acts.Opts.ShowSecrets,
 	)
 
+	// If a SnapshotManager is wired up (e.g. by the backend for preview/dry-run), mutate it so
+	// the in-memory snapshot reflects what would have happened. Nothing is persisted — the
+	// backend installs a discarding persister for dry-run — but callers like `pulumi import
+	// --preview-only` need the resulting snapshot to drive codegen.
+	if acts.Context.SnapshotManager != nil {
+		return acts.Context.SnapshotManager.BeginMutation(step)
+	}
 	return nil, nil
 }
 
@@ -1279,6 +1694,11 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 		)
 	}
 
+	// Commit the step to the in-memory snapshot if a SnapshotManager is wired up. See
+	// OnResourceStepPre for the rationale.
+	if mutation, ok := ctx.(SnapshotMutation); ok && mutation != nil {
+		return mutation.End(step, err == nil)
+	}
 	return nil
 }
 
@@ -1300,12 +1720,14 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	return nil
 }
 
-func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, d)
+func (acts *previewActions) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
+	acts.Opts.Events.policyViolationEvent(urn, d, exceptions)
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
-	before resource.PropertyMap, after resource.PropertyMap,
+	before property.Map, after property.Map,
 ) {
 	acts.Opts.Events.policyRemediationEvent(urn, t, before, after)
 }
