@@ -263,18 +263,9 @@ type CreateStep struct {
 	replacing     bool                           // true if this is a create due to a replacement.
 	pendingDelete bool                           // true if this replacement should create a pending delete.
 	provider      plugin.Provider                // the optional provider to use.
-
-	// outcomeUnknown is set when Create failed in a way that leaves it unknown whether the resource was
-	// created (a partial failure without an ID). The create is then left as a pending operation.
-	outcomeUnknown bool
 }
 
 var _ Step = (*CreateStep)(nil)
-
-// OutcomeUnknown returns true if Create failed in a way that leaves it unknown whether the resource was created.
-// The snapshot should then keep the pending create operation rather than complete it, so that the user can
-// resolve it with `pulumi refresh`.
-func (s *CreateStep) OutcomeUnknown() bool { return s.outcomeUnknown }
 
 func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgresource.State) Step {
 	contract.Requiref(reg != nil, "reg", "must not be nil")
@@ -514,18 +505,14 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				}
 
 				// The provider reported a partial failure but gave us no ID, so we can't tell whether the
-				// resource exists. Without an ID the engine can't refresh, update or delete it, so we must not
-				// commit it as a resource. Instead leave the create as a pending operation, the same as a create
-				// that was interrupted, so the user can import or clear it with `pulumi refresh`.
-				s.outcomeUnknown = true
-				s.Deployment().Diag().Warningf(&diag.Diag{
-					URN: s.URN(),
-					Message: "the provider reported a partial failure but did not return an ID from Create, " +
-						"so it is unknown whether the resource was created; it has been recorded as a pending " +
-						"create. Run `pulumi refresh` to import it if it exists in the cloud provider, or to " +
-						"clear it if it does not",
-				})
-				return resource.StatusUnknown, nil, err
+				// resource exists. The snapshot managers won't commit a custom resource without an ID (see
+				// IsCreateWithoutID); they leave the create as a pending operation instead, the same as a create
+				// that was interrupted. Explain that alongside the provider's error, so the user sees a single
+				// diagnostic for this resource.
+				return resource.StatusPartialFailure, nil, fmt.Errorf(
+					"%w\nThe provider did not return an ID, so it is unknown whether the resource was created. "+
+						"It has been recorded as a pending create: run `pulumi refresh` to import it if it exists "+
+						"in the cloud provider, or to clear it if it does not", err)
 			}
 		}
 	}

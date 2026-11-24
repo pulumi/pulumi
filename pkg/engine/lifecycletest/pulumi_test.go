@@ -1088,7 +1088,36 @@ func TestCreatePartialFailureWithoutID(t *testing.T) {
 	project := p.GetProject()
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	// captureEvents returns a validate function that records the events of an operation.
+	captureEvents := func(into *[]Event) lt.ValidateFunc {
+		return func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			*into = events
+			return err
+		}
+	}
+	diagsFor := func(events []Event, urn resource.URN) []DiagEventPayload {
+		var diags []DiagEventPayload
+		for _, e := range events {
+			if e.Type == DiagEvent {
+				if payload := e.Payload().(DiagEventPayload); payload.URN == urn {
+					diags = append(diags, payload)
+				}
+			}
+		}
+		return diags
+	}
+	maybeCorrupt := func(events []Event) bool {
+		for _, e := range events {
+			if e.Type == SummaryEvent {
+				return e.Payload().(SummaryEventPayload).MaybeCorrupt
+			}
+		}
+		return false
+	}
+
+	var events []Event
+	snap, err := lt.TestOp(Update).Run(
+		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, captureEvents(&events))
 	require.ErrorContains(t, err, "intentionally failed create, no id")
 	require.NotNil(t, snap)
 	for _, res := range snap.Resources {
@@ -1098,11 +1127,31 @@ func TestCreatePartialFailureWithoutID(t *testing.T) {
 	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
 	assert.Equal(t, resURN, snap.PendingOperations[0].Resource.URN)
 
+	// The user sees a single diagnostic for the resource: the provider's error, with guidance on how to recover.
+	diags := diagsFor(events, resURN)
+	require.Len(t, diags, 1)
+	assert.Equal(t, diag.Error, diags[0].Severity)
+	assert.Contains(t, diags[0].Message, "intentionally failed create, no id")
+	assert.Contains(t, diags[0].Message, "recorded as a pending create")
+	// Recording a pending create is a safe outcome, so the update isn't flagged as possibly corrupt.
+	assert.False(t, maybeCorrupt(events), "update should not be flagged as possibly corrupt")
+
 	// The next update isn't blocked by the pending create: it warns about it, creates the resource, and keeps the
 	// pending create for the user to resolve with `pulumi refresh`.
 	failCreate = false
-	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, err = lt.TestOp(Update).Run(
+		project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, captureEvents(&events))
 	require.NoError(t, err)
+	var warnedAboutPending bool
+	for _, e := range events {
+		if e.Type == DiagEvent {
+			payload := e.Payload().(DiagEventPayload)
+			if payload.Severity == diag.Warning && strings.Contains(payload.Message, "pending operations") {
+				warnedAboutPending = true
+			}
+		}
+	}
+	assert.True(t, warnedAboutPending, "the next update should warn about the pending create")
 	var found *pkgresource.State
 	for _, res := range snap.Resources {
 		if res.URN == resURN {

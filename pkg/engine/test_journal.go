@@ -265,6 +265,12 @@ func (j *TestJournal) BeginMutation(step deploy.Step) (SnapshotMutation, error) 
 }
 
 func (j *TestJournal) End(step deploy.Step, success bool) error {
+	// Mirror the snapshot managers: a custom resource created without an ID isn't committed, and its pending create
+	// operation is left in place, so record no end entry for it.
+	if success && deploy.IsCreateWithoutID(step) {
+		return nil
+	}
+
 	kind := TestJournalEntryFailure
 	if success {
 		kind = TestJournalEntrySuccess

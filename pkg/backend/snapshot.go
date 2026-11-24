@@ -525,6 +525,12 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
 	return csm.manager.mutate(func() bool {
+		// A custom resource without an ID can't be addressed later, so don't commit it. Leave its pending create
+		// operation in place for `pulumi refresh` to resolve.
+		if successful && deploy.IsCreateWithoutID(step) {
+			return true
+		}
+
 		csm.manager.markOperationComplete(step.New())
 		if successful {
 			// There is some very subtle behind-the-scenes magic here that

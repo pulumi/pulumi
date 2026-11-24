@@ -48,6 +48,20 @@ type Snapshot struct {
 	Extensions map[apitype.ExtensionRef]apitype.Extension
 }
 
+// IsCreateWithoutID returns true if the given step is a create of a custom resource that has no ID. When the engine
+// ends such a step as successful, the provider reported a partial failure from Create without returning an ID (a
+// plain failure is ended as unsuccessful, and is handled as usual). A custom resource without an ID can't be
+// refreshed, updated or deleted later, and it's unknown whether it exists in the cloud provider, so snapshot managers
+// must not commit it. They leave its pending create operation in place instead, for the user to resolve with
+// `pulumi refresh`, the same as a create that was interrupted.
+func IsCreateWithoutID(step Step) bool {
+	if step == nil || (step.Op() != OpCreate && step.Op() != OpCreateReplacement) {
+		return false
+	}
+	newState := step.New()
+	return newState != nil && newState.Custom && newState.ID == ""
+}
+
 // SnapshotMetadata contains metadata about a snapshot.
 type SnapshotMetadata struct {
 	// Metadata associated with any integrity error affecting the snapshot.
