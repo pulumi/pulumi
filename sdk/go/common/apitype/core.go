@@ -564,10 +564,52 @@ type ResourceV3 struct {
 	SnippetID string `json:"snippetID,omitempty" yaml:"snippetID,omitempty"`
 }
 
+// StackFrameOrigin classifies the code that produced a stack frame.
+type StackFrameOrigin string
+
+const (
+	// StackFrameOriginUnclassified means the SDK did not classify the frame.
+	StackFrameOriginUnclassified StackFrameOrigin = ""
+	// StackFrameOriginPulumi identifies code in the core Pulumi SDK or its program launcher.
+	StackFrameOriginPulumi StackFrameOrigin = "pulumi"
+	// StackFrameOriginRuntime identifies code in the language runtime or its standard library.
+	StackFrameOriginRuntime StackFrameOrigin = "runtime"
+)
+
 // StackFrameV1 captures information about a stack frame.
 type StackFrameV1 struct {
 	// SourcePosition contains the source position associated with the stack frame.
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// Module identifies a language-level module, such as a Python or Go module or a Node.js package.
+	Module string `json:"module,omitempty" yaml:"module,omitempty"`
+	// Origin identifies a frame from Pulumi or the language runtime. An empty value means it is unclassified.
+	Origin StackFrameOrigin `json:"origin,omitempty" yaml:"origin,omitempty"`
+	// Boundary marks the start of a separately captured stack within the combined trace.
+	Boundary *StackTraceBoundaryV1 `json:"boundary,omitempty" yaml:"boundary,omitempty"`
+}
+
+// StackTraceBoundaryKind describes the execution context of a stack capture.
+type StackTraceBoundaryKind string
+
+const (
+	// StackTraceBoundaryKindProgram identifies a capture from the original Pulumi program.
+	StackTraceBoundaryKindProgram StackTraceBoundaryKind = "program"
+	// StackTraceBoundaryKindConstruct identifies a capture from inside a provider's Construct.
+	StackTraceBoundaryKindConstruct StackTraceBoundaryKind = "construct"
+	// StackTraceBoundaryKindCall identifies a capture from inside a provider's Call.
+	StackTraceBoundaryKindCall StackTraceBoundaryKind = "call"
+)
+
+// StackTraceBoundaryV1 identifies the operation whose execution produced a captured stack section.
+type StackTraceBoundaryV1 struct {
+	// CallSite is the source location in this capture where the request originated.
+	CallSite string `json:"callSite,omitempty" yaml:"callSite,omitempty"`
+	// Kind identifies the execution context of the capture.
+	Kind StackTraceBoundaryKind `json:"kind" yaml:"kind"`
+	// ResourceType identifies the type of the component whose Construct was executing.
+	ResourceType string `json:"resourceType,omitempty" yaml:"resourceType,omitempty"`
+	// ResourceName is the name of that component. ResourceType and ResourceName are omitted for other capture kinds.
+	ResourceName string `json:"resourceName,omitempty" yaml:"resourceName,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

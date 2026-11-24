@@ -41,6 +41,9 @@ type (
 // ExtensionRef identifies an extension parameterization within a deployment.
 type ExtensionRef = apitype.ExtensionRef
 
+// StackFrame records a frame from the time a resource was registered.
+type StackFrame = apitype.StackFrameV1
+
 // State is a structure containing state associated with a resource. This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects. The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
@@ -389,10 +392,4 @@ func (s *State) GetAllDependencies() (string, []StateDependency) {
 		}
 	}
 	return s.Provider, allDeps
-}
-
-// StackFrames are used to record the stack at the time a resource is registered.
-type StackFrame struct {
-	// The source position associated with the stack frame.
-	SourcePosition string
 }

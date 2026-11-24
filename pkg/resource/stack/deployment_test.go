@@ -1650,3 +1650,28 @@ func TestSerializeResourceReportsByteString(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, encoded)
 }
+
+func TestStackFrameMetadataRoundTrip(t *testing.T) {
+	t.Parallel()
+	original := &pkgresource.State{
+		Type: "test:index:Resource", URN: "urn:pulumi:dev::test::test:index:Resource::example",
+		StackTrace: []pkgresource.StackFrame{
+			{
+				Module: "pulumi.runtime.resource", Origin: apitype.StackFrameOriginPulumi,
+				Boundary: &apitype.StackTraceBoundaryV1{
+					Kind: apitype.StackTraceBoundaryKindConstruct, ResourceName: "outer", ResourceType: "test:index:Outer",
+				},
+			},
+			{SourcePosition: "project:///main.py#2", Module: "__main__"},
+		},
+	}
+	serialized, _, err := SerializeResource(t.Context(), original, config.NopEncrypter, false)
+	require.NoError(t, err)
+	bytes, err := json.Marshal(serialized)
+	require.NoError(t, err)
+	var decoded apitype.ResourceV3
+	require.NoError(t, json.Unmarshal(bytes, &decoded))
+	restored, err := DeserializeResource(decoded, config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, original.StackTrace, restored.StackTrace)
+}

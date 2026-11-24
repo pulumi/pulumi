@@ -303,7 +303,9 @@ proto.pulumirpc.StackFrame.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.StackFrame.toObject = function(includeInstance, msg) {
   var f, obj = {
-pc: (f = msg.getPc()) && proto.pulumirpc.SourcePosition.toObject(includeInstance, f)
+pc: (f = msg.getPc()) && proto.pulumirpc.SourcePosition.toObject(includeInstance, f),
+module: jspb.Message.getFieldWithDefault(msg, 2, ""),
+origin: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -345,6 +347,14 @@ proto.pulumirpc.StackFrame.deserializeBinaryFromReader = function(msg, reader) {
       reader.readMessage(value,proto.pulumirpc.SourcePosition.deserializeBinaryFromReader);
       msg.setPc(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setModule(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOrigin(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -380,6 +390,20 @@ proto.pulumirpc.StackFrame.serializeBinaryToWriter = function(message, writer) {
       1,
       f,
       proto.pulumirpc.SourcePosition.serializeBinaryToWriter
+    );
+  }
+  f = message.getModule();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getOrigin();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
     );
   }
 };
@@ -419,6 +443,42 @@ proto.pulumirpc.StackFrame.prototype.clearPc = function() {
  */
 proto.pulumirpc.StackFrame.prototype.hasPc = function() {
   return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional string module = 2;
+ * @return {string}
+ */
+proto.pulumirpc.StackFrame.prototype.getModule = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.StackFrame} returns this
+ */
+proto.pulumirpc.StackFrame.prototype.setModule = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string origin = 3;
+ * @return {string}
+ */
+proto.pulumirpc.StackFrame.prototype.getOrigin = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.StackFrame} returns this
+ */
+proto.pulumirpc.StackFrame.prototype.setOrigin = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

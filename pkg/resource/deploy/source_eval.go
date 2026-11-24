@@ -2215,9 +2215,11 @@ func (s *sourcePositions) newStackTrace(raw *pulumirpc.StackTrace) stackTrace {
 		pc, err := s.parseSourcePosition(f.GetPc())
 		if err != nil {
 			logging.V(5).Infof("failed to parse frame source position %#v: %v", f.GetPc(), err)
-			return pkgresource.StackFrame{}
+			pc = ""
 		}
-		return pkgresource.StackFrame{SourcePosition: pc}
+		return pkgresource.StackFrame{
+			SourcePosition: pc, Module: f.GetModule(), Origin: apitype.StackFrameOrigin(f.GetOrigin()),
+		}
 	})
 }
 
