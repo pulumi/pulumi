@@ -1,0 +1,5 @@
+kind: fix
+body: Skip S3 directory-marker objects when listing DIY backend state
+component: backend/diy
+custom:
+  PR: "23533"
