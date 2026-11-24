@@ -68,9 +68,10 @@ type Manager struct {
 	pending    []Hint
 	suppressed bool
 
-	now       func() time.Time
-	statePath func() (string, error)
-	settings  func() settings
+	now         func() time.Time
+	statePath   func() (string, error)
+	settings    func() settings
+	interactive func() bool
 }
 
 // New returns a Manager that reads the user's hint settings and records shown hints under the Pulumi home directory.
@@ -79,6 +80,8 @@ func New() *Manager {
 		now:       time.Now,
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
 		settings:  loadSettings,
+		// Hints are for people at a terminal, so don't show them in CI or non-interactive runs.
+		interactive: cmdutil.Interactive,
 	}
 }
 
@@ -143,7 +146,7 @@ func (m *Manager) Flush(w io.Writer) {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.pending) == 0 || m.suppressed {
+	if len(m.pending) == 0 || m.suppressed || !m.interactive() {
 		return
 	}
 	settings := m.settings()

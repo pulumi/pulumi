@@ -93,7 +93,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
@@ -305,10 +304,9 @@ func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
-			// Hints are for people at a terminal, so don't show them in CI or non-interactive runs, or mix them into
-			// machine-readable output. Commands that parse their own flags, like `pulumi do`, may write JSON without
-			// cobra knowing, so they show no hints either.
-			if ciutil.IsCI() || cmdutil.DisableInteractive || cmd.DisableFlagParsing || isJSONOutput(cmd) {
+			// Don't mix hints into machine-readable output. Commands that parse their own flags, like `pulumi do`, may
+			// write JSON without cobra knowing, so they show no hints either.
+			if cmd.DisableFlagParsing || isJSONOutput(cmd) {
 				hm.Suppress()
 			}
 

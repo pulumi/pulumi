@@ -38,8 +38,10 @@ type testManager struct {
 	*Manager
 	now      time.Time
 	disabled bool
-	skip     []string
-	path     string
+	// noTerminal is true when the command doesn't run interactively, as in CI.
+	noTerminal bool
+	skip       []string
+	path       string
 }
 
 func newTestManager(t *testing.T) *testManager {
@@ -54,8 +56,9 @@ func newTestManager(t *testing.T) *testManager {
 // newManager returns a Manager for a new command that uses tm's clock, state file and settings.
 func (tm *testManager) newManager() *Manager {
 	return &Manager{
-		now:       func() time.Time { return tm.now },
-		statePath: func() (string, error) { return tm.path, nil },
+		now:         func() time.Time { return tm.now },
+		statePath:   func() (string, error) { return tm.path, nil },
+		interactive: func() bool { return !tm.noTerminal },
 		settings: func() settings {
 			s := settings{disabled: tm.disabled, skip: map[string]bool{}}
 			for _, id := range tm.skip {
@@ -140,6 +143,7 @@ func TestSuppressedAndDisabled(t *testing.T) {
 	}{
 		{"suppressed", func(tm *testManager) { tm.Suppress() }},
 		{"disabled", func(tm *testManager) { tm.disabled = true }},
+		{"not interactive", func(tm *testManager) { tm.noTerminal = true }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
