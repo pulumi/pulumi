@@ -1,0 +1,4 @@
+component: sdkgen/go
+kind: fix
+body: Strip leading underscores from Go struct field names so `__`-prefixed schema properties stay exported
+time: 2026-10-09T12:00:00.000000+05:00
