@@ -1164,6 +1164,44 @@ func TestCreatePartialFailureWithoutID(t *testing.T) {
 	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
 }
 
+// TestCreateSuccessWithoutID checks that when a buggy provider reports a successful Create but returns no ID, the
+// engine handles it the same way as a partial failure without an ID: the resource is not committed to state, and the
+// create is left as a pending operation for `pulumi refresh` to resolve.
+func TestCreateSuccessWithoutID(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	snap, err := lt.TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "provider did not return an ID from Create")
+	require.NotNil(t, snap)
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, resURN, res.URN, "resource without an ID must not be committed to state")
+	}
+	require.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
+	assert.Equal(t, resURN, snap.PendingOperations[0].Resource.URN)
+}
+
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
 func TestUpdatePartialFailure(t *testing.T) {
 	t.Parallel()

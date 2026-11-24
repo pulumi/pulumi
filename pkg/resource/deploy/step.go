@@ -500,19 +500,19 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 			if !s.deployment.opts.DryRun && id == "" {
-				if err == nil {
-					return resourceStatus, nil, errors.New("provider did not return an ID from Create")
-				}
-
-				// The provider reported a partial failure but gave us no ID, so we can't tell whether the
-				// resource exists. The snapshot managers won't commit a custom resource without an ID (see
-				// IsCreateWithoutID); they leave the create as a pending operation instead, the same as a create
-				// that was interrupted. Explain that alongside the provider's error, so the user sees a single
+				// The provider gave us no ID, whether it reported success or a failure, so we can't tell whether
+				// the resource exists. The snapshot managers won't commit a custom resource without an ID (see
+				// IsCustomMissingID); they leave the create as a pending operation instead, the same as a create
+				// that was interrupted. Report this as a partial failure so the step is ended as successful and
+				// that rule applies, and explain it alongside any provider error so the user sees a single
 				// diagnostic for this resource.
-				return resource.StatusPartialFailure, nil, fmt.Errorf(
-					"%w\nThe provider did not return an ID, so it is unknown whether the resource was created. "+
-						"It has been recorded as a pending create: run `pulumi refresh` to import it if it exists "+
-						"in the cloud provider, or to clear it if it does not", err)
+				missingID := errors.New("provider did not return an ID from Create, so it is unknown whether " +
+					"the resource was created. It has been recorded as a pending create: run `pulumi refresh` " +
+					"to import it if it exists in the cloud provider, or to clear it if it does not")
+				if err == nil {
+					return resource.StatusPartialFailure, nil, missingID
+				}
+				return resource.StatusPartialFailure, nil, fmt.Errorf("%w\n%w", err, missingID)
 			}
 		}
 	}

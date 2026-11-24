@@ -527,7 +527,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return csm.manager.mutate(func() bool {
 		// A custom resource without an ID can't be addressed later, so don't commit it. Leave its pending create
 		// operation in place for `pulumi refresh` to resolve.
-		if successful && deploy.IsCreateWithoutID(step) {
+		if successful && deploy.IsCustomMissingID(step.New()) {
 			return true
 		}
 
