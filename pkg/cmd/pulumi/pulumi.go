@@ -386,6 +386,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
 			ctx = httpstate.ContextWithCommandName(ctx, cmd.CommandPath())
+			ctx = backend.ContextWithInvokedCommand(ctx, cmd.CommandPath(), changedFlagNames(cmd))
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -720,17 +721,7 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 	command := cmd.CommandPath()
 
-	var flags strings.Builder
-	i := 0
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if f.Changed {
-			if i > 0 {
-				flags.WriteRune(' ')
-			}
-			flags.WriteString("--" + f.Name)
-			i++
-		}
-	})
+	flags := strings.Join(changedFlagNames(cmd), " ")
 
 	if command == "pulumi plugin run" {
 		if len(args) > 0 {
@@ -766,11 +757,19 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 	metadata := map[string]string{
 		"Command":     command,
-		"Flags":       flags.String(),
+		"Flags":       flags,
 		"Environment": envString,
 	}
 
 	return metadata
+}
+
+func changedFlagNames(cmd *cobra.Command) []string {
+	var flags []string
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		flags = append(flags, "--"+f.Name)
+	})
+	return flags
 }
 
 // positionalArgs extracts positional arguments from a raw argument list,

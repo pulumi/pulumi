@@ -1216,6 +1216,19 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	assert.Nil(t, sp.LastSnap().Metadata.IntegrityErrorMetadata)
 }
 
+func TestSnapshotManualEditMetadataIsCleared(t *testing.T) {
+	t.Parallel()
+
+	snap := NewSnapshot([]*pkgresource.State{NewResource("a")})
+	snap.Metadata.ManualEditMetadata = &deploy.SnapshotManualEditMetadata{Command: "pulumi state delete"}
+
+	sp := &MockStackPersister{}
+	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+
+	require.NoError(t, sm.saveSnapshot())
+	require.Nil(t, sp.LastSnap().Metadata.ManualEditMetadata)
+}
+
 //nolint:paralleltest // mutates global state
 func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisabled(t *testing.T) {
 	old := DisableIntegrityChecking

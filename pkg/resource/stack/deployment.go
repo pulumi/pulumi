@@ -305,6 +305,12 @@ func SerializeDeploymentWithMetadata(
 			Error:   snap.Metadata.IntegrityErrorMetadata.Error,
 		}
 	}
+	if snap.Metadata.ManualEditMetadata != nil {
+		metadata.ManualEditMetadata = &apitype.SnapshotManualEditMetadataV1{
+			Command: snap.Metadata.ManualEditMetadata.Command,
+			Flags:   snap.Metadata.ManualEditMetadata.Flags,
+		}
+	}
 
 	var snippets []apitype.SnippetV1
 	if len(snap.Snippets) > 0 {
@@ -647,6 +653,12 @@ func DeserializeDeploymentV3(
 			Version: deployment.Metadata.IntegrityErrorMetadata.Version,
 			Command: deployment.Metadata.IntegrityErrorMetadata.Command,
 			Error:   deployment.Metadata.IntegrityErrorMetadata.Error,
+		}
+	}
+	if deployment.Metadata.ManualEditMetadata != nil {
+		metadata.ManualEditMetadata = &deploy.SnapshotManualEditMetadata{
+			Command: deployment.Metadata.ManualEditMetadata.Command,
+			Flags:   deployment.Metadata.ManualEditMetadata.Flags,
 		}
 	}
 

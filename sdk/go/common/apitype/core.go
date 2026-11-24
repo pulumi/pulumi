@@ -287,6 +287,7 @@ type SecretsProvidersV1 struct {
 type SnapshotMetadataV1 struct {
 	// Metadata associated with any integrity error affecting the snapshot.
 	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadataV1 `json:"integrity_error,omitempty" yaml:"integrity_error,omitempty"`
+	ManualEditMetadata     *SnapshotManualEditMetadataV1     `json:"manual_edit,omitempty" yaml:"manual_edit,omitempty"`
 }
 
 // SnippetV1 is the serialized form of a PCL snippet stored alongside a snapshot. Snippets are evaluated by the
@@ -341,6 +342,11 @@ type SnapshotIntegrityErrorMetadataV1 struct {
 	Error string `json:"error,omitempty" yaml:"error,omitempty"`
 	// EnvVars contains the Pulumi environment variables that were set when the integrity error occurred.
 	EnvVars map[string]string `json:"env_vars,omitempty" yaml:"env_vars,omitempty"`
+}
+
+type SnapshotManualEditMetadataV1 struct {
+	Command string   `json:"command,omitempty" yaml:"command,omitempty"`
+	Flags   []string `json:"flags,omitempty" yaml:"flags,omitempty"`
 }
 
 // OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation

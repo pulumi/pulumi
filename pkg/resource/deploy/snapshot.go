@@ -52,6 +52,12 @@ type Snapshot struct {
 type SnapshotMetadata struct {
 	// Metadata associated with any integrity error affecting the snapshot.
 	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadata
+	ManualEditMetadata     *SnapshotManualEditMetadata
+}
+
+type SnapshotManualEditMetadata struct {
+	Command string
+	Flags   []string
 }
 
 // SnapshotIntegrityErrorMetadata contains metadata about a snapshot integrity error, such as the version

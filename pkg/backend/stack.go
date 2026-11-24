@@ -143,6 +143,25 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 	return s.Backend().ImportDeployment(ctx, s, deployment)
 }
 
+type invokedCommandContextKey struct{}
+
+type invokedCommand struct {
+	command string
+	flags   []string
+}
+
+func ContextWithInvokedCommand(ctx context.Context, command string, flags []string) context.Context {
+	return context.WithValue(ctx, invokedCommandContextKey{}, invokedCommand{command: command, flags: flags})
+}
+
+func ManualEditMetadata(ctx context.Context) *deploy.SnapshotManualEditMetadata {
+	invoked, _ := ctx.Value(invokedCommandContextKey{}).(invokedCommand)
+	return &deploy.SnapshotManualEditMetadata{
+		Command: invoked.command,
+		Flags:   invoked.flags,
+	}
+}
+
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
 	return s.Backend().UpdateStackTags(ctx, s, tags)

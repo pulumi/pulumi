@@ -513,6 +513,27 @@ func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 	}
 }
 
+func TestManualEditMetadataRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	manualEdit := &deploy.SnapshotManualEditMetadata{
+		Command: "pulumi state delete",
+		Flags:   []string{"--force", "--stack"},
+	}
+	snap := deploy.NewSnapshot(deploy.Manifest{}, b64.NewBase64SecretsManager(), nil, nil,
+		deploy.SnapshotMetadata{ManualEditMetadata: manualEdit}, nil, nil)
+
+	untyped, err := SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Contains(t, string(untyped.Deployment),
+		`"manual_edit":{"command":"pulumi state delete","flags":["--force","--stack"]}`)
+
+	roundTripped, err := DeserializeUntypedDeployment(ctx, untyped, b64.Base64SecretsProvider)
+	require.NoError(t, err)
+	require.Equal(t, manualEdit, roundTripped.Metadata.ManualEditMetadata)
+}
+
 func TestUnsupportedSecret(t *testing.T) {
 	t.Parallel()
 

@@ -156,6 +156,7 @@ func TotalStateEdit(
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
+	snap.Metadata.ManualEditMetadata = backend.ManualEditMetadata(ctx)
 	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
