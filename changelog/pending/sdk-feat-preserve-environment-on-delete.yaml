@@ -1,0 +1,6 @@
+component: sdk
+kind: chore
+body: Add a preserveEnvironmentOnDelete field to the apitype stack config struct for future use by the Pulumi Cloud backend
+time: 2026-05-28T10:00:00.000000+01:00
+custom:
+    PR: ""
