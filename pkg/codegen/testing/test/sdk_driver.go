@@ -439,6 +439,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing Go parameterized SDK with a provider method with liftSingleValueMethodReturns",
 		Skip:        allLanguages.Difference(mapset.NewSet("go/any")),
 	},
+	{
+		Directory:   "python-resource-reference-in-object-type",
+		Description: "Python SDK where an object type has a resource reference property",
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
+	},
 }
 
 var genSDKOnly bool
