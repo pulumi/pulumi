@@ -1929,3 +1929,75 @@ func TestUpContinueOnErrorSkippedUpdatePreviewPropagatesMixedOutputs(t *testing.
 	require.ErrorContains(t, err, "intentionally failed update")
 	assert.True(t, previewCalled.Load(), "expected UpdateStep.Skip to have called provider Update in preview mode")
 }
+
+func TestUpContinueOnErrorRefreshRunProgramSkipsDependents(t *testing.T) {
+	t.Parallel()
+
+	failUpdate := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					if req.URN.Name() == "failing" && failUpdate {
+						return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+					}
+					return plugin.DiffResponse{}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failing, err := monitor.RegisterResource("pkgA:m:typA", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Dependencies:            []resource.URN{failing.URN},
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("my:component", "component", false, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Dependencies:            []resource.URN{failing.URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+				Refresh:         true,
+				RefreshProgram:  true,
+			},
+			HostF: hostF,
+		},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	failUpdate = true
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "intentionally failed update")
+	require.NotNil(t, snap)
+
+	names := make([]string, len(snap.Resources))
+	for i, res := range snap.Resources {
+		names[i] = res.URN.Name()
+	}
+	require.ElementsMatch(t, []string{"default", "failing", "dependent", "component"}, names)
+}
