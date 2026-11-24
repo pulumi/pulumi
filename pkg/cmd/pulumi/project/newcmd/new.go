@@ -149,6 +149,21 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 	}
 	originalCwd := cwd
 
+	// If the template argument is a relative path to an existing local template,
+	// resolve it against the current directory now, before --dir changes the
+	// working directory below. Otherwise the relative path is later resolved from
+	// the target directory (reported as "template not found") or reused
+	// un-normalized from a different directory and panics in NewProgramInfo. A
+	// template name or URL does not stat as a local path and is left untouched,
+	// matching how the templates package detects a local path.
+	if args.templateNameOrURL != "" && !filepath.IsAbs(args.templateNameOrURL) {
+		if _, statErr := os.Stat(args.templateNameOrURL); statErr == nil {
+			if abs, absErr := filepath.Abs(args.templateNameOrURL); absErr == nil {
+				args.templateNameOrURL = abs
+			}
+		}
+	}
+
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
 	if args.dir != "" {

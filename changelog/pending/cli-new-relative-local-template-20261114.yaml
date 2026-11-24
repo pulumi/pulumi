@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Resolve a relative path to a local template in `pulumi new` before changing directory, so it no longer fails as "not found" or panics
+time: 2026-11-14T00:00:00Z
