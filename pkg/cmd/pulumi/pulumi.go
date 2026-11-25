@@ -504,7 +504,7 @@ func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 				cmdStack.NewStackCmd(),
 				console.NewConsoleCmd(pkgWorkspace.Instance),
 				operations.NewImportCmd(),
-				operations.NewRefreshCmd(),
+				operations.NewRefreshCmd(hm),
 				state.NewStateCmd(),
 				install.NewInstallCmd(pkgWorkspace.Instance),
 			},
