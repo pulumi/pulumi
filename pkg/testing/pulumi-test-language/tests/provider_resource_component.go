@@ -59,7 +59,13 @@ func init() {
 					assert.Equal(l, component.URN, simple.Parent, "expected component to be parent of simple resource")
 
 					require.NotEmpty(l, component.StackTrace, "expected a caller stack for the component")
-					assert.Contains(l, simple.StackTrace, component.StackTrace[0],
+					callerPosition := component.StackTrace[0].SourcePosition
+					require.NotEmpty(l, callerPosition, "expected a caller source position for the component")
+					childPositions := make([]string, 0, len(simple.StackTrace))
+					for _, frame := range simple.StackTrace {
+						childPositions = append(childPositions, frame.SourcePosition)
+					}
+					assert.Contains(l, childPositions, callerPosition,
 						"expected the child resource's stack to include the component's caller")
 				},
 			},
