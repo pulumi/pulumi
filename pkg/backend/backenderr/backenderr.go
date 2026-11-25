@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	pulumienv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -110,12 +111,62 @@ func (c ConflictingUpdateError) Error() string {
 
 // MissingEnvVarForNonInteractiveError represents a situation where the CLI is run in
 // non-interactive mode and that requires certain env vars to be set.
+//
+// It renders the same text as LoginRequiredError. The types stay separate because callers branch on them.
 type MissingEnvVarForNonInteractiveError struct {
 	Var env.Var
+	LoginHelp
 }
 
 func (err MissingEnvVarForNonInteractiveError) Error() string {
-	return err.Var.Name() + " must be set for login during non-interactive CLI sessions"
+	return loginRequiredMessage(err.Var.Name(), err.LoginHelp)
+}
+
+// LoginHelp is what a login-required error knows about the cloud the user needs to log in to. The zero value
+// gives the steps that are true for any cloud.
+type LoginHelp struct {
+	// TokensURL, if set, is the console page where the user can create an access token. It's empty when the CLI
+	// can't work out the console's address from the API's, and then `pulumi login` can't sign in through a
+	// browser either: it asks for a token instead.
+	TokensURL string
+	// PulumiCloud is true for pulumi.com, where anyone can create a free account.
+	PulumiCloud bool
+}
+
+// LoginRequiredSuggestions returns the next steps for someone who needs to log in to Pulumi Cloud, one per line.
+//
+// People, scripts and agents all see the same steps. Each line stands on its own, because agents often keep
+// only the last few lines of a command's output.
+func LoginRequiredSuggestions(help LoginHelp) []string {
+	return loginRequiredSuggestions(pulumienv.AccessToken.Var().Name(), help)
+}
+
+func loginRequiredSuggestions(tokenVar string, help LoginHelp) []string {
+	var lines []string
+	if help.PulumiCloud {
+		lines = append(lines, "Run `pulumi login` to sign in or create a free account.")
+	} else {
+		lines = append(lines, "Run `pulumi login` to sign in.")
+	}
+	if help.TokensURL != "" {
+		lines = append(lines, "It opens your web browser and waits until you've signed in there.")
+	}
+	tokenLine := "To log in without a browser (CI, headless), set " + tokenVar + "."
+	if help.TokensURL != "" {
+		tokenLine += " Create a token at " + help.TokensURL + "."
+	}
+	return append(lines, tokenLine)
+}
+
+// LoginRequiredMessage returns the text of LoginRequiredError, for code that reports a missing login without
+// returning that type.
+func LoginRequiredMessage(help LoginHelp) string {
+	return loginRequiredMessage(pulumienv.AccessToken.Var().Name(), help)
+}
+
+// loginRequiredMessage is the text of both LoginRequiredError and MissingEnvVarForNonInteractiveError.
+func loginRequiredMessage(tokenVar string, help LoginHelp) string {
+	return "Pulumi Cloud login required\n  " + strings.Join(loginRequiredSuggestions(tokenVar, help), "\n  ")
 }
 
 // NoConfirmationInNonInteractiveError represents a situation where the CLI is run
@@ -220,13 +271,14 @@ func (ForbiddenError) Is(other error) bool {
 type LoginRequiredError struct {
 	// ReauthURL, if set, is the URL the user should visit to re-authenticate.
 	ReauthURL string
+	LoginHelp
 }
 
 func (err LoginRequiredError) Error() string {
 	if err.ReauthURL != "" {
 		return fmt.Sprintf("SAML SSO authentication is required. Log in at:\n\n    %s\n", err.ReauthURL)
 	}
-	return "this command requires logging in; try running `pulumi login` first"
+	return LoginRequiredMessage(err.LoginHelp)
 }
 
 // CancelledError represents a user-initiated cancellation of an operation

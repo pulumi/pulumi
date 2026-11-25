@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -88,7 +89,10 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 			if b == nil {
-				return backenderr.LoginRequiredError{}
+				// Best effort: if the cloud URL can't be read, this falls back to the default cloud's.
+				cloudURL, _ := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+				cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
+				return backenderr.LoginRequiredError{LoginHelp: client.LoginHelpFor(cloudURL)}
 			}
 
 			name, orgs, tokenInfo, err := b.CurrentUser()

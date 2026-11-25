@@ -35,6 +35,7 @@ import (
 	fxmaps "github.com/pgavlin/fx/v2/maps"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
@@ -320,7 +321,7 @@ func executeLive(
 	if !resolved.LoggedIn {
 		return NewAPIError(cmdutil.ExitAuthenticationError, ErrNotLoggedIn,
 			"not logged in to Pulumi Cloud").
-			WithSuggestions("run `pulumi login` first")
+			WithSuggestions(backenderr.LoginRequiredSuggestions(client.LoginHelpFor(resolved.CloudURL))...)
 	}
 
 	apiClient := resolved.Client

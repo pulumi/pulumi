@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
@@ -74,6 +75,28 @@ func TestConsoleURL(t *testing.T) {
 		assert.Equal(t, "", CloudConsoleURL("https://pulumi.example.com", "pulumi-bot", "my-stack"))
 		assert.Equal(t, "", CloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
 	})
+}
+
+func TestLoginHelpFor(t *testing.T) {
+	ptesting.Unsetenv(t, ConsoleDomainEnvVar)
+
+	assert.Equal(t, backenderr.LoginHelp{
+		TokensURL:   "https://app.pulumi.com/user/settings/tokens",
+		PulumiCloud: true,
+	}, LoginHelpFor("https://api.pulumi.com/"))
+
+	// Self-hosted on api.<domain>: the console is at app.<domain>, but there's no free account to create.
+	assert.Equal(t, backenderr.LoginHelp{
+		TokensURL: "https://app.pulumi.example.com/user/settings/tokens",
+	}, LoginHelpFor("https://api.pulumi.example.com"))
+
+	// Self-hosted on any other host: the CLI can't tell where the console is.
+	assert.Equal(t, backenderr.LoginHelp{}, LoginHelpFor("https://pulumi.example.com"))
+
+	t.Setenv(ConsoleDomainEnvVar, "console.example.com")
+	assert.Equal(t, backenderr.LoginHelp{
+		TokensURL: "https://console.example.com/user/settings/tokens",
+	}, LoginHelpFor("https://pulumi.example.com"))
 }
 
 func TestAgentClaimURL(t *testing.T) {

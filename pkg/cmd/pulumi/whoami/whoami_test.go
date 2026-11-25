@@ -253,4 +253,11 @@ func TestWhoAmICmd_notLoggedIn(t *testing.T) {
 	cmd.SetErr(&bytes.Buffer{})
 	err := cmd.Execute()
 	assert.ErrorIs(t, err, backenderr.LoginRequiredError{})
+	var loginErr backenderr.LoginRequiredError
+	if assert.ErrorAs(t, err, &loginErr) {
+		assert.Equal(t, backenderr.LoginHelp{
+			TokensURL:   "https://app.pulumi.com/user/settings/tokens",
+			PulumiCloud: true,
+		}, loginErr.LoginHelp)
+	}
 }
