@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -33,6 +34,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -2222,8 +2224,12 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		}
 	}
 
-	resp, err := client.Construct(p.requestContext(), rpcReq)
+	var trailers metadata.MD
+	resp, err := client.Construct(p.requestContext(), rpcReq, grpc.Trailer(&trailers))
 	if err != nil {
+		if slices.Contains(trailers.Get(ErrorAlreadyReportedTrailer), "true") {
+			return ConstructResult{}, &ErrorAlreadyReported{Err: err}
+		}
 		return ConstructResult{}, err
 	}
 

@@ -608,9 +608,13 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 	return client, nil
 }
 
+func markErrorAlreadyReported(ctx context.Context, err error) error {
+	contract.IgnoreError(grpc.SetTrailer(ctx, metadata.Pairs(plugin.ErrorAlreadyReportedTrailer, "true")))
+	return err
+}
+
 func monitorShutdownError(ctx context.Context, code codes.Code, message string) error {
-	contract.IgnoreError(grpc.SetTrailer(ctx, metadata.Pairs("pulumi-error-already-reported", "true")))
-	return rpcerror.New(code, message)
+	return markErrorAlreadyReported(ctx, rpcerror.New(code, message))
 }
 
 // Address returns the address at which the monitor's RPC server may be reached.
@@ -3042,6 +3046,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Options: options,
 			})
 			if err != nil {
+				if reported, ok := errors.AsType[*plugin.ErrorAlreadyReported](err); ok {
+					// Forward the already-reported error. If rm.cancel closes first, let this goroutine exit too.
+					select {
+					case constructDone <- reported:
+					case <-rm.cancel:
+					}
+					return
+				}
 				select {
 				case <-rm.cancel:
 					return
@@ -3064,6 +3076,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		select {
 		case err := <-constructDone:
 			if err != nil {
+				if reported, ok := errors.AsType[*plugin.ErrorAlreadyReported](err); ok {
+					return nil, markErrorAlreadyReported(ctx, reported.Err)
+				}
 				logging.V(5).Infof("ResourceMonitor.RegisterResource construct returned an error, name=%s err=%s",
 					name, err)
 				return nil, err

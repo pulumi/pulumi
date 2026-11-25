@@ -919,6 +919,18 @@ func (e DiffUnavailableError) Error() string {
 	return e.reason
 }
 
+// ErrorAlreadyReportedTrailer marks an RPC error whose diagnostic has already been emitted.
+const ErrorAlreadyReportedTrailer = "pulumi-error-already-reported"
+
+// ErrorAlreadyReported wraps a provider RPC failure whose diagnostic has already been emitted.
+type ErrorAlreadyReported struct {
+	Err error
+}
+
+func (e *ErrorAlreadyReported) Error() string { return e.Err.Error() }
+
+func (e *ErrorAlreadyReported) Unwrap() error { return e.Err }
+
 // ReadResult is the result of a call to Read.
 type ReadResult struct {
 	// This is the ID for the resource. This ID will always be populated and will ensure we get the most up-to-date

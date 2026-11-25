@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Suppress duplicate shutdown errors from nested component providers
+time: 2026-11-25T16:07:33.433419+01:00
