@@ -41,7 +41,7 @@ type ModuleFormatProvider struct {
 var _ plugin.Provider = (*ModuleFormatProvider)(nil)
 
 const (
-	moduleFormatColorToken       = "module-format:mod_Color:Color"
+	moduleFormatColorType       = "module-format:mod_Color:Color"
 	moduleFormatEnumResourceType = "module-format:mod_EnumResource:EnumResource"
 )
 
@@ -79,7 +79,7 @@ func (p *ModuleFormatProvider) GetSchema(
 	resourceRequired := []string{"text"}
 
 	enumResourceProperties := map[string]schema.PropertySpec{
-		"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + moduleFormatColorToken}},
+		"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + moduleFormatColorType}},
 	}
 
 	pkg := schema.PackageSpec{
@@ -92,7 +92,7 @@ func (p *ModuleFormatProvider) GetSchema(
 		},
 		Types: map[string]schema.ComplexTypeSpec{
 			// An enum whose module also has to be resolved with the module format.
-			moduleFormatColorToken: {
+			moduleFormatColorType: {
 				ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
 				Enum: []schema.EnumValueSpec{
 					{Name: "Red", Value: "red"},
