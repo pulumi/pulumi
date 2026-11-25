@@ -343,6 +343,11 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 			}, ctx.Writer, ctx.Writer); err != nil {
 			return errutil.ErrorWithStderr(err, "installing dependencies")
 		}
+		if ctx.Project.RuntimeInfo().Name() == "go" {
+			if _, err = languagePlugin.Link(ctx.PluginContext.Request(), programInfo, deps, grpcServer.Addr()); err != nil {
+				return fmt.Errorf("linking package: %w", err)
+			}
+		}
 	}
 
 	fmt.Fprintln(ctx.Writer, instructions)

@@ -15,10 +15,14 @@
 package packages
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -299,6 +303,150 @@ func TestSetSpecNamespace(t *testing.T) {
 			schemaSpec := &schema.PackageSpec{}
 			setSpecNamespace(schemaSpec, pluginSpec)
 			assert.Equal(t, tt.wantNamespace, schemaSpec.Namespace)
+		})
+	}
+}
+
+type linkPackagesTestRuntime struct {
+	plugin.LanguageRuntime
+
+	calls      []string
+	installErr error
+	linkErr    error
+}
+
+func (r *linkPackagesTestRuntime) Link(
+	context.Context, plugin.ProgramInfo, []workspace.LinkablePackageDescriptor, string,
+) (string, error) {
+	r.calls = append(r.calls, "link")
+	if len(r.calls) == 3 && r.linkErr != nil {
+		return "", r.linkErr
+	}
+	if len(r.calls) == 1 {
+		return "import instructions", nil
+	}
+	return "duplicate import instructions", nil
+}
+
+func (r *linkPackagesTestRuntime) InstallDependencies(
+	context.Context, plugin.InstallDependenciesRequest,
+) (io.Reader, io.Reader, <-chan error, error) {
+	r.calls = append(r.calls, "install")
+	done := make(chan error, 1)
+	done <- r.installErr
+	close(done)
+	return strings.NewReader(""), strings.NewReader(""), done, nil
+}
+
+func (r *linkPackagesTestRuntime) Close() error {
+	return nil
+}
+
+func TestLinkPackagesLifecycle(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		runtime     string
+		install     bool
+		installErr  error
+		linkErr     error
+		wantCalls   []string
+		wantErr     string
+		wantPrinted bool
+	}{
+		{
+			name:        "Go relinks after successful installation",
+			runtime:     "go",
+			install:     true,
+			wantCalls:   []string{"link", "install", "link"},
+			wantPrinted: true,
+		},
+		{
+			name:        "non-Go runtime does not relink",
+			runtime:     "nodejs",
+			install:     true,
+			wantCalls:   []string{"link", "install"},
+			wantPrinted: true,
+		},
+		{
+			name:       "Go does not relink after failed installation",
+			runtime:    "go",
+			install:    true,
+			installErr: errors.New("install failed"),
+			wantCalls:  []string{"link", "install"},
+			wantErr:    "installing dependencies",
+		},
+		{
+			name:      "Go relink errors are returned",
+			runtime:   "go",
+			install:   true,
+			linkErr:   errors.New("relink failed"),
+			wantCalls: []string{"link", "install", "link"},
+			wantErr:   "linking package",
+		},
+		{
+			name:        "Go does not relink when installation is disabled",
+			runtime:     "go",
+			wantCalls:   []string{"link"},
+			wantPrinted: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			pkg, diags, err := schema.BindSpec(schema.PackageSpec{
+				Name:      "file",
+				Namespace: "example",
+				Version:   "0.1.0",
+				Meta:      &schema.MetadataSpec{SupportPack: true},
+			}, schema.NewNullLoader(), schema.ValidationOptions{})
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			languageRuntime := &linkPackagesTestRuntime{
+				installErr: tt.installErr,
+				linkErr:    tt.linkErr,
+			}
+			host := &plugin.MockHost{
+				LanguageRuntimeF: func(_ *plugin.Context, name string) (plugin.LanguageRuntime, error) {
+					require.Equal(t, tt.runtime, name)
+					return languageRuntime, nil
+				},
+			}
+			pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, root, root, nil, nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, pctx.Close()) })
+
+			project := &workspace.Project{
+				Runtime: workspace.NewProjectRuntimeInfo(tt.runtime, nil),
+			}
+			var output bytes.Buffer
+			err = LinkPackages(&LinkPackagesContext{
+				Project:       project,
+				Language:      tt.runtime,
+				Root:          root,
+				Packages:      []PackageToLink{{Pkg: pkg, Out: filepath.Join(root, "sdks", "example-file")}},
+				PluginContext: pctx,
+				Install:       tt.install,
+				Writer:        &output,
+			})
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.wantCalls, languageRuntime.calls)
+			if tt.wantPrinted {
+				require.Equal(t, 1, strings.Count(output.String(), "import instructions"))
+				require.NotContains(t, output.String(), "duplicate import instructions")
+			} else {
+				require.Empty(t, output.String())
+			}
 		})
 	}
 }

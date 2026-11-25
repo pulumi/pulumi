@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -39,6 +40,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -643,48 +645,58 @@ func TestLinkImportInstructions(t *testing.T) {
 		// expectedImport is the import path Link is expected to print.
 		expectedImport string
 		// expectedModule is the module path Link is expected to add a replace directive for.
-		expectedModule string
+		expectedModule  string
+		expectedRequire string
+		initialGoMod    string
+		linkTwice       bool
+		packageName     string
 	}{
 		{
-			name:           "no go language info",
-			namespace:      "example",
-			expectedImport: "github.com/example/pulumi-file/sdk/go/file",
-			expectedModule: "github.com/example/pulumi-file/sdk/go",
+			name:            "no go language info",
+			namespace:       "example",
+			expectedImport:  "github.com/example/pulumi-file/sdk/go/file",
+			expectedModule:  "github.com/example/pulumi-file/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
-			name:           "no go language info and no namespace",
-			expectedImport: "example.com/pulumi-file/sdk/go/file",
-			expectedModule: "example.com/pulumi-file/sdk/go",
+			name:            "no go language info and no namespace",
+			expectedImport:  "example.com/pulumi-file/sdk/go/file",
+			expectedModule:  "example.com/pulumi-file/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
-			name:           "import base path only",
-			namespace:      "example",
-			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
-			expectedImport: "github.com/example/File/sdk/go/File",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "import base path only",
+			namespace:       "example",
+			goInfo:          map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport:  "github.com/example/File/sdk/go/File",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			// The import base path replaces the default that the namespace builds, so the
 			// absent namespace makes no difference.
-			name:           "import base path only and no namespace",
-			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
-			expectedImport: "github.com/example/File/sdk/go/File",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "import base path only and no namespace",
+			goInfo:          map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport:  "github.com/example/File/sdk/go/File",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
-			name:           "module path only",
-			namespace:      "example",
-			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
-			expectedImport: "github.com/example/File/sdk/go/file",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "module path only",
+			namespace:       "example",
+			goInfo:          map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport:  "github.com/example/File/sdk/go/file",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			// The module path replaces the default that the namespace builds, and the package
 			// name still gives the directory of the root package.
-			name:           "module path only and no namespace",
-			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
-			expectedImport: "github.com/example/File/sdk/go/file",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "module path only and no namespace",
+			goInfo:          map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport:  "github.com/example/File/sdk/go/file",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			name:      "module path and import base path",
@@ -693,8 +705,9 @@ func TestLinkImportInstructions(t *testing.T) {
 				"modulePath":     "github.com/example/File/sdk/go",
 				"importBasePath": "github.com/example/File/sdk/go/File",
 			},
-			expectedImport: "github.com/example/File/sdk/go/File",
-			expectedModule: "github.com/example/File/sdk/go",
+			expectedImport:  "github.com/example/File/sdk/go/File",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			// The module path wins over the import base path, so the generated SDK holds its
@@ -706,15 +719,49 @@ func TestLinkImportInstructions(t *testing.T) {
 				"modulePath":     "github.com/example/File/sdk",
 				"importBasePath": "github.com/example/File/sdk/go/File",
 			},
-			expectedImport: "github.com/example/File/sdk/File",
-			expectedModule: "github.com/example/File/sdk",
+			expectedImport:  "github.com/example/File/sdk/File",
+			expectedModule:  "github.com/example/File/sdk",
+			expectedRequire: "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			name:            "module path with v3 suffix",
+			namespace:       "example",
+			goInfo:          map[string]any{"modulePath": "github.com/example/File/sdk/v3"},
+			expectedImport:  "github.com/example/File/sdk/v3/file",
+			expectedModule:  "github.com/example/File/sdk/v3",
+			expectedRequire: "v3.0.0-00010101000000-000000000000",
+		},
+		{
+			name:            "gopkg.in module path with v3 suffix",
+			namespace:       "example",
+			goInfo:          map[string]any{"modulePath": "gopkg.in/yaml.v3"},
+			expectedImport:  "gopkg.in/yaml.v3/file",
+			expectedModule:  "gopkg.in/yaml.v3",
+			expectedRequire: "v3.0.0-00010101000000-000000000000",
+		},
+		{
+			name:            "preserve existing require when linking repeatedly",
+			namespace:       "example",
+			goInfo:          map[string]any{"modulePath": "github.com/example/File/sdk/v3"},
+			expectedImport:  "github.com/example/File/sdk/v3/file",
+			expectedModule:  "github.com/example/File/sdk/v3",
+			expectedRequire: "v3.2.1",
+			initialGoMod: "module example.com/program\n\ngo 1.25\n\n" +
+				"require github.com/example/File/sdk/v3 v3.2.1\n",
+			linkTwice: true,
+		},
+		{
+			name:            "Pulumi SDK module path",
+			packageName:     "pulumi",
+			expectedModule:  "github.com/pulumi/pulumi/sdk/v3",
+			expectedRequire: "v3.0.0-00010101000000-000000000000",
 		},
 	}
 
-	bind := func(t *testing.T, namespace string, goInfo map[string]any) *schema.Package {
+	bind := func(t *testing.T, name, namespace string, goInfo map[string]any) *schema.Package {
 		t.Helper()
 		spec := schema.PackageSpec{
-			Name:      "file",
+			Name:      name,
 			Namespace: namespace,
 			Version:   "0.1.0",
 			Meta:      &schema.MetadataSpec{SupportPack: true},
@@ -742,7 +789,7 @@ func TestLinkImportInstructions(t *testing.T) {
 			t.Cleanup(func() { close(cancel) })
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					loader := &testSchemaLoader{pkg: bind(t, tt.namespace, tt.goInfo)}
+					loader := &testSchemaLoader{pkg: bind(t, "file", tt.namespace, tt.goInfo)}
 					schema.LoaderRegistration(schema.NewLoaderServer(loader))(srv)
 					return nil
 				},
@@ -751,23 +798,42 @@ func TestLinkImportInstructions(t *testing.T) {
 			require.NoError(t, err)
 
 			programDir := t.TempDir()
-			require.NoError(t, os.WriteFile(filepath.Join(programDir, "go.mod"),
-				[]byte("module example.com/program\n\ngo 1.25\n"), 0o600))
+			goMod := tt.initialGoMod
+			if goMod == "" {
+				goMod = "module example.com/program\n\ngo 1.25\n"
+			}
+			require.NoError(t, os.WriteFile(filepath.Join(programDir, "go.mod"), []byte(goMod), 0o600))
 
 			host := &goLanguageHost{}
-			resp, err := host.Link(t.Context(), &pulumirpc.LinkRequest{
+			req := &pulumirpc.LinkRequest{
 				Info: &pulumirpc.ProgramInfo{
 					RootDirectory:    programDir,
 					ProgramDirectory: programDir,
 				},
 				LoaderTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				Packages: []*pulumirpc.LinkRequest_LinkDependency{{
-					Package: &pulumirpc.PackageDependency{Name: "file", Version: "0.1.0"},
-					Path:    "sdks/example-file",
+					Package: &pulumirpc.PackageDependency{
+						Name:    tt.packageName,
+						Version: "0.1.0",
+					},
+					Path: "sdks/example-file",
 				}},
-			})
+			}
+			if req.Packages[0].Package.Name == "" {
+				req.Packages[0].Package.Name = "file"
+			}
+			resp, err := host.Link(t.Context(), req)
 			require.NoError(t, err)
-			require.Contains(t, resp.ImportInstructions, "\""+tt.expectedImport+"\"")
+			if tt.expectedImport != "" {
+				require.Contains(t, resp.ImportInstructions, "\""+tt.expectedImport+"\"")
+			}
+			if tt.linkTwice {
+				firstGoMod, err := os.ReadFile(filepath.Join(programDir, "go.mod"))
+				require.NoError(t, err)
+				resp, err = host.Link(t.Context(), req)
+				require.NoError(t, err)
+				require.Equal(t, firstGoMod, mustReadFile(t, filepath.Join(programDir, "go.mod")))
+			}
 
 			gomodContent, err := os.ReadFile(filepath.Join(programDir, "go.mod"))
 			require.NoError(t, err)
@@ -778,11 +844,23 @@ func TestLinkImportInstructions(t *testing.T) {
 				replaced[replace.Old.Path] = replace.New.Path
 			}
 			require.Equal(t, relativeStart+"sdks/example-file", replaced[tt.expectedModule])
+			required := map[string]string{}
+			for _, req := range gomod.Require {
+				required[req.Mod.Path] = req.Mod.Version
+			}
+			require.Equal(t, tt.expectedRequire, required[tt.expectedModule])
+			if pathMajorModule, pathMajor, ok := module.SplitPathVersion(tt.expectedModule); ok && pathMajor != "" {
+				require.NotEmpty(t, pathMajorModule)
+				require.NoError(t, module.CheckPathMajor(tt.expectedRequire, pathMajor))
+			}
+			if tt.packageName == "pulumi" {
+				return
+			}
 
 			// The printed import path must address the root package of the SDK that the
 			// generator writes, so that a program which follows the instructions compiles
 			// against the linked SDK.
-			files, err := gocodegen.GeneratePackage("pulumi-language-go", bind(t, tt.namespace, tt.goInfo), nil)
+			files, err := gocodegen.GeneratePackage("pulumi-language-go", bind(t, "file", tt.namespace, tt.goInfo), nil)
 			require.NoError(t, err)
 			generated, err := modfile.Parse("go.mod", files["go.mod"], nil)
 			require.NoError(t, err)
@@ -800,4 +878,106 @@ func TestLinkImportInstructions(t *testing.T) {
 			require.Equal(t, tt.expectedImport, path.Join(generated.Module.Mod.Path, rootDirs[0]))
 		})
 	}
+}
+
+func TestLinkRequirementSurvivesGoModTidy(t *testing.T) {
+	t.Parallel()
+
+	const modulePath = "example.com/generated/sdk/v3"
+	goInfo, err := json.Marshal(map[string]string{"modulePath": modulePath})
+	require.NoError(t, err)
+	pkg, diags, err := schema.BindSpec(schema.PackageSpec{
+		Name:      "file",
+		Namespace: "example",
+		Version:   "0.1.0",
+		Language:  map[string]schema.RawMessage{"go": goInfo},
+		Meta:      &schema.MetadataSpec{SupportPack: true},
+	}, &testSchemaLoader{}, schema.ValidationOptions{})
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "%v", diags)
+
+	cancel := make(chan bool)
+	t.Cleanup(func() { close(cancel) })
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			schema.LoaderRegistration(schema.NewLoaderServer(&testSchemaLoader{pkg: pkg}))(srv)
+			return nil
+		},
+		Cancel: cancel,
+	})
+	require.NoError(t, err)
+
+	programDir := t.TempDir()
+	sdkDir := filepath.Join(programDir, "sdks", "example-file")
+	sdkPackageDir := filepath.Join(sdkDir, "file")
+	require.NoError(t, os.MkdirAll(sdkPackageDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(sdkDir, "go.mod"),
+		[]byte("module "+modulePath+"\n\ngo 1.26.6\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(sdkPackageDir, "file.go"),
+		[]byte("package file\n\nconst Value = \"linked\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(programDir, "go.mod"),
+		[]byte("module example.com/program\n\ngo 1.26.6\n"), 0o600))
+
+	req := &pulumirpc.LinkRequest{
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    programDir,
+			ProgramDirectory: programDir,
+		},
+		LoaderTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		Packages: []*pulumirpc.LinkRequest_LinkDependency{{
+			Package: &pulumirpc.PackageDependency{Name: "file", Version: "0.1.0"},
+			Path:    "sdks/example-file",
+		}},
+	}
+	host := &goLanguageHost{}
+	_, err = host.Link(t.Context(), req)
+	require.NoError(t, err)
+
+	goExecutable := filepath.Join(runtime.GOROOT(), "bin", "go")
+	if runtime.GOOS == "windows" {
+		goExecutable += ".exe"
+	}
+	cmd := exec.Command(goExecutable, "mod", "tidy")
+	cmd.Dir = programDir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+
+	goModContent, err := os.ReadFile(filepath.Join(programDir, "go.mod"))
+	require.NoError(t, err)
+	tidied, err := modfile.Parse("go.mod", goModContent, nil)
+	require.NoError(t, err)
+	for _, requirement := range tidied.Require {
+		require.NotEqual(t, modulePath, requirement.Mod.Path)
+	}
+
+	_, err = host.Link(t.Context(), req)
+	require.NoError(t, err)
+	goModContent, err = os.ReadFile(filepath.Join(programDir, "go.mod"))
+	require.NoError(t, err)
+	linked, err := modfile.Parse("go.mod", goModContent, nil)
+	require.NoError(t, err)
+	found := false
+	for _, requirement := range linked.Require {
+		if requirement.Mod.Path == modulePath {
+			require.Equal(t, "v3.0.0-00010101000000-000000000000", requirement.Mod.Version)
+			found = true
+		}
+	}
+	require.True(t, found, "linked SDK requirement should be restored after go mod tidy")
+
+	require.NoError(t, os.WriteFile(filepath.Join(programDir, "main.go"), []byte(
+		"package main\n\nimport (\n\t\"fmt\"\n\t\""+modulePath+"/file\"\n)\n\n"+
+			"func main() { fmt.Println(file.Value) }\n",
+	), 0o600))
+	cmd = exec.Command(goExecutable, "build", "./...")
+	cmd.Dir = programDir
+	output, err = cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+}
+
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return data
 }

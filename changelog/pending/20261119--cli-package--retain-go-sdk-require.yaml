@@ -1,0 +1,4 @@
+component: cli/package
+kind: fix
+body: Retain Go SDK requirements when adding local packages to a project
+time: 2026-11-19T14:26:00Z
