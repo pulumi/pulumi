@@ -1026,7 +1026,10 @@ func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *work
 
 func (b *cloudBackend) CloudURL() string { return b.url }
 
-func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackReference, error) {
+func (b *cloudBackend) parsePolicyPackReference(
+	ctx context.Context,
+	s string,
+) (backend.PolicyPackReference, error) {
 	split := strings.Split(s, "/")
 	var orgName string
 	var policyPackName string
@@ -1041,7 +1044,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 	}
 
 	if orgName == "" {
-		currentUserOrg, userErr := backend.GetCurrentUserOrg(context.TODO(), b)
+		currentUserOrg, userErr := backend.GetCurrentUserOrg(ctx, b)
 		if userErr != nil {
 			return nil, userErr
 		}
@@ -1054,7 +1057,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	d diag.Sink,
 ) (backend.PolicyPack, error) {
-	policyPackRef, err := b.parsePolicyPackReference(policyPack)
+	policyPackRef, err := b.parsePolicyPackReference(ctx, policyPack)
 	if err != nil {
 		return nil, err
 	}
