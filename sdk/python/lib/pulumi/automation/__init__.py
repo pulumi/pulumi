@@ -116,6 +116,8 @@ from .errors import (
 from .events import (
     CancelEvent,
     DiagnosticEvent,
+    DiagnosticSourceContext,
+    DiagnosticStackFrame,
     DiffKind,
     EngineEvent,
     PolicyEvent,
@@ -193,6 +195,8 @@ __all__ = [
     # events
     "CancelEvent",
     "DiagnosticEvent",
+    "DiagnosticSourceContext",
+    "DiagnosticStackFrame",
     "DiffKind",
     "EngineEvent",
     "PolicyEvent",

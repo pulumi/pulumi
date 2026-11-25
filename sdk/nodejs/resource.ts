@@ -506,8 +506,9 @@ export abstract class Resource {
         //     new CustomResource (/path/to/resource.ts:678:90)
         //     new Bucket (/path/to/bucket.ts:987:65)
         //     <user code> (/path/to/index.ts:4:3)
-        const stackTrace = getStackTrace(3);
-        const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
+        // Retain the constructors in the capture; only the registration position skips them.
+        const stackTrace = getStackTrace(0);
+        const sourcePosition = stackTrace[3];
 
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.

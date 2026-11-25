@@ -4,6 +4,7 @@ import unittest
 
 from pulumi.automation.events import (
     DiffKind,
+    DiagnosticEvent,
     PolicyEvent,
     PropertyDiff,
     ResOpFailedEvent,
@@ -60,3 +61,50 @@ class TestResOpFailedEventFromJson(unittest.TestCase):
         data = {"metadata": {"op": "create"}}
         assert ResOpFailedEvent.from_json({**data, "awaited": True}).awaited is True
         assert ResOpFailedEvent.from_json(data).awaited is False
+
+
+class TestDiagnosticSourceContext(unittest.TestCase):
+    def test_source_context_deserialized(self):
+        event = DiagnosticEvent.from_json(
+            {
+                "message": "invalid port",
+                "severity": "error",
+                "color": "never",
+                "sourceContext": {
+                    "sourcePosition": "project:///main.py#2",
+                    "stackTrace": [
+                        {
+                            "sourcePosition": "project:///main.py#2",
+                            "module": "__main__",
+                            "origin": "pulumi",
+                            "boundary": {
+                                "kind": "program",
+                                "callSite": "project:///main.py#2",
+                            },
+                        },
+                        {},
+                    ],
+                    "rendered": "Registered in your program\n  main.py:2",
+                },
+            }
+        )
+        assert event.message == "invalid port"
+        context = event.source_context
+        assert context is not None
+        assert context.source_position == "project:///main.py#2"
+        assert context.stack_trace is not None
+        assert context.stack_trace[0].source_position == "project:///main.py#2"
+        assert context.stack_trace[0].module == "__main__"
+        assert context.stack_trace[0].origin == "pulumi"
+        assert context.stack_trace[0].boundary == {
+            "kind": "program",
+            "callSite": "project:///main.py#2",
+        }
+        assert context.stack_trace[1].source_position is None
+        assert context.rendered == "Registered in your program\n  main.py:2"
+
+    def test_older_event_without_source_context(self):
+        assert (
+            DiagnosticEvent.from_json({"message": "invalid port"}).source_context
+            is None
+        )

@@ -29,6 +29,9 @@ If you are running in a virtualenv, you must run pip install -r requirements.txt
     )
     sys.exit(1)
 
+# Identify launcher frames even though this script executes as __main__.
+__pulumi_runtime__ = True
+
 # use exit code 32 to signal to the language host that an error message was displayed to the user
 PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE = 32
 

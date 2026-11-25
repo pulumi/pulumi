@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
@@ -1474,9 +1475,8 @@ func (ctx *Context) readPackageResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the stack trace and source position for the resource read. Note that this assumes that there are two
-	// intermediate frames between this function and user code: the public entry point and the generated getter.
-	stackTrace := ctx.getStackTrace(3)
+	// Keep the full capture. The registration position skips the public entry point and generated getter.
+	stackTrace := ctx.getStackTrace(0)
 	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
@@ -1975,9 +1975,8 @@ func (ctx *Context) registerResource(
 	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
-	// intermediate frames between this function and user code.
-	stackTrace := ctx.getStackTrace(3)
+	// Keep the full capture. The registration position retains the existing wrapper-frame skip.
+	stackTrace := ctx.getStackTrace(0)
 	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
@@ -3307,8 +3306,12 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 	if frame.Line <= math.MaxInt32 {
 		line = int32(frame.Line)
 	}
+	filename := frame.File
+	if !filepath.IsAbs(filename) {
+		filename = stackTraceMainModule().sourceFile(filename)
+	}
 	return &pulumirpc.SourcePosition{
-		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
+		Uri:  "file:///" + path.Join(slice.Map(strings.Split(filepath.ToSlash(filename), "/"), url.PathEscape)...),
 		Line: line,
 	}
 }
@@ -3333,33 +3336,6 @@ func (ctx *Context) getInvokeSourcePosition(stack *pulumirpc.StackTrace) *pulumi
 		return frame.GetPc()
 	}
 	return nil
-}
-
-// getStackTrace captures its caller's stack, omitting skip additional caller frames.
-// runtime.Callers and getStackTrace itself are always omitted.
-func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
-	// Always skip runtime.Callers and getStackTrace itself.
-	skip += 2
-
-	trace := &pulumirpc.StackTrace{}
-
-	var pcs [256]uintptr
-	for {
-		callers := runtime.Callers(skip, pcs[:])
-		if callers == 0 {
-			return trace
-		}
-		skip += callers
-
-		frames := runtime.CallersFrames(pcs[:])
-		for {
-			frame, more := frames.Next()
-			trace.Frames = append(trace.Frames, &pulumirpc.StackFrame{Pc: ctx.getSourcePositionForFrame(frame)})
-			if !more {
-				break
-			}
-		}
-	}
 }
 
 // getSourcePosition returns its caller's source position, omitting skip additional caller frames.

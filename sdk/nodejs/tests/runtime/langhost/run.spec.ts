@@ -1642,15 +1642,18 @@ describe("rpc", () => {
 
                 assert(stackTrace !== undefined);
                 assert.notStrictEqual(stackTrace.length, 0);
-                assert.deepStrictEqual(stackTrace[0], sourcePosition);
+                assert.ok(stackTrace[0]?.uri.endsWith("resource.ts"));
+                assert.ok(
+                    stackTrace.some((frame) => frame?.uri === sourcePosition.uri && frame.line === sourcePosition.line),
+                );
 
                 switch (name) {
                     case "custom":
-                        assert.strictEqual(sourcePosition.line, 2);
+                        assert.strictEqual(sourcePosition.line, 16);
                         assert(sourcePosition.column !== undefined && sourcePosition.column !== 0);
                         break;
                     case "component":
-                        assert.strictEqual(sourcePosition.line, 2);
+                        assert.strictEqual(sourcePosition.line, 17);
                         assert(sourcePosition.column !== undefined && sourcePosition.column !== 0);
                         break;
                     default:

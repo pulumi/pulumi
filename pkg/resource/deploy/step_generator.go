@@ -3192,7 +3192,15 @@ func unwrapResourcePropertySecretsAndOutputs(value resource.PropertyValue) resou
 func issueCheckErrors(deployment *Deployment, new *pkgresource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures, deployment.opts.ShowSecrets)
+	if len(failures) == 0 {
+		return false
+	}
+	sourceContext := ResourceSourceContext(deployment, new)
+	return issueCheckFailures(func(d *diag.Diag, args ...any) {
+		d.SourceContext = sourceContext
+		deployment.Diag().Errorf(d, args...)
+		sourceContext = nil
+	}, new, urn, failures, deployment.opts.ShowSecrets)
 }
 
 // issueCheckFailures prints any check failures to printf, redacting secret values unless showSecrets is set.
