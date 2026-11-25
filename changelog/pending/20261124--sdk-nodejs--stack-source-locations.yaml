@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Fix resource source locations for anonymous Node.js stack frames and file URLs
+time: 2026-11-24T15:45:01Z

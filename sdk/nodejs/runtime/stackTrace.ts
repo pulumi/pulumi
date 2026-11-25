@@ -23,6 +23,7 @@ interface CallSite {
 }
 
 const framePositionRegExp = /^\s*at .* \((?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)\)$/;
+const anonymousFramePositionRegExp = /^\s*at (?:async )?(?<file>.*):(?<line>[0-9]+):(?<column>[0-9]+)$/;
 
 /**
  * Returns the list of callsites for the current stack. The top of the stack is at index 0.
@@ -52,7 +53,8 @@ function callsites(): CallSite[] {
                 ?.split("\n")
                 ?.slice(1)
                 ?.map((frame) => {
-                    const { file, line, column } = framePositionRegExp.exec(frame)?.groups || {};
+                    const { file, line, column } =
+                        (framePositionRegExp.exec(frame) || anonymousFramePositionRegExp.exec(frame))?.groups || {};
                     if (!file || !line || !column || file.startsWith("node:")) {
                         return {};
                     }
@@ -89,11 +91,12 @@ export function getStackTrace(skip: number): (SourcePosition | undefined)[] {
             return undefined;
         }
 
-        return {
-            uri: url.pathToFileURL(file).toString(),
-            line,
-            column,
-        };
+        try {
+            const filename = file.startsWith("file:") ? url.fileURLToPath(file) : file;
+            return { uri: url.pathToFileURL(filename).href, line, column };
+        } catch {
+            return undefined;
+        }
     });
 }
 
