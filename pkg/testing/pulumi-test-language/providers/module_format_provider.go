@@ -41,7 +41,7 @@ type ModuleFormatProvider struct {
 var _ plugin.Provider = (*ModuleFormatProvider)(nil)
 
 const (
-	moduleFormatColorType       = "module-format:mod_Color:Color"
+	moduleFormatColorType        = "module-format:mod_Color:Color"
 	moduleFormatEnumResourceType = "module-format:mod_EnumResource:EnumResource"
 )
 
