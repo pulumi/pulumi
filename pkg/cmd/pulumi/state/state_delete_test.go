@@ -539,7 +539,7 @@ func TestStateDeleteProtected(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
-		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"metadata":{"manual_edit":{}}}`,
+		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"metadata":{}}`,
 		string(savedDeployment.Deployment))
 }
 

@@ -766,8 +766,10 @@ func getCLIMetadata(cmd *cobra.Command, environ []string, args []string) map[str
 
 func changedFlagNames(cmd *cobra.Command) []string {
 	var flags []string
-	cmd.Flags().Visit(func(f *pflag.Flag) {
-		flags = append(flags, "--"+f.Name)
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			flags = append(flags, "--"+f.Name)
+		}
 	})
 	return flags
 }

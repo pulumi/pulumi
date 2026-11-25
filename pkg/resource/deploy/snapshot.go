@@ -52,12 +52,17 @@ type Snapshot struct {
 type SnapshotMetadata struct {
 	// Metadata associated with any integrity error affecting the snapshot.
 	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadata
-	ManualEditMetadata     *SnapshotManualEditMetadata
+	// Metadata about the command that last edited the snapshot outside of a deployment, if any.
+	ManualEditMetadata *SnapshotManualEditMetadata
 }
 
+// SnapshotManualEditMetadata contains metadata about a manual edit of a snapshot, such as `pulumi state delete`,
+// recording the command that made it.
 type SnapshotManualEditMetadata struct {
+	// The CLI command that edited the snapshot, e.g. "pulumi state remove".
 	Command string
-	Flags   []string
+	// The names of the flags passed to the command, without their values.
+	Flags []string
 }
 
 // SnapshotIntegrityErrorMetadata contains metadata about a snapshot integrity error, such as the version
