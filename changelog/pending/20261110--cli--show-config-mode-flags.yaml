@@ -1,0 +1,3 @@
+component: cli
+kind: feat
+body: Show `--esc-config` and `--static-config` in `pulumi stack init` and `pulumi new` help

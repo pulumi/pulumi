@@ -73,7 +73,12 @@ func newStackNewCmd() *cobra.Command {
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag:\n" +
 			"\n" +
-			"* `pulumi stack new --copy-config-from dev`",
+			"* `pulumi stack new --copy-config-from dev`\n" +
+			"\n" +
+			"Against the Pulumi Cloud, this command follows the organization's default for where stack\n" +
+			"configuration lives, except under the Automation API, which keeps it in the stack file. Pass\n" +
+			"`--esc-config` to require an ESC environment managed by the stack, or `--static-config` to keep\n" +
+			"configuration in the stack file.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sicmd.stdout = cmd.OutOrStdout()
