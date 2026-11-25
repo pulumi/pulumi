@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -387,7 +388,7 @@ func passwordOrEmpty(u *url.Userinfo) string {
 var globalInsteadOfRules = sync.OnceValue(func() []*config.URL {
 	src, err := plugin.Get(plugin.ConfigLoader())
 	if err != nil {
-		logging.V(10).Infof("ignoring git config url rewrite rules: %v", err)
+		slog.Info("ignoring git config url rewrite rules", "err", err)
 		return nil
 	}
 
@@ -395,12 +396,12 @@ var globalInsteadOfRules = sync.OnceValue(func() []*config.URL {
 	for _, scope := range []config.Scope{config.SystemScope, config.GlobalScope} {
 		storer, err := src.Load(scope)
 		if err != nil {
-			logging.V(10).Infof("ignoring git config url rewrite rules: %v", err)
+			slog.Info("ignoring git config url rewrite rules", "err", err)
 			continue
 		}
 		cfg, err := storer.Config()
 		if err != nil {
-			logging.V(10).Infof("ignoring git config url rewrite rules: %v", err)
+			slog.Info("ignoring git config url rewrite rules", "err", err)
 			continue
 		}
 		rules = append(rules, cfg.URLs...)
