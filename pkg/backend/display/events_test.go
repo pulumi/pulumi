@@ -146,3 +146,37 @@ func TestPolicyViolationExceptionRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, exceptions, back.Payload().(engine.PolicyViolationEventPayload).Exceptions)
 }
+
+func TestDiagnosticSourceContextRoundTrip(t *testing.T) {
+	t.Parallel()
+	var input apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(`{
+        "diagnosticEvent": {
+            "message": "invalid port",
+            "color": "raw",
+            "severity": "error",
+            "sourceContext": {
+                "sourcePosition": "project:///main.py#2",
+                "stackTrace": [
+                    {
+                        "sourcePosition": "project:///main.py#2",
+                        "module": "__main__",
+                        "boundary": {"kind": "program", "callSite": "project:///main.py#2"}
+                    }
+                ]
+            }
+        }
+    }`), &input))
+	event, err := ConvertJSONEvent(input)
+	require.NoError(t, err)
+	expected := event.Payload().(engine.DiagEventPayload)
+	require.NotNil(t, expected.SourceContext)
+	require.Len(t, expected.SourceContext.StackTrace, 1)
+	require.NotNil(t, expected.SourceContext.StackTrace[0].Boundary)
+	assert.Equal(t, "project:///main.py#2", expected.SourceContext.StackTrace[0].Boundary.CallSite)
+	result, err := ConvertEngineEvent(event, false)
+	require.NoError(t, err)
+	require.NotNil(t, result.DiagnosticEvent)
+	assert.Equal(t, input.DiagnosticEvent.SourceContext, result.DiagnosticEvent.SourceContext)
+	assert.Equal(t, "invalid port", result.DiagnosticEvent.Message)
+}
