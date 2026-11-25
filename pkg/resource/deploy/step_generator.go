@@ -119,6 +119,9 @@ type stepGenerator struct {
 	pendingUntargetedSames    []Step
 	pendingUntargetedSameURNs map[resource.URN]bool
 
+	// Untargeted same steps whose resources remain in the base snapshot.
+	preservedSames map[resource.URN]bool
+
 	pendingDeletes map[*pkgresource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*pkgresource.State // URN map of providers that we have seen so far.
 
@@ -1710,7 +1713,9 @@ func (sg *stepGenerator) continueStepsFromImport(
 			// to have copied our dependencies over for us. We address this by
 			// manually traversing the dependencies of untargeted resources with old
 			// state and ensuring that they have SameSteps emitted before we emit our
-			// own.
+			// own. If a dependency has only been deleted for replacement, it remains
+			// in the base snapshot. Its untargeted dependents must keep their original
+			// snapshot positions as well.
 			//
 			// Note:
 			//
@@ -1764,6 +1769,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 				sg.sames[old.URN] = true
 
 				var waitFor []resource.URN
+				preserveOld := false
 
 				providerRef, allDeps := old.GetAllDependencies()
 				if providerRef != "" {
@@ -1790,6 +1796,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 					} else {
 						waitFor = append(waitFor, provURN)
 					}
+					preserveOld = sg.preservedSames[provURN] || (sg.deletes[provURN] && !sg.isOperatedOn(provURN))
 				}
 
 				for _, dep := range allDeps {
@@ -1832,11 +1839,15 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 						steps = append(steps, depSteps...)
 					}
+					preserveOld = preserveOld || sg.preservedSames[dep.URN] ||
+						(sg.deletes[dep.URN] && !sg.isOperatedOn(dep.URN))
 				}
 
 				new := old.Copy()
 				new.ID = ""
-				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new, waitFor)
+				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new, waitFor).(*SameStep)
+				rootStep.preserveOld = preserveOld
+				sg.preservedSames[old.URN] = preserveOld
 				steps = append(steps, rootStep)
 				return steps, nil
 			}
@@ -3811,6 +3822,7 @@ func newStepGenerator(
 		skippedCreates:            make(map[resource.URN]bool),
 		pendingDeletes:            make(map[*pkgresource.State]bool),
 		pendingUntargetedSameURNs: make(map[resource.URN]bool),
+		preservedSames:            make(map[resource.URN]bool),
 		providers:                 make(map[resource.URN]*pkgresource.State),
 		dependentReplaceKeys:      make(map[resource.URN][]resource.PropertyKey),
 		aliased:                   make(map[resource.URN]resource.URN),

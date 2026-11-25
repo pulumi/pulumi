@@ -247,11 +247,9 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	contract.Assertf(reg != nil, "expected a non-nil resource step ('%v')", urn)
 	se.pendingNews.Delete(urn)
 
-	// If we have a skipped create, the resource was not targeted, but construct in a component
-	// resource might have called RegisterResourceOutputs regardless. There's nothing to do here
-	// in that case, so we can return early.
-	// See https://github.com/pulumi/pulumi/issues/21463
-	if sameStep, ok := reg.(*SameStep); ok && sameStep.IsSkippedCreate() {
+	// Same steps that leave the snapshot unchanged must also leave its outputs unchanged.
+	// This includes skipped creates: https://github.com/pulumi/pulumi/issues/21463
+	if sameStep, ok := reg.(*SameStep); ok && !sameStep.ShouldPersist() {
 		se.log(synchronousWorkerID, "skipping register resource outputs for untargeted resource: %s", urn)
 		e.Done()
 		return nil

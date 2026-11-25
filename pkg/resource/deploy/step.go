@@ -101,6 +101,9 @@ type SameStep struct {
 	// target-constrained operation.
 	untargeted bool
 
+	// If true, keep the old resource in its original snapshot position.
+	preserveOld bool
+
 	// A list of URNs (all dependencies of the step) that this step needs to wait on before completing. In
 	// untargeted same steps this is used to wait for any dependencies that may no longer be in the users
 	// program, but still in the state, so they need to be waited on to have correct state ordering.  They are
@@ -231,6 +234,11 @@ func (s *SameStep) IsSkippedCreate() bool {
 
 func (s *SameStep) IsUntargeted() bool {
 	return s.untargeted
+}
+
+// ShouldPersist reports whether the step's new state should be written to the snapshot.
+func (s *SameStep) ShouldPersist() bool {
+	return !s.skippedCreate && !s.preserveOld
 }
 
 func (s *SameStep) Fail() {
