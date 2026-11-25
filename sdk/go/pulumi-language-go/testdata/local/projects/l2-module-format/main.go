@@ -123,6 +123,13 @@ func main() {
 			return err
 		}
 		ctx.Export("out7", callCall6.Output())
+		// Use an enum literal for an enum type whose module has to be resolved with the module format
+		_, err = mod.NewEnumResource(ctx, "res8", &mod.EnumResourceArgs{
+			Color: mod.ColorBlue,
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }

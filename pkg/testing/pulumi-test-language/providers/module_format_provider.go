@@ -40,6 +40,11 @@ type ModuleFormatProvider struct {
 
 var _ plugin.Provider = (*ModuleFormatProvider)(nil)
 
+const (
+	moduleFormatColorToken       = "module-format:mod_Color:Color"
+	moduleFormatEnumResourceType = "module-format:mod_EnumResource:EnumResource"
+)
+
 func (p *ModuleFormatProvider) Close() error {
 	return nil
 }
@@ -73,6 +78,10 @@ func (p *ModuleFormatProvider) GetSchema(
 	}
 	resourceRequired := []string{"text"}
 
+	enumResourceProperties := map[string]schema.PropertySpec{
+		"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + moduleFormatColorToken}},
+	}
+
 	pkg := schema.PackageSpec{
 		Name:    "module-format",
 		Version: p.version(),
@@ -81,7 +90,26 @@ func (p *ModuleFormatProvider) GetSchema(
 			// uses this regex, and isn't just hardcoding the TFBridge module format to split off a trailing /xyz.
 			ModuleFormat: "(.*)(?:_[^_]*)",
 		},
+		Types: map[string]schema.ComplexTypeSpec{
+			// An enum whose module also has to be resolved with the module format.
+			moduleFormatColorToken: {
+				ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
+				Enum: []schema.EnumValueSpec{
+					{Name: "Red", Value: "red"},
+					{Name: "Blue", Value: "blue"},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
+			// A resource whose property is the enum above. It's in the enum's module: Go can't yet reference an enum
+			// in another module of a dashed package (https://github.com/pulumi/pulumi/issues/25876).
+			moduleFormatEnumResourceType: {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: enumResourceProperties,
+				},
+				InputProperties: enumResourceProperties,
+			},
 			// A small resource that just has a single string property.
 			"module-format:mod_Resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -439,6 +467,8 @@ func (p *ModuleFormatProvider) Check(
 ) (plugin.CheckResponse, error) {
 	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
+	case moduleFormatEnumResourceType:
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
 		return plugin.CheckResponse{
@@ -472,17 +502,23 @@ func (p *ModuleFormatProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	properties := resource.ToResourcePropertyMap(req.Properties)
+	id := "id"
+	if req.Preview {
+		id = ""
+	}
+
 	switch req.URN.Type().String() {
+	case moduleFormatEnumResourceType:
+		return plugin.CreateResponse{
+			ID:         resource.ID(id),
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
-	}
-
-	id := "id"
-	if req.Preview {
-		id = ""
 	}
 
 	return plugin.CreateResponse{

@@ -77,3 +77,8 @@ resource "res7" "module-format:Resource" {
 output "out7" {
     value = call(res7, "call", { input = "xxx" }).output
 }
+
+// Use an enum literal for an enum type whose module has to be resolved with the module format
+resource "res8" "module-format:mod_EnumResource:EnumResource" {
+    color = "blue"
+}

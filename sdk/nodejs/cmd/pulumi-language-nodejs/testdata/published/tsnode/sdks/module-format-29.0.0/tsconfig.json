@@ -22,6 +22,7 @@
         "concatWorld.ts",
         "index.ts",
         "mod/concatWorld.ts",
+        "mod/enumResource.ts",
         "mod/index.ts",
         "mod/nested/concatWorld.ts",
         "mod/nested/index.ts",
@@ -29,6 +30,11 @@
         "mod/resource.ts",
         "provider.ts",
         "resource.ts",
+        "types/enums/index.ts",
+        "types/enums/mod/index.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
         "utilities.ts"
     ]
 }

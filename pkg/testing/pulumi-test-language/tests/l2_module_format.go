@@ -37,7 +37,7 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 10)
+					require.Len(l, snap.Resources, 11)
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:module-format")
 
@@ -56,6 +56,13 @@ func init() {
 					checkText("res5", "bonjour world")
 					checkText("res6", "youkoso world")
 					checkText("res7", "guten tag world")
+
+					res8 := RequireSingleNamedResource(l, snap.Resources, "res8")
+					wantEnums := property.NewMap(map[string]property.Value{
+						"color": property.New("blue"),
+					})
+					assert.Equal(l, wantEnums, resource.FromResourcePropertyMap(res8.Outputs),
+						"expected res8 outputs to be %v", wantEnums)
 
 					stk := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					want := property.NewMap(map[string]property.Value{

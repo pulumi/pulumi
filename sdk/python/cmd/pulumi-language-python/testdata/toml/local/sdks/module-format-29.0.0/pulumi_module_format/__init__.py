@@ -38,6 +38,14 @@ _utilities.register(
  },
  {
   "pkg": "module-format",
+  "mod": "mod_EnumResource",
+  "fqn": "pulumi_module_format.mod",
+  "classes": {
+   "module-format:mod_EnumResource:EnumResource": "EnumResource"
+  }
+ },
+ {
+  "pkg": "module-format",
   "mod": "mod_Resource",
   "fqn": "pulumi_module_format.mod",
   "classes": {

@@ -24,3 +24,5 @@ pulumi.export("out6", res6.call(input="xx").output)
 # Next use the short, 2 component, form because this is the index module
 res7 = module_format.Resource("res7", text=module_format.concat_world_output(value="guten tag").result)
 pulumi.export("out7", res7.call(input="xxx").output)
+# Use an enum literal for an enum type whose module has to be resolved with the module format
+res8 = module_format.mod.EnumResource("res8", color=module_format.mod.Color.BLUE)
