@@ -1,4 +1,0 @@
-component: sdk/go
-kind: improvement
-body: Alias the update status, update result and API capability types in `apitype` to the Pulumi Cloud SDK
-time: 2026-11-20T00:00:00Z

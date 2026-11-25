@@ -1,3 +1,0 @@
-component: sdk/nodejs
-kind: fix
-body: Flush OpenTelemetry traces when Node.js programs exit with errors
