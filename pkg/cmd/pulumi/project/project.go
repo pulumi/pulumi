@@ -18,11 +18,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 )
 
-// NewProjectCmd creates a new command that manages Pulumi projects.
-func NewProjectCmd() *cobra.Command {
+// NewProjectCmd creates a new command that manages Pulumi projects. Its commands offer hints to hm, which may be nil.
+func NewProjectCmd(hm *hints.Manager) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "project",
 		Short: "Manage Pulumi projects",
@@ -36,7 +37,7 @@ func NewProjectCmd() *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(newProjectListCmd())
-	cmd.AddCommand(newcmd.NewNewCmd())
+	cmd.AddCommand(newcmd.NewNewCmd(hm))
 
 	return cmd
 }

@@ -23,7 +23,7 @@ import (
 
 func TestNewProjectCmd(t *testing.T) {
 	t.Parallel()
-	cmd := NewProjectCmd()
+	cmd := NewProjectCmd(nil)
 	assert.Equal(t, "project", cmd.Use)
 	assert.Equal(t, "Manage Pulumi projects", cmd.Short)
 	require.Len(t, cmd.Commands(), 2)
