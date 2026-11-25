@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -26,13 +27,16 @@ import (
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -675,4 +679,208 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	assert.Equal(t, resource.PropertyMap{
 		"output": resource.NewProperty("output"),
 	}, resC.Outputs)
+}
+
+// TestPlainAndParameterizedPackageOfSameName tests that a plain plugin and a bridge plugin parameterized with the
+// same package name can be used side by side: bare registrations get the plain plugin as their default provider,
+// and providers of the parameterized package keep the bridge plugin. c.f.
+// https://github.com/pulumi/pulumi/issues/24167.
+func TestPlainAndParameterizedPackageOfSameName(t *testing.T) {
+	t.Parallel()
+
+	plain := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "pkgA",
+			Kind:    apitype.ResourcePlugin,
+			Version: new(semver.MustParse("2.0.0")),
+		},
+	}
+	bridged := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "bridge",
+			Kind:    apitype.ResourcePlugin,
+			Version: new(semver.MustParse("1.0.0")),
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "pkgA",
+			Version: semver.MustParse("1.5.0"),
+			Value:   []byte("bridged"),
+		},
+	}
+
+	tests := []struct {
+		name             string
+		requiredPackages []workspace.PackageDescriptor
+	}{
+		// The program reports both packages, e.g. @pulumi/aws next to a `pulumi package add` SDK.
+		{"reported by the program", []workspace.PackageDescriptor{plain, bridged}},
+		// The program reports no packages, like inline Automation API programs: the engine falls back to the
+		// packages of the state, which holds both after the first update.
+		{"only in the state", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var createdBy sync.Map
+			newProvider := func(pluginName string) func() (plugin.Provider, error) {
+				return func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						ParameterizeF: func(
+							_ context.Context, req plugin.ParameterizeRequest,
+						) (plugin.ParameterizeResponse, error) {
+							value := req.Parameters.(*plugin.ParameterizeValue)
+							return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+						},
+						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+							createdBy.Store(req.URN.Name(), pluginName)
+							return plugin.CreateResponse{
+								ID:         "id",
+								Properties: req.Properties,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+					}, nil
+				}
+			}
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("2.0.0"), newProvider("pkgA")),
+				deploytest.NewProviderLoader("bridge", semver.MustParse("1.0.0"), newProvider("bridge")),
+			}
+
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				// A resource of the plain plugin, through its default provider.
+				_, err := monitor.RegisterResource("pkgA:m:typA", "plainRes", true)
+				require.NoError(t, err)
+
+				// A resource of the parameterized package, through an explicit provider without a version.
+				bridgeRef, err := monitor.RegisterPackage("bridge", "1.0.0", "", nil, &pulumirpc.Parameterization{
+					Name:    "pkgA",
+					Version: "1.5.0",
+					Value:   []byte("bridged"),
+				}, nil)
+				require.NoError(t, err)
+				prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "bridged", true, deploytest.ResourceOptions{
+					PackageRef: bridgeRef,
+				})
+				require.NoError(t, err)
+				provRef, err := providers.NewReference(prov.URN, prov.ID)
+				require.NoError(t, err)
+				_, err = monitor.RegisterResource("pkgA:m:typA", "bridgedRes", true, deploytest.ResourceOptions{
+					Provider: provRef.String(),
+				})
+				require.NoError(t, err)
+				return nil
+			}, tt.requiredPackages...)
+
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			}
+
+			// The second update runs with both providers in the state.
+			var snap *deploy.Snapshot
+			for _, step := range []string{"first", "second"} {
+				var err error
+				snap, err = lt.TestOp(Update).RunStep(
+					p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, step)
+				require.NoError(t, err, step)
+			}
+
+			servedBy, _ := createdBy.Load("plainRes")
+			assert.Equal(t, "pkgA", servedBy)
+			servedBy, _ = createdBy.Load("bridgedRes")
+			assert.Equal(t, "bridge", servedBy)
+
+			for _, res := range snap.Resources {
+				if res.URN.Name() != "bridged" {
+					continue
+				}
+				// Not the version of the plain plugin's default provider.
+				assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+					"version": "1.5.0",
+					"__internal": map[string]any{
+						"name":             "bridge",
+						"version":          "1.0.0",
+						"parameterization": "YnJpZGdlZA==",
+					},
+				}), res.Inputs)
+			}
+		})
+	}
+}
+
+// TestPlainAndParameterizedDefaultProvidersOfSameVersion tests that a plain plugin and a bridge plugin parameterized
+// with the same package name and version get distinct default providers. c.f.
+// https://github.com/pulumi/pulumi/issues/24167.
+func TestPlainAndParameterizedDefaultProvidersOfSameVersion(t *testing.T) {
+	t.Parallel()
+	t.Skip("both default providers get the cache key and name of the plain one; " +
+		"the fix changes default provider names, see https://github.com/pulumi/pulumi/issues/24167")
+
+	var createdBy sync.Map
+	newProvider := func(pluginName string) func() (plugin.Provider, error) {
+		return func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ParameterizeF: func(
+					_ context.Context, req plugin.ParameterizeRequest,
+				) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+					return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					createdBy.Store(req.URN.Name(), pluginName)
+					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}
+	}
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("7.0.0"), newProvider("pkgA")),
+		deploytest.NewProviderLoader("bridge", semver.MustParse("1.0.0"), newProvider("bridge")),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "plainRes", true)
+		require.NoError(t, err)
+
+		bridgeRef, err := monitor.RegisterPackage("bridge", "1.0.0", "", nil, &pulumirpc.Parameterization{
+			Name:    "pkgA",
+			Version: "7.0.0",
+			Value:   []byte("bridged"),
+		}, nil)
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "bridgedRes", true, deploytest.ResourceOptions{
+			PackageRef: bridgeRef,
+		})
+		require.NoError(t, err)
+		return nil
+	}, workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "pkgA",
+			Kind:    apitype.ResourcePlugin,
+			Version: new(semver.MustParse("7.0.0")),
+		},
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "")
+	require.NoError(t, err)
+
+	servedBy, _ := createdBy.Load("plainRes")
+	assert.Equal(t, "pkgA", servedBy)
+	servedBy, _ = createdBy.Load("bridgedRes")
+	assert.Equal(t, "bridge", servedBy)
+
+	var defaultProviders []string
+	for _, res := range snap.Resources {
+		if res.Type == "pulumi:providers:pkgA" {
+			defaultProviders = append(defaultProviders, res.URN.Name())
+		}
+	}
+	require.Len(t, defaultProviders, 2, defaultProviders)
 }

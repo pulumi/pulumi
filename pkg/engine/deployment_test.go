@@ -19,6 +19,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -148,4 +149,74 @@ func TestSourceFuncCancellation(t *testing.T) {
 	if !assert.ErrorIs(t, err, context.Canceled) {
 		t.FailNow()
 	}
+}
+
+func TestCompleteImportFromDefaultProvider(t *testing.T) {
+	t.Parallel()
+
+	plainVersion := semver.MustParse("7.43.0")
+	plain := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:              "pkg",
+			Version:           &plainVersion,
+			PluginDownloadURL: "github://owner/plain",
+		},
+	}
+	bridgeVersion := semver.MustParse("1.5.1")
+	bridged := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "bridge",
+			Version: &bridgeVersion,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "pkg",
+			Version: semver.MustParse("6.72.0"),
+			Value:   []byte("bridged"),
+		},
+	}
+	importOfBridged := func() *deploy.Import {
+		return &deploy.Import{
+			Type: "pkg:m:typA",
+			Parameterization: &deploy.Parameterization{
+				PluginName:    "bridge",
+				PluginVersion: bridgeVersion,
+				Value:         []byte("bridged"),
+			},
+		}
+	}
+
+	t.Run("plain package", func(t *testing.T) {
+		t.Parallel()
+		imp := &deploy.Import{Type: "pkg:m:typA"}
+		require.NoError(t, completeImportFromDefaultProvider(imp, plain))
+		assert.Equal(t, &plainVersion, imp.Version)
+		assert.Equal(t, "github://owner/plain", imp.PluginDownloadURL)
+		assert.Nil(t, imp.Parameterization)
+	})
+
+	t.Run("parameterized package from its own default", func(t *testing.T) {
+		t.Parallel()
+		imp := &deploy.Import{Type: "pkg:m:typA"}
+		require.NoError(t, completeImportFromDefaultProvider(imp, bridged))
+		assert.Equal(t, &bridged.Parameterization.Version, imp.Version)
+		assert.Equal(t, &deploy.Parameterization{
+			PluginName:    "bridge",
+			PluginVersion: bridgeVersion,
+			Value:         []byte("bridged"),
+		}, imp.Parameterization)
+
+		imp = importOfBridged()
+		require.NoError(t, completeImportFromDefaultProvider(imp, bridged))
+		assert.Equal(t, &bridged.Parameterization.Version, imp.Version)
+	})
+
+	t.Run("parameterized package sharing its name with a plain plugin", func(t *testing.T) {
+		t.Parallel()
+		// https://github.com/pulumi/pulumi/issues/24167
+		imp := importOfBridged()
+		require.NoError(t, completeImportFromDefaultProvider(imp, plain))
+		assert.Nil(t, imp.Version)
+		assert.Empty(t, imp.PluginDownloadURL)
+		assert.Equal(t, importOfBridged().Parameterization, imp.Parameterization)
+	})
 }
