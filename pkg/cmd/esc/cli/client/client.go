@@ -205,6 +205,15 @@ type Client interface {
 		continuationToken string,
 	) ([]ChangeRequest, string, error)
 
+	// ListChangeRequestsForEntity is ListChangeRequests for the change requests of another entity type, such as
+	// policy_exceptions.
+	ListChangeRequestsForEntity(
+		ctx context.Context,
+		orgName string,
+		entityType string,
+		continuationToken string,
+	) ([]ChangeRequest, string, error)
+
 	// GetChangeRequest returns the change request with the specified ID and its gate evaluation.
 	GetChangeRequest(ctx context.Context, orgName, changeRequestID string) (*GetChangeRequestResponse, error)
 
@@ -1002,10 +1011,19 @@ func (pc *client) ListChangeRequests(
 	orgName string,
 	continuationToken string,
 ) ([]ChangeRequest, string, error) {
+	return pc.ListChangeRequestsForEntity(ctx, orgName, "environment", continuationToken)
+}
+
+func (pc *client) ListChangeRequestsForEntity(
+	ctx context.Context,
+	orgName string,
+	entityType string,
+	continuationToken string,
+) ([]ChangeRequest, string, error) {
 	queryObj := struct {
 		EntityType        string `url:"entityType"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
-	}{EntityType: "environment", ContinuationToken: continuationToken}
+	}{EntityType: entityType, ContinuationToken: continuationToken}
 
 	var resp ListChangeRequestsResponse
 	path := fmt.Sprintf("/api/change-requests/%v", orgName)

@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -121,7 +122,7 @@ type policyExceptionNewResult struct {
 	ChangeRequestID string `json:"changeRequestId,omitempty"`
 	// ChangeRequestStatus is the change request's status after it was submitted; `applied` once the exception exists.
 	ChangeRequestStatus string `json:"changeRequestStatus,omitempty"`
-	// Updated is set when Pulumi Cloud returned an existing exception or change request for the same request.
+	// Updated is set when an active exception or an open change request already covers the request.
 	Updated bool `json:"updated,omitempty"`
 	// ExpiresAt is when the created exception expires. It's nil when it never expires, or it's still requested.
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
@@ -162,7 +163,8 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"\n" +
 			"The exception belongs to the Policy Pack named as <policy-pack> or <org>/<policy-pack>; the\n" +
 			"organization defaults to the stack's. It gets one entry per resource, listing the resource's\n" +
-			"selected policies. Requesting the same exception again returns the existing one.\n" +
+			"selected policies. An active exception that already covers the violations is returned instead\n" +
+			"of a new one, and so is an identical open request by the same author.\n" +
 			"\n" +
 			"When the organization requires approval for policy exceptions, or --draft is passed, the\n" +
 			"command creates a change request for the exception instead and submits it, with the reason as\n" +
@@ -432,17 +434,41 @@ func runPolicyExceptionNew(
 	return render(result)
 }
 
+// alreadyExceptedPattern finds the exception named by the 409 that creating or requesting a covered exception returns.
+var alreadyExceptedPattern = regexp.MustCompile(`already excepted by (EXC-[0-9]+)`)
+
+// coveredBy returns the active exception that err says covers the request, if it's that 409.
+func coveredBy(err error) (string, bool) {
+	apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if !ok || apiErr.Code != http.StatusConflict {
+		return "", false
+	}
+	m := alreadyExceptedPattern.FindStringSubmatch(apiErr.Message)
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
+
 // createPolicyException creates the result's exception, or requests it in a change request with --draft or when the
 // organization requires approval.
 func createPolicyException(
 	ctx context.Context, c policyExceptionClients, org string, draft bool, result *policyExceptionNewResult,
 ) error {
+	covered := func(id string) error {
+		result.ID, result.Updated = id, true
+		result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, id)
+		return nil
+	}
 	if !draft {
-		created, existed, err := c.CreatePolicyException(ctx, org, result.Exception)
+		created, err := c.CreatePolicyException(ctx, org, result.Exception)
 		if err == nil {
-			result.ID, result.Updated, result.ExpiresAt = created.ID, existed, created.ExpiresAt
+			result.ID, result.ExpiresAt = created.ID, created.ExpiresAt
 			result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, created.ID)
 			return nil
+		}
+		if id, ok := coveredBy(err); ok {
+			return covered(id)
 		}
 		// An organization without the feature also returns a 409, which the message tells apart.
 		apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
@@ -452,6 +478,9 @@ func createPolicyException(
 	}
 
 	created, err := c.CreatePolicyExceptionDraft(ctx, org, result.Exception)
+	if id, ok := coveredBy(err); ok {
+		return covered(id)
+	}
 	if err != nil {
 		return err
 	}
@@ -826,11 +855,11 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		}
 		switch {
 		case r.ID != "" && r.Updated:
-			fmt.Fprintf(stderr, "Updated policy exception %s%s\n", r.ID, link)
+			fmt.Fprintf(stderr, "Policy exception %s already covers these violations%s\n", r.ID, link)
 		case r.ID != "":
 			fmt.Fprintf(stderr, "Created policy exception %s%s\n", r.ID, link)
 		case r.Updated:
-			fmt.Fprintf(stderr, "Updated policy exception request%s\n", link)
+			fmt.Fprintf(stderr, "Policy exception request %s already covers these violations%s\n", r.ChangeRequestID, link)
 		default:
 			fmt.Fprintf(stderr, "Requested policy exception%s\n", link)
 		}
@@ -839,11 +868,14 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		case r.ChangeRequestStatus == changeRequestApplied:
 			fmt.Fprintln(stderr, "Policy exception created.")
 		case r.ChangeRequestStatus == changeRequestReady:
-			fmt.Fprintln(stderr, "Apply the request to create the exception.")
+			fmt.Fprintln(stderr, "The request is approved and pending to be applied.")
 		default:
 			fmt.Fprintln(stderr, "Exception will be applied after the request is approved.")
 		}
-		fprintPolicyExceptionExpiry(stderr, r)
+		// A covered exception has its own expiry, which may differ from the one requested.
+		if r.ID == "" || !r.Updated {
+			fprintPolicyExceptionExpiry(stderr, r)
+		}
 		return nil
 	}
 
@@ -900,15 +932,27 @@ func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
 	if r.Exception.ExpiresInSeconds == nil {
 		return
 	}
-	seconds := *r.Exception.ExpiresInSeconds
-	n, unit := seconds/(24*3600), "day"
-	if seconds%(24*3600) != 0 {
-		n, unit = seconds/3600, "hour"
+	fmt.Fprintf(w, "Expires: %s after it's created\n", policyExceptionExpiresIn(*r.Exception.ExpiresInSeconds))
+}
+
+// policyExceptionExpiresIn says how long after it's created an exception expires, in the largest unit that's exact:
+// days, hours, minutes or seconds. The CLI only requests days or hours, but other clients may request any number of
+// seconds.
+func policyExceptionExpiresIn(seconds int64) string {
+	n, unit := seconds, "second"
+	for _, u := range []struct {
+		seconds int64
+		name    string
+	}{{24 * 3600, "day"}, {3600, "hour"}, {60, "minute"}} {
+		if seconds%u.seconds == 0 {
+			n, unit = seconds/u.seconds, u.name
+			break
+		}
 	}
 	if n != 1 {
 		unit += "s"
 	}
-	fmt.Fprintf(w, "Expires: %d %s after it's created\n", n, unit)
+	return fmt.Sprintf("%d %s", n, unit)
 }
 
 // policyExceptionMaxExpiry is the longest expiry that Pulumi Cloud accepts.

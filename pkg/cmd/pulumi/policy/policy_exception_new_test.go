@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -117,13 +118,30 @@ func TestPolicyExceptionNew(t *testing.T) {
 	assert.Equal(t, []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
 		c.gotCreated[0].Match, "only the pairs that occurred in the run")
 
-	// Pulumi Cloud returns the existing exception for a repeated request.
+	// An active exception that covers the request is returned as a 409 that names it. Its expiry isn't the one
+	// requested, so none is printed.
 	c = twoBuckets()
-	c.existed = true
-	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31"})
+	c.createErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "already excepted by EXC-7"}
+	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", expiresIn: "7d"})
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
-	assert.Equal(t, "Updated policy exception EXC-7: http://localhost:3000/acme/web/prod?exception=EXC-7\n", stderr)
+	assert.Equal(t, "Policy exception EXC-7 already covers these violations: "+
+		"http://localhost:3000/acme/web/prod?exception=EXC-7\n", stderr)
+	assert.Empty(t, c.gotDrafts, "no request for a covered exception")
+
+	// So does requesting one in a change request.
+	c = twoBuckets()
+	c.draftErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "already excepted by EXC-115"}
+	stdout, stderr, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", draft: true})
+	require.NoError(t, err)
+	assert.Empty(t, stdout)
+	assert.Equal(t, "Policy exception EXC-115 already covers these violations: "+
+		"http://localhost:3000/acme/web/prod?exception=EXC-115\n", stderr)
+	assert.Empty(t, c.gotSubmitted)
+	c = twoBuckets()
+	c.draftErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: "something else"}
+	_, _, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", draft: true})
+	assert.ErrorContains(t, err, "something else")
 }
 
 func TestPolicyExceptionNew_Levels(t *testing.T) {
@@ -592,7 +610,8 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	stdout, stderr, err = runNew(t, c, "", args)
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
-	assert.Equal(t, "Updated policy exception request: http://localhost:3000/acme/web/prod?exception=cr-1\n"+
+	assert.Equal(t, "Policy exception request cr-1 already covers these violations: "+
+		"http://localhost:3000/acme/web/prod?exception=cr-1\n"+
 		"Exception will be applied after the request is approved.\n", stderr)
 	assert.Empty(t, c.gotSubmitted)
 
@@ -653,7 +672,7 @@ func TestPolicyExceptionNew_Draft(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "Requested policy exception: http://localhost:3000/acme/web/prod?exception=cr-1\n"+
-		"Apply the request to create the exception.\n", stderr)
+		"The request is approved and pending to be applied.\n", stderr)
 
 	c = twoBuckets()
 	c.submitErr = &apitype.ErrorResponse{Code: http.StatusBadRequest, Message: "bad"}
@@ -693,6 +712,38 @@ func TestPolicyExceptionNew_ExpiresIn(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.True(t, strings.HasSuffix(stdout, "]\n}\nExpires: 36 hours after it's created\n"), stdout)
+}
+
+func TestPolicyExceptionExpiresIn(t *testing.T) {
+	t.Parallel()
+
+	for seconds, want := range map[int64]string{
+		24 * 3600: "1 day", 7 * 24 * 3600: "7 days", 3600: "1 hour", 36 * 3600: "36 hours",
+		5400: "90 minutes", 60: "1 minute", 90: "90 seconds", 1: "1 second",
+	} {
+		assert.Equal(t, want, policyExceptionExpiresIn(seconds), seconds)
+	}
+}
+
+// The 409 that names a covering exception reaches coveredBy through the Pulumi Cloud client's error wrapping.
+func TestCoveredByClientError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"code": 409, "message": "already excepted by EXC-7"}`))
+	}))
+	defer server.Close()
+	c := client.NewClient(server.URL, "token", true, nil)
+
+	_, err := c.CreatePolicyException(t.Context(), "acme", cloudapitype.CreatePolicyExceptionRequest{})
+	id, ok := coveredBy(err)
+	assert.True(t, ok, err)
+	assert.Equal(t, "EXC-7", id)
+	_, err = c.CreatePolicyExceptionDraft(t.Context(), "acme", cloudapitype.CreatePolicyExceptionRequest{})
+	id, ok = coveredBy(err)
+	assert.True(t, ok, err)
+	assert.Equal(t, "EXC-7", id)
 }
 
 func TestParsePolicyExceptionExpiresIn(t *testing.T) {

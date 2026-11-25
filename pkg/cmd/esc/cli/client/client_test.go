@@ -726,6 +726,25 @@ func TestListChangeRequests(t *testing.T) {
 	assert.Equal(t, "", next)
 }
 
+func TestListChangeRequestsForEntity(t *testing.T) {
+	t.Parallel()
+	path := "/api/change-requests/test-org"
+	client := newTestClient(t, http.MethodGet, path, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "policy_exceptions", r.URL.Query().Get("entityType"))
+		assert.False(t, r.URL.Query().Has("continuationToken"))
+		err := json.NewEncoder(w).Encode(ListChangeRequestsResponse{
+			ChangeRequests:    []ChangeRequest{{ID: "EXAMPLE"}},
+			ContinuationToken: "next",
+		})
+		require.NoError(t, err)
+	})
+
+	crs, next, err := client.ListChangeRequestsForEntity(t.Context(), "test-org", "policy_exceptions", "")
+	require.NoError(t, err)
+	assert.Equal(t, []ChangeRequest{{ID: "EXAMPLE"}}, crs)
+	assert.Equal(t, "next", next)
+}
+
 func TestSubmitChangeRequest(t *testing.T) {
 	t.Parallel()
 	t.Run("OK - nil description", func(t *testing.T) {

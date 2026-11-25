@@ -54,9 +54,9 @@ type mockPolicyExceptionClient struct {
 	// createErr fails creates, but not drafts; gated returns a 409 for them, as when the org requires approval.
 	createErr error
 	gated     bool
-	// existed makes creates return an existing exception, as for a repeated request.
-	existed   bool
 	submitErr error
+	// draftErr fails requesting an exception in a change request.
+	draftErr error
 	// crStatus is the status of the change request a draft creates, after it's submitted. crOpen is its status
 	// before, when the draft returned an open change request; it's a draft otherwise.
 	crStatus string
@@ -66,6 +66,20 @@ type mockPolicyExceptionClient struct {
 	noCR    bool
 	// stackErr fails GetStack with another error.
 	stackErr error
+	// For reviewing change requests: crCurrent overrides the status GetChangeRequest returns, crEntityType its entity
+	// type (policy_exceptions by default), and approveStatus is the status an approval moves it to. crs are the listed
+	// change requests, in one page, and draft is the exception each one creates.
+	crCurrent     string
+	crEntityType  string
+	approveStatus string
+	gates         esc_client.ChangeRequestGateEvaluation
+	crs           []esc_client.ChangeRequest
+	draft         cloudapitype.CreatePolicyExceptionRequest
+	crEvents      []esc_client.ChangeRequestEvent
+	// reviewErr fails approving, unapproving, closing and commenting; rereadErr fails reading a change request after
+	// one of them.
+	reviewErr error
+	rereadErr error
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
 	gotOrgFlag   string
@@ -76,23 +90,24 @@ type mockPolicyExceptionClient struct {
 	gotSubmitted []string
 	gotReads     []string
 	gotStacks    []string
+	gotListedCRs []string
+	gotReviews   []string
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
 	_ context.Context, org string, req cloudapitype.CreatePolicyExceptionRequest,
-) (cloudapitype.PolicyException, bool, error) {
+) (cloudapitype.PolicyException, error) {
 	m.gotOrg = org
 	m.gotCreated = append(m.gotCreated, req)
 	if m.gated {
-		return cloudapitype.PolicyException{}, false,
-			&apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
+		return cloudapitype.PolicyException{}, &apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
 	}
 	created := cloudapitype.PolicyException{ID: "EXC-7"}
 	if req.ExpiresInSeconds != nil {
 		createdAt := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 		created.ExpiresAt = new(createdAt.Add(time.Duration(*req.ExpiresInSeconds) * time.Second))
 	}
-	return created, m.existed, cmp.Or(m.createErr, m.err)
+	return created, cmp.Or(m.createErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(
@@ -100,7 +115,8 @@ func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(
 ) (client.PolicyExceptionDraft, error) {
 	m.gotOrg = org
 	m.gotDrafts = append(m.gotDrafts, req)
-	return client.PolicyExceptionDraft{CreatePolicyExceptionRequest: req, ChangeRequestID: "cr-1"}, m.err
+	draft := client.PolicyExceptionDraft{CreatePolicyExceptionRequest: req, ChangeRequestID: "cr-1"}
+	return draft, cmp.Or(m.draftErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) SubmitChangeRequest(_ context.Context, org, id string, description *string) error {
@@ -116,11 +132,72 @@ func (m *mockPolicyExceptionClient) GetChangeRequest(
 	if m.noCR {
 		return nil, &apitype.ErrorResponse{Code: http.StatusNotFound}
 	}
+	if m.rereadErr != nil && len(m.gotReviews) > 0 {
+		return nil, m.rereadErr
+	}
 	status := cmp.Or(m.crOpen, changeRequestDraft)
 	if len(m.gotSubmitted) > 0 {
 		status = m.crStatus
 	}
-	return &esc_client.GetChangeRequestResponse{ChangeRequest: esc_client.ChangeRequest{ID: id, Status: status}}, m.err
+	cr := esc_client.ChangeRequest{
+		ID:                   id,
+		Status:               cmp.Or(m.crCurrent, status),
+		Action:               "create",
+		CreatedAt:            time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC),
+		CreatedBy:            esc_client.ChangeRequestUser{GithubLogin: "alice"},
+		LatestRevisionNumber: 2,
+		Entity:               esc_client.ChangeRequestEntity{EntityType: cmp.Or(m.crEntityType, policyExceptionsEntityType)},
+	}
+	return &esc_client.GetChangeRequestResponse{ChangeRequest: cr, GateEvaluation: m.gates}, m.err
+}
+
+func (m *mockPolicyExceptionClient) GetPolicyExceptionDraft(
+	_ context.Context, org, id string,
+) (client.PolicyExceptionDraft, error) {
+	m.gotOrg = org
+	return client.PolicyExceptionDraft{CreatePolicyExceptionRequest: m.draft, ChangeRequestID: id}, m.err
+}
+
+func (m *mockPolicyExceptionClient) ListChangeRequestsForEntity(
+	_ context.Context, org, entityType, token string,
+) ([]esc_client.ChangeRequest, string, error) {
+	m.gotOrg = org
+	m.gotListedCRs = append(m.gotListedCRs, entityType+" "+token)
+	return m.crs, "", m.err
+}
+
+func (m *mockPolicyExceptionClient) ApproveChangeRequest(
+	_ context.Context, org, id string, rev int, comment string,
+) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, fmt.Sprintf("approve %s@%d %s", id, rev, comment))
+	m.crCurrent = cmp.Or(m.approveStatus, m.crCurrent)
+	return cmp.Or(m.reviewErr, m.err)
+}
+
+func (m *mockPolicyExceptionClient) UnapproveChangeRequest(_ context.Context, org, id string) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, "unapprove "+id)
+	return cmp.Or(m.reviewErr, m.err)
+}
+
+func (m *mockPolicyExceptionClient) CloseChangeRequest(_ context.Context, org, id, comment string) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, fmt.Sprintf("close %s %s", id, comment))
+	return cmp.Or(m.reviewErr, m.err)
+}
+
+func (m *mockPolicyExceptionClient) AddChangeRequestComment(_ context.Context, org, id, comment string) error {
+	m.gotOrg = org
+	m.gotReviews = append(m.gotReviews, fmt.Sprintf("comment %s %s", id, comment))
+	return cmp.Or(m.reviewErr, m.err)
+}
+
+func (m *mockPolicyExceptionClient) ListChangeRequestEvents(
+	_ context.Context, org, _, _ string,
+) ([]esc_client.ChangeRequestEvent, string, error) {
+	m.gotOrg = org
+	return m.crEvents, "", m.err
 }
 
 func (m *mockPolicyExceptionClient) URL() string {
@@ -497,13 +574,19 @@ func TestPolicyExceptionGet_Errors(t *testing.T) {
 	factory := func(context.Context, string) (policyExceptionClients, string, error) {
 		return policyExceptionClients{&notFoundExceptions{notFound}, notFound}, "acme", nil
 	}
+	isRequest := crID + " is a request for a policy exception (status: pending), not an exception; " +
+		"see it with `pulumi policy exception approval get " + crID + "`"
 	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
-	assert.EqualError(t, err, crID+" is a change request (status: pending), not a policy exception; "+
-		"it creates the exception once it's approved and applied")
+	assert.EqualError(t, err, isRequest)
 	err = runPolicyExceptionRemove(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, factory, crID,
 		policyExceptionRemoveArgs{yes: true, outputFormat: defaultPolicyExceptionRemoveOutputFormat()})
-	assert.EqualError(t, err, crID+" is a change request (status: pending), not a policy exception; "+
-		"it creates the exception once it's approved and applied")
+	assert.EqualError(t, err, isRequest)
+
+	// A change request for something else, like an environment, isn't described as one.
+	notFound.crEntityType = "environment"
+	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
+	assert.EqualError(t, err, "policy exception "+crID+" not found in acme")
+	notFound.crEntityType = ""
 
 	notFound.noCR = true
 	err = runPolicyExceptionGet(t.Context(), &bytes.Buffer{}, factory, crID, args)
