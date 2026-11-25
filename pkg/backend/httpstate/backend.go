@@ -1831,6 +1831,12 @@ func (b *cloudBackend) summarizeErrorWithNeo(
 	}, nil
 }
 
+// offersNeoLink reports whether an update may offer a link to debug its diagnostics with Neo: the org must have Neo,
+// the user mustn't have suppressed the link or the permalink, and Neo's summary mustn't already show the link.
+func offersNeoLink(isNeoEnabled bool, opts display.Options) bool {
+	return isNeoEnabled && !env.SuppressNeoLink.Value() && !opts.SuppressPermalink && !opts.ShowNeoFeatures
+}
+
 // createNeoTaskOnError creates a Neo agent task to help debug errors that occurred during an operation.
 func (b *cloudBackend) createNeoTaskOnError(
 	ctx context.Context, pulumiOutput string, stackRef backend.StackReference, opts display.Options,
@@ -1984,25 +1990,19 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		userName = "unknown"
 	}
-	// Check if the user's org (stack's owner) has Neo enabled. If not, we don't show the link to Neo.
+	// Check if the user's org (stack's owner) has Neo enabled. If not, we don't show Neo features.
 	isNeoEnabled := isNeoIntegrationEnabled
 	b.neoEnabledForCurrentProject = &isNeoEnabled
 	neoEnabledValueString := "is"
-	continuationString := ""
-	if isNeoEnabled {
-		if env.SuppressNeoLink.Value() {
-			// Neo is enabled in user's org, but the environment variable to suppress the link to Neo is set.
-			op.Opts.Display.ShowLinkToNeo = false
-			continuationString = " but the environment variable PULUMI_SUPPRESS_NEO_LINK" +
-				" suppresses the link to Neo in diagnostics"
-		}
-	} else {
-		op.Opts.Display.ShowLinkToNeo = false
+	if !isNeoEnabled {
 		op.Opts.Display.ShowNeoFeatures = false
 		neoEnabledValueString = "is not"
 	}
-	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
-		stackID.Owner, neoEnabledValueString, userName, continuationString)
+	if !offersNeoLink(isNeoEnabled, op.Opts.Display) {
+		op.Opts.Display.OfferNeoLink = nil
+	}
+	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'",
+		stackID.Owner, neoEnabledValueString, userName)
 
 	return update, updateMetadata{
 		version:        version,

@@ -34,6 +34,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pulumicmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -64,8 +65,8 @@ var registerHiddenFlags = []string{
 // has finished.
 type registerPrepare func(cmd *cobra.Command, stack, configFile string) (func(io.Writer), error)
 
-func newDeliveryRegisterCmd() *cobra.Command {
-	return newRegisterCmd(operations.NewUpCmd(), prepareRegistration)
+func newDeliveryRegisterCmd(hm *hints.Manager) *cobra.Command {
+	return newRegisterCmd(operations.NewUpCmd(hm), prepareRegistration)
 }
 
 // newRegisterCmd wraps up so that the command accepts every flag of `pulumi up` and runs it in

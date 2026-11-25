@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -42,8 +43,8 @@ type testManager struct {
 	// noTerminal is true when the command doesn't run interactively, as in CI.
 	noTerminal bool
 	skip       []string
-	path       string
 	local      bool
+	path       string
 }
 
 func newTestManager(t *testing.T) *testManager {
@@ -211,6 +212,31 @@ func TestOfferIfChecksOnlyWhenNeeded(t *testing.T) {
 	}
 }
 
+func TestOfferIfChecksCheaperRulesFirst(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		hint  Hint
+		setup func(tm *testManager)
+	}{
+		{"cloud-only hint on a local backend", Hint{ID: "c", CloudOnly: true}, func(tm *testManager) { tm.local = true }},
+		{"hidden from a new user", Hint{ID: "n", HideFromNewUsers: true}, func(*testManager) {}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tt.setup(tm)
+			tm.OfferIf(tt.hint, func() bool {
+				t.Error("applies called")
+				return true
+			})
+			tm.Flush(&bytes.Buffer{})
+		})
+	}
+}
+
 func TestOfferIfNotApplying(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
@@ -319,4 +345,112 @@ func TestIsTerminal(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 	assert.False(t, isTerminal(f))
+}
+
+func TestFirstFlushRecordsFirstSeen(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	first := tm.now
+
+	// A flush with nothing offered still records when hints were first flushed.
+	assert.Empty(t, tm.run())
+	st, _, err := tm.load()
+	require.NoError(t, err)
+	assert.True(t, first.Equal(st.FirstSeen))
+
+	// Later flushes, including ones that show a hint, keep it.
+	tm.now = tm.now.Add(time.Hour)
+	assert.Contains(t, tm.run(hintA), "hint a")
+	st, _, err = tm.load()
+	require.NoError(t, err)
+	assert.True(t, first.Equal(st.FirstSeen))
+}
+
+func TestSuppressedFlushDoesNotRecordFirstSeen(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		setup func(tm *testManager)
+	}{
+		{"suppressed", func(tm *testManager) { tm.Suppress() }},
+		{"disabled", func(tm *testManager) { tm.disabled = true }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tt.setup(tm)
+			assert.Empty(t, tm.run())
+			assert.NoFileExists(t, tm.path)
+		})
+	}
+}
+
+func TestHideFromNewUsers(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	newUserHint := Hint{ID: "later", Cooldown: time.Hour, Message: "later hint", HideFromNewUsers: true}
+
+	// On the first command, only hints that don't wait for new users are shown.
+	out := tm.run(newUserHint, hintA)
+	assert.NotContains(t, out, "later hint")
+	assert.Contains(t, out, "hint a")
+
+	tm.now = tm.now.Add(newUserPeriod - time.Minute)
+	assert.Empty(t, tm.run(newUserHint))
+
+	tm.now = tm.now.Add(time.Minute)
+	assert.Contains(t, tm.run(newUserHint), "later hint")
+}
+
+func TestESCHintOnCredentialsFailure(t *testing.T) {
+	t.Parallel()
+
+	const message = "Run `pulumi env setup aws`."
+	tests := []struct {
+		name      string
+		kind      plugin.HintKind
+		message   string
+		isCloud   bool
+		firstSeen time.Duration
+		want      bool
+	}{
+		{"established cloud user", plugin.HintDynamicCredentials, message, true, 2 * newUserPeriod, true},
+		{"new user", plugin.HintDynamicCredentials, message, true, newUserPeriod / 2, false},
+		{"diy backend", plugin.HintDynamicCredentials, message, false, 2 * newUserPeriod, false},
+		{"no message", plugin.HintDynamicCredentials, "", true, 2 * newUserPeriod, false},
+		{"unspecified hint", plugin.HintUnspecified, message, true, 2 * newUserPeriod, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tm.local = !tt.isCloud
+			require.NoError(t, save(tm.path, state{FirstSeen: tm.now.Add(-tt.firstSeen)}))
+			tm.RecordProviderHint(plugin.Hint{Kind: tt.kind, Message: tt.message})
+			out := tm.run()
+			if tt.want {
+				assert.Contains(t, out, message)
+			} else {
+				assert.Empty(t, out)
+			}
+		})
+	}
+}
+
+func TestNeoDebugHint(t *testing.T) {
+	t.Parallel()
+
+	update := NeoDebug("https://app.pulumi.com/org/proj/stack/updates/3?explainFailure", "pulumi neo --debug-update")
+	assert.Equal(t, "Pulumi Neo can help with these diagnostics: "+
+		"https://app.pulumi.com/org/proj/stack/updates/3?explainFailure\n"+
+		"Or run `pulumi neo --debug-update` for an interactive agent in your terminal.", update.Message)
+
+	// A new user sees the hint on a Pulumi Cloud backend, but not on a DIY backend.
+	tm := newTestManager(t)
+	assert.Contains(t, tm.run(update), "?explainFailure")
+	tm = newTestManager(t)
+	tm.local = true
+	assert.Empty(t, tm.run(update))
 }

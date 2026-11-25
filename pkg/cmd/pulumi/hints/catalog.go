@@ -34,3 +34,29 @@ var DriftDetection = Hint{
 		"or fix it automatically.\nLearn more: https://www.pulumi.com/docs/deployments/concepts/drift/?utm_source=cli",
 	CloudOnly: true,
 }
+
+// ESCCredentials suggests Pulumi ESC after a provider says that dynamic credentials may help with a failure. The
+// provider writes the message, because it knows its cloud and how to set up ESC for it.
+func ESCCredentials(message string) Hint {
+	return Hint{
+		ID:               "esc-credentials",
+		Cooldown:         7 * 24 * time.Hour,
+		Message:          message,
+		CloudOnly:        true,
+		HideFromNewUsers: true,
+	}
+}
+
+// NeoDebug suggests debugging a preview's or update's diagnostics with Pulumi Neo, at link or by running debugCommand.
+func NeoDebug(link, debugCommand string) Hint {
+	return Hint{
+		ID:       "neo-debug",
+		Cooldown: 7 * 24 * time.Hour,
+		Message: "Pulumi Neo can help with these diagnostics: " + link + "\n" +
+			"Or run `" + debugCommand + "` for an interactive agent in your terminal.",
+		CloudOnly: true,
+	}
+}
+
+// OfferNeoDebug offers the NeoDebug hint. Commands set it as the display's OfferNeoLink.
+func (m *Manager) OfferNeoDebug(link, debugCommand string) { m.Offer(NeoDebug(link, debugCommand)) }

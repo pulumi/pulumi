@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,9 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func TestProviderReceivesCheckConfigFailureHint(t *testing.T) {
+var escHint = Hint{Kind: HintDynamicCredentials, Message: "use ESC"}
+
+func TestProviderRecordsCheckConfigFailureHint(t *testing.T) {
 	t.Parallel()
 
 	client := &stubClient{
@@ -37,7 +40,15 @@ func TestProviderReceivesCheckConfigFailureHint(t *testing.T) {
 			}}, nil
 		},
 	}
-	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	var mu sync.Mutex
+	var seen []Hint
+	pctx := newTestContext(t)
+	pctx.HintRecorder = func(h Hint) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, h)
+	}
+	p := NewProviderWithClient(pctx, client, false /* disablePreview */)
 
 	resp, err := p.CheckConfig(t.Context(), CheckConfigRequest{
 		URN:  resource.NewURN("stack", "proj", "", "pulumi:providers:aws", "default"),
@@ -47,6 +58,7 @@ func TestProviderReceivesCheckConfigFailureHint(t *testing.T) {
 	require.Len(t, resp.Failures, 2)
 	assert.Nil(t, resp.Failures[0].Hint)
 	assert.Equal(t, &Hint{Kind: HintDynamicCredentials, Message: "use ESC"}, resp.Failures[1].Hint)
+	assert.Equal(t, []Hint{escHint}, seen)
 }
 
 func TestProviderServerSendsCheckConfigFailureHint(t *testing.T) {

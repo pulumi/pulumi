@@ -2375,3 +2375,25 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		assert.Equal(t, "readingUpdateID="+updateID, gotQuery)
 	})
 }
+
+func TestOffersNeoLink(t *testing.T) {
+	tests := []struct {
+		name         string
+		isNeoEnabled bool
+		opts         display.Options
+		suppress     string
+		want         bool
+	}{
+		{name: "Neo enabled", isNeoEnabled: true, want: true},
+		{name: "Neo not enabled"},
+		{name: "suppressed by env", isNeoEnabled: true, suppress: "true"},
+		{name: "no permalink", isNeoEnabled: true, opts: display.Options{SuppressPermalink: true}},
+		{name: "Neo summary shows the link", isNeoEnabled: true, opts: display.Options{ShowNeoFeatures: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_SUPPRESS_NEO_LINK", tt.suppress)
+			assert.Equal(t, tt.want, offersNeoLink(tt.isNeoEnabled, tt.opts))
+		})
+	}
+}

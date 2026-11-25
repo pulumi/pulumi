@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	pkgPlan "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -303,7 +304,7 @@ func buildImportFile(
 	})
 }
 
-func NewPreviewCmd() *cobra.Command {
+func NewPreviewCmd(hm *hints.Manager) *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
@@ -477,11 +478,8 @@ func NewPreviewCmd() *cobra.Command {
 				displayOpts.SuppressPermalink = true
 			}
 
-			// Link to Neo will be shown for orgs that have Neo enabled, unless the user explicitly suppressed it.
-			slog.InfoContext(ctx, "PULUMI_SUPPRESS_NEO_LINK", "value", env.SuppressNeoLink.Value())
-			displayOpts.ShowLinkToNeo = !env.SuppressNeoLink.Value()
-
 			configureNeoOptions(neoEnabled, cmd, &displayOpts, isDIYBackend)
+			displayOpts.OfferNeoLink = hm.OfferNeoDebug
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &displayOpts, isDIYBackend)
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
@@ -576,6 +574,7 @@ func NewPreviewCmd() *cobra.Command {
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					CloudCredentialEnv:        cloudCredentialEnv,
+					HintRecorder:              hm.RecordProviderHint,
 					ParallelDiff:              env.ParallelDiff.Value(),
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,

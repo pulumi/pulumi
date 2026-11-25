@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -768,7 +769,7 @@ func writeGeneratedProgram(w io.Writer, files map[string][]byte) error {
 	return nil
 }
 
-func NewImportCmd() *cobra.Command {
+func NewImportCmd(hm *hints.Manager) *cobra.Command {
 	var parentSpec string
 	var providerSpec string
 	var importFilePath string
@@ -1212,6 +1213,7 @@ func NewImportCmd() *cobra.Command {
 
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:   cloudCredentialEnv,
+				HintRecorder:         hm.RecordProviderHint,
 				Parallel:             parallel,
 				Debug:                debug,
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
