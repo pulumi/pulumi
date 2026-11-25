@@ -113,16 +113,73 @@ func TestStackNewESCConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestStackNewESCConfigExclusiveFlags(t *testing.T) {
+func TestStackNewConfigModeExclusiveFlags(t *testing.T) {
 	t.Parallel()
 
-	for _, other := range []string{"--remote-config", "--copy-config-from=prod"} {
+	for _, flags := range [][]string{
+		{"--esc-config", "--remote-config"},
+		{"--esc-config", "--copy-config-from=prod"},
+		{"--esc-config", "--static-config"},
+		{"--static-config", "--remote-config"},
+	} {
 		cmd := newStackNewCmd()
-		cmd.SetArgs([]string{"--esc-config", other, "dev"})
+		cmd.SetArgs(append(flags, "dev"))
 		cmd.SetOut(io.Discard)
 		cmd.SetErr(io.Discard)
 		assert.ErrorContains(t, cmd.Execute(), "none of the others can be")
 	}
+}
+
+func TestStackNewStaticConfigAllowsCopyConfigFrom(t *testing.T) {
+	t.Parallel()
+
+	cmd := newStackNewCmd()
+	require.NoError(t, cmd.ParseFlags([]string{"--static-config", "--copy-config-from=prod"}))
+	require.NoError(t, cmd.ValidateFlagGroups())
+}
+
+//nolint:paralleltest // uses t.Chdir
+func TestStackNewStaticConfigOnDIYBackend(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: proj\nruntime: yaml\n"), 0o600))
+	t.Chdir(dir)
+	var sent *backend.CreateStackOptions
+	cmd := &stackNewCmd{
+		stackName:    "dev",
+		noSelect:     true,
+		staticConfig: true,
+		stdout:       io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				NameF:              func() string { return "diy" },
+				ValidateStackNameF: func(string) error { return nil },
+				ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+					return &backend.MockStackReference{StringV: s, NameV: tokens.MustParseStackName(s)}, nil
+				},
+				GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+					return nil, nil
+				},
+				DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+					return nil, nil
+				},
+				CreateStackF: func(
+					_ context.Context, ref backend.StackReference, _ string, _ *apitype.UntypedDeployment,
+					opts *backend.CreateStackOptions,
+				) (backend.Stack, error) {
+					sent = opts
+					return &backend.MockStack{RefF: func() backend.StackReference { return ref }}, nil
+				},
+			}, nil
+		},
+	}
+
+	require.NoError(t, cmd.Run(t.Context(), nil /* args */))
+
+	assert.False(t, sent.ManagedEnvironment)
+	assert.Equal(t, apitype.CreateStackConfigModeStatic, sent.ConfigMode)
+	assert.NoFileExists(t, filepath.Join(dir, "Pulumi.dev.yaml"))
 }
 
 //nolint:paralleltest // mutates global state

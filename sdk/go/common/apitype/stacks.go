@@ -53,6 +53,28 @@ type ListStacksResponse struct {
 	ContinuationToken *string `json:"continuationToken,omitempty"`
 }
 
+// CreateStackConfigMode asks the service where a new stack's configuration lives.
+type CreateStackConfigMode string
+
+const (
+	// CreateStackConfigModeDefault follows the organization's default stack config mode.
+	CreateStackConfigModeDefault CreateStackConfigMode = "default"
+	// CreateStackConfigModeStatic keeps the configuration in the stack file, whatever the organization's default.
+	CreateStackConfigModeStatic CreateStackConfigMode = "static"
+	// CreateStackConfigModeESC creates an ESC environment that the stack manages, like CreateManagedEnvironment.
+	CreateStackConfigModeESC CreateStackConfigMode = "esc"
+)
+
+// StackConfigMode is where an organization's new stacks keep their configuration by default.
+type StackConfigMode string
+
+const (
+	// StackConfigModeStatic keeps configuration in the stack file.
+	StackConfigModeStatic StackConfigMode = "static"
+	// StackConfigModeESC keeps configuration in an ESC environment that the stack manages.
+	StackConfigModeESC StackConfigMode = "esc"
+)
+
 // CreateStackRequest defines the request body for creating a new Stack
 type CreateStackRequest struct {
 	// The rest of the StackIdentifier (e.g. organization, project) is in the URL.
@@ -72,6 +94,10 @@ type CreateStackRequest struct {
 	// CreateManagedEnvironment asks the service to create an ESC environment that the stack manages. Its name differs
 	// from the ManagedEnvironment fields that carry the environment's name so one JSON key never has two types.
 	CreateManagedEnvironment bool `json:"createManagedEnvironment,omitempty"`
+
+	// ConfigMode asks the service to choose the stack's configuration location. CreateStackResponse.ManagedEnvironment
+	// reports the outcome.
+	ConfigMode *CreateStackConfigMode `json:"configMode,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
