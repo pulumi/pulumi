@@ -38,6 +38,7 @@ import (
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -87,7 +88,7 @@ func defaultParallel() int32 {
 	return defaultParallel
 }
 
-func NewUpCmd() *cobra.Command {
+func NewUpCmd(hm *hints.Manager) *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
@@ -249,6 +250,7 @@ func NewUpCmd() *cobra.Command {
 		}
 		opts.Engine = engine.UpdateOptions{
 			CloudCredentialEnv:        cloudCredentialEnv,
+			HintRecorder:              hm.RecordProviderHint,
 			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -546,6 +548,7 @@ func NewUpCmd() *cobra.Command {
 		}
 		opts.Engine = engine.UpdateOptions{
 			CloudCredentialEnv: cloudCredentialEnv,
+			HintRecorder:       hm.RecordProviderHint,
 			ParallelDiff:       env.ParallelDiff.Value(),
 			LocalPolicyPacks:   engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:           parallel,

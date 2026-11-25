@@ -34,3 +34,15 @@ var DriftDetection = Hint{
 		"or fix it automatically.\nLearn more: https://www.pulumi.com/docs/deployments/concepts/drift/?utm_source=cli",
 	CloudOnly: true,
 }
+
+// ESCCredentials suggests Pulumi ESC after a provider says that dynamic credentials may help with a failure. The
+// provider writes the message, because it knows its cloud and how to set up ESC for it.
+func ESCCredentials(message string) Hint {
+	return Hint{
+		ID:               "esc-credentials",
+		Cooldown:         7 * 24 * time.Hour,
+		Message:          message,
+		CloudOnly:        true,
+		HideFromNewUsers: true,
+	}
+}

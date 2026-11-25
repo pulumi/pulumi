@@ -48,6 +48,9 @@ import (
 // stateFileName is the name of the file under the Pulumi home directory that records when hints were shown.
 const stateFileName = "hints.json"
 
+// newUserPeriod is how long after hints were first flushed that hints with Hint.HideFromNewUsers stay hidden.
+const newUserPeriod = 24 * time.Hour
+
 // Hint is a product hint that the CLI can show.
 type Hint struct {
 	// ID identifies the hint in the state file. It must be stable across releases.
@@ -60,12 +63,17 @@ type Hint struct {
 	// CloudOnly is true for hints about Pulumi Cloud features, which are shown only to users of a Pulumi Cloud
 	// backend.
 	CloudOnly bool
+	// HideFromNewUsers is true for hints that aren't meant for first-time users. They are shown only once hints were
+	// first flushed at least newUserPeriod ago.
+	HideFromNewUsers bool
 }
 
 // state is the content of the hints state file.
 type state struct {
 	// LastShown records when each hint was last shown, by hint ID.
 	LastShown map[string]time.Time `json:"lastShown,omitempty"`
+	// FirstSeen is when this CLI first flushed hints, which stands in for when the user started using Pulumi.
+	FirstSeen time.Time `json:"firstSeen,omitempty"`
 }
 
 // offer is a hint offered for the current command, with the condition it was offered on, if any.
@@ -168,7 +176,7 @@ func (m *Manager) Flush(w io.Writer) {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.pending) == 0 || m.suppressed || !m.interactive(w) {
+	if m.suppressed || !m.interactive(w) {
 		return
 	}
 	settings := m.settings()
@@ -182,10 +190,42 @@ func (m *Manager) Flush(w io.Writer) {
 		return
 	}
 	now := m.now()
+	// Record when hints were first flushed, even if none is shown, so that the new user period starts with the
+	// user's first command rather than with the first hint offered.
+	firstFlush := st.FirstSeen.IsZero()
+	if firstFlush {
+		st.FirstSeen = now
+	}
+	h, ok := m.pick(st, settings, now)
+	if ok {
+		if st.LastShown == nil {
+			st.LastShown = map[string]time.Time{}
+		}
+		st.LastShown[h.ID] = now
+	}
+	if ok || firstFlush {
+		// Record the hint before showing it, so that a hint is never shown again early because the state
+		// could not be saved.
+		if err := save(path, st); err != nil {
+			slog.Info("could not write hints state", "err", err)
+			return
+		}
+	}
+	if ok {
+		show(w, h)
+	}
+}
+
+// pick returns the first pending hint that may be shown now, if any.
+func (m *Manager) pick(st state, settings settings, now time.Time) (Hint, bool) {
 	isCloud := sync.OnceValue(m.isCloud)
+	// Cheapest checks first; applies last.
 	for _, o := range m.pending {
 		h := o.hint
 		if settings.skip[h.ID] {
+			continue
+		}
+		if h.HideFromNewUsers && now.Sub(st.FirstSeen) < newUserPeriod {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
@@ -197,20 +237,9 @@ func (m *Manager) Flush(w io.Writer) {
 		if o.applies != nil && !o.applies() {
 			continue
 		}
-
-		// Record the hint before showing it, so that a hint is never shown again early because the state
-		// could not be saved.
-		if st.LastShown == nil {
-			st.LastShown = map[string]time.Time{}
-		}
-		st.LastShown[h.ID] = now
-		if err := save(path, st); err != nil {
-			slog.Info("could not write hints state", "err", err)
-			return
-		}
-		show(w, h)
-		return
+		return h, true
 	}
+	return Hint{}, false
 }
 
 // isCloudBackend reports whether the current project uses a Pulumi Cloud backend, without contacting it.

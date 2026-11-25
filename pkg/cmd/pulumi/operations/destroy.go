@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -50,7 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewDestroyCmd() *cobra.Command {
+func NewDestroyCmd(hm *hints.Manager) *cobra.Command {
 	var runProgram bool
 	var skipConfigValidation bool
 	var debug bool
@@ -351,6 +352,7 @@ func NewDestroyCmd() *cobra.Command {
 			}
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:        cloudCredentialEnv,
+				HintRecorder:              hm.RecordProviderHint,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,

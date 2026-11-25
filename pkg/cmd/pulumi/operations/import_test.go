@@ -976,7 +976,7 @@ func TestImportFileMarshal(t *testing.T) {
 // just check the flag is plumbed.
 func TestImportCmd_OutputFlagRegistered(t *testing.T) {
 	t.Parallel()
-	cmd := NewImportCmd()
+	cmd := NewImportCmd(nil)
 	flag := cmd.Flags().Lookup("output")
 	require.NotNil(t, flag, "expected --output flag on `pulumi import`")
 	assert.Equal(t, "default", flag.DefValue, "--output default value")
@@ -988,7 +988,7 @@ func TestImportCmd_OutputFlagRegistered(t *testing.T) {
 // RunE is invoked, so the command never starts a real import.
 func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	t.Parallel()
-	cmd := NewImportCmd()
+	cmd := NewImportCmd(nil)
 	cmd.SetArgs([]string{"--json", "--output", "json"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
@@ -1012,7 +1012,7 @@ func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
 	require.NoError(t, err)
 	t.Chdir(dir)
 
-	cmd := NewImportCmd()
+	cmd := NewImportCmd(nil)
 	cmd.SetArgs([]string{"--from", "terraform", "--yes"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
