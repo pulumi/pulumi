@@ -70,10 +70,10 @@ func (ctx *grpcTestContext) configGetterCapturedConfig(resourceName string) stri
 			continue
 		}
 		require.Equal(l, "config-grpc:index:ConfigFetcher", string(r.Type))
-		configOut, gotConfig := r.Outputs["config"]
+		configOut, gotConfig := r.Outputs.GetOk("config")
 		require.Truef(l, gotConfig, "No `config` output")
 		require.Truef(l, configOut.IsString(), "`config` output must be a string")
-		return configOut.StringValue()
+		return configOut.AsString()
 	}
 	require.Failf(l, "Resource not found", "resourceName=%s", resourceName)
 	return ""

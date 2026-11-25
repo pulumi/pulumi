@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +38,7 @@ func init() {
 					"minResult":    property.New(expectedMin),
 					"intMaxResult": property.New(expectedIntMax),
 					"intMinResult": property.New(expectedIntMin),
-				}), resource.FromResourcePropertyMap(stack.Outputs))
+				}), stack.Outputs)
 			},
 		}
 	}

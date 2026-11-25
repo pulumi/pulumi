@@ -101,7 +101,7 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 		URN:                 resource.NewURN(stackName, projectName, "", typ, name),
 		Custom:              true,
 		ID:                  drawResourceID(t, "resource-id"),
-		Inputs:              resource.ToResourcePropertyMap(inputs),
+		Inputs:              inputs,
 		Provider:            providerRefString(provider),
 		Protect:             rapid.Bool().Draw(t, "protect"),
 		RetainOnDelete:      rapid.Bool().Draw(t, "retain-on-delete"),
@@ -158,7 +158,7 @@ func drawSatellite(
 		Custom:   true,
 		ID:       drawResourceID(t, fmt.Sprintf("satellite-%d-id", i)),
 		Provider: providerRefString(provider),
-		Inputs:   resource.PropertyMap{},
+		Inputs:   property.Map{},
 	}
 }
 
@@ -181,7 +181,7 @@ func drawProviderState(t *rapid.T, pkg *schema.Package) *pkgresource.State {
 		URN:    resource.NewURN(stackName, projectName, "", typ, name),
 		Custom: true,
 		ID:     id,
-		Inputs: resource.ToResourcePropertyMap(inputs),
+		Inputs: inputs,
 	}
 }
 

@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -37,14 +36,14 @@ func init() {
 
 					largeMap := makeLargeMap()
 					large := RequireSingleResource(l, res.Snap.Resources, "large:index:Map")
-					largeInputs := resource.FromResourcePropertyMap(large.Inputs)
+					largeInputs := large.Inputs
 					require.Equal(l, property.New("leaf"), largeInputs.Get("value"))
 					require.Equal(l, property.New(float64(largeMapDepth)), largeInputs.Get("depth"))
-					require.Equal(l, largeMap, resource.FromResourcePropertyMap(large.Outputs).Get("value"))
+					require.Equal(l, largeMap, large.Outputs.Get("value"))
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l, largeMap,
-						resource.FromResourcePropertyMap(stack.Outputs).Get("output"),
+						stack.Outputs.Get("output"),
 						"expected large map stack output")
 				},
 			},

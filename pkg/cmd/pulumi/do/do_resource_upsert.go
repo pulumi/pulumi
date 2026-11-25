@@ -592,15 +592,13 @@ func resourceReferenceInfos(
 		}
 		if providerState != nil {
 			providerPackage := sdkproviders.GetProviderPackage(providerState.Type)
-
-			inputs := resource.FromResourcePropertyMap(providerState.Inputs)
-			schemaPackage, err := deployproviders.GetProviderName(providerPackage, inputs)
+			schemaPackage, err := deployproviders.GetProviderName(providerPackage, providerState.Inputs)
 			if err != nil {
 				return nil, fmt.Errorf("resources file reference %q: get provider name: %w", name, err)
 			}
 			packageReq.Package = string(schemaPackage)
 
-			version, err := deployproviders.GetProviderVersion(inputs)
+			version, err := deployproviders.GetProviderVersion(providerState.Inputs)
 			if err != nil {
 				return nil, fmt.Errorf("resources file reference %q: get provider version: %w", name, err)
 			}
@@ -608,13 +606,13 @@ func resourceReferenceInfos(
 				packageReq.Version = version.String()
 			}
 
-			downloadURL, err := deployproviders.GetProviderDownloadURL(inputs)
+			downloadURL, err := deployproviders.GetProviderDownloadURL(providerState.Inputs)
 			if err != nil {
 				return nil, fmt.Errorf("resources file reference %q: get provider download URL: %w", name, err)
 			}
 			packageReq.DownloadUrl = downloadURL
 
-			parameterization, err := deployproviders.GetProviderParameterization(providerPackage, inputs)
+			parameterization, err := deployproviders.GetProviderParameterization(providerPackage, providerState.Inputs)
 			if err != nil {
 				return nil, fmt.Errorf("resources file reference %q: get provider parameterization: %w", name, err)
 			}

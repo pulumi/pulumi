@@ -28,7 +28,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -38,6 +37,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 )
 
 func MockJournalSetup(t *testing.T, baseSnap *deploy.Snapshot) (engine.SnapshotManager, *MockStackPersister) {
@@ -124,9 +125,7 @@ func TestSamesWithEmptyArraysInInputsJournaling(t *testing.T) {
 	manager, sp := MockJournalSetup(t, snap)
 
 	// Model passing into and back out of RPC layer (e.g. via `Check`)
-	marshalledInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{})
-	require.NoError(t, err)
-	inputsUpdated, err := plugin.UnmarshalProperties(marshalledInputs, plugin.MarshalOptions{})
+	inputsUpdated, err := propertyrpc.Unmarshal(propertyrpc.Marshal(inputs))
 	require.NoError(t, err)
 
 	resUpdated := NewResourceWithInputs(res.URN, inputsUpdated)
@@ -298,7 +297,9 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 
 	// Change the resource outputs.
 	changes = append(changes, NewResource(resourceA.URN))
-	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	changes[3].Outputs = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
 
 	snap := NewSnapshot([]*pkgresource.State{
 		provider,
@@ -690,9 +691,9 @@ func TestRecordingUpdateSuccessJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
@@ -727,9 +728,9 @@ func TestRecordingUpdateFailureJournaling(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
@@ -853,12 +854,12 @@ func TestRecordingReadSuccessPreviousResourceJournaling(t *testing.T) {
 	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("c")
 	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
@@ -924,12 +925,12 @@ func TestRecordingReadFailurePreviousResourceJournaling(t *testing.T) {
 	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("e")
 	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
@@ -987,8 +988,7 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
-	outputs := map[string]any{"hello": "world"}
-	resourceA2.Outputs = resource.NewPropertyMapFromMap(outputs)
+	resourceA2.Outputs = property.NewMap(map[string]property.Value{"hello": property.New("world")})
 	step = deploy.NewSameStep(nil, nil, resACopy, resourceA2)
 	mutation, err = manager.BeginMutation(step)
 	require.NoError(t, err)
@@ -1003,7 +1003,7 @@ func TestRegisterOutputsJournaling(t *testing.T) {
 	lastSnap := sp.LastSnap()
 	require.Len(t, lastSnap.Resources, 1)
 	assert.Equal(t, resourceA.URN, lastSnap.Resources[0].URN)
-	assert.Equal(t, outputs, lastSnap.Resources[0].Outputs)
+	assert.Equal(t, map[string]any{"hello": "world"}, lastSnap.Resources[0].Outputs)
 }
 
 func TestRecordingSameFailureJournaling(t *testing.T) {
@@ -1196,10 +1196,10 @@ func TestJournalEncryptionFailureNotSilent(t *testing.T) {
 		Type:   tokens.Type("aws:ssm/parameter:Parameter"),
 		URN:    urn,
 		Custom: true,
-		Inputs: resource.PropertyMap{},
-		Outputs: resource.PropertyMap{
-			"value": resource.MakeSecret(resource.NewProperty("super-secret")),
-		},
+		Inputs: property.Map{},
+		Outputs: property.NewMap(map[string]property.Value{
+			"value": property.New("super-secret").WithSecret(true),
+		}),
 	}
 
 	err = j.AddJournalEntry(engine.JournalEntry{

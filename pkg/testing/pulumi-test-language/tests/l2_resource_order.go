@@ -44,7 +44,7 @@ func init() {
 					want := property.NewMap(map[string]property.Value{
 						"out": property.New(true),
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(stk.Outputs))
+					assert.Equal(l, want, stk.Outputs)
 				},
 			},
 		},

@@ -15,7 +15,7 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,14 +28,14 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					assert.Equal(l, resource.PropertyMap{
-						"sumTimes":             resource.NewProperty(9.0),
-						"minusMinus":           resource.NewProperty(9.0),
-						"notAnd":               resource.NewProperty(true),
-						"negateSum":            resource.NewProperty(-3.0),
-						"conditionalIndex":     resource.NewProperty(1.0),
-						"conditionalCondition": resource.NewProperty("no"),
-					}, stack.Outputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"sumTimes":             property.New(9.0),
+						"minusMinus":           property.New(9.0),
+						"notAnd":               property.New(true),
+						"negateSum":            property.New(-3.0),
+						"conditionalIndex":     property.New(1.0),
+						"conditionalCondition": property.New("no"),
+					}), stack.Outputs)
 				},
 			},
 		},

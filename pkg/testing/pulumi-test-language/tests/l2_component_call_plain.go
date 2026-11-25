@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +50,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					stack := snap.Resources[0]
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 
 					// Plain integer return.
 					AssertPropertyMapMember(l, stackOutputs, "plainValue", property.New(42.0))
@@ -63,14 +62,14 @@ func init() {
 					// component, confirming component -> constructed-provider -> child propagation.
 					custom := RequireSingleNamedResource(l, snap.Resources, "customFromPlainProvider")
 					require.Equal(
-						l, "propagated", custom.Outputs["config"].StringValue(),
+						l, "propagated", custom.Outputs.Get("config").AsString(),
 						"expected customFromPlainProvider.config to propagate from Configurer.providerConfig",
 					)
 
 					// Same assertion via nestedPlainProvider().provider.
 					customNested := RequireSingleNamedResource(l, snap.Resources, "customFromNestedPlainProvider")
 					require.Equal(
-						l, "propagated", customNested.Outputs["config"].StringValue(),
+						l, "propagated", customNested.Outputs.Get("config").AsString(),
 						"expected customFromNestedPlainProvider.config to propagate via nestedPlainProvider().provider",
 					)
 				},

@@ -77,12 +77,12 @@ func init() {
 						"value": property.New(true),
 					})
 					for _, simple := range simples {
-						assert.Equal(l, want, resource.FromResourcePropertyMap(simple.Inputs),
+						assert.Equal(l, want, simple.Inputs,
 							"expected resource inputs to match %v", want)
 					}
 
 					complex := RequireSingleNamedResource(l, snap.Resources, "complex")
-					complexOutputs := resource.FromResourcePropertyMap(complex.Outputs)
+					complexOutputs := complex.Outputs
 					assert.Equal(l, property.New([]property.Value{
 						property.New("hello"),
 					}), complexOutputs.Get("outputArray"))
@@ -105,7 +105,7 @@ func init() {
 						"outMap":    property.New("hello"),
 						"outObject": property.New("hello"),
 					})
-					assert.Equal(l, wantStk, resource.FromResourcePropertyMap(stk.Outputs),
+					assert.Equal(l, wantStk, stk.Outputs,
 						"expected stack outputs to match %v", wantStk)
 				},
 			},

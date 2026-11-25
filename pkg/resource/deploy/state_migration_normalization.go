@@ -47,7 +47,7 @@ func (d *Deployment) rewriteStateMigrationState(state *pkgresource.State) (*pkgr
 // separately.
 func (d *Deployment) normalizeStateMigrationGoal(goal *pkgresource.Goal) error {
 	state := &pkgresource.State{
-		Inputs:               resource.ToResourcePropertyMap(goal.Properties),
+		Inputs:               goal.Properties,
 		Parent:               goal.Parent,
 		Dependencies:         goal.Dependencies,
 		Provider:             goal.Provider,
@@ -64,8 +64,8 @@ func (d *Deployment) normalizeStateMigrationGoal(goal *pkgresource.Goal) error {
 		return nil
 	}
 
-	if !rewritten.Inputs.DeepEquals(state.Inputs) {
-		goal.Properties = resource.FromResourcePropertyMap(rewritten.Inputs)
+	if !rewritten.Inputs.Equals(state.Inputs) {
+		goal.Properties = rewritten.Inputs
 	}
 	goal.Parent = rewritten.Parent
 	goal.Dependencies = rewritten.Dependencies
@@ -113,7 +113,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 		return event, nil
 	case ReadResourceEvent:
 		state := &pkgresource.State{
-			Inputs:       resource.ToResourcePropertyMap(e.Properties()),
+			Inputs:       e.Properties(),
 			Parent:       e.Parent(),
 			Dependencies: e.Dependencies(),
 			Provider:     e.Provider(),
@@ -129,11 +129,11 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 			ReadResourceEvent: e,
 			parent:            rewritten.Parent,
 			provider:          rewritten.Provider,
-			properties:        resource.FromResourcePropertyMap(rewritten.Inputs),
+			properties:        rewritten.Inputs,
 			dependencies:      rewritten.Dependencies,
 		}, nil
 	case RegisterResourceOutputsEvent:
-		state := &pkgresource.State{Outputs: resource.ToResourcePropertyMap(e.Outputs())}
+		state := &pkgresource.State{Outputs: e.Outputs()}
 		rewritten, err := d.rewriteStateMigrationState(state)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing outputs for %s after state migration: %w", e.URN(), err)
@@ -143,7 +143,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 		}
 		return &normalizedRegisterResourceOutputsEvent{
 			RegisterResourceOutputsEvent: e,
-			outputs:                      resource.FromResourcePropertyMap(rewritten.Outputs),
+			outputs:                      rewritten.Outputs,
 		}, nil
 	default:
 		contract.Failf("unrecognized source event type %T", event)

@@ -17,7 +17,6 @@ package tests
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,7 @@ func init() {
 					component := RequireSingleResource(l, snap.Resources, "my:custom:Component")
 					assert.Equal(l, "myComponent", component.URN.Name())
 
-					inputs := resource.FromResourcePropertyMap(component.Inputs)
+					inputs := component.Inputs
 
 					// Languages differ in how they space out serialized JSON, so compare it parsed.
 					aJSON, ok := inputs.GetOk("aJson")

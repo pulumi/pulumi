@@ -813,7 +813,7 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 		return nil
 	}
 
-	inputs := resource.FromResourcePropertyMap(res.Inputs)
+	inputs := res.Inputs
 
 	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
 	// reuse that instance, but as we're now configuring it remove the unconfigured ID from the provider map

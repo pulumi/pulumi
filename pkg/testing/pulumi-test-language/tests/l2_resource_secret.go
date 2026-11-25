@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,7 +90,7 @@ func init() {
 						wantExpected = wantExpected.Set(key, value)
 					}
 
-					secretInputs := resource.FromResourcePropertyMap(secret.Inputs)
+					secretInputs := secret.Inputs
 					if !wantCorrect.Equals(secretInputs) {
 						assert.Equal(l, wantExpected, secretInputs,
 							"expected inputs to be %v, will accept %v", wantCorrect, wantExpected)

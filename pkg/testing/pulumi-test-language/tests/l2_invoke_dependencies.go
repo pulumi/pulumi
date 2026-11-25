@@ -18,7 +18,6 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +72,7 @@ func init() {
 					require.Len(l, dependencies, 1, "expected one dependency")
 					require.Equal(l, third.URN, dependencies[0], "expected fourth to depend on third")
 					require.Equal(l, third.URN, fourth.Dependencies[0], "expected fourth to depend on third")
-					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(fourth.Inputs), "text", property.New("Goodbye world"))
+					AssertPropertyMapMember(l, fourth.Inputs, "text", property.New("Goodbye world"))
 				},
 			},
 		},

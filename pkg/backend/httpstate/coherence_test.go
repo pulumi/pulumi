@@ -32,9 +32,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-func outputsEvent(urn resource.URN, typ tokens.Type, outputs resource.PropertyMap) engine.Event {
+func outputsEvent(urn resource.URN, typ tokens.Type, outputs property.Map) engine.Event {
 	return engine.NewEvent(engine.ResourceOutputsEventPayload{
 		Metadata: engine.StepEventMetadata{
 			URN:  urn,
@@ -43,7 +44,7 @@ func outputsEvent(urn resource.URN, typ tokens.Type, outputs resource.PropertyMa
 				URN:     urn,
 				Type:    typ,
 				State:   &pkgresource.State{URN: urn, Type: typ, Outputs: outputs},
-				Outputs: resource.FromResourcePropertyMap(outputs),
+				Outputs: outputs,
 			},
 		},
 	})
@@ -73,16 +74,16 @@ func TestStackOutputsRecorder(t *testing.T) {
 	t.Run("records the last stack outputs event", func(t *testing.T) {
 		t.Parallel()
 		r := &stackOutputsRecorder{}
-		r.record(outputsEvent(otherURN, "pkg:index:Thing", resource.PropertyMap{
-			"ignored": resource.NewProperty("me"),
-		}))
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{
-			"partial": resource.NewProperty("value"),
-		}))
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{
-			"plain":  resource.NewProperty("value"),
-			"secret": resource.MakeSecret(resource.NewProperty("hunter2")),
-		}))
+		r.record(outputsEvent(otherURN, "pkg:index:Thing", property.NewMap(map[string]property.Value{
+			"ignored": property.New("me"),
+		})))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.NewMap(map[string]property.Value{
+			"partial": property.New("value"),
+		})))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.NewMap(map[string]property.Value{
+			"plain":  property.New("value"),
+			"secret": property.New("hunter2").WithSecret(true),
+		})))
 
 		sm := b64.NewBase64SecretsManager()
 		resp, err := r.response(t.Context(), sm)
@@ -96,20 +97,20 @@ func TestStackOutputsRecorder(t *testing.T) {
 		roundTripped, err := stack.DecryptStackOutputs(
 			t.Context(), resp.Outputs, resp.SecretsProviders, secretsProvider)
 		require.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{
-			"plain":  resource.NewProperty("value"),
-			"secret": resource.MakeSecret(resource.NewProperty("hunter2")),
-		}, roundTripped)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"plain":  property.New("value"),
+			"secret": property.New("hunter2").WithSecret(true),
+		}), roundTripped)
 	})
 
 	t.Run("unknown outputs stay unknown", func(t *testing.T) {
 		t.Parallel()
 		r := &stackOutputsRecorder{}
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{
-			"computed": resource.MakeComputed(resource.NewProperty("")),
-			"output":   resource.NewProperty(resource.Output{}),
-			"secret":   resource.MakeSecret(resource.MakeComputed(resource.NewProperty(""))),
-		}))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.NewMap(map[string]property.Value{
+			"computed": property.New(property.Computed),
+			"output":   property.New(property.Computed),
+			"secret":   property.New(property.Computed).WithSecret(true),
+		})))
 
 		resp, err := r.response(t.Context(), b64.NewBase64SecretsManager())
 		require.NoError(t, err)
@@ -126,13 +127,13 @@ func TestStackOutputsRecorder(t *testing.T) {
 	t.Run("a deleted stack has no outputs", func(t *testing.T) {
 		t.Parallel()
 		r := &stackOutputsRecorder{}
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{
-			"before": resource.NewProperty("value"),
-		}))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.NewMap(map[string]property.Value{
+			"before": property.New("value"),
+		})))
 		r.record(deleteEvent(stackURN, resource.RootStackType))
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{
-			"after": resource.NewProperty("value"),
-		}))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.NewMap(map[string]property.Value{
+			"after": property.New("value"),
+		})))
 
 		resp, err := r.response(t.Context(), b64.NewBase64SecretsManager())
 		require.NoError(t, err)
@@ -145,9 +146,9 @@ func TestStackOutputsRecorder(t *testing.T) {
 		t.Parallel()
 		r := &stackOutputsRecorder{}
 		r.record(deleteEvent(otherURN, "pkg:index:Thing"))
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{
-			"plain": resource.NewProperty("value"),
-		}))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.NewMap(map[string]property.Value{
+			"plain": property.New("value"),
+		})))
 
 		resp, err := r.response(t.Context(), b64.NewBase64SecretsManager())
 		require.NoError(t, err)
@@ -158,11 +159,13 @@ func TestStackOutputsRecorder(t *testing.T) {
 	t.Run("keeps the stack's outputs when the stack never registered any", func(t *testing.T) {
 		t.Parallel()
 		r := newStackOutputsRecorder(&deploy.Snapshot{Resources: []*pkgresource.State{{
-			Type:    resource.RootStackType,
-			URN:     stackURN,
-			Outputs: resource.PropertyMap{"kept": resource.NewProperty("value")},
+			Type: resource.RootStackType,
+			URN:  stackURN,
+			Outputs: property.NewMap(map[string]property.Value{
+				"kept": property.New("value"),
+			}),
 		}}})
-		r.record(outputsEvent(otherURN, "pkg:index:Thing", resource.PropertyMap{}))
+		r.record(outputsEvent(otherURN, "pkg:index:Thing", property.Map{}))
 
 		resp, err := r.response(t.Context(), b64.NewBase64SecretsManager())
 		require.NoError(t, err)
@@ -180,7 +183,7 @@ func TestStackOutputsRecorder(t *testing.T) {
 	t.Run("a nil recorder is inert", func(t *testing.T) {
 		t.Parallel()
 		var r *stackOutputsRecorder
-		r.record(outputsEvent(stackURN, resource.RootStackType, resource.PropertyMap{}))
+		r.record(outputsEvent(stackURN, resource.RootStackType, property.Map{}))
 
 		resp, err := r.response(t.Context(), b64.NewBase64SecretsManager())
 		require.NoError(t, err)

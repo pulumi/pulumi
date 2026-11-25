@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -64,15 +63,15 @@ func init() {
 							"t": property.New(true), "f": property.New(false),
 						}),
 					})
-					require.Equal(l, want, resource.FromResourcePropertyMap(setA.Inputs))
-					require.Equal(l, want, resource.FromResourcePropertyMap(setA.Outputs))
-					require.Equal(l, want, resource.FromResourcePropertyMap(setB.Inputs))
-					require.Equal(l, want, resource.FromResourcePropertyMap(setB.Outputs))
-					require.Equal(l, want, resource.FromResourcePropertyMap(fromPrimitive.Inputs))
-					require.Equal(l, want, resource.FromResourcePropertyMap(fromPrimitive.Outputs))
+					require.Equal(l, want, setA.Inputs)
+					require.Equal(l, want, setA.Outputs)
+					require.Equal(l, want, setB.Inputs)
+					require.Equal(l, want, setB.Outputs)
+					require.Equal(l, want, fromPrimitive.Inputs)
+					require.Equal(l, want, fromPrimitive.Outputs)
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 
 					AssertPropertyMapMember(l, outputs, "unsetBoolean", property.New("null"))
 					AssertPropertyMapMember(l, outputs, "unsetFloat", property.New("null"))

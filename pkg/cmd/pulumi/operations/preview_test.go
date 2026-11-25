@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func makeRootStackMetadata(op display.StepOp) engine.StepEventMetadata {
 type stateOptions struct {
 	Parent   resource.URN
 	Provider *providers.Reference
-	Inputs   resource.PropertyMap
+	Inputs   property.Map
 }
 
 func makeStateMetadata(
@@ -79,7 +80,7 @@ func makeStateMetadata(
 		Custom:   custom,
 		Provider: provider,
 		Parent:   parent,
-		Inputs:   resource.FromResourcePropertyMap(opts.Inputs),
+		Inputs:   opts.Inputs,
 		State:    state,
 	}
 }
@@ -100,8 +101,8 @@ func addDefaultProvider(t *testing.T, typ tokens.Type, events chan<- engine.Even
 	pkg := typ.Package()
 	if pkg != "" {
 		state := makeStateMetadata(t, "default_1_2_3", providers.MakeProviderType(pkg), true, stateOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{
-				"version": "1.2.3",
+			Inputs: property.NewMap(map[string]property.Value{
+				"version": property.New("1.2.3"),
 			}),
 		})
 		state.ID = providers.UnknownID
@@ -317,8 +318,8 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 
 	// And then same a provider resource
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"version": "3.2.1",
+		Inputs: property.NewMap(map[string]property.Value{
+			"version": property.New("3.2.1"),
 		}),
 	})
 	uuid, err := uuid.NewV4()
@@ -379,8 +380,8 @@ func TestBuildImportFile_RenamedProviderReference(t *testing.T) {
 	})
 
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"version": "3.2.1",
+		Inputs: property.NewMap(map[string]property.Value{
+			"version": property.New("3.2.1"),
 		}),
 	})
 	uuid, err := uuid.NewV4()
@@ -443,9 +444,9 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 
 	// Create a provider resource with specific inputs (e.g. region)
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"version": "1.2.3",
-			"region":  "eu-west-1",
+		Inputs: property.NewMap(map[string]property.Value{
+			"version": property.New("1.2.3"),
+			"region":  property.New("eu-west-1"),
 		}),
 	})
 	providerState.ID = providers.UnknownID
@@ -509,10 +510,10 @@ func TestBuildImportFile_NewProviderUnknownInputs(t *testing.T) {
 	})
 
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.PropertyMap{
-			"version": resource.NewProperty("1.2.3"),
-			"region":  resource.MakeComputed(resource.NewProperty("")),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"version": property.New("1.2.3"),
+			"region":  property.New(property.Computed),
+		}),
 	})
 	providerState.ID = providers.UnknownID
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -547,8 +548,8 @@ func TestBuildImportFile_NewProviderWithParent(t *testing.T) {
 
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
 		Parent: comp.URN,
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"region": "eu-west-1",
+		Inputs: property.NewMap(map[string]property.Value{
+			"region": property.New("eu-west-1"),
 		}),
 	})
 	providerState.ID = providers.UnknownID

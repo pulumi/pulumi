@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,11 +53,11 @@ func init() {
 						"string":  property.New("default"),
 					})
 
-					assert.Equal(l, wantExplicit, resource.FromResourcePropertyMap(explicit.Inputs),
+					assert.Equal(l, wantExplicit, explicit.Inputs,
 						"expected explicit inputs to be %v", wantExplicit)
 					assert.Equal(l, explicit.Inputs, explicit.Outputs, "expected explicit inputs and outputs to match")
 
-					assert.Equal(l, wantDefaulted, resource.FromResourcePropertyMap(defaulted.Inputs),
+					assert.Equal(l, wantDefaulted, defaulted.Inputs,
 						"expected defaulted inputs to be %v", wantDefaulted)
 					assert.Equal(l, defaulted.Inputs, defaulted.Outputs, "expected defaulted inputs and outputs to match")
 				},

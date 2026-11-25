@@ -38,7 +38,7 @@ func init() {
 					require.Len(l, snap.Resources, 2, "expected 2 resource")
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type)
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 					AssertPropertyMapMember(l, outputs, "hello", property.New("hello world"))
 				},
 			},

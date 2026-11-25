@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +57,7 @@ func init() {
 							"f": property.New(false),
 						}),
 					})
-					assert.Equal(l, wantDirect, resource.FromResourcePropertyMap(direct.Inputs),
+					assert.Equal(l, wantDirect, direct.Inputs,
 						"expected direct inputs to be rewritten")
 
 					wantComponentInputs := property.NewMap(map[string]property.Value{
@@ -74,9 +73,9 @@ func init() {
 							"right": property.New(false),
 						}),
 					})
-					assert.Equal(l, wantComponentInputs, resource.FromResourcePropertyMap(converted.Inputs),
+					assert.Equal(l, wantComponentInputs, converted.Inputs,
 						"expected component inputs to be rewritten")
-					assert.Equal(l, wantComponentInputs, resource.FromResourcePropertyMap(child.Inputs),
+					assert.Equal(l, wantComponentInputs, child.Inputs,
 						"expected child inputs to reflect rewritten component inputs")
 					assert.Equal(l, child.Inputs, child.Outputs, "expected child inputs and outputs to match")
 				},
