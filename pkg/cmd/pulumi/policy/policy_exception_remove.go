@@ -53,7 +53,7 @@ func newPolicyExceptionRemoveCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginMan
 	args.outputFormat = defaultPolicyExceptionRemoveOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "remove <exception-id>",
+		Use:     "remove",
 		Aliases: []string{"rm", "delete"},
 		Short:   "[EXPERIMENTAL] Remove a policy exception",
 		Long: "[EXPERIMENTAL] Remove a policy exception.\n" +

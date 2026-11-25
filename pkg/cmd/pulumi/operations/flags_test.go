@@ -71,7 +71,7 @@ func TestParallelEnvVar(t *testing.T) {
 	commands := []func() *cobra.Command{
 		NewUpCmd,
 		NewPreviewCmd,
-		NewRefreshCmd,
+		func() *cobra.Command { return NewRefreshCmd(nil) },
 		NewDestroyCmd,
 		NewImportCmd,
 	}

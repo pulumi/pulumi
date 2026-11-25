@@ -67,7 +67,7 @@ func newDeploymentCancelCmdWith(factory deploymentCancelClientFactory) *cobra.Co
 	args := deploymentCancelArgs{output: defaultDeploymentCancelOutputFormat()}
 
 	cmd := &cobra.Command{
-		Use:   "cancel <deployment-id>",
+		Use:   "cancel",
 		Short: "[EXPERIMENTAL] Cancel an in-progress deployment",
 		Long: "[EXPERIMENTAL] Cancel an in-progress deployment.\n" +
 			"\n" +

@@ -287,7 +287,9 @@ func TestPrint_Frequency(t *testing.T) {
 
 	show := func() string {
 		var stderr bytes.Buffer
-		Print(diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never}), ns, "v3.200.0", nil)
+		sink := diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never})
+		printed := Print(sink, ns, "v3.200.0", nil)
+		assert.Equal(t, stderr.Len() > 0, printed)
 		return stderr.String()
 	}
 
@@ -314,4 +316,15 @@ func TestPrint_Frequency(t *testing.T) {
 	infoOnly := show()
 	assert.Contains(t, infoOnly, "Tip")
 	assert.NotContains(t, infoOnly, "dismiss")
+}
+
+func TestPrint_ReportsNothingPrinted(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	require.NoError(t, writeJSON(shownFile, map[string]time.Time{survey.ID: time.Now()}))
+
+	var stderr bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never})
+	assert.False(t, Print(sink, nil, "v3.200.0", nil))
+	assert.False(t, Print(sink, []Notification{survey}, "v3.200.0", nil))
+	assert.Empty(t, stderr.String())
 }

@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Show the `Accept` header that `pulumi api` actually sends in `--verbose` and `--dry-run` output
+time: 2026-11-24T18:50:00.000000000+00:00

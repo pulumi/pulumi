@@ -82,7 +82,7 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 	args.outputFormat = defaultOrgMemberGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "edit <user-login>",
+		Use:     "edit",
 		Aliases: []string{"update", "modify"},
 		Short:   "[EXPERIMENTAL] Modify a member's role within an organization",
 		Long: "[EXPERIMENTAL] Modify a member's role within an organization.\n" +

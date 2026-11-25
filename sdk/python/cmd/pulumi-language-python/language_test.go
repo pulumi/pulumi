@@ -135,6 +135,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 	if config.typechecker == "mypy" {
 		t.Setenv("MYPY_CACHE_DIR", t.TempDir())
 		cmd := exec.Command("uv", "run", "--no-project", "--with", "mypy", "--", "python", "-m", "mypy", "-c", "pass")
+		cmd.Dir = t.TempDir()
 		output, err := cmd.CombinedOutput()
 		require.NoError(t, err, "warming mypy cache: %s", output)
 	}

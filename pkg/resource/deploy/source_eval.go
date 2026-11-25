@@ -608,6 +608,11 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 	return client, nil
 }
 
+func monitorShutdownError(ctx context.Context, code codes.Code, message string) error {
+	contract.IgnoreError(grpc.SetTrailer(ctx, metadata.Pairs("pulumi-error-already-reported", "true")))
+	return rpcerror.New(code, message)
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
@@ -1499,7 +1504,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	case rm.regReadChan <- event:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while sending resource registration")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -1508,7 +1514,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	case result = <-event.done:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while waiting on step's done channel")
 	}
 
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
@@ -2557,11 +2564,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// If we're running any transforms we need to update all the property values to Outputs to track
-	// dependencies. Skip when uses_output_values is set — the SDK has already placed per-leaf dependency
-	// information on inputs as OutputValues, which carries richer attribution than the flat
-	// propertyDependencies map upgradeOutputValues would stamp onto top-level values.
-	if len(req.Transforms) > 0 && !usesOutputValues {
+	// We want to update all property values to Outputs to track dependencies. Skip when uses_output_values is set — the
+	// SDK has already placed per-leaf dependency information on inputs as OutputValues, which carries richer
+	// attribution than the flat propertyDependencies map upgradeOutputValues would stamp onto top-level values.
+	if !usesOutputValues {
 		props = upgradeOutputValues(props, propertyDependencies)
 	}
 
@@ -2827,20 +2833,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	if sdkproviders.IsProviderType(t) {
-		// providers.SetProvider* mutate a resource.PropertyMap in-place; convert at the boundary.
-		legacyProps := resource.ToResourcePropertyMap(props)
 		if opts.GetVersion() != "" {
 			version, err := semver.Parse(opts.GetVersion())
 			if err != nil {
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}
-			providers.SetProviderVersion(legacyProps, &version)
+			props = providers.SetProviderVersion(props, &version)
 		}
 		if opts.GetPluginDownloadUrl() != "" {
-			providers.SetProviderURL(legacyProps, opts.GetPluginDownloadUrl())
+			props = providers.SetProviderURL(props, opts.GetPluginDownloadUrl())
 		}
 		if len(req.GetEnvVarMappings()) > 0 {
-			providers.SetEnvironmentVariableMappings(legacyProps, req.GetEnvVarMappings())
+			props = providers.SetEnvironmentVariableMappings(props, req.GetEnvVarMappings())
 		}
 		if req.GetPackageRef() != "" {
 			// If the provider resource has a package ref then we need to set all it's input fields as in
@@ -2852,17 +2856,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 
 			if providerReq.Version() != nil {
-				providers.SetProviderVersion(legacyProps, providerReq.Version())
+				props = providers.SetProviderVersion(props, providerReq.Version())
 			}
 			if providerReq.PluginDownloadURL() != "" {
-				providers.SetProviderURL(legacyProps, providerReq.PluginDownloadURL())
+				props = providers.SetProviderURL(props, providerReq.PluginDownloadURL())
 			}
 			if providerReq.PluginChecksums() != nil {
-				providers.SetProviderChecksums(legacyProps, providerReq.PluginChecksums())
+				props = providers.SetProviderChecksums(props, providerReq.PluginChecksums())
 			}
 			if providerReq.Parameterization() != nil {
-				providers.SetProviderName(legacyProps, providerReq.Name())
-				providers.SetProviderParameterization(legacyProps, providerReq.Parameterization())
+				props = providers.SetProviderName(props, providerReq.Name())
+				props = providers.SetProviderParameterization(props, providerReq.Parameterization())
 			}
 		}
 
@@ -2871,13 +2875,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[sdkproviders.GetProviderPackage(t)]
 		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
-				providers.SetProviderVersion(legacyProps, defaultProvider.Version)
+				props = providers.SetProviderVersion(props, defaultProvider.Version)
 			}
 			if defaultProvider.PluginDownloadURL != "" {
-				providers.SetProviderURL(legacyProps, defaultProvider.PluginDownloadURL)
+				props = providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
 			}
 		}
-		props = resource.FromResourcePropertyMap(legacyProps)
 	}
 
 	protect := opts.Protect
@@ -3053,7 +3056,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
 				rm.abortChan <- true
-				constructDone <- rpcerror.New(codes.Unknown, "resource monitor shut down")
+				constructDone <- monitorShutdownError(ctx, codes.Unknown, "resource monitor shut down")
 			}
 			close(constructDone)
 		}()
@@ -3067,7 +3070,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource construct canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable,
+			return nil, monitorShutdownError(ctx, codes.Unavailable,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
@@ -3140,7 +3143,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Dependencies:            rawDependencies,
 			Provider:                providerRef.String(),
 			InitErrors:              nil,
-			PropertyDependencies:    rawPropertyDependencies,
 			DeleteBeforeReplace:     opts.DeleteBeforeReplace,
 			IgnoreChanges:           ignoreChanges,
 			AdditionalSecretOutputs: additionalSecretKeys,
@@ -3185,7 +3187,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		case rm.regChan <- step:
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+			return nil, monitorShutdownError(ctx, codes.Unavailable,
+				"resource monitor shut down while sending resource registration")
 		}
 
 		// Now block waiting for the operation to finish.
@@ -3193,7 +3196,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		case result = <-step.done:
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+			return nil, monitorShutdownError(ctx, codes.Unavailable,
+				"resource monitor shut down while waiting on step's done channel")
 		}
 		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
 			return nil, rpcerror.New(codes.Internal, "resource registration failed")
@@ -3418,7 +3422,8 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case rm.regOutChan <- step:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while sending resource outputs")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -3426,7 +3431,8 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case <-step.done:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while waiting on output step's done channel")
 	}
 
 	// Publish the component's outputs on the registration observer now that they're final. Custom resources
@@ -3566,7 +3572,9 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp any, 
 }
 
 // upgradeOutputValues ensures each value in m carries at least the dependencies recorded
-// for its key in propertyDependencies.
+// for its key in propertyDependencies. Dependency entries whose key is not present in m
+// are materialized as a null-valued OutputValue so downstream consumers that derive the
+// per-property dependency map from the values alone do not lose them.
 func upgradeOutputValues(
 	m property.Map, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
 ) property.Map {
@@ -3581,6 +3589,12 @@ func upgradeOutputValues(
 			}
 		}
 		result[k] = v
+	}
+	for k, deps := range propertyDependencies {
+		if _, has := result[string(k)]; has || deps.IsEmpty() {
+			continue
+		}
+		result[string(k)] = property.New(property.Null).WithDependencies(deps.ToSlice())
 	}
 	return property.NewMap(result)
 }

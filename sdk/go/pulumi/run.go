@@ -37,6 +37,35 @@ import (
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
 
+type errorAlreadyReported struct{ error }
+
+func (e *errorAlreadyReported) Unwrap() error { return e.error }
+
+func isErrorAlreadyReported(err error) bool {
+	if err == nil {
+		return false
+	}
+	if _, ok := err.(*errorAlreadyReported); ok {
+		return true
+	}
+	var children []error
+	switch err := err.(type) {
+	case *multierror.Error:
+		children = err.Errors
+	case interface{ Unwrap() []error }:
+		children = err.Unwrap()
+	}
+	if len(children) > 0 {
+		for _, child := range children {
+			if !isErrorAlreadyReported(child) {
+				return false
+			}
+		}
+		return true
+	}
+	return isErrorAlreadyReported(errors.Unwrap(err))
+}
+
 // A RunOption is used to control the behavior of Run and RunErr.
 type RunOption func(*RunInfo)
 
@@ -45,6 +74,9 @@ type RunOption func(*RunInfo)
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
 	logError := func(ctx *Context, programErr error) {
+		if isErrorAlreadyReported(programErr) {
+			return
+		}
 		logErr := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
 			programErr), nil)
 		contract.IgnoreError(logErr)

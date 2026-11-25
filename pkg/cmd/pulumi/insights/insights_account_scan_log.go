@@ -75,7 +75,7 @@ func newInsightsAccountScanLogCmd(factory scanLogClientFactory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "log <account> <scan-id>",
+		Use:   "log",
 		Short: "[EXPERIMENTAL] Retrieve log output for an Insights scan",
 		Long: "[EXPERIMENTAL] Retrieve log output for an Insights scan.\n" +
 			"\n" +

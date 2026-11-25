@@ -16,6 +16,7 @@ package logging
 
 import (
 	"context"
+	"encoding/base64"
 	"log/slog"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -66,6 +67,6 @@ func (h *PropertySinkHandler) encodeAttr(a slog.Attr) slog.Attr {
 	if err != nil {
 		return a
 	}
-	a.Value = slog.AnyValue(encoded)
+	a.Value = slog.StringValue(base64.StdEncoding.EncodeToString(encoded))
 	return a
 }

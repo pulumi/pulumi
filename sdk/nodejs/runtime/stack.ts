@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as asset from "../asset";
+import { isErrorAlreadyReported } from "../cmd/run/error";
 import { warn } from "../log";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
@@ -74,19 +75,24 @@ export class Stack extends ComponentResource<Inputs> {
         // Set the global reference to the stack resource before invoking this init() function
         setStackResource(this);
 
-        let outputs: Inputs | undefined;
+        let outputs: Inputs;
         try {
             const inputs = await args.init();
-            outputs = await massage(undefined, inputs, []);
-        } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
             // presented as something reasonable, and not as just an id/urn in the case of
             // Resources.
-            super.registerOutputs(outputs);
+            outputs = await massage(undefined, inputs, []);
+        } catch (err) {
+            if (!isErrorAlreadyReported(err)) {
+                // If we caught an error here, outputs is undefined.
+                super.registerOutputs();
+            }
+            throw err;
         }
 
-        return outputs!;
+        super.registerOutputs(outputs);
+        return outputs;
     }
 }
 
