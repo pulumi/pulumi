@@ -58,6 +58,12 @@ class StackFrame(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     PC_FIELD_NUMBER: builtins.int
+    MODULE_FIELD_NUMBER: builtins.int
+    ORIGIN_FIELD_NUMBER: builtins.int
+    module: builtins.str
+    """The language-level namespace, such as a Python or Go module or a Node.js package."""
+    origin: builtins.str
+    """Origin identifies a frame from Pulumi or the language runtime. An empty value means it is unclassified."""
     @property
     def pc(self) -> global___SourcePosition:
         """The position of the frame's program counter. Optional."""
@@ -66,9 +72,11 @@ class StackFrame(google.protobuf.message.Message):
         self,
         *,
         pc: global___SourcePosition | None = ...,
+        module: builtins.str = ...,
+        origin: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["pc", b"pc"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["pc", b"pc"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["module", b"module", "origin", b"origin", "pc", b"pc"]) -> None: ...
 
 global___StackFrame = StackFrame
 

@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -273,4 +274,35 @@ func TestStateMigrationPatchesRewriteBeforeEncryptionAndReplayVerbatim(t *testin
 		assert.Equal(t, successor.URN, reference.URN)
 		assert.Equal(t, string(successor.ID), reference.ID.StringValue())
 	}
+}
+
+func TestJournalTraceMetadataRoundTrip(t *testing.T) {
+	t.Parallel()
+	state := &pkgresource.State{
+		Type: "test:index:Resource", URN: "urn:pulumi:dev::test::test:index:Resource::example",
+		StackTrace: []pkgresource.StackFrame{{
+			Module: "pulumi.runtime.resource", Origin: apitype.StackFrameOriginPulumi,
+			Boundary: &apitype.StackTraceBoundaryV1{
+				Kind: apitype.StackTraceBoundaryKindProgram, CallSite: "project:///main.py#2",
+			},
+		}},
+	}
+	serialized, err := SerializeJournalEntry(t.Context(), engine.JournalEntry{
+		Kind: engine.JournalEntrySuccess, State: state, OperationID: 1,
+	}, config.NopEncrypter)
+	require.NoError(t, err)
+	data, err := json.Marshal(serialized)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"callSite":"project:///main.py#2"`)
+	assert.Contains(t, string(data), `"kind":"program"`)
+	var decoded apitype.JournalEntry
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	replayer := NewJournalReplayer(&apitype.DeploymentV3{})
+	require.NoError(t, replayer.Add(decoded))
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+	require.Len(t, deployment.Deployment.Resources, 1)
+	restored, err := stack.DeserializeResource(deployment.Deployment.Resources[0], config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, state.StackTrace, restored.StackTrace)
 }

@@ -38,6 +38,10 @@ export class StackFrame extends jspb.Message {
     clearPc(): void;
     getPc(): SourcePosition | undefined;
     setPc(value?: SourcePosition): StackFrame;
+    getModule(): string;
+    setModule(value: string): StackFrame;
+    getOrigin(): string;
+    setOrigin(value: string): StackFrame;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): StackFrame.AsObject;
@@ -52,6 +56,8 @@ export class StackFrame extends jspb.Message {
 export namespace StackFrame {
     export type AsObject = {
         pc?: SourcePosition.AsObject,
+        module: string,
+        origin: string,
     }
 }
 
