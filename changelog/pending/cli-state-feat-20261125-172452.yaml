@@ -1,0 +1,4 @@
+component: cli/state
+kind: feat
+body: Show diff instead of the whole state in `pulumi state edit`
+time: 2026-11-25T17:24:52.496503147+01:00
