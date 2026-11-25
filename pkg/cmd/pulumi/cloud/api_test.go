@@ -720,6 +720,7 @@ func TestEmitDryRun_Envelope(t *testing.T) {
 		assert.Equal(t, "POST", env.DryRun.Plan.Method)
 		assert.Equal(t, "https://example.test/api/x?y=1", env.DryRun.Plan.URL)
 		assert.Equal(t, "token ***", env.DryRun.Plan.Headers["Authorization"])
+		assert.Equal(t, "application/json, "+client.AcceptAPIVersion(), env.DryRun.Plan.Headers["Accept"])
 		assert.Equal(t, "application/json", env.DryRun.Plan.Headers["Content-Type"])
 		assert.Equal(t, "abc", env.DryRun.Plan.Headers["X-Trace"])
 		assert.JSONEq(t, `{"name":"acme"}`, string(env.DryRun.Plan.Body))
@@ -762,6 +763,7 @@ func TestDumpRequestVerbose_DropsUserAuthorization(t *testing.T) {
 	assert.Contains(t, stderr, "Authorization: token ***",
 		"the redacted Authorization line must still appear")
 	assert.Contains(t, stderr, "X-Trace: abc")
+	assert.Contains(t, stderr, "> Accept: application/json, "+client.AcceptAPIVersion()+"\n")
 }
 
 // fakeBody wraps a reader with a no-op Close so we can hand-build *http.Response

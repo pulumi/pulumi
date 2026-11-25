@@ -272,7 +272,7 @@ func renderResource(t require.TestingT, r *pcl.Resource) *pkgresource.State {
 		if r.Options.IgnoreChanges != nil {
 			v := renderExpr(t, r.Options.IgnoreChanges)
 			if assert.True(t, v.IsArray()) {
-				for _, item := range v.AsArray().All {
+				for _, item := range v.AsArray().All() {
 					if assert.True(t, item.IsString()) {
 						ignoreChanges = append(ignoreChanges, item.AsString())
 					}

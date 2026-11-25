@@ -291,7 +291,7 @@ func TestNewEscConfigFlagConflicts(t *testing.T) {
 		t.Run(other, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := NewNewCmd()
+			cmd := NewNewCmd(nil)
 			cmd.SetArgs([]string{"--esc-config", "--" + other})
 			cmd.SetOut(io.Discard)
 			cmd.SetErr(io.Discard)

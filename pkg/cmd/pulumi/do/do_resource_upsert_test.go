@@ -115,9 +115,9 @@ func snapshotWithReferencedResource(t *testing.T, referencedURN resource.URN) *d
 	require.NoError(t, err)
 
 	version := semver.MustParse("1.2.3")
-	providerInputs := resource.PropertyMap{}
-	deployproviders.SetProviderVersion(providerInputs, &version)
-	deployproviders.SetProviderURL(providerInputs, "https://example.com/azure")
+	providerInputs := property.Map{}
+	providerInputs = deployproviders.SetProviderVersion(providerInputs, &version)
+	providerInputs = deployproviders.SetProviderURL(providerInputs, "https://example.com/azure")
 
 	return &deploy.Snapshot{
 		Resources: []*pkgresource.State{
@@ -126,7 +126,7 @@ func snapshotWithReferencedResource(t *testing.T, referencedURN resource.URN) *d
 				URN:    providerURN,
 				Custom: true,
 				ID:     providerID,
-				Inputs: providerInputs,
+				Inputs: resource.ToResourcePropertyMap(providerInputs),
 			},
 			{
 				Type:     referencedURN.Type(),
@@ -430,15 +430,15 @@ func TestResourceReferenceInfosIncludesProviderParameterization(t *testing.T) {
 	baseVersion := semver.MustParse("2.0.0")
 	parameterVersion := semver.MustParse("1.2.3")
 	parameterValue := []byte("parameter-value")
-	providerInputs := resource.PropertyMap{}
-	deployproviders.SetProviderVersion(providerInputs, &baseVersion)
-	deployproviders.SetProviderName(providerInputs, "terraform-provider")
-	deployproviders.SetProviderParameterization(providerInputs, &workspace.Parameterization{
+	providerInputs := property.Map{}
+	providerInputs = deployproviders.SetProviderVersion(providerInputs, &baseVersion)
+	providerInputs = deployproviders.SetProviderName(providerInputs, "terraform-provider")
+	providerInputs = deployproviders.SetProviderParameterization(providerInputs, &workspace.Parameterization{
 		Name:    "myparam",
 		Version: parameterVersion,
 		Value:   parameterValue,
 	})
-	deployproviders.SetProviderURL(providerInputs, "https://example.com/terraform-provider")
+	providerInputs = deployproviders.SetProviderURL(providerInputs, "https://example.com/terraform-provider")
 
 	infos, err := resourceReferenceInfos(map[string]string{
 		"source": string(referencedURN),
@@ -449,7 +449,7 @@ func TestResourceReferenceInfosIncludesProviderParameterization(t *testing.T) {
 				URN:    providerURN,
 				Custom: true,
 				ID:     providerID,
-				Inputs: providerInputs,
+				Inputs: resource.ToResourcePropertyMap(providerInputs),
 			},
 			{
 				Type:     referencedURN.Type(),

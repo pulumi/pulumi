@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,6 +36,7 @@ import (
 // A provider for testing remote components whose outputs depend on a child resource that fails to create.
 type FailingComponentProvider struct {
 	plugin.UnimplementedProvider
+	WaitForCancellation bool
 }
 
 var _ plugin.Provider = (*FailingComponentProvider)(nil)
@@ -205,6 +207,11 @@ func (p *FailingComponentProvider) Construct(
 			},
 		},
 	})
+	// Keep Construct in flight even if the child registration completes before the monitor shuts down.
+	if p.WaitForCancellation && !req.Info.DryRun {
+		<-ctx.Done()
+		return plugin.ConstructResponse{}, ctx.Err()
+	}
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register child resource: %w", err)
 	}
@@ -216,15 +223,9 @@ func (p *FailingComponentProvider) Construct(
 	}
 
 	outputs := property.NewMap(map[string]property.Value{"value": value})
-	rpcOutputs, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(outputs), plugin.MarshalOptions{
-		KeepUnknowns: true,
-	})
-	if err != nil {
-		return plugin.ConstructResponse{}, fmt.Errorf("marshal outputs: %w", err)
-	}
 	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     parent.Urn,
-		Outputs: rpcOutputs,
+		Outputs: propertyrpc.Marshal(outputs),
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register resource outputs: %w", err)

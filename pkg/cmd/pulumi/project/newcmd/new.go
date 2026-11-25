@@ -38,6 +38,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
@@ -99,6 +100,7 @@ type newArgs struct {
 	escConfig            bool
 	stdout               io.Writer
 	stderr               io.Writer
+	hints                *hints.Manager
 }
 
 func runNew(ctx context.Context, args newArgs) (err error) {
@@ -457,6 +459,8 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		fmt.Fprintln(args.stdout, template.Quickstart)
 	}
 
+	args.hints.OfferAgentSkills(cwd)
+
 	return nil
 }
 
@@ -516,9 +520,10 @@ func isInteractive() bool {
 	return cmdutil.Interactive() || ok && cmdutil.IsTruthy(test)
 }
 
-// NewNewCmd creates a New command with default dependencies.
-func NewNewCmd() *cobra.Command {
+// NewNewCmd creates a New command with default dependencies. It offers hints to hm, which may be nil.
+func NewNewCmd(hm *hints.Manager) *cobra.Command {
 	args := newArgs{
+		hints:                hm,
 		prompt:               ui.PromptForValue,
 		selectOne:            surveySelect,
 		promptRuntimeOptions: promptRuntimeOptions,
@@ -541,7 +546,7 @@ func NewNewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "new [template|url]",
+		Use:        "new",
 		Aliases:    []string{"create", "setup"},
 		SuggestFor: []string{"init"},
 		Short:      "Create a new Pulumi project",

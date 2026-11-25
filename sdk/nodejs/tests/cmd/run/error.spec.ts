@@ -14,7 +14,23 @@
 
 import * as assert from "assert";
 import * as util from "util";
-import { defaultErrorMessage } from "../../../cmd/run/error";
+import * as grpc from "@grpc/grpc-js";
+import { defaultErrorMessage, isErrorAlreadyReported } from "../../../cmd/run/error";
+
+describe("isErrorAlreadyReported", () => {
+    it("requires an explicit trailer rather than a transport status or message", () => {
+        const error = Object.assign(new Error("resource monitor shut down"), {
+            code: grpc.status.UNAVAILABLE,
+            metadata: new grpc.Metadata(),
+        });
+        assert.strictEqual(isErrorAlreadyReported(error), false);
+        error.metadata.set("pulumi-error-already-reported", "false");
+        assert.strictEqual(isErrorAlreadyReported(error), false);
+        error.metadata.set("pulumi-error-already-reported", "true");
+        assert.strictEqual(isErrorAlreadyReported(error), true);
+        assert.strictEqual(isErrorAlreadyReported(new Error("user cleanup failed")), false);
+    });
+});
 
 describe("defaultErrorMessage", () => {
     function doThrow(thingToThrow: any): string {

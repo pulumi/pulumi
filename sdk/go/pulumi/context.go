@@ -49,6 +49,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -118,6 +119,16 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		dialOpts := append(
 			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithChainUnaryInterceptor(func(ctx context.Context, method string, req, reply any,
+				cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
+			) error {
+				var trailers metadata.MD
+				err := invoker(ctx, method, req, reply, cc, append(opts, grpc.Trailer(&trailers))...)
+				if err != nil && slices.Contains(trailers.Get("pulumi-error-already-reported"), "true") {
+					return &errorAlreadyReported{err}
+				}
+				return err
+			}),
 			rpcutil.GrpcChannelOptions(),
 		)
 		conn, err := grpc.NewClient(info.MonitorAddr, dialOpts...)

@@ -82,7 +82,7 @@ func TestEnvVarMappingsOnProvider(t *testing.T) {
 	assert.Equal(t, "prov", provRes.URN.Name())
 
 	// Check that envVarMappings is in the provider's Inputs under __internal
-	envVarMappings, err := deployProviders.GetEnvironmentVariableMappings(provRes.Inputs)
+	envVarMappings, err := deployProviders.GetEnvironmentVariableMappings(resource.FromResourcePropertyMap(provRes.Inputs))
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{
 		"MY_VAR":    "PROVIDER_VAR",
@@ -262,7 +262,7 @@ func TestEnvVarMappingsRemovedFromStateOnUpdate(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	provRes := snap.Resources[1]
 	require.True(t, providers.IsProviderType(provRes.Type))
-	envVarMappings, err := deployProviders.GetEnvironmentVariableMappings(provRes.Inputs)
+	envVarMappings, err := deployProviders.GetEnvironmentVariableMappings(resource.FromResourcePropertyMap(provRes.Inputs))
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"MY_VAR": "PROVIDER_VAR"}, envVarMappings)
 

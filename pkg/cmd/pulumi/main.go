@@ -21,6 +21,7 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"go.uber.org/automaxprocs/maxprocs"
@@ -62,13 +63,17 @@ func main() {
 	finished := new(bool)
 	defer panicHandler(finished)
 
-	pulumiCmd, cleanup := NewPulumiCmd()
+	hm := hints.New()
+	pulumiCmd, cleanup := NewPulumiCmd(hm)
 
-	if err := pulumiCmd.Execute(); err != nil {
+	err := pulumiCmd.Execute()
+	if err != nil {
 		cmd.DisplayErrorMessage(pulumiCmd.Context(), err, pulumiCmd.ErrOrStderr())
-		cleanup()
+	}
+	hm.Flush(pulumiCmd.ErrOrStderr())
+	cleanup()
+	if err != nil {
 		os.Exit(cmd.ExitCodeFor(err))
 	}
 	*finished = true
-	cleanup()
 }

@@ -19,12 +19,14 @@ import (
 	"encoding/binary"
 	"io"
 
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -203,7 +205,10 @@ func (p *monitorProxy) Call(
 func (p *monitorProxy) ReadResource(
 	ctx context.Context, req *pulumirpc.ReadResourceRequest,
 ) (*pulumirpc.ReadResourceResponse, error) {
-	return p.target.ReadResource(ctx, req)
+	var trailer metadata.MD
+	resp, err := p.target.ReadResource(ctx, req, grpc.Trailer(&trailer))
+	contract.IgnoreError(grpc.SetTrailer(ctx, trailer))
+	return resp, err
 }
 
 func (p *monitorProxy) ExistsResource(
@@ -220,13 +225,19 @@ func (p *monitorProxy) RegisterResource(
 	// Setting this header is not required for other SDKs. We do it for nodejs so the engine
 	// can workaround a bug in older Node.js SDKs where alias specs weren't specified correctly.
 	ctx = metadata.AppendToOutgoingContext(ctx, "pulumi-runtime", "nodejs")
-	return p.target.RegisterResource(ctx, req)
+	var trailer metadata.MD
+	resp, err := p.target.RegisterResource(ctx, req, grpc.Trailer(&trailer))
+	contract.IgnoreError(grpc.SetTrailer(ctx, trailer))
+	return resp, err
 }
 
 func (p *monitorProxy) RegisterResourceOutputs(
 	ctx context.Context, req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*emptypb.Empty, error) {
-	return p.target.RegisterResourceOutputs(ctx, req)
+	var trailer metadata.MD
+	resp, err := p.target.RegisterResourceOutputs(ctx, req, grpc.Trailer(&trailer))
+	contract.IgnoreError(grpc.SetTrailer(ctx, trailer))
+	return resp, err
 }
 
 func (p *monitorProxy) SupportsFeature(

@@ -394,7 +394,7 @@ func (p *SimpleInvokeProvider) Invoke(
 			}, nil
 		}
 
-		valueIsSecret := value.Secret()
+		valueIsSecret := value.IsSecret()
 
 		if !value.IsString() {
 			reason := fmt.Sprintf("value is not a string: %#v", value)

@@ -50,7 +50,7 @@ func NewReplayEventsCmd() *cobra.Command {
 	var period time.Duration
 
 	cmd := &cobra.Command{
-		Use:   "replay-events <kind> <events-file>",
+		Use:   "replay-events",
 		Short: "Replay events from a prior update, refresh, or destroy",
 		Long: "Replay events from a prior update, refresh, or destroy.\n" +
 			"\n" +

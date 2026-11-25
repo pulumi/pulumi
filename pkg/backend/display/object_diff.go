@@ -329,13 +329,13 @@ func massageStackPreviewAdd(p property.Value) property.Value {
 	case p.IsArray():
 		src := p.AsArray()
 		arr := make([]property.Value, src.Len())
-		for i, v := range src.All {
+		for i, v := range src.All() {
 			arr[i] = massageStackPreviewAdd(v)
 		}
 		return property.New(arr)
 	case p.IsMap():
 		obj := property.Map{}
-		for k, v := range p.AsMap().All {
+		for k, v := range p.AsMap().All() {
 			if k != "@isPulumiResource" {
 				obj = obj.Set(k, massageStackPreviewAdd(v))
 			}
@@ -677,7 +677,7 @@ func (p *propertyPrinter) printPropertyValue(v property.Value) {
 
 func (p *propertyPrinter) printPropertyValueRecurse(v property.Value) {
 	switch {
-	case v.Secret():
+	case v.IsSecret():
 		if p.showSecrets {
 			p.printPropertyValueRecurse(v.WithSecret(false))
 		} else {
@@ -691,7 +691,7 @@ func (p *propertyPrinter) printPropertyValueRecurse(v property.Value) {
 			p.writeVerbatim("[]")
 		} else {
 			p.writeVerbatim("[\n")
-			for i, elem := range arr.All {
+			for i, elem := range arr.All() {
 				p.writeIndentedf("    [%d]: ", i)
 				p.indented(1).printPropertyValue(elem)
 			}
@@ -895,7 +895,7 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 	contract.Assertf(p.indent > 0, "indentation must be > 0 to print property value diffs")
 
-	if p.showSecrets && (diff.Old.Secret() || diff.New.Secret()) {
+	if p.showSecrets && (diff.Old.IsSecret() || diff.New.IsSecret()) {
 		old, new := diff.Old.WithSecret(false), diff.New.WithSecret(false)
 		if elemDiff := old.Diff(new); elemDiff != nil {
 			p.printPropertyValueDiff(titleFunc, *elemDiff)
@@ -948,7 +948,7 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 
 				// When either side is secret, render each side through printPrimitive so the
 				// "[secret]" redaction wins over a plain text diff.
-				if !diff.Old.Secret() && !diff.New.Secret() &&
+				if !diff.Old.IsSecret() && !diff.New.IsSecret() &&
 					diff.Old.IsString() && diff.New.IsString() &&
 					utf8.ValidString(diff.Old.AsString()) && utf8.ValidString(diff.New.AsString()) {
 					p.printTextDiff(diff.Old.AsString(), diff.New.AsString())
@@ -976,12 +976,12 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 
 func isPrimitive(value property.Value) bool {
 	return value.IsNull() || value.IsString() || value.IsNumber() ||
-		value.IsBool() || value.IsComputed() || value.Secret()
+		value.IsBool() || value.IsComputed() || value.IsSecret()
 }
 
 func (p *propertyPrinter) printPrimitivePropertyValue(v property.Value) {
 	contract.Requiref(isPrimitive(v), "v", "must be primitive")
-	if v.Secret() {
+	if v.IsSecret() {
 		// Secrecy takes precedence: render "[secret]" rather than leaking the inner value.
 		p.writeVerbatim("[secret]")
 		return

@@ -169,20 +169,21 @@ func GenerateHCL2Definition(
 		// position as the package instead.
 		packageName = tokens.Package(state.Type.Name())
 	}
-	pluginName, err := providers.GetProviderName(packageName, provider.Inputs)
+	inputs := resource.FromResourcePropertyMap(provider.Inputs)
+	pluginName, err := providers.GetProviderName(packageName, inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider name: %w", err)
 	}
-	pluginVersion, err := providers.GetProviderVersion(provider.Inputs)
+	pluginVersion, err := providers.GetProviderVersion(inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider version: %w", err)
 	}
-	downloadURL, err := providers.GetProviderDownloadURL(provider.Inputs)
+	downloadURL, err := providers.GetProviderDownloadURL(inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider version: %w", err)
 	}
 	var parameterization *schema.ParameterizationDescriptor
-	parameters, err := providers.GetProviderParameterization(packageName, provider.Inputs)
+	parameters, err := providers.GetProviderParameterization(packageName, inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider parameterization: %w", err)
 	}
@@ -666,7 +667,7 @@ removeNonStructuralTypes:
 	case value.IsMap():
 		switch arg := schemaType.(type) {
 		case *schema.MapType:
-			for _, vv := range value.AsMap().All {
+			for _, vv := range value.AsMap().All() {
 				if !valueStructurallyTypedAs(vv, arg.ElementType) {
 					return false
 				}
@@ -680,7 +681,7 @@ removeNonStructuralTypes:
 
 			objectProperties := value.AsMap()
 			// check that each property is present in the schema and that the value is structurally typed as well
-			for propertyKey, propertyValue := range objectProperties.All {
+			for propertyKey, propertyValue := range objectProperties.All() {
 				propertyValueSchema, ok := arg.Property(propertyKey)
 				if !ok {
 					// unknown property
@@ -766,7 +767,7 @@ removeNonStructuralTypes:
 		// basic case: check that each element in the array is structurally typed as the element type of the schenma array
 		switch arg := schemaType.(type) {
 		case *schema.ArrayType:
-			for _, element := range value.AsArray().All {
+			for _, element := range value.AsArray().All() {
 				if !valueStructurallyTypedAs(element, arg.ElementType) {
 					return false
 				}
@@ -931,7 +932,7 @@ func generateValue(
 
 		arr := value.AsArray()
 		exprs := make([]model.Expression, arr.Len())
-		for i, v := range arr.All {
+		for i, v := range arr.All() {
 			x, err := generateValue(elementType, v, importState, onReferenceFound)
 			if err != nil {
 				return nil, err
@@ -983,7 +984,7 @@ func generateValue(
 				elementType = mapType.ElementType
 			}
 
-			for k, v := range obj.AllStable {
+			for k, v := range obj.AllStable() {
 				if !valueStructurallyTypedAs(v, elementType) {
 					slog.Info("dropped non-conforming value from object type",
 						slog.Any("expected-type", elementType), slog.Any("found-value", v))
@@ -1006,7 +1007,7 @@ func generateValue(
 			Tokens: syntax.NewObjectConsTokens(len(items)),
 			Items:  items,
 		}, nil
-	case value.Secret():
+	case value.IsSecret():
 		arg, err := generateValue(typ, value.WithSecret(false), importState, onReferenceFound)
 		if err != nil {
 			return nil, err

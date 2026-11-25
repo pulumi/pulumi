@@ -17,6 +17,7 @@ package logs
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -101,7 +102,7 @@ func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
 		"time":            "2026-04-30T10:00:00Z",
 		"level":           "INFO",
 		"msg":             "resource inputs: %v",
-		"pulumi.log.arg0": string(encoded),
+		"pulumi.log.arg0": base64.StdEncoding.EncodeToString(encoded),
 	}
 	line, err := json.Marshal(input)
 	require.NoError(t, err)

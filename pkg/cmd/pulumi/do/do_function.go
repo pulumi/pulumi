@@ -117,7 +117,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 					return fmt.Errorf("expected exactly one return value from function but got %d", outputProperties.Len())
 				}
 
-				for _, value := range outputProperties.All {
+				for _, value := range outputProperties.All() {
 					result = filterOutput(value, fn.ReturnType)
 					break
 				}

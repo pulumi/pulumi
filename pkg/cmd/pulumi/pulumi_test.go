@@ -1024,7 +1024,7 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 	// update check. t.Setenv also rules out t.Parallel here.
 	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 
-	pulumiCmd, cleanup := NewPulumiCmd()
+	pulumiCmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	var stdout, stderr bytes.Buffer
@@ -1043,7 +1043,7 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
-	pulumiCmd, cleanup := NewPulumiCmd()
+	pulumiCmd, cleanup := NewPulumiCmd(nil)
 	defer cleanup()
 
 	var stdout, stderr bytes.Buffer
@@ -1054,4 +1054,32 @@ func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
 	err := pulumiCmd.Execute()
 	require.NoError(t, err)
 	assert.Contains(t, stdout.String(), "Usage:")
+}
+
+func TestIsJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"no flags", []string{"stack"}, false},
+		{"json", []string{"--json"}, true},
+		{"output json", []string{"--output", "json"}, true},
+		{"output=json", []string{"--output=json"}, true},
+		{"short output json", []string{"-o", "json"}, true},
+		{"output text", []string{"--output", "text"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := &cobra.Command{Use: "test"}
+			c.Flags().Bool("json", false, "")
+			c.Flags().StringP("output", "o", "", "")
+			require.NoError(t, c.ParseFlags(tt.args))
+			assert.Equal(t, tt.want, isJSONOutput(c))
+		})
+	}
 }

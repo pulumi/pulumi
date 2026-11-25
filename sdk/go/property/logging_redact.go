@@ -32,7 +32,7 @@ func (m Map) RedactedLogValue() slog.Value {
 
 func redactSecretValues(v Value) Value {
 	switch {
-	case v.Secret():
+	case v.IsSecret():
 		return New("[secret]")
 	case v.IsMap():
 		return New(redactMapSecrets(v.AsMap()))

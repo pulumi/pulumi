@@ -1,4 +1,0 @@
-component: cli/engine
-kind: fix
-body: Avoid re-encrypting the in-memory snapshot on every step during preview, which also removes the need for `stack:encrypt` permission to run `pulumi preview`
-time: 2026-11-18T12:00:00Z

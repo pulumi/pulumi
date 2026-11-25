@@ -16,6 +16,7 @@ package logging
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -139,7 +140,7 @@ func (h *propertyValueExportHandler) Handle(ctx context.Context, r slog.Record) 
 		if pv, ok := a.Value.Any().(PropertyValue); ok {
 			encoded, err := EncodeStructValueForLog(pv.Value)
 			if err == nil {
-				newRec.AddAttrs(slog.String(a.Key, string(encoded)))
+				newRec.AddAttrs(slog.String(a.Key, base64.StdEncoding.EncodeToString(encoded)))
 			}
 		} else {
 			newRec.AddAttrs(a)

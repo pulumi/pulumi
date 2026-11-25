@@ -219,8 +219,9 @@ func buildImportFile(
 					}
 				}
 
-				inputs, has := providerInputs[ref.URN()]
+				minputs, has := providerInputs[ref.URN()]
 				contract.Assertf(has, "expected provider %q to be in provider inputs table", ref)
+				inputs := resource.FromResourcePropertyMap(minputs)
 
 				v, err := providers.GetProviderVersion(inputs)
 				if err != nil {

@@ -1,4 +1,0 @@
-component: sdk/python
-kind: fix
-body: Suppress unhandled Python interruption tracebacks during update shutdown
-time: 2026-11-18T15:48:27Z

@@ -19,12 +19,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -40,11 +42,13 @@ import (
 const StaticURL = "https://www.pulumi.com/cli-notifications.json"
 
 const (
-	staticSource = "static"
-	cacheFile    = "notifications.json"
-	shownFile    = "shown-notifications.json"
-	cacheTTL     = 24 * time.Hour
-	fetchTimeout = 3 * time.Second
+	staticSource  = "static"
+	cacheFile     = "notifications.json"
+	dismissedFile = "dismissed-notifications.json"
+	shownFile     = "shown-notifications.json"
+	cacheTTL      = 24 * time.Hour
+	fetchTimeout  = 3 * time.Second
+	minPrefix     = 3
 	// warningInterval is how long to wait before showing a warning again.
 	warningInterval = 24 * time.Hour
 )
@@ -114,16 +118,14 @@ func Start(ctx context.Context, url string) func() []Notification {
 // refresh fetches the notifications and, if that succeeds, caches them. Concurrent CLI processes
 // may overwrite each other's cache; the losing process's entries are simply fetched again later.
 func refresh(ctx context.Context, url string, cache map[string]cacheEntry) ([]Notification, error) {
+	contract.Requiref(cache != nil, "cache", "must not be nil")
 	ns, err := fetch(ctx, url)
 	if err != nil {
 		return nil, err
 	}
 
-	if cache == nil {
-		cache = map[string]cacheEntry{}
-	}
 	cache[staticSource] = cacheEntry{FetchedAt: time.Now(), Notifications: ns}
-	if err := writeCache(cache); err != nil {
+	if err := writeJSON(cacheFile, cache); err != nil {
 		slog.InfoContext(ctx, "error caching notifications", "err", err)
 	}
 	return ns, nil
@@ -167,61 +169,51 @@ func decode(raw []json.RawMessage) []Notification {
 	return ns
 }
 
-func cachePath() (string, error) {
-	return workspace.GetPulumiPath(cacheFile)
+func readJSON(name string, v any) bool {
+	path, err := workspace.GetPulumiPath(name)
+	if err != nil {
+		return false
+	}
+	b, err := os.ReadFile(path)
+	return err == nil && json.Unmarshal(b, v) == nil
+}
+
+func writeJSON(name string, v any) error {
+	path, err := workspace.GetPulumiPath(name)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return writeAtomic(path, b)
 }
 
 func readCache() map[string]cacheEntry {
-	path, err := cachePath()
-	if err != nil {
-		return nil
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
 	var cache map[string]cacheEntry
-	if err := json.Unmarshal(b, &cache); err != nil {
-		return nil
+	if !readJSON(cacheFile, &cache) || cache == nil {
+		return map[string]cacheEntry{}
 	}
 	return cache
 }
 
+// readDismissed returns the dismissed notification IDs, keyed by the source they came from.
+func readDismissed() map[string][]string {
+	var dismissed map[string][]string
+	if !readJSON(dismissedFile, &dismissed) || dismissed == nil {
+		return map[string][]string{}
+	}
+	return dismissed
+}
+
 // readShown returns when each notification was last shown, keyed by ID.
 func readShown() map[string]time.Time {
-	shown := map[string]time.Time{}
-	path, err := workspace.GetPulumiPath(shownFile)
-	if err != nil {
-		return shown
-	}
-	if b, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(b, &shown)
+	var shown map[string]time.Time
+	if !readJSON(shownFile, &shown) || shown == nil {
+		return map[string]time.Time{}
 	}
 	return shown
-}
-
-func writeShown(shown map[string]time.Time) error {
-	path, err := workspace.GetPulumiPath(shownFile)
-	if err != nil {
-		return err
-	}
-	b, err := json.Marshal(shown)
-	if err != nil {
-		return err
-	}
-	return writeAtomic(path, b)
-}
-
-func writeCache(cache map[string]cacheEntry) error {
-	path, err := cachePath()
-	if err != nil {
-		return err
-	}
-	b, err := json.Marshal(cache)
-	if err != nil {
-		return err
-	}
-	return writeAtomic(path, b)
 }
 
 // commands are those whose output people read rather than capture.
@@ -241,26 +233,42 @@ func ShownAfter(commandPath string) bool {
 	return commands[commandPath]
 }
 
-// Print writes the notifications that apply to the given CLI version, and are due, to the sink's
-// stderr. Errors are due every time, warnings once a day, and anything else only once.
-func Print(sink diag.Sink, ns []Notification, cliVersion string) {
+// Print writes the notifications that apply to the given CLI version, are due, and haven't been
+// dismissed, to the sink's stderr. Errors are due every time, warnings once a day, and anything else
+// only once. It reports whether it wrote any notification.
+func Print(sink diag.Sink, ns []Notification, cliVersion string) bool {
+	dismissed := map[string]bool{}
+	for _, ids := range readDismissed() {
+		for _, id := range ids {
+			dismissed[id] = true
+		}
+	}
 	shown := readShown()
-	changed := false
+	printed, changed := false, false
 
 	// Builds without a version stamped in at link time have an empty version, which won't parse.
 	cli, err := semver.ParseTolerant(cliVersion)
+	prefixes := shortPrefixes(ns)
+	dismissible := false
 	for _, n := range ns {
-		if !applies(n, cli, err == nil) || !due(n, shown) {
+		if dismissed[n.ID] || !applies(n, cli, err == nil) || !due(n, shown) {
 			continue
 		}
-		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion)))
+		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		printed = true
+		// Infos are only shown once, so there is nothing to dismiss.
+		dismissible = dismissible || n.Severity == diag.Warning || n.Severity == diag.Error
 		if n.Severity != diag.Error {
 			shown[n.ID] = time.Now()
 			changed = true
 		}
 	}
+	if dismissible {
+		sink.Infoerrf(diag.RawMessage("", "\nTo hide a notification, run "+
+			colors.SpecCommand+"`pulumi notifications dismiss <ID>`"+colors.Reset+"."))
+	}
 	if !changed {
-		return
+		return printed
 	}
 
 	// Forget notifications that are no longer cached, which a source drops only once it has been
@@ -274,9 +282,10 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	if len(cached) > 0 {
 		maps.DeleteFunc(shown, func(id string, _ time.Time) bool { return !cached[id] })
 	}
-	if err := writeShown(shown); err != nil {
+	if err := writeJSON(shownFile, shown); err != nil {
 		slog.Info("error recording shown notifications", "err", err)
 	}
+	return printed
 }
 
 func due(n Notification, shown map[string]time.Time) bool {
@@ -285,6 +294,103 @@ func due(n Notification, shown map[string]time.Time) bool {
 		return true
 	}
 	return n.Severity == diag.Warning && time.Since(last) >= warningInterval
+}
+
+// Dismiss stops the notification whose ID starts with prefix from being shown again, and returns it.
+func Dismiss(ctx context.Context, url, prefix string) (Notification, error) {
+	if len(prefix) < minPrefix {
+		return Notification{}, fmt.Errorf("the ID prefix must be at least %d characters long", minPrefix)
+	}
+
+	cache := readCache()
+	if entry, ok := cache[staticSource]; !ok || time.Since(entry.FetchedAt) >= cacheTTL {
+		if _, err := refresh(ctx, url, cache); err != nil {
+			slog.InfoContext(ctx, "error fetching notifications", "err", err)
+		}
+	}
+
+	type match struct {
+		source       string
+		notification Notification
+	}
+	var all []Notification
+	var matches []match
+	for source, entry := range cache {
+		for _, n := range entry.Notifications {
+			all = append(all, n)
+			if strings.HasPrefix(strings.ToLower(n.ID), strings.ToLower(prefix)) {
+				matches = append(matches, match{source, n})
+			}
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return Notification{}, fmt.Errorf("no notification ID starts with %q", prefix)
+	case 1:
+	default:
+		prefixes := shortPrefixes(all)
+		slices.SortFunc(matches, func(a, b match) int {
+			return strings.Compare(a.notification.ID, b.notification.ID)
+		})
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "%q matches more than one notification:", prefix)
+		for _, m := range matches {
+			fmt.Fprintf(&msg, "\n  %s  %s", prefixes[strings.ToLower(m.notification.ID)], m.notification.Title)
+		}
+		return Notification{}, errors.New(msg.String())
+	}
+
+	m := matches[0]
+	dismissed := readDismissed()
+	if !slices.Contains(dismissed[m.source], m.notification.ID) {
+		dismissed[m.source] = append(dismissed[m.source], m.notification.ID)
+	}
+
+	// Only prune against sources we hold a successful fetch for, so that a failed fetch, or a
+	// different org, never brings a dismissed notification back.
+	for source, ids := range dismissed {
+		entry, ok := cache[source]
+		if !ok {
+			continue
+		}
+		dismissed[source] = slices.DeleteFunc(ids, func(id string) bool {
+			return !slices.ContainsFunc(entry.Notifications, func(n Notification) bool { return n.ID == id })
+		})
+	}
+
+	return m.notification, writeJSON(dismissedFile, dismissed)
+}
+
+// shortPrefixes maps each lowercased ID to its shortest prefix, of at least minPrefix characters,
+// that no other ID shares.
+func shortPrefixes(ns []Notification) map[string]string {
+	ids := make([]string, len(ns))
+	for i, n := range ns {
+		ids[i] = strings.ToLower(n.ID)
+	}
+	slices.Sort(ids)
+
+	prefixes := make(map[string]string, len(ids))
+	for i, id := range ids {
+		n := minPrefix
+		if i > 0 {
+			n = max(n, commonPrefix(id, ids[i-1])+1)
+		}
+		if i+1 < len(ids) {
+			n = max(n, commonPrefix(id, ids[i+1])+1)
+		}
+		prefixes[id] = id[:min(n, len(id))]
+	}
+	return prefixes
+}
+
+func commonPrefix(a, b string) int {
+	n := 0
+	for n < len(a) && n < len(b) && a[n] == b[n] {
+		n++
+	}
+	return n
 }
 
 func applies(n Notification, cli semver.Version, cliKnown bool) bool {
@@ -299,18 +405,22 @@ func applies(n Notification, cli semver.Version, cliKnown bool) bool {
 	return err == nil && cliKnown && inRange(cli)
 }
 
-func render(n Notification, cliVersion string) string {
+func render(n Notification, cliVersion, idPrefix string) string {
 	prefix, ok := map[diag.Severity]string{
-		diag.Warning: colors.SpecWarning + "WARNING:" + colors.Reset,
-		diag.Error:   colors.SpecError + "ERROR:" + colors.Reset,
+		diag.Warning: colors.SpecWarning + "WARNING [ID: " + idPrefix + "]:" + colors.Reset,
+		diag.Error:   colors.SpecError + "ERROR [ID: " + idPrefix + "]:" + colors.Reset,
 	}[n.Severity]
 	if !ok {
 		prefix = "INFO:"
 	}
 
-	resolve := strings.NewReplacer("{cli}", cliVersion)
-	overview := strings.ReplaceAll(resolve.Replace(n.Overview), "\n", "\n  ")
-	return fmt.Sprintf("\n%s %s\n\n  %s\n", prefix, resolve.Replace(n.Title), overview)
+	overview := strings.ReplaceAll(resolve(n.Overview, cliVersion), "\n", "\n  ")
+	return fmt.Sprintf("\n%s %s\n\n  %s", prefix, resolve(n.Title, cliVersion), overview)
+}
+
+// resolve replaces the placeholders in a notification's text.
+func resolve(s, cliVersion string) string {
+	return strings.ReplaceAll(s, "{cli}", cliVersion)
 }
 
 // writeAtomic replaces the file at path, so that concurrent CLI processes never read a partly written

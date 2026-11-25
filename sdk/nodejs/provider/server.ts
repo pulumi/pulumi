@@ -26,6 +26,7 @@ import * as rpc from "../runtime/rpc";
 import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
 import { parseArgs } from "./internals";
+import { isErrorAlreadyReported } from "../cmd/run/error";
 
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
@@ -772,7 +773,9 @@ export async function main(provider: Provider, args: string[]) {
             uncaughtErrors.add(err);
             // Use `pulumi.log.error` here to tell the engine there was a fatal error, which should
             // stop processing subsequent resource operations.
-            log.error(err.stack || err.message || "" + err);
+            if (!isErrorAlreadyReported(err)) {
+                log.error(err.stack || err.message || "" + err);
+            }
         }
     };
 

@@ -134,7 +134,7 @@ func TestMapAll(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(nil)
-		m.All(func(string, Value) bool {
+		m.All()(func(string, Value) bool {
 			assert.Fail(t, "An empty map should never call its iterator")
 			return true
 		})
@@ -144,7 +144,7 @@ func TestMapAll(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{"key1": New("v1")})
 		var wasCalled bool
-		m.All(func(k string, v Value) bool {
+		m.All()(func(k string, v Value) bool {
 			if wasCalled {
 				assert.Fail(t, "A map with only 1 element should only be called once")
 			}
@@ -159,7 +159,7 @@ func TestMapAll(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{"key1": New("v1"), "key2": New("v2"), "key3": New("v3")})
 		var callCount int
-		m.All(func(k string, v Value) bool {
+		m.All()(func(k string, v Value) bool {
 			callCount++
 			switch k {
 			case "key1":
@@ -180,7 +180,7 @@ func TestMapAll(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{"key1": New("v1"), "key2": New("v2")})
 		var wasCalled bool
-		m.All(func(k string, v Value) bool {
+		m.All()(func(k string, v Value) bool {
 			if wasCalled {
 				assert.Fail(t, "A map iteration with early exit should only be called once")
 			}
@@ -205,7 +205,7 @@ func TestMapAllStable(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 		m := NewMap(nil)
-		m.AllStable(func(string, Value) bool {
+		m.AllStable()(func(string, Value) bool {
 			assert.Fail(t, "An empty map should never call its iterator")
 			return true
 		})
@@ -215,7 +215,7 @@ func TestMapAllStable(t *testing.T) {
 		t.Parallel()
 		m := NewMap(map[string]Value{"key1": New("v1")})
 		var wasCalled bool
-		m.AllStable(func(k string, v Value) bool {
+		m.AllStable()(func(k string, v Value) bool {
 			if wasCalled {
 				assert.Fail(t, "A map with only 1 element should only be called once")
 			}
@@ -236,7 +236,7 @@ func TestMapAllStable(t *testing.T) {
 
 		expectedKeys := []string{"key1", "key2", "key3"}
 		var index int
-		m.AllStable(func(k string, v Value) bool {
+		m.AllStable()(func(k string, v Value) bool {
 			if index >= len(expectedKeys) {
 				assert.Fail(t, "unexpected call")
 			}
@@ -255,7 +255,7 @@ func TestMapAllStable(t *testing.T) {
 			"key2": New("v2"),
 		})
 		var callCount int
-		m.AllStable(func(k string, v Value) bool {
+		m.AllStable()(func(k string, v Value) bool {
 			callCount++
 			if k == "key1" {
 				assert.Equal(t, New("v1"), v)

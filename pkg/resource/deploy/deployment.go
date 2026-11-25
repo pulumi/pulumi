@@ -520,15 +520,14 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 		pkg := res.URN.Type().Package()
 		ref, ok := defaultProviderRefs[pkg]
 		if !ok {
-			minputs, err := target.GetPackageConfig(pkg)
+			inputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
 				return false, fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
-			inputs := resource.ToResourcePropertyMap(minputs)
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
-				providers.SetProviderVersion(inputs, pkgInfo.Version)
-				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
-				providers.SetProviderChecksums(inputs, pkgInfo.Checksums)
+				inputs = providers.SetProviderVersion(inputs, pkgInfo.Version)
+				inputs = providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
+				inputs = providers.SetProviderChecksums(inputs, pkgInfo.Checksums)
 			}
 
 			uuid, err := uuid.NewV4()
@@ -541,13 +540,14 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 			contract.Assertf(err == nil,
 				"could not create provider reference with URN %v and ID %v", urn, id)
 
+			minputs := resource.ToResourcePropertyMap(inputs)
 			provider := &pkgresource.State{
 				Type:    urn.Type(),
 				URN:     urn,
 				Custom:  true,
 				ID:      id,
-				Inputs:  inputs,
-				Outputs: inputs,
+				Inputs:  minputs,
+				Outputs: minputs,
 			}
 			defaultProviders = append(defaultProviders, provider)
 			defaultProviderRefs[pkg] = ref

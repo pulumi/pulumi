@@ -64,6 +64,7 @@ import (
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
@@ -205,8 +206,8 @@ func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
 	_ = pf.Parse(args)
 }
 
-// NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() (*cobra.Command, func()) {
+// NewPulumiCmd creates a new Pulumi Cmd instance. Its commands offer hints to hm, which may be nil to offer none.
+func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 	helpers := cmdBackend.DefaultLoginManager.CredentialHelperSession()
 	var cwd string
 	var logFlow bool
@@ -301,6 +302,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// skipped. Parse what we can ourselves before continuing.
 			if cmd.DisableFlagParsing {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
+			}
+
+			// Don't mix hints into machine-readable output. Commands that parse their own flags, like `pulumi do`, may
+			// write JSON without cobra knowing, so they show no hints either.
+			if cmd.DisableFlagParsing || isJSONOutput(cmd) {
+				hm.Suppress()
 			}
 
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
@@ -452,7 +459,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					// The version didn't make it in time, so don't block the user
 				}
 
-				notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version)
+				// Show at most one message besides the update check, preferring a notification, which can
+				// carry a warning or an error, over a hint.
+				if notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version) {
+					hm.Suppress()
+				}
 			}
 		},
 	}
@@ -492,12 +503,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
-				newcmd.NewNewCmd(),
+				newcmd.NewNewCmd(hm),
 				config.NewConfigCmd(pkgWorkspace.Instance),
 				cmdStack.NewStackCmd(),
 				console.NewConsoleCmd(pkgWorkspace.Instance),
 				operations.NewImportCmd(),
-				operations.NewRefreshCmd(),
+				operations.NewRefreshCmd(hm),
 				state.NewStateCmd(),
 				install.NewInstallCmd(pkgWorkspace.Instance),
 			},
@@ -524,7 +535,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
-				project.NewProjectCmd(),
+				project.NewProjectCmd(hm),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 				delivery.NewDeliveryCmd(),
 				cloud.NewAPICmd(),
@@ -553,6 +564,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
+				notifications.NewNotificationsCmd(),
 			},
 		},
 
@@ -654,6 +666,15 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 		return false
 	}
 	return devCommits > curCommits
+}
+
+// isJSONOutput reports whether cmd was asked to write JSON, through `--json` or `--output json`.
+func isJSONOutput(cmd *cobra.Command) bool {
+	if f := cmd.Flags().Lookup("json"); f != nil && f.Value.String() == "true" {
+		return true
+	}
+	f := cmd.Flags().Lookup("output")
+	return f != nil && f.Value.String() == "json"
 }
 
 type updateCheckResult struct {

@@ -44,7 +44,7 @@ func newOrgRoleNewCmdWith(factory orgRoleClientFactory) *cobra.Command {
 	output := defaultRoleSingleOutput()
 
 	cmd := &cobra.Command{
-		Use:     "new <name> <details-file>",
+		Use:     "new",
 		Aliases: []string{"create", "setup"},
 		Short:   "[EXPERIMENTAL] Create a new custom role for an organization",
 		Long: "[EXPERIMENTAL] Create a new custom role for an organization.\n" +
