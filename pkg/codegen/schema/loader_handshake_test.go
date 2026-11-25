@@ -87,7 +87,7 @@ func TestLoaderServerFromContext_RealProvider(t *testing.T) {
 		Properties: property.Map{},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, resource.PropertyMap{
-		"schema": resource.NewProperty(`{"name":"loadtest","version":"1.0.0"}`),
-	}, resource.ToResourcePropertyMap(res.Properties))
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"schema": property.New(`{"name":"loadtest","version":"1.0.0"}`),
+	}), res.Properties)
 }

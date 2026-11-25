@@ -96,13 +96,13 @@ func TestResolverServerFromContext_RealProvider(t *testing.T) {
 	// The resolver ran the local plugin path through the real package-installation machinery and read its
 	// schema, so the dependency names the plugin's own package. The provider then loaded that dependency
 	// back through the loader, which returns the same plugin's schema.
-	assert.Equal(t, resource.PropertyMap{
-		"name":    resource.NewProperty("resolvetest"),
-		"kind":    resource.NewProperty("resource"),
-		"version": resource.NewProperty("1.0.0"),
-		"server":  resource.NewProperty(""),
-		"schema":  resource.NewProperty(`{"name":"resolvetest","version":"1.0.0"}`),
-	}, resource.ToResourcePropertyMap(res.Properties))
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"name":    property.New("resolvetest"),
+		"kind":    property.New("resource"),
+		"version": property.New("1.0.0"),
+		"server":  property.New(""),
+		"schema":  property.New(`{"name":"resolvetest","version":"1.0.0"}`),
+	}), res.Properties)
 }
 
 // TestResolverServerFromContext_ParameterizedProvider verifies that the resolver surfaces a
@@ -163,11 +163,11 @@ func TestResolverServerFromContext_ParameterizedProvider(t *testing.T) {
 
 	// The loaded schema is fetched by feeding the resolved dependency back into the loader, which runs
 	// and parameterizes paramtest. Assert it separately, then check the resolve-level coordinates.
-	resProps := resource.ToResourcePropertyMap(res.Properties)
-	loaded := resProps["schema"]
-	delete(resProps, "schema")
+	resProps := res.Properties
+	loaded := resProps.Get("schema")
+	resProps = resProps.Delete("schema")
 	var loadedSpec schema.PackageSpec
-	require.NoError(t, json.Unmarshal([]byte(loaded.StringValue()), &loadedSpec))
+	require.NoError(t, json.Unmarshal([]byte(loaded.AsString()), &loadedSpec))
 	assert.Equal(t, schema.PackageSpec{
 		Name:    "random",
 		Version: "3.0.0",
@@ -179,15 +179,15 @@ func TestResolverServerFromContext_ParameterizedProvider(t *testing.T) {
 
 	// The base dependency names the providing plugin, and the parameterization names the package that
 	// plugin produces (its name, version, and parameter value, read from the schema).
-	assert.Equal(t, resource.PropertyMap{
-		"name":          resource.NewProperty("paramtest"),
-		"kind":          resource.NewProperty("resource"),
-		"version":       resource.NewProperty("1.0.0"),
-		"server":        resource.NewProperty(""),
-		"param_name":    resource.NewProperty("random"),
-		"param_version": resource.NewProperty("3.0.0"),
-		"param_value":   resource.NewProperty("random-param-value"),
-	}, resProps)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"name":          property.New("paramtest"),
+		"kind":          property.New("resource"),
+		"version":       property.New("1.0.0"),
+		"server":        property.New(""),
+		"param_name":    property.New("random"),
+		"param_version": property.New("3.0.0"),
+		"param_value":   property.New("random-param-value"),
+	}), resProps)
 }
 
 // providerBinName returns the resource-plugin binary name for a provider, accounting for the Windows
