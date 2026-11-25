@@ -1,0 +1,4 @@
+component: cli/import
+kind: feat
+body: Allow importing checkpoints directly, instead of just deployments
+time: 2026-11-25T17:06:19.228350637+01:00
