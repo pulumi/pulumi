@@ -338,7 +338,7 @@ func TestStateDeleteAllAndURN(t *testing.T) {
 	cmd := newStateDeleteCommand(&pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
 	cmd.SetArgs([]string{"--all", "urn"})
 	err := cmd.ExecuteContext(t.Context())
-	assert.ErrorContains(t, err, "cannot specify a resource URN when deleting all resources")
+	assert.ErrorContains(t, err, "cannot specify a resource URN when removing all resources")
 }
 
 func TestNoProject(t *testing.T) {
@@ -470,7 +470,7 @@ func TestStateDeleteDependency(t *testing.T) {
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::dependency"})
 	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err,
-		"urn:pulumi:proj::stk::pkg:index:typ::dependency can't be safely deleted "+
+		"urn:pulumi:proj::stk::pkg:index:typ::dependency can't be safely removed from state "+
 			"because the following resources depend on it:\n"+
 			" * \"dependee\"      (urn:pulumi:proj::stk::pkg:index:typ::dependee)")
 }
@@ -529,7 +529,7 @@ func TestStateDeleteProtected(t *testing.T) {
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
 	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err,
-		"urn:pulumi:proj::stk::pkg:index:typ::res can't be safely deleted because it is protected.")
+		"urn:pulumi:proj::stk::pkg:index:typ::res can't be safely removed from state because it is protected.")
 	assert.Nil(t, savedDeployment)
 
 	cmd.SetArgs([]string{"--force", "--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})

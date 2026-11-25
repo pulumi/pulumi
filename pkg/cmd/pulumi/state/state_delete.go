@@ -46,14 +46,15 @@ func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *co
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm", "delete"},
-		Short:   "Deletes one or more resources from a stack's state",
-		Long: `Deletes one or more resources from a stack's state
+		Short:   "Removes one or more resources from a stack's state",
+		Long: `Removes one or more resources from a stack's state
 
-This command deletes resources from a stack's state, as long as it is safe to do so. Each resource is specified
+This command removes resources from a stack's state, as long as it is safe to do so. The resources are
+not deleted from the cloud provider; Pulumi simply stops managing them. Each resource is specified
 by its Pulumi URN. If no resource is specified, this command will prompt for one.
 
-Resources can't be deleted if other resources depend on it or are parented to it. Protected resources
-will not be deleted unless specifically requested using the --force flag.
+A resource can't be removed if other resources depend on it or are parented to it. Protected resources
+will not be removed unless specifically requested using the --force flag.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
 
@@ -67,7 +68,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			yes = yes || env.SkipConfirmations.Value()
 			if all {
 				if len(args) != 0 {
-					return errors.New("cannot specify a resource URN when deleting all resources")
+					return errors.New("cannot specify a resource URN when removing all resources")
 				}
 			}
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
@@ -78,7 +79,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			if force {
 				handleProtected = func(res *pkgresource.State) error {
 					sink.Warningf(diag.Message(res.URN,
-						"deleting protected resource %s due to presence of --force"), res.URN)
+						"removing protected resource %s from state due to presence of --force"), res.URN)
 					res.Protect = false
 					return nil
 				}
@@ -104,7 +105,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 						return missingNonInteractiveArg("resource URN")
 					}
 					urn, selErr := getURNFromState(ctx, sink, ws, lm, stack, nil,
-						"Select the resource to delete")
+						"Select the resource to remove from state")
 					if selErr != nil {
 						return fmt.Errorf("failed to select resource: %w", selErr)
 					}
@@ -120,27 +121,27 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				case edit.ResourceHasDependenciesError:
 					var message strings.Builder
 					message.WriteString(string(e.Condemned.URN))
-					message.WriteString(" can't be safely deleted because the following resources depend on it:\n")
+					message.WriteString(" can't be safely removed from state because the following resources depend on it:\n")
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
 						fmt.Fprintf(&message, " * %-15q (%s)\n", depUrn.Name(), depUrn)
 					}
-					message.WriteString("\nDelete those resources first or pass --target-dependents.")
+					message.WriteString("\nRemove those resources from state first or pass --target-dependents.")
 					return errors.New(message.String())
 				case edit.ResourceProtectedError:
 					return fmt.Errorf(
-						"%s can't be safely deleted because it is protected. "+
-							"Re-run this command with --force to force deletion", string(e.Condemned.URN))
+						"%s can't be safely removed from state because it is protected. "+
+							"Re-run this command with --force to force removal", string(e.Condemned.URN))
 				default:
 					return err
 				}
 			}
 			if all {
-				fmt.Fprintln(cmd.OutOrStdout(), "Resources deleted")
+				fmt.Fprintln(cmd.OutOrStdout(), "Resources removed from state")
 			} else if nDeleted == 1 {
-				fmt.Fprintln(cmd.OutOrStdout(), "Resource deleted")
+				fmt.Fprintln(cmd.OutOrStdout(), "Resource removed from state")
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "%d resources deleted\n", nDeleted)
+				fmt.Fprintf(cmd.OutOrStdout(), "%d resources removed from state\n", nDeleted)
 			}
 			return nil
 		},
@@ -157,10 +158,10 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
+	cmd.Flags().BoolVar(&force, "force", false, "Force removal of protected resources")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
-	cmd.Flags().BoolVar(&all, "all", false, "Delete all resources in the stack")
-	cmd.Flags().BoolVar(&targetDependents, "target-dependents", false, "Delete the URN and all its dependents")
+	cmd.Flags().BoolVar(&all, "all", false, "Remove all resources from the stack's state")
+	cmd.Flags().BoolVar(&targetDependents, "target-dependents", false, "Remove the URN and all its dependents")
 	return cmd
 }
 
@@ -222,8 +223,8 @@ func computeStateDeleteOrder(
 		}
 		if next == nil {
 			return nil, errors.New(
-				"could not order deletions: selected resources have cyclic or conflicting dependencies; " +
-					"try deleting them one at a time")
+				"could not order removals: selected resources have cyclic or conflicting dependencies; " +
+					"try removing them one at a time")
 		}
 		order = append(order, next)
 		delete(remaining, next)
