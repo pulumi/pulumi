@@ -73,7 +73,7 @@ func TestGetPulumiAccountDetails(t *testing.T) {
 				Name:        "test-org",
 				GitHubLogin: "test-org",
 			}},
-			TokenInfo: &serviceTokenInfo{
+			TokenInfo: &workspace.TokenInformation{
 				Name: "my-token",
 			},
 		}
