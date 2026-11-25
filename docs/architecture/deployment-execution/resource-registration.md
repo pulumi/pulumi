@@ -197,10 +197,10 @@ flowchart TD
 A language SDK's resource `get` method sends a
 [](pulumirpc.ResourceMonitor.ReadResource) request with the resource's type,
 name, and resource ID. The request can also include a provider reference and
-state properties. The monitor resolves the
-provider, using the default provider when the program does not specify one,
-and emits a `ReadResourceEvent`. This is a read of a custom resource. Calls
-to provider data-source functions use [](pulumirpc.ResourceMonitor.Invoke).
+state properties. The monitor resolves the provider, using the default provider
+when the program does not specify one. It emits a `ReadResourceEvent` for both
+explicit and default providers. This is a read of a custom resource. Calls to
+provider data-source functions use [](pulumirpc.ResourceMonitor.Invoke).
 
 During `pulumi preview` and `pulumi up`, the resulting `ReadStep` fetches
 live state through [](pulumirpc.ResourceProvider.Read). The read path does not
@@ -218,22 +218,15 @@ an error.
 
 For a successful read, return the resource ID and live output properties.
 If there are no output properties, return an empty property map. For a
-missing resource, return a response with an empty ID and omit `properties`.
-A missing resource fails the `get` with a resource-does-not-exist error.
+missing resource, leave `properties` unset (nil in the gRPC response).
+The engine uses that field to detect a missing resource and returns a
+resource-does-not-exist error.
 
 On update, the engine records an external resource with the program-supplied
-properties as inputs, the provider's returned properties as outputs, and the
-returned ID when present. The read step does not use the response's
-`inputs` field. The SDK receives the read outputs for use by the rest of
+properties as inputs and the provider's returned properties as outputs.
+It uses the returned ID when present and the requested ID otherwise.
+The read step does not use the response's `inputs` field. The SDK receives the read outputs for use by the rest of
 the program.
-
-A regular `pulumi refresh` reads external resources from the snapshot without
-running the program. The `RefreshStep` sends the previous inputs as
-`inputs` and the previous outputs as `properties`. It can use the provider's
-returned inputs to update the snapshot and removes the record when the
-resource is missing. For external resources, the refresh step compares
-property maps directly and skips the provider's `Diff` call. With
-`--run-program`, evaluating `get` runs the program read path described above.
 
 (step-generation-diff)=
 ### Diffing
