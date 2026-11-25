@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Allow programs up to five seconds to finish cleanup and flush telemetry after deployment errors
-time: 2026-11-20T12:00:00Z
