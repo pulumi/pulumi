@@ -2557,11 +2557,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// If we're running any transforms we need to update all the property values to Outputs to track
-	// dependencies. Skip when uses_output_values is set — the SDK has already placed per-leaf dependency
-	// information on inputs as OutputValues, which carries richer attribution than the flat
-	// propertyDependencies map upgradeOutputValues would stamp onto top-level values.
-	if len(req.Transforms) > 0 && !usesOutputValues {
+	// We want to update all property values to Outputs to track dependencies. Skip when uses_output_values is set — the
+	// SDK has already placed per-leaf dependency information on inputs as OutputValues, which carries richer
+	// attribution than the flat propertyDependencies map upgradeOutputValues would stamp onto top-level values.
+	if !usesOutputValues {
 		props = upgradeOutputValues(props, propertyDependencies)
 	}
 
@@ -3137,7 +3136,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Dependencies:            rawDependencies,
 			Provider:                providerRef.String(),
 			InitErrors:              nil,
-			PropertyDependencies:    rawPropertyDependencies,
 			DeleteBeforeReplace:     opts.DeleteBeforeReplace,
 			IgnoreChanges:           ignoreChanges,
 			AdditionalSecretOutputs: additionalSecretKeys,
@@ -3563,7 +3561,9 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp any, 
 }
 
 // upgradeOutputValues ensures each value in m carries at least the dependencies recorded
-// for its key in propertyDependencies.
+// for its key in propertyDependencies. Dependency entries whose key is not present in m
+// are materialized as a null-valued OutputValue so downstream consumers that derive the
+// per-property dependency map from the values alone do not lose them.
 func upgradeOutputValues(
 	m property.Map, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
 ) property.Map {
@@ -3578,6 +3578,12 @@ func upgradeOutputValues(
 			}
 		}
 		result[k] = v
+	}
+	for k, deps := range propertyDependencies {
+		if _, has := result[string(k)]; has || deps.IsEmpty() {
+			continue
+		}
+		result[string(k)] = property.New(property.Null).WithDependencies(deps.ToSlice())
 	}
 	return property.NewMap(result)
 }

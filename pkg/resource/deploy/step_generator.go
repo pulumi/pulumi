@@ -781,11 +781,6 @@ func (sg *stepGenerator) getOldResource(
 func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 
-	// Downgrade any OutputValues carried on the goal to plain values so the rest of the step generator
-	// (including provider Check calls and state storage) sees the historical shape. Remote components do
-	// not reach the step generator, so their OutputValues continue to flow through Construct untouched.
-	goal.Properties = downgradeOutputValues(goal.Properties)
-
 	parent := sg.deployment.rewriteStateMigrationURN(goal.Parent)
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -852,6 +847,15 @@ func (sg *stepGenerator) generateResourceSteps(
 	if err := sg.deployment.normalizeStateMigrationGoal(goal); err != nil {
 		return nil, false, fmt.Errorf("normalizing resource goal for %s after state migration: %w", urn, err)
 	}
+
+	// source_eval stamps all per-property dependencies onto goal.Properties as OutputValue deps.
+	// Populate goal.PropertyDependencies from those values (it is the step generator's job to derive
+	// this map; source_eval does not set it), then downgrade to plain values so the rest of the engine
+	// (provider Check calls, state storage) continues to see the historical shape. Remote components
+	// do not reach the step generator; their OutputValues flow through Construct untouched.
+	goal.PropertyDependencies = extractPropertyDependencies(goal.Properties, goal.PropertyDependencies)
+	goal.Properties = downgradeOutputValues(goal.Properties)
+
 	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
 
 	var aliasUrns []resource.URN
@@ -3868,6 +3872,34 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 	}
 
 	return value
+}
+
+// extractPropertyDependencies returns the per-property dependency map derived from the OutputValue
+// deps carried on each top-level value in m, unioned with the entries already present in existing.
+// Returns nil if the result would be empty.
+func extractPropertyDependencies(
+	m property.Map, existing map[resource.PropertyKey][]resource.URN,
+) map[resource.PropertyKey][]resource.URN {
+	var result map[resource.PropertyKey][]resource.URN
+	add := func(k resource.PropertyKey, deps []resource.URN) {
+		if len(deps) == 0 {
+			return
+		}
+		if result == nil {
+			result = map[resource.PropertyKey][]resource.URN{}
+		}
+		result[k] = deps
+	}
+	for k, v := range m.All() {
+		pk := resource.PropertyKey(k)
+		add(pk, extendOutputDependencies(existing[pk], v))
+	}
+	for k, deps := range existing {
+		if _, has := result[k]; !has {
+			add(k, deps)
+		}
+	}
+	return result
 }
 
 // downgradeOutputValues recursively strips dependency information from a [property.Map].
