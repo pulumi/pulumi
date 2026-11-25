@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,8 +34,12 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -89,71 +94,203 @@ type cacheEntry struct {
 	Notifications []Notification `json:"notifications"`
 }
 
-// Start returns cached notifications if they are fresh, and otherwise fetches them in the background.
-// The returned function yields the notifications if they have arrived by the time it is called, and
-// nil otherwise, so it never delays the command.
-func Start(ctx context.Context, url string) func() []Notification {
+type source struct {
+	key   string
+	fetch func(context.Context) ([]Notification, error)
+	// dismiss, if set, also dismisses the notification where it came from.
+	dismiss func(ctx context.Context, id string) error
+}
+
+// sources returns where to fetch notifications from: the static file, and the Pulumi Cloud inbox of
+// the current login's default org, if there is one.
+func sources(staticURL string) []source {
+	static := source{key: staticSource, fetch: func(ctx context.Context) ([]Notification, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, staticURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		var raw []json.RawMessage
+		if err := decodeResponse(http.DefaultClient.Do(req))(&raw); err != nil {
+			return nil, err
+		}
+		return decode(raw), nil
+	}}
+
+	// ponytail: like the update check, this only knows the stored current login, so
+	// PULUMI_BACKEND_URL, project backend URLs and PULUMI_ACCESS_TOKEN-only logins get no Cloud
+	// notifications. Resolve the backend as the commands do if those users need them.
+	creds, err := workspace.GetStoredCredentials()
+	if err != nil || creds.Current == "" || diy.IsDIYBackendURL(creds.Current) {
+		return []source{static}
+	}
+	cloudURL, token := creds.Current, creds.Accounts[creds.Current].AccessToken
+
+	org := env.DefaultOrg.Value()
+	if org == "" {
+		if config, err := workspace.GetPulumiConfig(); err == nil {
+			org = config.BackendConfig[cloudURL].DefaultOrg
+		}
+	}
+
+	c := client.NewClient(cloudURL, token, false, cmdutil.Diag())
+	// inbox returns the path of the org's Notification Center inbox, or "" if the user has no org.
+	inbox := func(ctx context.Context) (string, error) {
+		org := org
+		if org == "" {
+			resp, err := c.GetDefaultOrg(ctx)
+			if err != nil || resp.GitHubLogin == "" {
+				return "", err
+			}
+			org = resp.GitHubLogin
+		}
+		return "/api/preview/orgs/" + url.PathEscape(org) + "/notifications", nil
+	}
+
+	cloud := source{key: cloudURL + "/" + org}
+	cloud.fetch = func(ctx context.Context) ([]Notification, error) {
+		path, err := inbox(ctx)
+		if err != nil || path == "" {
+			return []Notification{}, err
+		}
+		var resp struct {
+			Notifications []struct {
+				ID          string  `json:"id"`
+				Title       string  `json:"title"`
+				Body        *string `json:"body"`
+				DeepLinkURL *string `json:"deepLinkUrl"`
+				Dismissible bool    `json:"dismissible"`
+			} `json:"notifications"`
+		}
+		err = decodeResponse(c.RawCall(
+			ctx, http.MethodGet, path, url.Values{"unreadOnly": {"true"}}, nil, nil, false))(&resp)
+		if err != nil {
+			return nil, err
+		}
+
+		ns := []Notification{}
+		for _, item := range resp.Notifications {
+			var lines []string
+			if item.Body != nil {
+				lines = append(lines, *item.Body)
+			}
+			if item.DeepLinkURL != nil {
+				if link := client.CloudConsoleURL(cloudURL, *item.DeepLinkURL); link != "" {
+					lines = append(lines, link)
+				}
+			}
+			// Items that can't be dismissed mirror a problem that needs fixing, such as billing.
+			severity := diag.Error
+			if item.Dismissible {
+				severity = diag.Warning
+			}
+			ns = append(ns, Notification{
+				Title: item.Title, ID: item.ID, Overview: strings.Join(lines, "\n"), Severity: severity, SchemaVersion: 1,
+			})
+		}
+		return ns, nil
+	}
+	cloud.dismiss = func(ctx context.Context, id string) error {
+		path, err := inbox(ctx)
+		if err != nil || path == "" {
+			return err
+		}
+		body, err := json.Marshal(map[string][]string{"ids": {id}})
+		if err != nil {
+			return err
+		}
+		return decodeResponse(c.RawCall(
+			ctx, http.MethodPost, path+"/dismiss", nil, bytes.NewReader(body), nil, false))(nil)
+	}
+	return []source{static, cloud}
+}
+
+// stale returns the sources without a fresh cache entry.
+func stale(ss []source, cache map[string]cacheEntry) []source {
+	return slices.DeleteFunc(slices.Clone(ss), func(s source) bool {
+		entry, ok := cache[s.key]
+		return ok && time.Since(entry.FetchedAt) < cacheTTL
+	})
+}
+
+// Start returns the notifications cached for every source, and fetches those that are missing or
+// stale in the background. The returned function yields them all if the fetches have finished by
+// the time it is called, and only the fresh cached ones otherwise, so it never delays the command.
+func Start(ctx context.Context, staticURL string) func() []Notification {
+	ss := sources(staticURL)
 	cache := readCache()
-	if entry, ok := cache[staticSource]; ok && time.Since(entry.FetchedAt) < cacheTTL {
-		return func() []Notification { return entry.Notifications }
+	toFetch := stale(ss, cache)
+
+	var cached []Notification
+	for _, s := range ss {
+		if !slices.ContainsFunc(toFetch, func(f source) bool { return f.key == s.key }) {
+			cached = append(cached, cache[s.key].Notifications...)
+		}
+	}
+	if len(toFetch) == 0 {
+		return func() []Notification { return cached }
 	}
 
 	result := make(chan []Notification, 1)
 	go func() {
-		ns, err := refresh(ctx, url, cache)
+		fetched, err := refresh(ctx, toFetch, cache)
 		if err != nil {
 			slog.InfoContext(ctx, "error fetching notifications", "err", err)
 		}
-		result <- ns
+		result <- append(slices.Clone(cached), fetched...)
 	}()
 	return func() []Notification {
 		select {
 		case ns := <-result:
 			return ns
 		default:
-			return nil
+			return cached
 		}
 	}
 }
 
-// refresh fetches the notifications and, if that succeeds, caches them. Concurrent CLI processes
-// may overwrite each other's cache; the losing process's entries are simply fetched again later.
-func refresh(ctx context.Context, url string, cache map[string]cacheEntry) ([]Notification, error) {
+// refresh fetches each source, caching and returning the notifications from those that succeed.
+// Concurrent CLI processes may overwrite each other's cache; the losing process's entries are
+// simply fetched again later.
+func refresh(ctx context.Context, ss []source, cache map[string]cacheEntry) ([]Notification, error) {
 	contract.Requiref(cache != nil, "cache", "must not be nil")
-	ns, err := fetch(ctx, url)
-	if err != nil {
-		return nil, err
+	var ns []Notification
+	var errs []error
+	for _, s := range ss {
+		fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
+		fetched, err := s.fetch(fetchCtx)
+		cancel()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", s.key, err))
+			continue
+		}
+		cache[s.key] = cacheEntry{FetchedAt: time.Now(), Notifications: fetched}
+		ns = append(ns, fetched...)
 	}
 
-	cache[staticSource] = cacheEntry{FetchedAt: time.Now(), Notifications: ns}
-	if err := writeJSON(cacheFile, cache); err != nil {
-		slog.InfoContext(ctx, "error caching notifications", "err", err)
+	if len(errs) < len(ss) {
+		if err := writeJSON(cacheFile, cache); err != nil {
+			slog.InfoContext(ctx, "error caching notifications", "err", err)
+		}
 	}
-	return ns, nil
+	return ns, errors.Join(errs...)
 }
 
-func fetch(ctx context.Context, url string) ([]Notification, error) {
-	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
+// decodeResponse checks that a response succeeded, and returns a function that decodes its JSON body
+// into v, or only closes it if v is nil.
+func decodeResponse(resp *http.Response, err error) func(v any) error {
+	return func(v any) error {
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			return fmt.Errorf("unexpected status: %s", resp.Status)
+		}
+		if v == nil {
+			return nil
+		}
+		return json.NewDecoder(resp.Body).Decode(v)
 	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetching %s: %s", url, resp.Status)
-	}
-
-	var raw []json.RawMessage
-	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return nil, err
-	}
-	return decode(raw), nil
 }
 
 // decode skips entries it can't understand, so that one malformed or newer-format entry doesn't
@@ -298,16 +435,15 @@ func due(n Notification, shown map[string]time.Time) bool {
 }
 
 // Dismiss stops the notification whose ID starts with prefix from being shown again, and returns it.
-func Dismiss(ctx context.Context, url, prefix string) (Notification, error) {
+func Dismiss(ctx context.Context, staticURL, prefix string) (Notification, error) {
 	if len(prefix) < minPrefix {
 		return Notification{}, fmt.Errorf("the ID prefix must be at least %d characters long", minPrefix)
 	}
 
+	ss := sources(staticURL)
 	cache := readCache()
-	if entry, ok := cache[staticSource]; !ok || time.Since(entry.FetchedAt) >= cacheTTL {
-		if _, err := refresh(ctx, url, cache); err != nil {
-			slog.InfoContext(ctx, "error fetching notifications", "err", err)
-		}
+	if _, err := refresh(ctx, stale(ss, cache), cache); err != nil {
+		slog.InfoContext(ctx, "error fetching notifications", "err", err)
 	}
 
 	type match struct {
@@ -316,11 +452,11 @@ func Dismiss(ctx context.Context, url, prefix string) (Notification, error) {
 	}
 	var all []Notification
 	var matches []match
-	for source, entry := range cache {
-		for _, n := range entry.Notifications {
+	for _, s := range ss {
+		for _, n := range cache[s.key].Notifications {
 			all = append(all, n)
 			if strings.HasPrefix(strings.ToLower(n.ID), strings.ToLower(prefix)) {
-				matches = append(matches, match{source, n})
+				matches = append(matches, match{s.key, n})
 			}
 		}
 	}
@@ -360,7 +496,17 @@ func Dismiss(ctx context.Context, url, prefix string) (Notification, error) {
 		})
 	}
 
-	return m.notification, writeJSON(dismissedFile, dismissed)
+	if err := writeJSON(dismissedFile, dismissed); err != nil {
+		return m.notification, err
+	}
+	for _, s := range ss {
+		if s.key == m.source && s.dismiss != nil {
+			if err := s.dismiss(ctx, m.notification.ID); err != nil {
+				return m.notification, fmt.Errorf("dismissing in Pulumi Cloud: %w", err)
+			}
+		}
+	}
+	return m.notification, nil
 }
 
 // shortPrefixes maps each lowercased ID to its shortest prefix, of at least minPrefix characters,
