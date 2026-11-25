@@ -235,8 +235,8 @@ func ShownAfter(commandPath string) bool {
 
 // Print writes the notifications that apply to the given CLI version, are due, and haven't been
 // dismissed, to the sink's stderr. Errors are due every time, warnings once a day, and anything else
-// only once.
-func Print(sink diag.Sink, ns []Notification, cliVersion string) {
+// only once. It reports whether it wrote any notification.
+func Print(sink diag.Sink, ns []Notification, cliVersion string) bool {
 	dismissed := map[string]bool{}
 	for _, ids := range readDismissed() {
 		for _, id := range ids {
@@ -244,7 +244,7 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 		}
 	}
 	shown := readShown()
-	changed := false
+	printed, changed := false, false
 
 	// Builds without a version stamped in at link time have an empty version, which won't parse.
 	cli, err := semver.ParseTolerant(cliVersion)
@@ -255,6 +255,7 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 			continue
 		}
 		sink.Infoerrf(diag.RawMessage("", render(n, cliVersion, prefixes[strings.ToLower(n.ID)])))
+		printed = true
 		// Infos are only shown once, so there is nothing to dismiss.
 		dismissible = dismissible || n.Severity == diag.Warning || n.Severity == diag.Error
 		if n.Severity != diag.Error {
@@ -267,7 +268,7 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 			colors.SpecCommand+"`pulumi notifications dismiss <ID>`"+colors.Reset+"."))
 	}
 	if !changed {
-		return
+		return printed
 	}
 
 	// Forget notifications that are no longer cached, which a source drops only once it has been
@@ -284,6 +285,7 @@ func Print(sink diag.Sink, ns []Notification, cliVersion string) {
 	if err := writeJSON(shownFile, shown); err != nil {
 		slog.Info("error recording shown notifications", "err", err)
 	}
+	return printed
 }
 
 func due(n Notification, shown map[string]time.Time) bool {
