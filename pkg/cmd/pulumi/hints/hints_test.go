@@ -438,3 +438,19 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 		})
 	}
 }
+
+func TestNeoDebugHint(t *testing.T) {
+	t.Parallel()
+
+	update := NeoDebug("https://app.pulumi.com/org/proj/stack/updates/3?explainFailure", "pulumi neo --debug-update")
+	assert.Equal(t, "Pulumi Neo can help with these diagnostics: "+
+		"https://app.pulumi.com/org/proj/stack/updates/3?explainFailure\n"+
+		"Or run `pulumi neo --debug-update` for an interactive agent in your terminal.", update.Message)
+
+	// A new user sees the hint on a Pulumi Cloud backend, but not on a DIY backend.
+	tm := newTestManager(t)
+	assert.Contains(t, tm.run(update), "?explainFailure")
+	tm = newTestManager(t)
+	tm.local = true
+	assert.Empty(t, tm.run(update))
+}

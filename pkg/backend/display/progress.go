@@ -845,18 +845,9 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Neo to explain warnings or errors.
-	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
-	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
-	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteWarningOrError && !display.opts.SuppressPermalink && showNeoLink {
-		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
-		display.println("    " +
-			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
-		display.println("    " + "Or run `" + neoDebugCommand(display.isPreview) +
-			"` for an interactive agent in your terminal.")
-		display.println("")
+	// Offer a link to Neo to explain warnings or errors.
+	if wroteWarningOrError && display.opts.OfferNeoLink != nil {
+		display.opts.OfferNeoLink(ExplainFailureLink(display.permalink), neoDebugCommand(display.isPreview))
 	}
 }
 

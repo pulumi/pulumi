@@ -699,7 +699,6 @@ func assertDiffDisplay(
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 		DeterministicOutput:  true,
-		ShowLinkToNeo:        false,
 	})
 
 	for _, e := range events {
@@ -755,7 +754,6 @@ func assertProgressDisplay(
 			Stdout:               &stdout,
 			Stderr:               &stderr,
 			DeterministicOutput:  true,
-			ShowLinkToNeo:        false,
 		}, false,
 	)
 

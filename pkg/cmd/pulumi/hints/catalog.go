@@ -46,3 +46,17 @@ func ESCCredentials(message string) Hint {
 		HideFromNewUsers: true,
 	}
 }
+
+// NeoDebug suggests debugging a preview's or update's diagnostics with Pulumi Neo, at link or by running debugCommand.
+func NeoDebug(link, debugCommand string) Hint {
+	return Hint{
+		ID:       "neo-debug",
+		Cooldown: 7 * 24 * time.Hour,
+		Message: "Pulumi Neo can help with these diagnostics: " + link + "\n" +
+			"Or run `" + debugCommand + "` for an interactive agent in your terminal.",
+		CloudOnly: true,
+	}
+}
+
+// OfferNeoDebug offers the NeoDebug hint. Commands set it as the display's OfferNeoLink.
+func (m *Manager) OfferNeoDebug(link, debugCommand string) { m.Offer(NeoDebug(link, debugCommand)) }
