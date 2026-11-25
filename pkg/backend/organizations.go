@@ -59,11 +59,16 @@ func getBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
 // from older versions of the Pulumi CLI that did not always store the current selected stack with a fully qualified
 // stack name. For this class of existing users, we want to ensure that we are selecting the correct organization
 // as their CLI is brought up-to-date.
-func GetLegacyDefaultOrgFallback(b Backend, currentProject *workspace.Project) (string, error) {
-	return getLegacyDefaultOrgFallback(b, currentProject, getBackendConfigDefaultOrg)
+func GetLegacyDefaultOrgFallback(
+	ctx context.Context,
+	b Backend,
+	currentProject *workspace.Project,
+) (string, error) {
+	return getLegacyDefaultOrgFallback(ctx, b, currentProject, getBackendConfigDefaultOrg)
 }
 
 func getLegacyDefaultOrgFallback(
+	ctx context.Context,
 	b Backend,
 	currentProject *workspace.Project,
 	getBackendConfigDefaultOrgF func(*workspace.Project) (string, error),
@@ -83,7 +88,7 @@ func getLegacyDefaultOrgFallback(
 	// looking up the backend opinion. This was the legacy fallback behavior we are preserving for smooth
 	// migrations between CLI versions. Team and service principal tokens use the default organization instead.
 	if userConfiguredDefaultOrg == "" {
-		return GetCurrentUserOrg(context.TODO(), b)
+		return GetCurrentUserOrg(ctx, b)
 	}
 
 	return "", nil

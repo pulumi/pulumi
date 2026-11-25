@@ -63,7 +63,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 			return "", nil
 		}
 
-		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		org, err := getLegacyDefaultOrgFallback(t.Context(), testBackend, nil, defaultOrgConfigLookupFunc)
 		require.NoError(t, err)
 		assert.Empty(t, org)
 	})
@@ -80,7 +80,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 			return "some-configured-org", nil
 		}
 
-		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		org, err := getLegacyDefaultOrgFallback(t.Context(), testBackend, nil, defaultOrgConfigLookupFunc)
 		require.NoError(t, err)
 		assert.Empty(t, org)
 	})
@@ -100,7 +100,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 			return "", nil
 		}
 
-		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		org, err := getLegacyDefaultOrgFallback(t.Context(), testBackend, nil, defaultOrgConfigLookupFunc)
 		require.NoError(t, err)
 		assert.Equal(t, user, org)
 	})
@@ -126,7 +126,7 @@ func TestGetLegacyDefaultOrgFallback(t *testing.T) {
 			return "", nil
 		}
 
-		org, err := getLegacyDefaultOrgFallback(testBackend, nil, defaultOrgConfigLookupFunc)
+		org, err := getLegacyDefaultOrgFallback(t.Context(), testBackend, nil, defaultOrgConfigLookupFunc)
 		require.NoError(t, err)
 		assert.Equal(t, "sp-org", org)
 	})
