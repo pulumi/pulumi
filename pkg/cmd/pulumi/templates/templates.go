@@ -223,6 +223,24 @@ func (s *Source) Close() error {
 	return s.cleanup.run()
 }
 
+// stripControlChars returns s with ASCII and C1 control characters removed, replacing
+// tabs, newlines, and carriage returns with spaces. Template names, descriptions, and
+// publishers come from remote sources (the registry, org template repositories) and are
+// written to the terminal when browsing templates; a raw ESC byte would let a template
+// author inject escape sequences that rewrite or hide other entries in the listing.
+func stripControlChars(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t' || r == '\n' || r == '\r':
+			return ' '
+		case r < 0x20 || r == 0x7f || (0x80 <= r && r <= 0x9f):
+			return -1
+		default:
+			return r
+		}
+	}, s)
+}
+
 // A template entry to show in the chooser.
 type Template interface {
 	Name() string
