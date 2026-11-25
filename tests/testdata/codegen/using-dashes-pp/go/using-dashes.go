@@ -1,7 +1,7 @@
 package main
 
 import (
-	usingdashes "example.com/pulumi-using-dashes/sdk/go/using-dashes"
+	"example.com/pulumi-using-dashes/sdk/go/usingdashes"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

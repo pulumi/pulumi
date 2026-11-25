@@ -21,9 +21,11 @@
     "files": [
         "index.ts",
         "provider.ts",
+        "rootResource.ts",
         "submodule1/fooencryptedBarClass.ts",
         "submodule1/index.ts",
         "submodule1/moduleResource.ts",
+        "types/enums/index.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",

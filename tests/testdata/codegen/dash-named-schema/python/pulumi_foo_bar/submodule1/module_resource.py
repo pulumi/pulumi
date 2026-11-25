@@ -13,20 +13,46 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from .. import _utilities
+from .. import _enums as _root_enums
 from .. import _inputs as _root_inputs
 from .. import outputs as _root_outputs
+from ..root_resource import RootResource
 
 __all__ = ['ModuleResourceArgs', 'ModuleResource']
 
 @pulumi.input_type
 class ModuleResourceArgs:
     def __init__(__self__, *,
+                 root: pulumi.Input[Optional['RootResource']] = None,
+                 shade: pulumi.Input[Optional['_root_enums.Shade']] = None,
                  thing: pulumi.Input[Optional['_root_inputs.TopLevelArgs']] = None):
         """
         The set of arguments for constructing a ModuleResource resource.
         """
+        if root is not None:
+            pulumi.set(__self__, "root", root)
+        if shade is not None:
+            pulumi.set(__self__, "shade", shade)
         if thing is not None:
             pulumi.set(__self__, "thing", thing)
+
+    @_builtins.property
+    @pulumi.getter
+    def root(self) -> pulumi.Input[Optional['RootResource']]:
+        return pulumi.get(self, "root")
+
+    @root.setter
+    def root(self, value: pulumi.Input[Optional['RootResource']]):
+        pulumi.set(self, "root", value)
+
+    @_builtins.property
+    @pulumi.getter
+    def shade(self) -> pulumi.Input[Optional['_root_enums.Shade']]:
+        return pulumi.get(self, "shade")
+
+    @shade.setter
+    def shade(self, value: pulumi.Input[Optional['_root_enums.Shade']]):
+        pulumi.set(self, "shade", value)
 
     @_builtins.property
     @pulumi.getter
@@ -44,6 +70,8 @@ class ModuleResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 root: pulumi.Input[Optional['RootResource']] = None,
+                 shade: pulumi.Input[Optional['_root_enums.Shade']] = None,
                  thing: pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict', '_root_outputs.TopLevel']]] = None,
                  __props__=None):
         """
@@ -76,6 +104,8 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 root: pulumi.Input[Optional['RootResource']] = None,
+                 shade: pulumi.Input[Optional['_root_enums.Shade']] = None,
                  thing: pulumi.Input[Optional[Union['_root_inputs.TopLevelArgs', '_root_inputs.TopLevelArgsDict', '_root_outputs.TopLevel']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -86,6 +116,8 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+            __props__.__dict__["root"] = root
+            __props__.__dict__["shade"] = shade
             __props__.__dict__["thing"] = thing
         super(ModuleResource, __self__).__init__(
             'foo-bar:submodule1:ModuleResource',
@@ -109,6 +141,8 @@ class ModuleResource(pulumi.CustomResource):
 
         __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+        __props__.__dict__["root"] = None
+        __props__.__dict__["shade"] = None
         __props__.__dict__["thing"] = None
         return ModuleResource(resource_name, opts=opts, __props__=__props__)
 
@@ -117,6 +151,16 @@ class ModuleResource(pulumi.CustomResource):
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
         return pulumi.runtime.exists_resource(None, 'foo-bar:submodule1:ModuleResource', id, __props__, opts or pulumi.ResourceOptions())
+
+    @_builtins.property
+    @pulumi.getter
+    def root(self) -> pulumi.Output[Optional['RootResource']]:
+        return pulumi.get(self, "root")
+
+    @_builtins.property
+    @pulumi.getter
+    def shade(self) -> pulumi.Output[Optional['_root_enums.Shade']]:
+        return pulumi.get(self, "shade")
 
     @_builtins.property
     @pulumi.getter

@@ -14,18 +14,46 @@
         }
       },
       "type": "object"
+    },
+    "foo-bar:index:Shade": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "Dark",
+          "value": "dark"
+        },
+        {
+          "name": "Light",
+          "value": "light"
+        }
+      ]
     }
   },
   "resources": {
+    "foo-bar:index:RootResource": {
+      "type": "object"
+    },
     "foo-bar:submodule1:ModuleResource": {
       "properties": {
         "thing": {
           "$ref": "#/types/foo-bar:index:TopLevel"
+        },
+        "shade": {
+          "$ref": "#/types/foo-bar:index:Shade"
+        },
+        "root": {
+          "$ref": "#/resources/foo-bar:index:RootResource"
         }
       },
       "inputProperties": {
         "thing": {
           "$ref": "#/types/foo-bar:index:TopLevel"
+        },
+        "shade": {
+          "$ref": "#/types/foo-bar:index:Shade"
+        },
+        "root": {
+          "$ref": "#/resources/foo-bar:index:RootResource"
         }
       },
       "type": "object"

@@ -15,7 +15,9 @@ import (
 type ModuleResource struct {
 	pulumi.CustomResourceState
 
-	Thing foo.TopLevelPtrOutput `pulumi:"thing"`
+	Root  foo.RootResourceOutput `pulumi:"root"`
+	Shade foo.ShadePtrOutput     `pulumi:"shade"`
+	Thing foo.TopLevelPtrOutput  `pulumi:"thing"`
 }
 
 // NewModuleResource registers a new resource with the given unique name, arguments, and options.
@@ -64,11 +66,15 @@ func ModuleResourceExists(ctx *pulumi.Context,
 }
 
 type moduleResourceArgs struct {
-	Thing *foo.TopLevel `pulumi:"thing"`
+	Root  *foo.RootResource `pulumi:"root"`
+	Shade *foo.Shade        `pulumi:"shade"`
+	Thing *foo.TopLevel     `pulumi:"thing"`
 }
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
+	Root  foo.RootResourceInput
+	Shade foo.ShadePtrInput
 	Thing foo.TopLevelPtrInput
 }
 
@@ -107,6 +113,14 @@ func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {
 
 func (o ModuleResourceOutput) ToModuleResourceOutputWithContext(ctx context.Context) ModuleResourceOutput {
 	return o
+}
+
+func (o ModuleResourceOutput) Root() foo.RootResourceOutput {
+	return o.ApplyT(func(v *ModuleResource) foo.RootResourceOutput { return v.Root }).(foo.RootResourceOutput)
+}
+
+func (o ModuleResourceOutput) Shade() foo.ShadePtrOutput {
+	return o.ApplyT(func(v *ModuleResource) foo.ShadePtrOutput { return v.Shade }).(foo.ShadePtrOutput)
 }
 
 func (o ModuleResourceOutput) Thing() foo.TopLevelPtrOutput {
