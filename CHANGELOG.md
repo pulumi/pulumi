@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.278.0 (2026-11-25)
+
+### Features
+
+- [protobuf] Let providers send a product hint for a failure, starting with dynamic credentials [#25783](https://github.com/pulumi/pulumi/pull/25783)
+- [cli] Add notifications from Pulumi after commands, which `pulumi notifications dismiss` hides and `PULUMI_HIDE_NOTIFICATIONS` turns off [#25686](https://github.com/pulumi/pulumi/pull/25686)
+
+### Bug Fixes
+
+- [sdk/nodejs] Flush OpenTelemetry traces when Node.js programs exit with errors [#25800](https://github.com/pulumi/pulumi/pull/25800)
+- [cli/policy] Explain typos, unknown stacks, change request IDs and invalid flags in the experimental `pulumi policy exception` commands [#25736](https://github.com/pulumi/pulumi/pull/25736)
+- [pkg] Render documentation references that fail to bind as their fallback name instead of the empty string, and add PackageReference.InterpretPulumiRefsWithDiagnostics, which returns the rendered text with its diagnostics rather than reporting one failed reference as an error for the whole string. Deprecate PackageReference.InterpretPulumiRefs in its favor [#24762](https://github.com/pulumi/pulumi/pull/24762)
+- [sdk] Preserve caller registration stacks for child resources created or read by Python, Node.js, and Go component providers [#25754](https://github.com/pulumi/pulumi/pull/25754)
+- [sdk] Capture source locations and caller stacks for Python, Node.js, and Go Invoke requests [#25755](https://github.com/pulumi/pulumi/pull/25755)
+- [cli/engine] Avoid re-encrypting the in-memory snapshot on every step during preview, which also removes the need for `stack:encrypt` permission to run `pulumi preview` [#25793](https://github.com/pulumi/pulumi/pull/25793)
+- [sdk/python] Suppress unhandled Python interruption tracebacks during update shutdown [#25769](https://github.com/pulumi/pulumi/pull/25769)
+- [cli/display] Stop printing a `resource is awaiting` warning for each awaiting resource [#25775](https://github.com/pulumi/pulumi/pull/25775)
+- [cli] Create the verbose log file in the temp directory with owner-only permissions [#25818](https://github.com/pulumi/pulumi/pull/25818)
+- [cli] Allow programs up to five seconds to finish cleanup and flush telemetry after deployment errors [#25795](https://github.com/pulumi/pulumi/pull/25795)
+- [engine] Fix the ordering of resource registration stack traces across provider calls [#25827](https://github.com/pulumi/pulumi/pull/25827)
+- [sdk/nodejs] Stop including RPC response values in debug log messages, which could contain secret values in plaintext [#25834](https://github.com/pulumi/pulumi/pull/25834)
+- [sdk/go] Keep unexported struct fields when resolving outputs, so `JSONMarshal` works with custom JSON marshalers [#25841](https://github.com/pulumi/pulumi/pull/25841)
+
+### Improvements
+
+- [cli/new] Offer to run the command a provider suggests, such as a cloud sign-in, when `pulumi new` finds missing or expired credentials [#25598](https://github.com/pulumi/pulumi/pull/25598)
+- [cli/env] Offer to submit `pulumi env edit` changes as a change request when the environment requires approval [#24935](https://github.com/pulumi/pulumi/pull/24935)
+- [cli/env] Rename `pulumi env change-request` to `pulumi env approval` and support environment open requests. `pulumi env change-request` is deprecated [#25473](https://github.com/pulumi/pulumi/pull/25473)
+- [auto/nodejs] Expose `awaited` on `ResOpFailedEvent`, so an awaiting resource can be told apart from a failed one [#25776](https://github.com/pulumi/pulumi/pull/25776)
+- [auto/python] Expose `awaited` on `ResOpFailedEvent`, so an awaiting resource can be told apart from a failed one [#25777](https://github.com/pulumi/pulumi/pull/25777)
+- [sdk/go] Alias the update status, update result and API capability types in `apitype` to the Pulumi Cloud SDK [#25792](https://github.com/pulumi/pulumi/pull/25792)
+
+### Miscellaneous
+
+- [sdk/go] BREAKING - Return iter.Seq2 from property.Map.All, property.Map.AllStable, and property.Array.All, and rename property.Value.Secret to IsSecret [#25814](https://github.com/pulumi/pulumi/pull/25814)
 ## 3.277.0 (2026-11-18)
 
 ### Features

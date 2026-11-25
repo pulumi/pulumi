@@ -385,7 +385,7 @@ func dumpRequestVerbose(
 ) {
 	fmt.Fprintf(errW, "> %s %s\n", method, fullURL)
 	fmt.Fprintf(errW, "> Authorization: token ***\n")
-	fmt.Fprintf(errW, "> Accept: %s, application/vnd.pulumi+8\n", accept)
+	fmt.Fprintf(errW, "> Accept: %s, %s\n", accept, client.AcceptAPIVersion())
 	if contentType != "" {
 		fmt.Fprintf(errW, "> Content-Type: %s\n", contentType)
 	}
@@ -972,7 +972,7 @@ func emitDryRun(
 	}
 	headers := map[string]string{
 		"Authorization": "token ***",
-		"Accept":        accept + ", application/vnd.pulumi+8",
+		"Accept":        accept + ", " + client.AcceptAPIVersion(),
 		"User-Agent":    client.UserAgent(),
 	}
 	if contentType != "" {

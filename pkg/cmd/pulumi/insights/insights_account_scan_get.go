@@ -75,7 +75,7 @@ func newInsightsAccountScanGetCmd(factory accountScanGetClientFactory) *cobra.Co
 	args := insightsAccountScanGetArgs{output: defaultAccountScanGetOutputFormat()}
 
 	cmd := &cobra.Command{
-		Use:   "get <account> <scan-id>",
+		Use:   "get",
 		Short: "[EXPERIMENTAL] Get details for a specific Insights scan",
 		Long: "[EXPERIMENTAL] Get details for a specific Pulumi Insights scan.\n" +
 			"\n" +

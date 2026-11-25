@@ -419,29 +419,28 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		minputs, err := i.deployment.target.GetPackageConfig(req.Package())
+		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch provider config: %w", err)
 		}
-		inputs := resource.ToResourcePropertyMap(minputs)
 
 		// Calculate the inputs for the provider using the ambient config.
 		if v := req.Version(); v != nil {
-			providers.SetProviderVersion(inputs, v)
+			inputs = providers.SetProviderVersion(inputs, v)
 		}
 		if url := req.PluginDownloadURL(); url != "" {
-			providers.SetProviderURL(inputs, url)
+			inputs = providers.SetProviderURL(inputs, url)
 		}
 		if checksums := req.PluginChecksums(); checksums != nil {
-			providers.SetProviderChecksums(inputs, checksums)
+			inputs = providers.SetProviderChecksums(inputs, checksums)
 		}
 		if parameterization := req.Parameterization(); parameterization != nil {
-			providers.SetProviderName(inputs, req.Name())
-			providers.SetProviderParameterization(inputs, parameterization)
+			inputs = providers.SetProviderName(inputs, req.Name())
+			inputs = providers.SetProviderParameterization(inputs, parameterization)
 		}
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:       urn,
-			NewInputs: resource.FromResourcePropertyMap(inputs),
+			NewInputs: inputs,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate provider config: %w", err)
@@ -452,7 +451,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			Custom:                  true,
 			Delete:                  false,
 			ID:                      "",
-			Inputs:                  inputs,
+			Inputs:                  resource.ToResourcePropertyMap(inputs),
 			Outputs:                 nil,
 			Parent:                  "",
 			Protect:                 false,
@@ -511,7 +510,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Use the full provider inputs from the import file instead of ambient config.
 		// Some providers (e.g. random) don't need any config, so Inputs may be nil.
-		inputs := resource.ToResourcePropertyMap(imp.Inputs)
+		inputs := imp.Inputs
 
 		// Overlay version/URL/checksums/parameterization from the Import if present and not already
 		// in inputs.
@@ -520,22 +519,22 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, err
 		}
 		if version != nil {
-			providers.SetProviderVersion(inputs, version)
+			inputs = providers.SetProviderVersion(inputs, version)
 		}
 		if imp.PluginDownloadURL != "" {
-			providers.SetProviderURL(inputs, imp.PluginDownloadURL)
+			inputs = providers.SetProviderURL(inputs, imp.PluginDownloadURL)
 		}
 		if len(imp.PluginChecksums) > 0 {
-			providers.SetProviderChecksums(inputs, imp.PluginChecksums)
+			inputs = providers.SetProviderChecksums(inputs, imp.PluginChecksums)
 		}
 		if parameterization != nil {
-			providers.SetProviderName(inputs, pkg)
-			providers.SetProviderParameterization(inputs, parameterization)
+			inputs = providers.SetProviderName(inputs, pkg)
+			inputs = providers.SetProviderParameterization(inputs, parameterization)
 		}
 
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
 			URN:       providerURN,
-			NewInputs: resource.FromResourcePropertyMap(inputs),
+			NewInputs: inputs,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate explicit provider config for %s: %w", providerURN, err)
@@ -546,7 +545,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			Custom:                  true,
 			Delete:                  false,
 			ID:                      "",
-			Inputs:                  inputs,
+			Inputs:                  resource.ToResourcePropertyMap(inputs),
 			Outputs:                 nil,
 			Parent:                  imp.Parent,
 			Protect:                 false,

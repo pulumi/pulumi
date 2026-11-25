@@ -1066,7 +1066,7 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 	}
 	mockCurrentBackend(t, mockBackend)
 
-	newCmd := NewNewCmd()
+	newCmd := NewNewCmd(nil)
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
@@ -1129,7 +1129,7 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	}
 	mockCurrentBackend(t, mockBackend)
 
-	newCmd := NewNewCmd()
+	newCmd := NewNewCmd(nil)
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
@@ -1173,7 +1173,7 @@ func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	tempdir := t.TempDir()
 	t.Setenv("PULUMI_HOME", tempdir)
-	newCmd := NewNewCmd()
+	newCmd := NewNewCmd(nil)
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
@@ -1216,7 +1216,7 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 		NameF: func() string { return "mock" },
 	})
 
-	newCmd := NewNewCmd()
+	newCmd := NewNewCmd(nil)
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
@@ -1303,7 +1303,7 @@ resources:
 	}
 	mockCurrentBackend(t, mockBackend)
 
-	newCmd := NewNewCmd()
+	newCmd := NewNewCmd(nil)
 	var stdout, stderr bytes.Buffer
 	newCmd.SetOut(&stdout)
 	newCmd.SetErr(&stderr)
@@ -1361,7 +1361,7 @@ func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
 	useTempFilestateBackend(t)
 	dir := t.TempDir()
 	t.Chdir(dir)
-	cmd := NewNewCmd()
+	cmd := NewNewCmd(nil)
 	cmd.SetArgs([]string{"-y", "--name", "my-project"})
 
 	err := cmd.Execute()
@@ -1378,7 +1378,7 @@ func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "my-project")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
-	cmd := NewNewCmd()
+	cmd := NewNewCmd(nil)
 	cmd.SetArgs([]string{"-y"})
 
 	err := cmd.Execute()
@@ -1395,7 +1395,7 @@ func TestNewCmdYesSanitizesDefaultDirectoryName(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "my project!")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
-	cmd := NewNewCmd()
+	cmd := NewNewCmd(nil)
 	cmd.SetArgs([]string{"-y"})
 
 	err := cmd.Execute()
@@ -1411,7 +1411,7 @@ func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 	useTempFilestateBackend(t)
 	dir := t.TempDir()
 	t.Chdir(dir)
-	cmd := NewNewCmd()
+	cmd := NewNewCmd(nil)
 	cmd.SetArgs([]string{"-y", "--name", "my project"})
 
 	err := cmd.Execute()
@@ -1546,7 +1546,7 @@ func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	existing := filepath.Join(dir, "Pulumi.yaml")
 	require.NoError(t, os.WriteFile(existing, []byte("name: existing\n"), 0o600))
 	t.Chdir(dir)
-	cmd := NewNewCmd()
+	cmd := NewNewCmd(nil)
 	cmd.SetArgs([]string{"-y"})
 
 	err := cmd.Execute()

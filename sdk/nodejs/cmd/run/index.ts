@@ -23,6 +23,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
+import { isErrorAlreadyReported } from "./error";
 
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
@@ -44,6 +45,10 @@ const loggedErrors = new Set<Error>();
 let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
+    if (isErrorAlreadyReported(err)) {
+        loggedErrors.add(err);
+        return;
+    }
     if (!programRunning && !loggedErrors.has(err)) {
         log.error(err.stack || err.message || "" + err);
         // dedupe errors that we're reporting when the program is not running
@@ -127,32 +132,23 @@ process.on("beforeExit", () => {
     });
 });
 
-let hasSignaled = false;
+let hasShutdown = false;
 async function beforeExitHandler(code: number) {
-    // Signal and wait for shutdown means a successful program execution, so
-    // first check if there were any errors and bail out immediately if so.
-    if (uncaughtErrors.size > 0) {
+    // Asynchronous shutdown work can trigger beforeExit again when it completes.
+    // The `hasShutdown` marker ensures we call this only once, otherwise we'll
+    // end up calling this again and again.
+    if (hasShutdown) {
         return;
     }
-    // Similarly, if we're exiting with with a non-zero code, bail out.
-    if (code !== 0) {
-        return;
-    }
-    // `beforeExit` is called when Node.js's event loop is empty. We call
-    // `signalAndWaitForShutdown`, which is async, so it schedules more
-    // eventloop work. We have to bail out here the next time the eventloop
-    // is empty, otherwise we end up in a loop where this handler is called
-    // forever.
-    if (hasSignaled) {
-        return;
-    }
-    hasSignaled = true;
-    // Wrap in root context so the shutdown call is traced correctly
+    hasShutdown = true;
     const { withRootContext, shutdownTracing } = require("./instrumentation");
-    try {
-        await withRootContext(() => settings.signalAndWaitForShutdown());
-    } catch (err) {
-        console.error(`Error while signaling shutdown: ${err}`);
+    // Only successful programs signal monitor shutdown; failed programs still need to flush tracing.
+    if (uncaughtErrors.size === 0 && code === 0) {
+        try {
+            await withRootContext(() => settings.signalAndWaitForShutdown());
+        } catch (err) {
+            console.error(`Error while signaling shutdown: ${err}`);
+        }
     }
     try {
         await shutdownTracing();

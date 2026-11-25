@@ -16,6 +16,7 @@ package pulumi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -23,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -32,6 +34,30 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func TestIsErrorAlreadyReported(t *testing.T) {
+	t.Parallel()
+	reported := &errorAlreadyReported{errors.New("monitor stopped")}
+	userError := errors.New("user cleanup failed")
+	for _, test := range []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"unmarked transport failure", status.Error(codes.Unavailable, "monitor stopped"), false},
+		{"reported", reported, true},
+		{"wrapped", fmt.Errorf("waiting for RPCs: %w", reported), true},
+		{"multiple reported", multierror.Append(reported, reported), true},
+		{"independent user error", multierror.Append(reported, userError), false},
+		{"joined user error", errors.Join(reported, userError), false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, test.want, isErrorAlreadyReported(test.err))
+		})
+	}
+}
 
 // WithDryRun is an internal, test-only option
 // that controls whether a Context is in dryRun mode.

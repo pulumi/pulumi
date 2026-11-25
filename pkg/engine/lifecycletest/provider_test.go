@@ -1358,7 +1358,7 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 	foundDefaultProvider := false
 	for _, r := range snapshot.Resources {
 		if providers.IsDefaultProvider(r.URN) {
-			actualURL, err := pkgproviders.GetProviderDownloadURL(r.Inputs)
+			actualURL, err := pkgproviders.GetProviderDownloadURL(resource.FromResourcePropertyMap(r.Inputs))
 			require.NoError(t, err)
 			assert.Equal(t, url, actualURL)
 			foundDefaultProvider = true

@@ -70,7 +70,7 @@ func newPolicyIssueEditCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) 
 	args.outputFormat = defaultPolicyIssueGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "edit <issue-id>",
+		Use:     "edit",
 		Aliases: []string{"update"},
 		Short:   "[EXPERIMENTAL] Edit the status, priority or assignee of a policy issue",
 		Long: "[EXPERIMENTAL] Edit the status, priority or assignee of a policy issue.\n" +

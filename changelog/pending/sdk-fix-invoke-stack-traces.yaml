@@ -1,4 +1,0 @@
-component: sdk
-kind: fix
-body: Capture source locations and caller stacks for Python, Node.js, and Go Invoke requests
-time: 2026-11-18T10:46:01Z

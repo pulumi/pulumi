@@ -90,6 +90,11 @@ const currentAPIVersion = 9
 // request to the Pulumi service. See `currentAPIVersion`.
 var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
 
+// AcceptAPIVersion returns the API version value added to the `Accept` header of every request.
+func AcceptAPIVersion() string {
+	return acceptAPIVersionHeader
+}
+
 // userAgentCommand and userAgentAIAgent are written once in the cobra root's
 // PersistentPreRunE before any HTTP-issuing goroutine is spawned, then read
 // from any goroutine making an API request. The single-writer-before-readers

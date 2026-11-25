@@ -52,7 +52,7 @@ func newStatePromoteCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager)
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "promote <snippet-name>",
+		Use:   "promote",
 		Short: "Promote a snippet from state into Pulumi program code",
 		Long: `Promote a snippet from state into Pulumi program code
 

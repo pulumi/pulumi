@@ -150,7 +150,7 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 	args.outputFormat = defaultPolicyExceptionNewOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:     "new [<policy-pack>]",
+		Use:     "new",
 		Aliases: []string{"create"},
 		Short:   "[EXPERIMENTAL] Create a policy exception from a run's violations",
 		Long: "[EXPERIMENTAL] Create a policy exception from a run's violations.\n" +
