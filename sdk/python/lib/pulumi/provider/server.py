@@ -125,6 +125,11 @@ class ProviderServicer(ResourceProviderServicer):
             try:
                 return await self._construct(request, context)
             except Exception as e:  # noqa
+                if isinstance(e, pulumi.runtime.settings._ErrorAlreadyReported):
+                    context.set_trailing_metadata(
+                        (("pulumi-error-already-reported", "true"),)
+                    )
+                    await context.abort(grpc.StatusCode.CANCELLED, str(e))
                 if isinstance(e, RunError):
                     raise
                 if isinstance(e, InputPropertiesError):

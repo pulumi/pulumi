@@ -1,0 +1,7 @@
+name: provider-nested-construct-failure
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

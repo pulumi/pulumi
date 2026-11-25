@@ -13,9 +13,31 @@
 # limitations under the License.
 
 from collections import abc
+from unittest.mock import Mock
+import grpc
+from pulumi.errors import RunError
 from pulumi.runtime import rpc
+from pulumi.runtime.settings import _ErrorAlreadyReported, grpc_error_to_exception
 from typing import Any
 import typing
+
+
+def test_error_already_reported_trailer():
+    error = Mock()
+    error.code.return_value = grpc.StatusCode.UNAVAILABLE
+    error.details.return_value = "resource monitor shut down"
+    error.trailing_metadata.return_value = ()
+    unmarked = grpc_error_to_exception(error)
+    assert isinstance(unmarked, RunError)
+    assert not isinstance(unmarked, _ErrorAlreadyReported)
+
+    error.trailing_metadata.return_value = (("pulumi-error-already-reported", "false"),)
+    assert not isinstance(grpc_error_to_exception(error), _ErrorAlreadyReported)
+
+    error.trailing_metadata.return_value = (("pulumi-error-already-reported", "true"),)
+    assert isinstance(grpc_error_to_exception(error), _ErrorAlreadyReported)
+    error.code.return_value = grpc.StatusCode.UNKNOWN
+    assert isinstance(grpc_error_to_exception(error), _ErrorAlreadyReported)
 
 
 def test_get_list_element_type():

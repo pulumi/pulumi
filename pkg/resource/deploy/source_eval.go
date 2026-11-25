@@ -608,6 +608,11 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 	return client, nil
 }
 
+func monitorShutdownError(ctx context.Context, code codes.Code, message string) error {
+	contract.IgnoreError(grpc.SetTrailer(ctx, metadata.Pairs("pulumi-error-already-reported", "true")))
+	return rpcerror.New(code, message)
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
@@ -1499,7 +1504,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	case rm.regReadChan <- event:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while sending resource registration")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -1508,7 +1514,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	case result = <-event.done:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.ReadResource operation canceled, name=%s", name)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while waiting on step's done channel")
 	}
 
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
@@ -3049,7 +3056,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
 				rm.abortChan <- true
-				constructDone <- rpcerror.New(codes.Unknown, "resource monitor shut down")
+				constructDone <- monitorShutdownError(ctx, codes.Unknown, "resource monitor shut down")
 			}
 			close(constructDone)
 		}()
@@ -3063,7 +3070,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource construct canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable,
+			return nil, monitorShutdownError(ctx, codes.Unavailable,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
@@ -3180,7 +3187,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		case rm.regChan <- step:
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource registration")
+			return nil, monitorShutdownError(ctx, codes.Unavailable,
+				"resource monitor shut down while sending resource registration")
 		}
 
 		// Now block waiting for the operation to finish.
@@ -3188,7 +3196,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		case result = <-step.done:
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
-			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+			return nil, monitorShutdownError(ctx, codes.Unavailable,
+				"resource monitor shut down while waiting on step's done channel")
 		}
 		if result != nil && result.Result != ResultStateSuccess && !req.GetSupportsResultReporting() {
 			return nil, rpcerror.New(codes.Internal, "resource registration failed")
@@ -3413,7 +3422,8 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case rm.regOutChan <- step:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while sending resource outputs")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -3421,7 +3431,8 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case <-step.done:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
+		return nil, monitorShutdownError(ctx, codes.Unavailable,
+			"resource monitor shut down while waiting on output step's done channel")
 	}
 
 	// Publish the component's outputs on the registration observer now that they're final. Custom resources

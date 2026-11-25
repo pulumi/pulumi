@@ -237,6 +237,9 @@ export function getResource(
                                                     (<any>preallocError).code = rpcError.code;
                                                 }
 
+                                                Object.defineProperty(preallocError, "metadata", {
+                                                    value: rpcError.metadata,
+                                                });
                                                 preallocError.message = `failed to get resource:urn=${urn}: ${rpcError.message}`;
                                                 reject(new Error(rpcError.details));
                                             } else {
@@ -396,6 +399,9 @@ export function readResource(
                                                     (<any>preallocError).code = rpcError.code;
                                                 }
 
+                                                Object.defineProperty(preallocError, "metadata", {
+                                                    value: rpcError.metadata,
+                                                });
                                                 preallocError.message = `failed to read resource #${resolvedID} '${name}' [${t}]: ${rpcError.message}`;
                                                 reject(preallocError);
                                             } else {
@@ -872,6 +878,9 @@ export function registerResource(
 
                                                 // Node lets us hack the message as long as we do it before accessing the `stack` property.
                                                 log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}`);
+                                                Object.defineProperty(preallocError, "metadata", {
+                                                    value: rpcErr.metadata,
+                                                });
                                                 preallocError.message = `failed to register new resource ${name} [${t}]: ${rpcErr.message}`;
                                                 reject(preallocError);
                                             } else {
