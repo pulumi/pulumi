@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
@@ -3307,8 +3308,12 @@ func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.So
 	if frame.Line <= math.MaxInt32 {
 		line = int32(frame.Line)
 	}
+	filename := frame.File
+	if !filepath.IsAbs(filename) {
+		filename = stackTraceMainModule().sourceFile(filename)
+	}
 	return &pulumirpc.SourcePosition{
-		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
+		Uri:  "file:///" + path.Join(slice.Map(strings.Split(filepath.ToSlash(filename), "/"), url.PathEscape)...),
 		Line: line,
 	}
 }

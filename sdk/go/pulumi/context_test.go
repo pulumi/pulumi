@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -601,6 +603,29 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 		}, nil
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
+}
+
+func TestStackTraceModuleSourceFile(t *testing.T) {
+	t.Parallel()
+	const modulePath = "example.com/infra"
+	root := t.TempDir()
+	programDir := filepath.Join(root, "cmd", "deploy")
+	require.NoError(t, os.MkdirAll(programDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "go.mod"), []byte("module "+modulePath+"\n"), 0o600))
+
+	module := findStackTraceModule(programDir, modulePath)
+	assert.Equal(t, filepath.Join(programDir, "main.go"), module.sourceFile(modulePath+"/cmd/deploy/main.go"))
+	for _, file := range []string{
+		filepath.Join(programDir, "main.go"),
+		"example.com/infra-extra/main.go",
+		"example.com/infra@v1.2.3/main.go",
+		"example.com/infra/../main.go",
+	} {
+		assert.Equal(t, file, module.sourceFile(file))
+	}
+
+	otherModule := findStackTraceModule(programDir, "example.com/other")
+	assert.Equal(t, "example.com/other/main.go", otherModule.sourceFile("example.com/other/main.go"))
 }
 
 func TestGetStackTraceAndSourcePosition(t *testing.T) {
