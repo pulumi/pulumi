@@ -20,8 +20,10 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -74,6 +76,11 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string, rename func(stri
 		return fmt.Errorf("tar entry %q escapes destination directory", header.Name)
 	}
 
+	// The check above is lexical, so it does not hold if an earlier entry made a parent of path a symlink.
+	if err := checkNoSymlinkParents(cleanDir, path); err != nil {
+		return fmt.Errorf("tar entry %q: %w", header.Name, err)
+	}
+
 	switch header.Typeflag {
 	case tar.TypeDir:
 		// Create any directories as needed.
@@ -96,6 +103,12 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string, rename func(stri
 		// Expand files into the target directory.
 		if header.Mode > math.MaxUint32 {
 			return fmt.Errorf("unexpected file mode %v for %s", header.Mode, header.Name)
+		}
+		// Replace rather than write through a symlink left by an earlier entry.
+		if fi, err := os.Lstat(path); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+			if err = os.Remove(path); err != nil {
+				return fmt.Errorf("removing existing symlink %s before extracting file: %w", path, err)
+			}
 		}
 		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
@@ -138,6 +151,28 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string, rename func(stri
 		return fmt.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 	}
 
+	return nil
+}
+
+// checkNoSymlinkParents returns an error if any existing directory between dir and path is a symlink.
+func checkNoSymlinkParents(dir, path string) error {
+	rel, err := filepath.Rel(dir, filepath.Dir(path))
+	if err != nil || rel == "." {
+		return err
+	}
+	current := dir
+	for part := range strings.SplitSeq(rel, string(os.PathSeparator)) {
+		current = filepath.Join(current, part)
+		fi, err := os.Lstat(current)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		if fi.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("parent directory %s is a symlink", current)
+		}
+	}
 	return nil
 }
 

@@ -447,3 +447,85 @@ func TestExtractTGZSymlinkEscape(t *testing.T) {
 		assert.Equal(t, "sub/../target.txt", target)
 	})
 }
+
+func TestExtractTGZSymlinkChainEscape(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: symlink creation requires elevated privileges")
+	}
+
+	type entry struct {
+		name     string
+		linkname string
+		contents string
+	}
+
+	build := func(t *testing.T, entries []entry) io.Reader {
+		buffer := &bytes.Buffer{}
+		gw := gzip.NewWriter(buffer)
+		tw := tar.NewWriter(gw)
+		for _, e := range entries {
+			hdr := &tar.Header{Name: e.name, Mode: 0o600}
+			if e.linkname != "" {
+				hdr.Typeflag = tar.TypeSymlink
+				hdr.Linkname = e.linkname
+			} else {
+				hdr.Typeflag = tar.TypeReg
+				hdr.Size = int64(len(e.contents))
+			}
+			require.NoError(t, tw.WriteHeader(hdr))
+			_, err := tw.Write([]byte(e.contents))
+			require.NoError(t, err)
+		}
+		require.NoError(t, tw.Close())
+		require.NoError(t, gw.Close())
+		return buffer
+	}
+
+	cases := []struct {
+		name    string
+		entries []entry
+		wantErr string
+	}{
+		{
+			// Each link target is inside dir when checked lexically, but "a/b" is created through "a", so it
+			// lands at "b" and points at the parent of dir.
+			name: "write through symlinked parent",
+			entries: []entry{
+				{name: "a", linkname: "."},
+				{name: "a/b", linkname: ".."},
+				{name: "b/escape.txt", contents: "malicious"},
+			},
+			wantErr: "is a symlink",
+		},
+		{
+			// "b" resolves to the parent of dir because "a" is a symlink, so "c" does too.
+			name: "write through symlinked file",
+			entries: []entry{
+				{name: "a", linkname: "."},
+				{name: "b", linkname: "a/.."},
+				{name: "c", linkname: "b/escape.txt"},
+				{name: "c", contents: "malicious"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			parent := t.TempDir()
+			dir := filepath.Join(parent, "dest")
+			require.NoError(t, os.Mkdir(dir, 0o700))
+
+			err := ExtractTGZ(build(t, tc.entries), dir)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			}
+
+			_, err = os.Lstat(filepath.Join(parent, "escape.txt"))
+			assert.ErrorIs(t, err, os.ErrNotExist, "file escaped destination directory")
+		})
+	}
+}
