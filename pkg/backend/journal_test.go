@@ -80,6 +80,21 @@ func TestJournalReplayerSeedsExtensionsFromBase(t *testing.T) {
 	assert.Equal(t, ext, deployment.Deployment.Extensions[ref])
 }
 
+func TestJournalReplayerClearsIntegrityErrorMetadata(t *testing.T) {
+	t.Parallel()
+
+	base := &apitype.DeploymentV3{
+		Metadata: apitype.SnapshotMetadataV1{
+			IntegrityErrorMetadata: &apitype.SnapshotIntegrityErrorMetadataV1{Error: "previous failure"},
+		},
+	}
+
+	deployment, err := NewJournalReplayer(base).GenerateDeployment()
+	require.NoError(t, err)
+	require.Nil(t, deployment.Deployment.Metadata.IntegrityErrorMetadata)
+	require.NotNil(t, base.Metadata.IntegrityErrorMetadata)
+}
+
 // TestJournalReplayerRefreshPrunesReplaceWith tests that a targeted refresh which deletes a resource prunes
 // dangling ReplaceWith references to it from resources that were not themselves refreshed, while keeping
 // references that are still valid.
