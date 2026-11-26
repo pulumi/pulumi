@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import asyncio
+from typing import Any, Sequence, Union
 import os
 import unittest
 from unittest import mock
 
+import pulumi
+from pulumi import Input, input_type
 from pulumi.output import Unknown, UNKNOWN
 from pulumi.resource import ComponentResource, CustomResource
 from pulumi.runtime import rpc
@@ -220,3 +223,48 @@ class TestAddDependency(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(
                 rpc._add_dependency({}, parent, cyclic_child), timeout=30
             )
+
+
+@input_type
+class _KeySchemaArgs:
+    def __init__(self, *, attribute_name: Input[str]):
+        pulumi.set(self, "attribute_name", attribute_name)
+
+    @property
+    @pulumi.getter(name="attributeName")
+    def attribute_name(self) -> Input[str]:
+        return pulumi.get(self, "attribute_name")
+
+
+@input_type
+class _TableArgs:
+    def __init__(
+        self, *, key_schema: Input[Union[Sequence[Input[_KeySchemaArgs]], Any]]
+    ):
+        pulumi.set(self, "key_schema", key_schema)
+
+    @property
+    @pulumi.getter(name="keySchema")
+    def key_schema(self) -> Input[Union[Sequence[Input[_KeySchemaArgs]], Any]]:
+        return pulumi.get(self, "key_schema")
+
+
+class TestSerializeUnionWithAny(unittest.IsolatedAsyncioTestCase):
+    """Regression tests for https://github.com/pulumi/pulumi/issues/17181."""
+
+    async def serialize(self, value):
+        result = await rpc.serialize_properties(
+            {"key_schema": value}, {}, typ=_TableArgs
+        )
+        return rpc.deserialize_properties(result)["keySchema"]
+
+    async def test_list_of_dicts_in_union_with_any(self):
+        result = await self.serialize([{"attribute_name": "PrimaryKey"}])
+        self.assertEqual([{"attributeName": "PrimaryKey"}], result)
+
+    async def test_list_of_input_types_in_union_with_any(self):
+        result = await self.serialize([_KeySchemaArgs(attribute_name="PrimaryKey")])
+        self.assertEqual([{"attributeName": "PrimaryKey"}], result)
+
+    async def test_non_list_value_in_union_with_any(self):
+        self.assertEqual("x", await self.serialize("x"))

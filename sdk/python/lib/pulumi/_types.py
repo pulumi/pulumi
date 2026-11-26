@@ -1246,6 +1246,12 @@ def unwrap_type(val: type) -> type:
             ):  # Optional[Input[InputType[T]]]
                 return args[0]
 
+        # Input[T] where T is itself a Union gets flattened, so recover T from Awaitable[T].
+        if len(args) > 3 and isInput(args, len(args) - 2):
+            awaitable_args = typing.get_args(args[-2])
+            if len(awaitable_args) == 1:
+                return awaitable_args[0]
+
     return unwrap_optional_type(val)
 
 

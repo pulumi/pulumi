@@ -149,6 +149,18 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     if typ in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         return cast(type, Any)
 
+    # For a union like Union[Sequence[T], Any], use the single sequence member if there is one.
+    if _types._is_union_type(typ):
+        sequences = [
+            arg
+            for arg in get_args(typ)
+            if arg in [list, typing.List, typing.Sequence, abc.Sequence]  # noqa
+            or get_origin(arg) in [list, typing.List, typing.Sequence, abc.Sequence]  # noqa
+        ]
+        if len(sequences) == 1:
+            return _get_list_element_type(sequences[0])
+        return None
+
     # If typ is a list, get the type for its values, to pass
     # along for each item.
     origin = get_origin(typ)
