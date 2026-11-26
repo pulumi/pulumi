@@ -10,6 +10,6 @@
 	},
 	"dependencies": {
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/array-or-any": "ROOT/artifacts/pulumi-array-or-any-1.0.0.tgz"
+		"@pulumi/array-or-any": "ROOT/artifacts/pulumi-array-or-any-64.0.0.tgz"
 	}
 }

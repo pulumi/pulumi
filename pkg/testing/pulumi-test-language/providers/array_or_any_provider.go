@@ -45,7 +45,7 @@ func (p *ArrayOrAnyProvider) Configure(
 }
 
 func (p *ArrayOrAnyProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("1.0.0")
+	ver := semver.MustParse("64.0.0")
 	return plugin.PluginInfo{Version: &ver}, nil
 }
 
@@ -75,7 +75,7 @@ func (p *ArrayOrAnyProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "array-or-any",
-		Version: "1.0.0",
+		Version: "64.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
 			"array-or-any:index:Item": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
