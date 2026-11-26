@@ -139,6 +139,7 @@ def isLegalProtobufValue(value: Any) -> bool:
     """
     return value is None or isinstance(value, (bool, str, int, float, dict, list))
 
+
 def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     if typ is None:
         return None
@@ -153,11 +154,17 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     # ambiguous multiple distinct list arms fall back to Any rather than failing serialization.
     origin = get_origin(typ)
     if origin is Union:
+
         def _is_list_like_type(typ: type) -> bool:
             if typ in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
                 return True
             origin = get_origin(typ)
-            return typ is list or origin in [list, typing.List, typing.Sequence, abc.Sequence]  # noqa - want typing types here
+            return typ is list or origin in [
+                list,
+                typing.List,  # noqa - want typing types here
+                typing.Sequence,
+                abc.Sequence,
+            ]
 
         list_args = [a for a in get_args(typ) if _is_list_like_type(a)]
         if len(list_args) == 0:
