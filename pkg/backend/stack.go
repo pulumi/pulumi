@@ -143,6 +143,32 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 	return s.Backend().ImportDeployment(ctx, s, deployment)
 }
 
+type invokedCommandContextKey struct{}
+
+type invokedCommand struct {
+	command string
+	flags   []string
+}
+
+// ContextWithInvokedCommand returns a context carrying the CLI command being run and the names of the flags
+// that were set on it, for recording in the metadata of snapshots that the command edits manually.
+func ContextWithInvokedCommand(ctx context.Context, command string, flags []string) context.Context {
+	return context.WithValue(ctx, invokedCommandContextKey{}, invokedCommand{command: command, flags: flags})
+}
+
+// ManualEditMetadata returns the metadata to record on a snapshot that is being edited manually, based on the
+// command stored in the context by ContextWithInvokedCommand. It returns nil if the context carries no command.
+func ManualEditMetadata(ctx context.Context) *deploy.SnapshotManualEditMetadata {
+	invoked, ok := ctx.Value(invokedCommandContextKey{}).(invokedCommand)
+	if !ok {
+		return nil
+	}
+	return &deploy.SnapshotManualEditMetadata{
+		Command: invoked.command,
+		Flags:   invoked.flags,
+	}
+}
+
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
 	return s.Backend().UpdateStackTags(ctx, s, tags)

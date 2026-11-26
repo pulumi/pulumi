@@ -487,6 +487,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	deployment.PendingOperations = operations
 	deployment.Metadata = r.base.Metadata
 	deployment.Metadata.IntegrityErrorMetadata = nil
+	deployment.Metadata.ManualEditMetadata = nil
 	deployment.Snippets = r.base.Snippets
 	deployment.Manifest = manifest.Serialize()
 	// Carry extensions forward from the base, plus any this plan produced.

@@ -214,6 +214,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 
 	// We've managed to repair the snapshot -- import it back into the backend.
+	snap.Metadata.ManualEditMetadata = backend.ManualEditMetadata(ctx)
 	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err

@@ -414,11 +414,13 @@ func TestStateDeleteURN(t *testing.T) {
 
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
-	err := cmd.ExecuteContext(t.Context())
+	ctx := backend.ContextWithInvokedCommand(t.Context(), "pulumi state delete", []string{"--stack"})
+	err := cmd.ExecuteContext(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
-		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"metadata":{}}`,
+		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},`+
+			`"metadata":{"manual_edit":{"command":"pulumi state delete","flags":["--stack"]}}}`,
 		string(savedDeployment.Deployment))
 }
 
@@ -537,7 +539,7 @@ func TestStateDeleteProtected(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
-		"{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"},\"metadata\":{}}",
+		`{"manifest":{"time":"0001-01-01T00:00:00Z","magic":"","version":""},"metadata":{}}`,
 		string(savedDeployment.Deployment))
 }
 

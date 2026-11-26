@@ -639,6 +639,7 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 		snapshot.PendingOperations = nil
 	}
 
+	snapshot.Metadata.ManualEditMetadata = backend.ManualEditMetadata(ctx)
 	dep, err := stack.SerializeUntypedDeployment(ctx, snapshot, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("constructing deployment for upload: %w", err)

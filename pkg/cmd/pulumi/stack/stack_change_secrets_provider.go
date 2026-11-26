@@ -235,6 +235,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
 	snap.SecretsManager = newSecretsManager
+	snap.Metadata.ManualEditMetadata = backend.ManualEditMetadata(ctx)
 	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err

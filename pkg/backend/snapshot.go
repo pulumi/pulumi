@@ -936,6 +936,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
 	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
+	deployment.Deployment.Metadata.ManualEditMetadata = nil
 
 	// If we detected a snapshot integrity error, and we have an events channel
 	// i.e. in the httpstate backend, try to repair the snapshot.
@@ -952,6 +953,7 @@ func (sm *SnapshotManager) saveSnapshot() error {
 			autoRepairErr = verifyErr
 		} else {
 			repairedDeployment.Deployment.Metadata.IntegrityErrorMetadata = nil
+			repairedDeployment.Deployment.Metadata.ManualEditMetadata = nil
 			if err := sm.persister.Save(repairedDeployment); err != nil {
 				return fmt.Errorf("failed to save snapshot: %w", err)
 			}
