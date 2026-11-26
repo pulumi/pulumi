@@ -85,6 +85,10 @@ output "tupleOfOptional" {
     value = [setRes.data.string, unsetRes.data.string]
 }
 
+output "forOverTuple" {
+    value = [for v in [setRes.data] : v.string]
+}
+
 optionalLists = [setRes.data.numberArray, unsetRes.data.numberArray]
 
 resource "fromOptionalLists" "optional-primitive-ref:index:Resource" {

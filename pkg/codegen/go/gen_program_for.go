@@ -15,6 +15,7 @@
 package gen
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -99,6 +100,9 @@ func (g *generator) genForTemp(w io.Writer, t *forTemp) {
 		g.Fgenf(w, "%s := %sMap{}\n", t.Name, valueArgTyp)
 	case f.Key != nil:
 		g.Fgenf(w, "%s := map[string]%s{}\n", t.Name, valueArgTyp)
+	case isPulumiTyp && optionalPrimitive(model.ResolveOutputs(f.Value.Type())):
+		// Optional primitive outputs are pointer outputs, which no typed SDK array can hold.
+		g.Fgenf(w, "var %s pulumi.Array\n", t.Name)
 	case isPulumiTyp:
 		g.Fgenf(w, "var %s %sArray\n", t.Name, valueArgTyp)
 	default:
@@ -137,16 +141,28 @@ func (g *generator) genForTemp(w io.Writer, t *forTemp) {
 			g.Fgenf(w, "%s := %s[%s]\n", makeValidIdentifier(f.ValueVariable.Name), rangeName, keyVar)
 		}
 	default:
+		var collection bytes.Buffer
+		if elementType, ok := g.tupleOfOutputsElementType(f.Collection); ok {
+			// Range over the outputs themselves, so the loop body can read each element's
+			// properties through the output's accessors.
+			g.Fgenf(&collection, "[]%s{\n", elementType)
+			for _, x := range f.Collection.(*model.TupleConsExpression).Expressions {
+				g.Fgenf(&collection, "%.v,\n", x)
+			}
+			g.Fgenf(&collection, "}")
+		} else {
+			g.Fgenf(&collection, "%.v", f.Collection)
+		}
 		switch {
 		case valUsed && keyUsed:
-			g.Fgenf(w, "for %s, %s := range %.v {\n",
-				makeValidIdentifier(f.KeyVariable.Name), makeValidIdentifier(f.ValueVariable.Name), f.Collection)
+			g.Fgenf(w, "for %s, %s := range %s {\n",
+				makeValidIdentifier(f.KeyVariable.Name), makeValidIdentifier(f.ValueVariable.Name), collection.String())
 		case valUsed:
-			g.Fgenf(w, "for _, %s := range %.v {\n", makeValidIdentifier(f.ValueVariable.Name), f.Collection)
+			g.Fgenf(w, "for _, %s := range %s {\n", makeValidIdentifier(f.ValueVariable.Name), collection.String())
 		case keyUsed:
-			g.Fgenf(w, "for %s := range %.v {\n", makeValidIdentifier(f.KeyVariable.Name), f.Collection)
+			g.Fgenf(w, "for %s := range %s {\n", makeValidIdentifier(f.KeyVariable.Name), collection.String())
 		default:
-			g.Fgenf(w, "for range %.v {\n", f.Collection)
+			g.Fgenf(w, "for range %s {\n", collection.String())
 		}
 	}
 
@@ -162,4 +178,26 @@ func (g *generator) genForTemp(w io.Writer, t *forTemp) {
 		g.Fgenf(w, "}\n")
 	}
 	g.Fgenf(w, "}\n")
+}
+
+// tupleOfOutputsElementType returns the Go output type of the elements of a tuple literal whose
+// elements are all outputs of the same type, such as [res.data] where res.data is an output.
+func (g *generator) tupleOfOutputsElementType(x model.Expression) (string, bool) {
+	tuple, ok := x.(*model.TupleConsExpression)
+	if !ok || len(tuple.Expressions) == 0 {
+		return "", false
+	}
+	var elementType model.Type
+	for _, e := range tuple.Expressions {
+		output, ok := e.Type().(*model.OutputType)
+		if !ok {
+			return "", false
+		}
+		if elementType == nil {
+			elementType = output.ElementType
+		} else if !elementType.Equals(output.ElementType) {
+			return "", false
+		}
+	}
+	return g.outputTypeName(elementType), true
 }
