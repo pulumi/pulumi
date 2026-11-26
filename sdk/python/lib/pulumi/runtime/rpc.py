@@ -139,7 +139,6 @@ def isLegalProtobufValue(value: Any) -> bool:
     """
     return value is None or isinstance(value, (bool, str, int, float, dict, list))
 
-
 def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     if typ is None:
         return None
@@ -149,9 +148,26 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     if typ in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         return cast(type, Any)
 
+    # A schema `oneOf: [{type: array, items: T}, pulumi.json#/Any]` generates `Union[Sequence[T], Any, ...]` on the
+    # Python side. When the caller passed an actual list, resolve to the Sequence arm's element type; if the Union is
+    # ambiguous multiple distinct list arms fall back to Any rather than failing serialization.
+    origin = get_origin(typ)
+    if origin is Union:
+        def _is_list_like_type(typ: type) -> bool:
+            if typ in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
+                return True
+            origin = get_origin(typ)
+            return typ is list or origin in [list, typing.List, typing.Sequence, abc.Sequence]  # noqa - want typing types here
+
+        list_args = [a for a in get_args(typ) if _is_list_like_type(a)]
+        if len(list_args) == 0:
+            return None
+        if len(list_args) == 1:
+            return _get_list_element_type(list_args[0])
+        return cast(type, Any)
+
     # If typ is a list, get the type for its values, to pass
     # along for each item.
-    origin = get_origin(typ)
     if typ is list or origin in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         args = get_args(typ)
         if len(args) == 1:

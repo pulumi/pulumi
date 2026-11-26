@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-array-or-any-object",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/array-or-any": "ROOT/artifacts/pulumi-array-or-any-1.0.0.tgz"
+	}
+}
