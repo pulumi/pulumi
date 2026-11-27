@@ -98,9 +98,9 @@ func TestInfoDefault(t *testing.T) {
 
 	out = bytes.NewBuffer(nil)
 	info.HideCursor(out)
-	require.Equal(t, "", out.String())
+	require.Equal(t, "\x1b[?25l", out.String())
 
 	out = bytes.NewBuffer(nil)
 	info.ShowCursor(out)
-	require.Equal(t, "", out.String())
+	require.Equal(t, "\x1b[?12l\x1b[?25h", out.String())
 }

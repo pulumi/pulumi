@@ -127,7 +127,9 @@ func (i defaultInfo) CursorDown(out io.Writer, count int) {
 }
 
 func (i defaultInfo) HideCursor(out io.Writer) {
+	fmt.Fprintf(out, "\x1b[?25l")
 }
 
 func (i defaultInfo) ShowCursor(out io.Writer) {
+	fmt.Fprintf(out, "\x1b[?12l\x1b[?25h")
 }
