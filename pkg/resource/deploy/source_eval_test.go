@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"reflect"
 	"strings"
 	"sync"
@@ -37,6 +38,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -4043,6 +4045,105 @@ func TestValidationFailures(t *testing.T) {
 		assert.ErrorContains(t, err, "resource monitor shut down")
 		assert.Equal(t, c.expectedStderr, stderr.String())
 		assert.Equal(t, "", stdout.String())
+	}
+}
+
+type constructShutdownProvider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+	construct func(context.Context) error
+}
+
+func (p constructShutdownProvider) Configure(
+	context.Context, *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
+	return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+}
+
+func (p constructShutdownProvider) Construct(
+	ctx context.Context, _ *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
+	return nil, p.construct(ctx)
+}
+
+func TestConstructAlreadyReported(t *testing.T) {
+	t.Parallel()
+	const message = "resource monitor shut down"
+	const trailer = "pulumi-error-already-reported"
+	for _, tt := range []struct {
+		name        string
+		marked      bool
+		cancelFirst bool
+		wantCode    codes.Code
+		wantReport  bool
+	}{
+		{name: "marked error arrives first", marked: true, wantCode: codes.Canceled},
+		{name: "monitor cancellation arrives first", marked: true, cancelFirst: true, wantCode: codes.Unavailable},
+		{name: "unmarked cancellation is reported", wantCode: codes.Unknown, wantReport: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, stop := context.WithTimeout(t.Context(), 5*time.Second)
+			defer stop()
+			listener := bufconn.Listen(1024 * 1024)
+			conn, err := grpc.NewClient("passthrough:///construct-test",
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+					return listener.DialContext(ctx)
+				}),
+			)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, conn.Close()) })
+			provider := plugin.NewProviderWithClient(nil, pulumirpc.NewResourceProviderClient(conn), false)
+			var stdout, stderr bytes.Buffer
+			cancel := make(chan bool)
+			abort := make(chan bool, 1)
+			monitor := &resmon{
+				diagnostics: diagtest.MockSink(&stdout, &stderr),
+				cancel:      cancel,
+				abortChan:   abort,
+				providers:   &providerSourceMock{Provider: provider},
+			}
+			server := grpc.NewServer()
+			serveDone := make(chan error, 1)
+			t.Cleanup(func() {
+				server.Stop()
+				require.NoError(t, <-serveDone)
+			})
+			pulumirpc.RegisterResourceMonitorServer(server, monitor)
+			pulumirpc.RegisterResourceProviderServer(server, constructShutdownProvider{
+				construct: func(ctx context.Context) error {
+					if tt.marked {
+						if err := grpc.SetTrailer(ctx, metadata.Pairs(trailer, "true")); err != nil {
+							return err
+						}
+					}
+					if tt.cancelFirst {
+						close(cancel)
+					}
+					return status.Error(codes.Canceled, message)
+				},
+			})
+			go func() { serveDone <- server.Serve(listener) }()
+			_, err = provider.Configure(ctx, plugin.ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+			require.NoError(t, err)
+			var trailers metadata.MD
+			_, err = pulumirpc.NewResourceMonitorClient(conn).RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+				Type:     "test:index:Outer",
+				Name:     "outer",
+				Remote:   true,
+				Provider: "urn:pulumi:stack::project::pulumi:providers:test::default::id",
+			}, grpc.Trailer(&trailers))
+			require.ErrorContains(t, err, message)
+			assert.Equal(t, tt.wantCode, status.Code(err))
+			assert.Contains(t, trailers.Get(trailer), "true")
+			if tt.wantReport {
+				assert.Contains(t, stderr.String(), "resource 'outer' has a problem: "+message)
+				require.Len(t, abort, 1)
+			} else {
+				assert.Empty(t, stderr.String())
+				require.Len(t, abort, 0, "reporting the same failure again would request another abort")
+			}
+		})
 	}
 }
 
