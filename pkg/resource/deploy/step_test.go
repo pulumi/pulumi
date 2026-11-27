@@ -235,7 +235,10 @@ func TestCreateStep(t *testing.T) {
 				}
 				status, _, err := s.Apply()
 				assert.ErrorContains(t, err, "provider did not return an ID from Create")
-				assert.Equal(t, resource.StatusOK, status)
+				assert.ErrorContains(t, err, "recorded as a pending create")
+				// Reported as a partial failure so the snapshot managers leave a pending create, rather than
+				// committing a resource without an ID or dropping it.
+				assert.Equal(t, resource.StatusPartialFailure, status)
 			})
 		})
 	})

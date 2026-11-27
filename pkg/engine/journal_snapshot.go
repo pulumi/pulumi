@@ -697,6 +697,13 @@ type createSnapshotMutation struct {
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
+
+	// A custom resource without an ID can't be addressed later, so don't commit it. Without a success or failure
+	// entry, the begin entry stays a pending create operation for `pulumi refresh` to resolve.
+	if successful && deploy.IsCustomMissingID(step.New()) {
+		return nil
+	}
+
 	kind := JournalEntrySuccess
 	if !successful {
 		kind = JournalEntryFailure

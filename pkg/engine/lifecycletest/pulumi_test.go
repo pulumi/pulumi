@@ -1049,6 +1049,159 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
 
+// TestCreatePartialFailureWithoutID checks that when the provider reports a partial failure from Create without
+// returning an ID, the resource is not committed to state (the engine can do nothing with a resource that has no ID)
+// and the create is instead left as a pending operation, so the user can import or clear it with `pulumi refresh`.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/25765.
+func TestCreatePartialFailureWithoutID(t *testing.T) {
+	t.Parallel()
+
+	failCreate := true
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if failCreate {
+						return plugin.CreateResponse{
+							Properties: property.NewMap(map[string]property.Value{
+								"output_prop": property.New(float64(42)),
+							}),
+							Status: resource.StatusPartialFailure,
+						}, errors.New("intentionally failed create, no id")
+					}
+					return plugin.CreateResponse{ID: "created-id", Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	// captureEvents returns a validate function that records the events of an operation.
+	captureEvents := func(into *[]Event) lt.ValidateFunc {
+		return func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			*into = events
+			return err
+		}
+	}
+	diagsFor := func(events []Event, urn resource.URN) []DiagEventPayload {
+		var diags []DiagEventPayload
+		for _, e := range events {
+			if e.Type == DiagEvent {
+				if payload := e.Payload().(DiagEventPayload); payload.URN == urn {
+					diags = append(diags, payload)
+				}
+			}
+		}
+		return diags
+	}
+	maybeCorrupt := func(events []Event) bool {
+		for _, e := range events {
+			if e.Type == SummaryEvent {
+				return e.Payload().(SummaryEventPayload).MaybeCorrupt
+			}
+		}
+		return false
+	}
+
+	var events []Event
+	snap, err := lt.TestOp(Update).Run(
+		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, captureEvents(&events))
+	require.ErrorContains(t, err, "intentionally failed create, no id")
+	require.NotNil(t, snap)
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, resURN, res.URN, "resource without an ID must not be committed to state")
+	}
+	require.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
+	assert.Equal(t, resURN, snap.PendingOperations[0].Resource.URN)
+
+	// The user sees a single diagnostic for the resource: the provider's error, with guidance on how to recover.
+	diags := diagsFor(events, resURN)
+	require.Len(t, diags, 1)
+	assert.Equal(t, diag.Error, diags[0].Severity)
+	assert.Contains(t, diags[0].Message, "intentionally failed create, no id")
+	assert.Contains(t, diags[0].Message, "recorded as a pending create")
+	// Recording a pending create is a safe outcome, so the update isn't flagged as possibly corrupt.
+	assert.False(t, maybeCorrupt(events), "update should not be flagged as possibly corrupt")
+
+	// The next update isn't blocked by the pending create: it warns about it, creates the resource, and keeps the
+	// pending create for the user to resolve with `pulumi refresh`.
+	failCreate = false
+	snap, err = lt.TestOp(Update).Run(
+		project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, captureEvents(&events))
+	require.NoError(t, err)
+	var warnedAboutPending bool
+	for _, e := range events {
+		if e.Type == DiagEvent {
+			payload := e.Payload().(DiagEventPayload)
+			if payload.Severity == diag.Warning && strings.Contains(payload.Message, "pending operations") {
+				warnedAboutPending = true
+			}
+		}
+	}
+	assert.True(t, warnedAboutPending, "the next update should warn about the pending create")
+	var found *pkgresource.State
+	for _, res := range snap.Resources {
+		if res.URN == resURN {
+			found = res
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, resource.ID("created-id"), found.ID)
+	require.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
+}
+
+// TestCreateSuccessWithoutID checks that when a buggy provider reports a successful Create but returns no ID, the
+// engine handles it the same way as a partial failure without an ID: the resource is not committed to state, and the
+// create is left as a pending operation for `pulumi refresh` to resolve.
+func TestCreateSuccessWithoutID(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
+		_, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+	snap, err := lt.TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "provider did not return an ID from Create")
+	require.NotNil(t, snap)
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, resURN, res.URN, "resource without an ID must not be committed to state")
+	}
+	require.Len(t, snap.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, snap.PendingOperations[0].Type)
+	assert.Equal(t, resURN, snap.PendingOperations[0].Resource.URN)
+}
+
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
 func TestUpdatePartialFailure(t *testing.T) {
 	t.Parallel()

@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: When a provider reports a partial failure from Create without returning an ID, keep the create as a pending operation for `pulumi refresh` to import or clear, instead of saving a resource with an empty ID to state
+time: 2026-11-23T17:45:00.000000000+02:00

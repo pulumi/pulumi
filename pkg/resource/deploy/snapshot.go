@@ -48,6 +48,15 @@ type Snapshot struct {
 	Extensions map[apitype.ExtensionRef]apitype.Extension
 }
 
+// IsCustomMissingID returns true if the given state is a custom resource without an ID. Such a resource can't be
+// refreshed, updated or deleted later, and it's unknown whether it exists in the cloud provider, so snapshot managers
+// must not commit it when a create ends. They leave its pending create operation in place instead, for the user to
+// resolve with `pulumi refresh`, the same as a create that was interrupted. (A create that plainly failed is ended as
+// unsuccessful, and is handled as usual.)
+func IsCustomMissingID(state *pkgresource.State) bool {
+	return state != nil && state.Custom && state.ID == ""
+}
+
 // SnapshotMetadata contains metadata about a snapshot.
 type SnapshotMetadata struct {
 	// Metadata associated with any integrity error affecting the snapshot.
