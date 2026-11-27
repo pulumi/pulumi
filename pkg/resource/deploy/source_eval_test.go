@@ -4114,3 +4114,53 @@ func TestConfigLogValue(t *testing.T) {
 	require.Equal(t, "[secret]", redacted.Get(secretKey.String()).AsString())
 	require.Equal(t, "us-west-2", redacted.Get(plainKey.String()).AsString())
 }
+
+func TestRegistrationTraceBoundaries(t *testing.T) {
+	t.Parallel()
+	positions := newSourcePositions("/project")
+	request := func(file, module, origin string) *pulumirpc.RegisterResourceRequest {
+		pos := &pulumirpc.SourcePosition{Uri: "file:///project/" + file, Line: 2}
+		return &pulumirpc.RegisterResourceRequest{
+			SourcePosition: pos,
+			StackTrace: &pulumirpc.StackTrace{Frames: []*pulumirpc.StackFrame{
+				{Module: "pulumi.runtime.resource", Origin: "pulumi"},
+				{Pc: pos, Module: module, Origin: origin},
+			}},
+		}
+	}
+	outer := positions.recordParentRequest(request("main.py", "__main__", ""),
+		&apitype.StackTraceBoundaryV1{
+			Kind: apitype.StackTraceBoundaryKindConstruct, ResourceType: "test:index:Outer", ResourceName: "outer",
+		})
+	defer outer.Release()
+	innerRequest := request("outer.py", "provider.outer", "")
+	innerRequest.ParentStackTraceHandle = outer.value
+	inner := positions.recordParentRequest(innerRequest,
+		&apitype.StackTraceBoundaryV1{
+			Kind: apitype.StackTraceBoundaryKindConstruct, ResourceType: "test:index:Inner", ResourceName: "inner",
+		})
+	defer inner.Release()
+	child := request("inner.py", "provider.inner", "")
+	child.ParentStackTraceHandle = inner.value
+	_, frames := positions.getFromRequest(child)
+	require.Len(t, frames, 6)
+	locations := make([]string, 0, len(frames))
+	for _, frame := range frames {
+		locations = append(locations, frame.SourcePosition)
+	}
+	assert.Equal(t, []string{
+		"", "project:///inner.py#2", "", "project:///outer.py#2", "", "project:///main.py#2",
+	}, locations)
+	assert.Equal(t, apitype.StackFrameOriginPulumi, frames[0].Origin)
+	assert.Empty(t, frames[0].SourcePosition)
+	assert.Equal(t, "inner", frames[0].Boundary.ResourceName)
+	assert.Equal(t, "outer", frames[2].Boundary.ResourceName)
+	assert.Equal(t, apitype.StackTraceBoundaryKindProgram, frames[4].Boundary.Kind)
+	assert.Equal(t, "project:///outer.py#2", frames[2].Boundary.CallSite)
+	assert.Equal(t, "provider.inner", frames[1].Module)
+	assert.Equal(t, "__main__", frames[5].Module)
+	// Reusing the parent capture must not mutate its earlier sections.
+	_, again := positions.getFromRequest(innerRequest)
+	assert.Equal(t, "outer", again[0].Boundary.ResourceName)
+	assert.Equal(t, apitype.StackTraceBoundaryKindProgram, again[2].Boundary.Kind)
+}

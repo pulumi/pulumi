@@ -1326,7 +1326,9 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
 
-	stackTraceHandle := rm.sourcePositions.recordParentRequest(req)
+	stackTraceHandle := rm.sourcePositions.recordParentRequest(req, &apitype.StackTraceBoundaryV1{
+		Kind: apitype.StackTraceBoundaryKindCall,
+	})
 	defer stackTraceHandle.Release()
 
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
@@ -2148,10 +2150,15 @@ func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent pkgresou
 
 type stackTrace = []pkgresource.StackFrame
 
+type parentStackTrace struct {
+	frames   stackTrace
+	boundary *apitype.StackTraceBoundaryV1
+}
+
 type sourcePositions struct {
 	projectRoot string
 
-	stackTraces gsync.Map[string, stackTrace]
+	stackTraces gsync.Map[string, parentStackTrace]
 }
 
 func newSourcePositions(projectRoot string) *sourcePositions {
@@ -2244,16 +2251,26 @@ func (s stackHandle) Release() {
 	}
 }
 
-// recordParentRequest fetches position information from an incoming request. If the request contains a stack trace,
-// the stack trace is associated with a handle to be passed along to other requests.
-func (s *sourcePositions) recordParentRequest(req hasSourcePosition) stackHandle {
-	_, stack := s.getFromRequest(req)
-	if stack == nil {
-		return stackHandle{}
+// recordParentRequest fetches position information from an incoming request. If the request contains a stack trace
+// or a source position, the resulting stack trace is associated with a handle to be passed along to other requests.
+func (s *sourcePositions) recordParentRequest(
+	req hasSourcePosition, boundary *apitype.StackTraceBoundaryV1,
+) stackHandle {
+	pos, stack := s.getFromRequest(req)
+	if len(stack) == 0 {
+		if pos == "" {
+			return stackHandle{}
+		}
+		stack = stackTrace{{
+			SourcePosition: pos,
+			Boundary: &apitype.StackTraceBoundaryV1{
+				Kind: apitype.StackTraceBoundaryKindProgram, CallSite: pos,
+			},
+		}}
 	}
 
 	value := uuid.New().String()
-	if _, exists := s.stackTraces.LoadOrStore(value, stack); exists {
+	if _, exists := s.stackTraces.LoadOrStore(value, parentStackTrace{frames: stack, boundary: boundary}); exists {
 		logging.V(5).Infof("stack cookie collision for key %v", value)
 		return stackHandle{}
 	}
@@ -2272,12 +2289,21 @@ func (s *sourcePositions) getFromRequest(req hasSourcePosition) (string, stackTr
 	if req, ok := req.(hasParentStackTraceHandle); ok {
 		if handle := req.GetParentStackTraceHandle(); handle != "" {
 			if parent, ok := s.stackTraces.Load(handle); ok {
-				newStack := make(stackTrace, 0, len(parent)+len(stack))
+				if len(stack) == 0 {
+					stack = stackTrace{{SourcePosition: pos}}
+				}
+				boundary := *parent.boundary
+				boundary.CallSite = pos
+				stack[0].Boundary = &boundary
+				newStack := make(stackTrace, 0, len(parent.frames)+len(stack))
 				newStack = append(newStack, stack...)
-				newStack = append(newStack, parent...)
+				newStack = append(newStack, parent.frames...)
 				stack = newStack
 			}
 		}
+	}
+	if len(stack) > 0 && stack[0].Boundary == nil {
+		stack[0].Boundary = &apitype.StackTraceBoundaryV1{Kind: apitype.StackTraceBoundaryKindProgram, CallSite: pos}
 	}
 	return pos, stack
 }
@@ -3024,7 +3050,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 		options.DeleteBeforeReplace = opts.DeleteBeforeReplace
 
-		stackTraceHandle := rm.sourcePositions.recordParentRequest(req)
+		stackTraceHandle := rm.sourcePositions.recordParentRequest(req, &apitype.StackTraceBoundaryV1{
+			Kind: apitype.StackTraceBoundaryKindConstruct, ResourceType: string(t), ResourceName: name,
+		})
 		defer stackTraceHandle.Release()
 
 		info := rm.constructInfo
