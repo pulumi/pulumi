@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: feat
+body: 'Support ES modules in Node.js policy packs and plugins'
+time: 2026-11-27T17:00:00.000000+01:00

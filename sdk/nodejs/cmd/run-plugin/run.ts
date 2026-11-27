@@ -21,7 +21,7 @@ import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
 import { defaultErrorMessage, isErrorAlreadyReported } from "../run/error";
-import { registerTypeScript } from "../run/esm";
+import { loadProgram, packageObjectFromProgram, registerTypeScript } from "../run/esm";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -165,14 +165,16 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // pulumi/pulumi#1772.
     const tsConfigPath = "tsconfig.json";
 
-    if (opts.typeScript) {
-        registerTypeScript(tsConfigPath);
-    }
-
     let program: string = opts.argv._[0];
     if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
         program = path.join(process.cwd(), program);
+    }
+
+    const packageObject = packageObjectFromProgram(program);
+
+    if (opts.typeScript) {
+        registerTypeScript(tsConfigPath, packageObject["type"] === "module");
     }
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
@@ -255,7 +257,7 @@ ${errMsg}`,
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
             // Execute the module and capture any module outputs it exported.
-            const reqResult = require(program);
+            const reqResult = await loadProgram(program, packageObject);
 
             // Get any Pulumi Components exported by the module
             const components = getPulumiComponents(reqResult);
