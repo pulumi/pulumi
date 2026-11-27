@@ -475,3 +475,51 @@ func TestStackImport_ServiceSecrets_DefaultSecretManagerMutatesProjectStack(t *t
 	assert.Contains(t, string(configBytes), "encryptionsalt: v1:dummy")
 	assert.Contains(t, string(configBytes), "proj:key: value")
 }
+
+func TestReadDeployment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected *apitype.UntypedDeployment
+		err      string
+	}{
+		{
+			name:  "deployment",
+			input: `{"version":3,"deployment":{"manifest":{},"unknown":true}}`,
+			expected: &apitype.UntypedDeployment{
+				Version:    3,
+				Deployment: json.RawMessage(`{"manifest":{},"unknown":true}`),
+			},
+		},
+		{
+			name: "checkpoint",
+			input: `{"version":4,"features":["refreshBeforeUpdate"],` +
+				`"checkpoint":{"stack":"org/proj/stk","latest":{"manifest":{},"unknown":true}}}`,
+			expected: &apitype.UntypedDeployment{
+				Version:    4,
+				Features:   []string{"refreshBeforeUpdate"},
+				Deployment: json.RawMessage(`{"manifest":{},"unknown":true}`),
+			},
+		},
+		{
+			name:  "checkpoint without deployment",
+			input: `{"version":3,"checkpoint":{"stack":"org/proj/stk"}}`,
+			err:   "checkpoint does not contain a deployment",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			deployment, err := readDeployment(bytes.NewBufferString(tt.input))
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, deployment)
+		})
+	}
+}

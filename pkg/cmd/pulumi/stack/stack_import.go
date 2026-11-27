@@ -16,7 +16,9 @@ package stack
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -46,7 +48,10 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			"A deployment that was exported from a stack using `pulumi stack export` and\n" +
 			"hand-edited to correct inconsistencies due to failed updates, manual changes\n" +
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
-			"The updated deployment will be read from standard in.",
+			"The updated deployment will be read from standard in.\n" +
+			"\n" +
+			"Checkpoint files written by the DIY backend (e.g. stack history or backup files)\n" +
+			"can also be imported directly.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
@@ -80,15 +85,15 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 
 			// Read the checkpoint from stdin.  We decode this into a json.RawMessage so as not to lose any fields
 			// sent by the server that the client CLI does not recognize (enabling round-tripping).
-			var deployment apitype.UntypedDeployment
-			if err = json.NewDecoder(reader).Decode(&deployment); err != nil {
+			deployment, err := readDeployment(reader)
+			if err != nil {
 				return err
 			}
 
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, sp)
+			snapshot, err := stack.DeserializeUntypedDeployment(ctx, deployment, sp)
 			if err != nil {
 				return stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 			}
@@ -145,4 +150,29 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 		&file, "file", "", "", "A filename to read stack input from")
 
 	return cmd
+}
+
+func readDeployment(reader io.Reader) (*apitype.UntypedDeployment, error) {
+	var input struct {
+		apitype.UntypedDeployment
+		Checkpoint json.RawMessage `json:"checkpoint,omitempty"`
+	}
+	if err := json.NewDecoder(reader).Decode(&input); err != nil {
+		return nil, err
+	}
+
+	deployment := input.UntypedDeployment
+	if len(deployment.Deployment) == 0 && len(input.Checkpoint) > 0 {
+		var checkpoint struct {
+			Latest json.RawMessage `json:"latest,omitempty"`
+		}
+		if err := json.Unmarshal(input.Checkpoint, &checkpoint); err != nil {
+			return nil, fmt.Errorf("could not read checkpoint: %w", err)
+		}
+		if len(checkpoint.Latest) == 0 {
+			return nil, errors.New("checkpoint does not contain a deployment")
+		}
+		deployment.Deployment = checkpoint.Latest
+	}
+	return &deployment, nil
 }
