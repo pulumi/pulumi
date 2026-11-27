@@ -206,13 +206,14 @@ func (e Event) Awaited() bool {
 
 // DiagEventPayload is the payload for an event with type `diag`
 type DiagEventPayload struct {
-	URN       resource.URN
-	Prefix    string
-	Message   string
-	Color     colors.Colorization
-	Severity  diag.Severity
-	StreamID  int32
-	Ephemeral bool
+	URN           resource.URN
+	Prefix        string
+	Message       string
+	Color         colors.Colorization
+	Severity      diag.Severity
+	StreamID      int32
+	Ephemeral     bool
+	SourceContext *diag.SourceContext
 }
 
 // PolicyViolationEventPayload is the payload for an event with type `policy-violation`.
@@ -821,14 +822,31 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 		urn = ""
 	}
 
+	var sourceContext *diag.SourceContext
+	if d.SourceContext != nil {
+		sourceContext = &diag.SourceContext{
+			SourcePosition: logging.FilterString(d.SourceContext.SourcePosition),
+			Rendered:       logging.FilterString(d.SourceContext.Rendered),
+		}
+		for _, frame := range d.SourceContext.StackTrace {
+			sourceContext.StackTrace = append(sourceContext.StackTrace, apitype.StackFrameV1{
+				SourcePosition: logging.FilterString(frame.SourcePosition),
+				Module:         logging.FilterString(frame.Module),
+				Origin:         apitype.StackFrameOrigin(logging.FilterString(string(frame.Origin))),
+				Boundary:       filterStackTraceBoundary(frame.Boundary),
+			})
+		}
+	}
+
 	e.sendEvent(NewEvent(DiagEventPayload{
-		URN:       urn,
-		Prefix:    logging.FilterString(prefix),
-		Message:   logging.FilterString(msg),
-		Color:     colors.Raw,
-		Severity:  sev,
-		StreamID:  d.StreamID,
-		Ephemeral: ephemeral,
+		URN:           urn,
+		Prefix:        logging.FilterString(prefix),
+		Message:       logging.FilterString(msg),
+		Color:         colors.Raw,
+		Severity:      sev,
+		StreamID:      d.StreamID,
+		Ephemeral:     ephemeral,
+		SourceContext: sourceContext,
 	}))
 }
 
@@ -1007,4 +1025,16 @@ func tryCloseEventChan(ch chan<- Event) (closed bool) {
 	}()
 	close(ch)
 	return closed
+}
+
+func filterStackTraceBoundary(boundary *apitype.StackTraceBoundaryV1) *apitype.StackTraceBoundaryV1 {
+	if boundary == nil {
+		return nil
+	}
+	return &apitype.StackTraceBoundaryV1{
+		Kind:         apitype.StackTraceBoundaryKind(logging.FilterString(string(boundary.Kind))),
+		CallSite:     logging.FilterString(boundary.CallSite),
+		ResourceType: logging.FilterString(boundary.ResourceType),
+		ResourceName: logging.FilterString(boundary.ResourceName),
+	}
 }
