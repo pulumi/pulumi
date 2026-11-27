@@ -1,0 +1,3 @@
+component: sdk/python
+kind: fix
+body: Fix serializing list inputs whose type is a union with `Any`

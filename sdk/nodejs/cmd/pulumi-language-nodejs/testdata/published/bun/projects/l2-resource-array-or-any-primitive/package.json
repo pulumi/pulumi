@@ -1,0 +1,15 @@
+{
+	"name": "l2-resource-array-or-any-primitive",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/array-or-any": "ROOT/artifacts/pulumi-array-or-any-64.0.0.tgz"
+	}
+}

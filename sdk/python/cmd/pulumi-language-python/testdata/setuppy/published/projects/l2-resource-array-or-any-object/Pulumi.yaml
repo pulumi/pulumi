@@ -1,0 +1,7 @@
+name: l2-resource-array-or-any-object
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv
