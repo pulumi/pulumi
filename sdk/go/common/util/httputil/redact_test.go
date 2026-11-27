@@ -83,6 +83,26 @@ func TestURLSecrets(t *testing.T) {
 		{"no userinfo", "https://api.pulumi.com", nil},
 		{"username only, no password", "https://ghp_tok@github.com/x", nil},
 		{"unparseable", "http://foo.com/%", nil},
+		{
+			"escaped password returns both forms",
+			"https://x-access-token:ghp%5Fsecret%40123@github.com/x",
+			[]string{"ghp_secret@123", "ghp%5Fsecret%40123"},
+		},
+		{
+			"escaped sas signature returns both forms",
+			"https://acct.blob.core.windows.net/c/p.tgz?sv=2021&sig=ab%2Bcd%2Fef%3D",
+			[]string{"ab+cd/ef=", "ab%2Bcd%2Fef%3D"},
+		},
+		{
+			"undecodable sensitive value still returned",
+			"https://bucket.s3.amazonaws.com/p.tgz?X-Amz-Signature=dead%zz",
+			[]string{"dead%zz"},
+		},
+		{
+			"escaped password with a colon and an at sign",
+			"https://u:a%3Ab%40c@db.example.com/pulumi",
+			[]string{"a:b@c", "a%3Ab%40c"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
