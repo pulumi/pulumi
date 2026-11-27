@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Fix source locations captured from Go programs built with `-trimpath`
+time: 2026-11-25T12:50:12.935741+01:00

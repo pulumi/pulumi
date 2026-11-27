@@ -26,7 +26,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	go.opentelemetry.io/otel/bridge/opentracing v1.47.0
 	golang.org/x/crypto v0.59.0
-	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.62.0
 	golang.org/x/sys v0.50.0
 	google.golang.org/grpc v1.83.2
