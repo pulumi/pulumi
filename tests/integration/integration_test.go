@@ -1228,7 +1228,7 @@ func TestPolicyPackTypeScriptOption(t *testing.T) {
 func TestESMPolicyPack(t *testing.T) {
 	t.Parallel()
 
-	for _, packName := range []string{"esm_js_policy_pack", "esm_ts_policy_pack"} {
+	for _, packName := range []string{"esm_js_policy_pack", "esm_ts_policy_pack", "esm_ts_no_tsconfig_policy_pack"} {
 		t.Run(packName, func(t *testing.T) {
 			t.Parallel()
 

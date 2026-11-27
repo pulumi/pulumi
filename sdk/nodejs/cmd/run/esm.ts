@@ -127,19 +127,10 @@ export function registerTypeScript(tsConfigPath: string, isModule: boolean): voi
                 ...compilerOptions,
             },
         };
-        // ts-node reads the working directory when the hooks load, and it compiles ES modules as
-        // CommonJS when the program is outside of that directory. The engine does not always start
-        // plugins in the program directory, so we change to it while we register the hooks.
-        const cwd = process.cwd();
-        process.chdir(path.dirname(tsConfigPath));
-        try {
-            // The hooks path resolves relative to this file, which sits next to hooks.ts.
-            register("./hooks.js", url.pathToFileURL(__filename), {
-                data: options,
-            });
-        } finally {
-            process.chdir(cwd);
-        }
+        // The hooks path resolves relative to this file, which sits next to hooks.ts.
+        register("./hooks.js", url.pathToFileURL(__filename), {
+            data: options,
+        });
         return;
     }
 

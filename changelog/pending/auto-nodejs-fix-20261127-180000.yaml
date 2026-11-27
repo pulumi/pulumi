@@ -1,4 +1,4 @@
 component: sdk/nodejs
 kind: fix
-body: 'Read `tsconfig.json` from the program directory of Node.js policy packs and plugins, not from the working directory'
+body: 'Read `tsconfig.json` from the program directory of Node.js policy packs and plugins, and apply the TypeScript options of Pulumi to ts-node in automatic ESM mode'
 time: 2026-11-27T18:00:00.000000+01:00

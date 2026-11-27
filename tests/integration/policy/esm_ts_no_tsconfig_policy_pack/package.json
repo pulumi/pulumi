@@ -1,0 +1,15 @@
+{
+    "name": "esm-ts-no-tsconfig",
+    "version": "0.0.1",
+    "type": "module",
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0",
+        "@pulumi/policy": "^1.3.0",
+        "ts-node": "10.9.2",
+        "typescript": "4.9.5"
+    },
+    "devDependencies": {
+        "@types/node": "17.0.45"
+    }
+}
