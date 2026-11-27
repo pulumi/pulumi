@@ -51,8 +51,10 @@ export function packageObjectFromProgram(program: string): Record<string, any> {
 /**
  * Returns the directory of a plugin or policy pack program. The program is
  * usually a directory already, but it can also be a file.
+ *
+ * @internal
  */
-function programDirectory(program: string): string {
+export function programDirectory(program: string): string {
     try {
         return fs.lstatSync(program).isDirectory() ? program : path.dirname(program);
     } catch {
@@ -115,6 +117,7 @@ export function registerTypeScript(tsConfigPath: string, isModule: boolean): voi
         const options = {
             compiler: typescriptRequire,
             transpileOnly,
+            project: tsConfigPath,
             skipProject,
             compilerOptions: {
                 target: "ES2022", // TS >= 4.6 and Node >= 20 support this
@@ -124,10 +127,19 @@ export function registerTypeScript(tsConfigPath: string, isModule: boolean): voi
                 ...compilerOptions,
             },
         };
-        // The hooks path resolves relative to this file, which sits next to hooks.ts.
-        register("./hooks.js", url.pathToFileURL(__filename), {
-            data: options,
-        });
+        // ts-node reads the working directory when the hooks load, and it compiles ES modules as
+        // CommonJS when the program is outside of that directory. The engine does not always start
+        // plugins in the program directory, so we change to it while we register the hooks.
+        const cwd = process.cwd();
+        process.chdir(path.dirname(tsConfigPath));
+        try {
+            // The hooks path resolves relative to this file, which sits next to hooks.ts.
+            register("./hooks.js", url.pathToFileURL(__filename), {
+                data: options,
+            });
+        } finally {
+            process.chdir(cwd);
+        }
         return;
     }
 
@@ -136,6 +148,7 @@ export function registerTypeScript(tsConfigPath: string, isModule: boolean): voi
     const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
     tsn.register({
         transpileOnly,
+        project: tsConfigPath,
         skipProject,
         compiler: typescriptRequire,
         compilerOptions: {

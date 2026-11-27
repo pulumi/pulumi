@@ -1,0 +1,13 @@
+{
+    "name": "esm-component-provider",
+    "version": "1.0.0",
+    "description": "Node.js ES module components",
+    "type": "module",
+    "dependencies": {
+        "ts-node": "10.9.2",
+        "typescript": "4.9.5"
+    },
+    "devDependencies": {
+        "@types/node": "17.0.45"
+    }
+}

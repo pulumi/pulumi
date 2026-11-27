@@ -21,7 +21,7 @@ import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
 import { defaultErrorMessage, isErrorAlreadyReported } from "../run/error";
-import { loadProgram, packageObjectFromProgram, registerTypeScript } from "../run/esm";
+import { loadProgram, packageObjectFromProgram, programDirectory, registerTypeScript } from "../run/esm";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -157,14 +157,6 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         process.chdir(pwd);
     }
 
-    // We provide reasonable defaults for many ts options, meaning you don't need to have a
-    // tsconfig.json present if you want to use TypeScript with Pulumi. However, ts-node's default
-    // behavior is to walk up from the cwd to find a tsconfig.json. For us, it's reasonable to say
-    // that the "root" of the project is the cwd, if there's a tsconfig.json file here. Otherwise,
-    // just tell ts-node to not load project options at all. This helps with cases like
-    // pulumi/pulumi#1772.
-    const tsConfigPath = "tsconfig.json";
-
     let program: string = opts.argv._[0];
     if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
@@ -172,6 +164,15 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     }
 
     const packageObject = packageObjectFromProgram(program);
+
+    // We provide reasonable defaults for many ts options, meaning you don't need to have a
+    // tsconfig.json present if you want to use TypeScript with Pulumi. However, ts-node's default
+    // behavior is to walk up from the cwd to find a tsconfig.json. For us, it's reasonable to say
+    // that the "root" of the project is the program directory, if there's a tsconfig.json file
+    // there. The engine does not always start plugins in the program directory. Otherwise, just
+    // tell ts-node to not load project options at all. This helps with cases like
+    // pulumi/pulumi#1772.
+    const tsConfigPath = path.join(programDirectory(program), "tsconfig.json");
 
     if (opts.typeScript) {
         registerTypeScript(tsConfigPath, packageObject["type"] === "module");
