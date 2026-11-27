@@ -1,0 +1,4 @@
+component: cli/install
+kind: fix
+body: Stop `pulumi install` from reporting component providers as having exited prematurely
+time: 2026-11-13T00:00:00Z
