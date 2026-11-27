@@ -198,8 +198,8 @@ A language SDK's resource `get` method sends a
 [](pulumirpc.ResourceMonitor.ReadResource) request with the resource's type,
 name, and resource ID. The request can also include a provider reference and
 state properties. The monitor resolves the provider, using the default provider
-when the program does not specify one. It emits a `ReadResourceEvent` for both
-explicit and default providers. This is a read of a custom resource. Calls to
+when the program does not specify one. Every read emits a `ReadResourceEvent`,
+whichever provider it uses. This is a read of a custom resource. Calls to
 provider data-source functions use [](pulumirpc.ResourceMonitor.Invoke).
 
 During `pulumi preview` and `pulumi up`, the resulting `ReadStep` fetches
@@ -225,8 +225,8 @@ resource-does-not-exist error.
 On update, the engine records an external resource with the program-supplied
 properties as inputs and the provider's returned properties as outputs.
 It uses the returned ID when present and the requested ID otherwise.
-The read step does not use the response's `inputs` field. The SDK receives the read outputs for use by the rest of
-the program.
+The read step does not use the response's `inputs` field. The SDK receives the
+read outputs for use by the rest of the program.
 
 (step-generation-diff)=
 ### Diffing
