@@ -40,8 +40,6 @@ type Options struct {
 	Env string
 	// Show fully-qualified stack names
 	FullyQualifyStackNames bool
-	// Emit output as JSON
-	Json bool
 	// Do not remove configuration values from the stack after creating the environment
 	KeepConfig bool
 	// Flow log settings to child processes (like plugins)
@@ -117,13 +115,6 @@ func Env(v string) Option {
 func FullyQualifyStackNames(v bool) Option {
 	return func(o *Options) {
 		o.FullyQualifyStackNames = v
-	}
-}
-
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
 	}
 }
 

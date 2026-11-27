@@ -284,6 +284,8 @@ func (a *API) AboutEnv(
 
 	final := []string{"about", "env"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -294,10 +296,6 @@ func (a *API) AboutEnv(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -314,10 +312,6 @@ func (a *API) AboutEnv(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -493,6 +487,8 @@ func (a *API) ApiDescribe(
 
 	final := []string{"api", "describe"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -555,10 +551,6 @@ func (a *API) ApiDescribe(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -630,6 +622,8 @@ func (a *API) ApiList(
 	}
 
 	final := []string{"api", "list"}
+
+	final = append(final, "--output", "json")
 
 	if o.All {
 		final = append(final, "--all")
@@ -705,10 +699,6 @@ func (a *API) ApiList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -937,6 +927,8 @@ func (a *API) ConfigCopy(
 
 	final := []string{"config", "copy"}
 
+	final = append(final, "--json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -955,10 +947,6 @@ func (a *API) ConfigCopy(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -1044,6 +1032,8 @@ func (a *API) ConfigEnvAdd(
 
 	final := []string{"config", "env", "add"}
 
+	final = append(final, "--json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -1060,10 +1050,6 @@ func (a *API) ConfigEnvAdd(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -1144,6 +1130,8 @@ func (a *API) ConfigEnvInit(
 
 	final := []string{"config", "env", "init"}
 
+	final = append(final, "--json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -1164,10 +1152,6 @@ func (a *API) ConfigEnvInit(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.KeepConfig {
@@ -1327,6 +1311,8 @@ func (a *API) ConfigEnvRemove(
 
 	final := []string{"config", "env", "remove"}
 
+	final = append(final, "--json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -1343,10 +1329,6 @@ func (a *API) ConfigEnvRemove(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -1527,6 +1509,8 @@ func (a *API) ConfigRefresh(
 
 	final = append(final, "--force")
 
+	final = append(final, "--json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -1541,10 +1525,6 @@ func (a *API) ConfigRefresh(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -1620,6 +1600,8 @@ func (a *API) ConfigRemove(
 
 	final := []string{"config", "remove"}
 
+	final = append(final, "--json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -1634,10 +1616,6 @@ func (a *API) ConfigRemove(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -1725,6 +1703,8 @@ func (a *API) ConfigRemoveAll(
 
 	final := []string{"config", "remove-all"}
 
+	final = append(final, "--json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -1739,10 +1719,6 @@ func (a *API) ConfigRemoveAll(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -1841,6 +1817,8 @@ func (a *API) ConfigSet(
 
 	final := []string{"config", "set"}
 
+	final = append(final, "--json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -1855,10 +1833,6 @@ func (a *API) ConfigSet(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -3877,6 +3851,8 @@ func (a *API) Do(
 
 	final := []string{"do"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -3907,10 +3883,6 @@ func (a *API) Do(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Package != "" {
@@ -3966,6 +3938,8 @@ func (a *API) DoShowResources(
 
 	final := []string{"do", "show-resources"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -3996,10 +3970,6 @@ func (a *API) DoShowResources(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Package != "" {
@@ -4891,6 +4861,8 @@ func (a *API) EnvChangeRequestApply(
 
 	final := []string{"env", "change-request", "apply"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -4931,10 +4903,6 @@ func (a *API) EnvChangeRequestApply(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -5312,6 +5280,8 @@ func (a *API) EnvChangeRequestGet(
 
 	final := []string{"env", "change-request", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -5346,10 +5316,6 @@ func (a *API) EnvChangeRequestGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -5394,6 +5360,8 @@ func (a *API) EnvChangeRequestList(
 
 	final := []string{"env", "change-request", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -5428,10 +5396,6 @@ func (a *API) EnvChangeRequestList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -5480,6 +5444,8 @@ func (a *API) EnvChangeRequestLog(
 
 	final := []string{"env", "change-request", "log"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -5514,10 +5480,6 @@ func (a *API) EnvChangeRequestLog(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -5564,6 +5526,8 @@ func (a *API) EnvChangeRequestRebase(
 
 	final := []string{"env", "change-request", "rebase"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -5598,10 +5562,6 @@ func (a *API) EnvChangeRequestRebase(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -6171,6 +6131,8 @@ func (a *API) EnvList(
 
 	final := []string{"env", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -6205,10 +6167,6 @@ func (a *API) EnvList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -6343,6 +6301,8 @@ func (a *API) EnvOpenRequest(
 
 	final := []string{"env", "open-request"}
 
+	final = append(final, "--output", "json")
+
 	if o.AccessDurationSeconds != "" {
 		final = append(final, "--access-duration-seconds", fmt.Sprint(o.AccessDurationSeconds))
 	}
@@ -6381,10 +6341,6 @@ func (a *API) EnvOpenRequest(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -7072,6 +7028,8 @@ func (a *API) EnvReferrerList(
 
 	final := []string{"env", "referrer", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -7118,10 +7076,6 @@ func (a *API) EnvReferrerList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -7501,6 +7455,8 @@ func (a *API) EnvScheduleGet(
 
 	final := []string{"env", "schedule", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -7531,10 +7487,6 @@ func (a *API) EnvScheduleGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -7582,6 +7534,8 @@ func (a *API) EnvScheduleHistory(
 
 	final := []string{"env", "schedule", "history"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -7616,10 +7570,6 @@ func (a *API) EnvScheduleHistory(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -7667,6 +7617,8 @@ func (a *API) EnvScheduleList(
 
 	final := []string{"env", "schedule", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -7701,10 +7653,6 @@ func (a *API) EnvScheduleList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -8018,6 +7966,8 @@ func (a *API) EnvSettingsGet(
 
 	final := []string{"env", "settings", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -8048,10 +7998,6 @@ func (a *API) EnvSettingsGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -8609,6 +8555,8 @@ func (a *API) EnvTagGet(
 
 	final := []string{"env", "tag", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -8639,10 +8587,6 @@ func (a *API) EnvTagGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -8690,6 +8634,8 @@ func (a *API) EnvTagList(
 
 	final := []string{"env", "tag", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -8720,10 +8666,6 @@ func (a *API) EnvTagList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Pager != "" {
@@ -9003,6 +8945,8 @@ func (a *API) EnvVersionHistory(
 
 	final := []string{"env", "version", "history"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -9033,10 +8977,6 @@ func (a *API) EnvVersionHistory(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Pager != "" {
@@ -9341,6 +9281,8 @@ func (a *API) EnvVersionTagList(
 
 	final := []string{"env", "version", "tag", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -9371,10 +9313,6 @@ func (a *API) EnvVersionTagList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Pager != "" {
@@ -9503,6 +9441,8 @@ func (a *API) EnvWebhookDeliveryList(
 
 	final := []string{"env", "webhook", "delivery", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -9537,10 +9477,6 @@ func (a *API) EnvWebhookDeliveryList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -9728,6 +9664,8 @@ func (a *API) EnvWebhookGet(
 
 	final := []string{"env", "webhook", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -9758,10 +9696,6 @@ func (a *API) EnvWebhookGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -9805,6 +9739,8 @@ func (a *API) EnvWebhookList(
 
 	final := []string{"env", "webhook", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -9839,10 +9775,6 @@ func (a *API) EnvWebhookList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -10200,6 +10132,8 @@ func (a *API) Import(
 
 	final := []string{"import"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--skip-preview")
 
 	final = append(final, "--yes")
@@ -10252,10 +10186,6 @@ func (a *API) Import(
 		final = append(final, "--generate-resources", fmt.Sprint(o.GenerateResources))
 	}
 
-	if o.Json {
-		final = append(final, "--json")
-	}
-
 	if o.Logflow {
 		final = append(final, "--logflow")
 	}
@@ -10278,10 +10208,6 @@ func (a *API) Import(
 
 	if o.Out != "" {
 		final = append(final, "--out", fmt.Sprint(o.Out))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Parallel != 0 {
@@ -11769,6 +11695,8 @@ func (a *API) LogsList(
 
 	final := []string{"logs", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -11795,10 +11723,6 @@ func (a *API) LogsList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -12359,6 +12283,8 @@ func (a *API) OrgAuditLogExport(
 
 	final := []string{"org", "audit-log", "export"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -12405,10 +12331,6 @@ func (a *API) OrgAuditLogExport(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -12465,6 +12387,8 @@ func (a *API) OrgAuditLogList(
 
 	final := []string{"org", "audit-log", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -12511,10 +12435,6 @@ func (a *API) OrgAuditLogList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -12709,6 +12629,8 @@ func (a *API) OrgMemberEdit(
 
 	final := []string{"org", "member", "edit"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -12747,10 +12669,6 @@ func (a *API) OrgMemberEdit(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -12809,6 +12727,8 @@ func (a *API) OrgMemberList(
 
 	final := []string{"org", "member", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -12847,10 +12767,6 @@ func (a *API) OrgMemberList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -12898,6 +12814,8 @@ func (a *API) OrgMemberRemove(
 
 	final := []string{"org", "member", "remove"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -12930,10 +12848,6 @@ func (a *API) OrgMemberRemove(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13055,6 +12969,8 @@ func (a *API) OrgRoleAssign(
 
 	final := []string{"org", "role", "assign"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13085,10 +13001,6 @@ func (a *API) OrgRoleAssign(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13145,6 +13057,8 @@ func (a *API) OrgRoleEdit(
 
 	final := []string{"org", "role", "edit"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13187,10 +13101,6 @@ func (a *API) OrgRoleEdit(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13243,6 +13153,8 @@ func (a *API) OrgRoleList(
 
 	final := []string{"org", "role", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13273,10 +13185,6 @@ func (a *API) OrgRoleList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13330,6 +13238,8 @@ func (a *API) OrgRoleNew(
 
 	final := []string{"org", "role", "new"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13364,10 +13274,6 @@ func (a *API) OrgRoleNew(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13431,6 +13337,8 @@ func (a *API) OrgRoleRemove(
 
 	final := []string{"org", "role", "remove"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -13467,10 +13375,6 @@ func (a *API) OrgRoleRemove(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13517,6 +13421,8 @@ func (a *API) OrgSearch(
 
 	final := []string{"org", "search"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13551,10 +13457,6 @@ func (a *API) OrgSearch(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13604,6 +13506,8 @@ func (a *API) OrgSearchAI(
 
 	final := []string{"org", "search", "ai"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13638,10 +13542,6 @@ func (a *API) OrgSearchAI(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -13844,6 +13744,8 @@ func (a *API) OrgUsageGet(
 
 	final := []string{"org", "usage", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -13886,10 +13788,6 @@ func (a *API) OrgUsageGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -14454,6 +14352,8 @@ func (a *API) Refresh(
 
 	final := []string{"refresh"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--skip-preview")
 
 	final = append(final, "--yes")
@@ -14526,10 +14426,6 @@ func (a *API) Refresh(
 		final = append(final, "--import-pending-creates", fmt.Sprint(v))
 	}
 
-	if o.Json {
-		final = append(final, "--json")
-	}
-
 	if o.Logflow {
 		final = append(final, "--logflow")
 	}
@@ -14552,10 +14448,6 @@ func (a *API) Refresh(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	for _, v := range o.OverrideEnv {
@@ -14840,6 +14732,8 @@ func (a *API) StateGet(
 
 	final := []string{"state", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -14866,10 +14760,6 @@ func (a *API) StateGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -16023,6 +15913,8 @@ func (a *API) Up(
 
 	final := []string{"up"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--skip-preview")
 
 	final = append(final, "--yes")
@@ -16099,10 +15991,6 @@ func (a *API) Up(
 		final = append(final, "--ignore-protect")
 	}
 
-	if o.Json {
-		final = append(final, "--json")
-	}
-
 	if o.Logflow {
 		final = append(final, "--logflow")
 	}
@@ -16129,10 +16017,6 @@ func (a *API) Up(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	for _, v := range o.OverrideEnv {
@@ -16394,10 +16278,6 @@ func (a *API) Whoami(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
