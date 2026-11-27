@@ -1,0 +1,16 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::sharedA: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::sharedB: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC::alpha: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::alphaData: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC::beta: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::betaData: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC::outer: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC::inner: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::local: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::task: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::policy: (create)
+<{%reset%}>        <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::svc: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 12 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
