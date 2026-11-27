@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: 'Node.js policy packs and plugins now honor the `typescript: false` runtime option, and no longer load ts-node when it is set. They also respect `PULUMI_NODEJS_TRANSPILE_ONLY` and `noCheck` in `tsconfig.json` instead of always type checking.'
+time: 2026-11-27T13:58:41.994652+01:00
