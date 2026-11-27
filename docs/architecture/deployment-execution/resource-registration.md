@@ -191,6 +191,43 @@ flowchart TD
      `ReadReplacementStep` to delete old managed resource and `ReplaceStep`
      marker
 
+
+#### Reading a resource with `get`
+
+A language SDK's resource `get` method sends a
+[](pulumirpc.ResourceMonitor.ReadResource) request with the resource's type,
+name, and resource ID. The request can also include a provider reference and
+state properties. The monitor resolves the provider, using the default provider
+when the program does not specify one. Every read emits a `ReadResourceEvent`,
+whichever provider it uses. This is a read of a custom resource. Calls to
+provider data-source functions use [](pulumirpc.ResourceMonitor.Invoke).
+
+During `pulumi preview` and `pulumi up`, the resulting `ReadStep` fetches
+live state through [](pulumirpc.ResourceProvider.Read). The read path does not
+call `Check` or `Diff` on the referenced resource. During preview, the engine
+skips the provider call if the ID is unknown or an explicit dependency is
+being created or replaced, and returns unknown outputs to the SDK.
+
+The provider's [](pulumirpc.ReadRequest) includes the resource ID, URN, name,
+and type. The optional state properties from the program populate
+`properties`. For compatibility, the engine also sends the same bag as
+`inputs` when it is non-empty. The provider can use those values to help
+identify the resource in addition to the ID. The request identifies a single
+resource, so a provider that cannot resolve it unambiguously should return
+an error.
+
+For a successful read, return the resource ID and live output properties.
+If there are no output properties, return an empty property map. For a
+missing resource, leave `properties` unset (nil in the gRPC response).
+The engine uses that field to detect a missing resource and returns a
+resource-does-not-exist error.
+
+On update, the engine records an external resource with the program-supplied
+properties as inputs and the provider's returned properties as outputs.
+It uses the returned ID when present and the requested ID otherwise.
+The read step does not use the response's `inputs` field. The SDK receives the
+read outputs for use by the rest of the program.
+
 (step-generation-diff)=
 ### Diffing
 
