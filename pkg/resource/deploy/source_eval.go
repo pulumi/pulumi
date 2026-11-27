@@ -1174,20 +1174,19 @@ func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource
 	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
-func configLogValue(cfg map[config.Key]string, secretKeys []config.Key) resource.PropertyMap {
+func configLogValue(cfg map[config.Key]string, secretKeys []config.Key) property.Map {
 	secret := make(map[config.Key]struct{}, len(secretKeys))
 	for _, k := range secretKeys {
 		secret[k] = struct{}{}
 	}
-	m := make(resource.PropertyMap, len(cfg))
+	m := make(map[string]property.Value, len(cfg))
 	for k, v := range cfg {
-		pv := resource.NewProperty(v)
-		if _, ok := secret[k]; ok {
-			pv = resource.MakeSecret(pv)
-		}
-		m[resource.PropertyKey(k.String())] = pv
+		pv := property.New(v)
+		_, ok := secret[k]
+		pv = pv.WithSecret(ok)
+		m[k.String()] = pv
 	}
-	return m
+	return property.NewMap(m)
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
@@ -3227,7 +3226,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	// Filter out partially-known values if the requestor does not support them.
-	outputs := result.State.Outputs
+	outputs := resource.FromResourcePropertyMap(result.State.Outputs)
 
 	// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
 	if !req.GetCustom() && !remote {
@@ -3239,7 +3238,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// the SDK's calls to getResource to fail when it attempts to resolve those references.
 		//
 		// Work on a more targeted fix is tracked in https://github.com/pulumi/pulumi/issues/5978
-		outputs = resource.PropertyMap{}
+		outputs = property.Map{}
 	}
 
 	// Publish the registered outputs on the registration observer so other concurrent sources waiting on this URN
@@ -3251,14 +3250,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// snippet's References map is rewritten to the canonical URN at snapshot-write time by NormalizeURNReferences.
 	if rm.observer != nil && result.Result == ResultStateSuccess && result.State.URN != "" {
 		if custom {
-			outs := resource.FromResourcePropertyMap(outputs)
-			rm.observer.Resolve(result.State.URN, result.State.ID, outs)
+			rm.observer.Resolve(result.State.URN, result.State.ID, outputs)
 			// Publish under each alias too. We use parsedAliases (the request's aliases) rather than
 			// result.State.Aliases because the Construct path only fills in URN+Outputs on the result, leaving
 			// Aliases empty.
 			for _, alias := range parsedAliases {
 				if aliasURN := alias.GetURN(); aliasURN != "" && aliasURN != result.State.URN {
-					rm.observer.Resolve(aliasURN, result.State.ID, outs)
+					rm.observer.Resolve(aliasURN, result.State.ID, outputs)
 				}
 			}
 		} else if !remote {
@@ -3281,13 +3279,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
-		filtered := resource.PropertyMap{}
-		for k, v := range outputs {
-			if !v.ContainsUnknowns() {
+		filtered := make(map[string]property.Value)
+		for k, v := range outputs.All() {
+			if !v.HasComputed() {
 				filtered[k] = v
 			}
 		}
-		outputs = filtered
+		outputs = property.NewMap(filtered)
 	}
 
 	// TODO(@platform):
@@ -3333,12 +3331,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
-		result.State.Type, result.State.URN, len(outputs),
+		result.State.Type, result.State.URN, outputs.Len(),
 	)
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	filteredObj, err := plugin.FilterProperties(resource.FromResourcePropertyMap(outputs), plugin.FilterOptions{
+	filteredObj, err := plugin.FilterProperties(outputs, plugin.FilterOptions{
 		KeepUnknowns:         true,
 		KeepSecrets:          req.GetAcceptSecrets(),
 		KeepResources:        req.GetAcceptResources(),

@@ -184,16 +184,13 @@ func (s *testProviderSource) ParameterizeExtension(
 	return errors.New("testProviderSource does not support extensions")
 }
 
-func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent resource.URN) RegisterResourceEvent {
-	if inputs == nil {
-		inputs = resource.PropertyMap{}
-	}
+func newProviderEvent(pkg, name string, inputs property.Map, parent resource.URN) RegisterResourceEvent {
 	goal := &pkgresource.Goal{
 		Type:       sdkproviders.MakeProviderType(tokens.Package(pkg)),
 		ID:         "id",
 		Name:       name,
 		Custom:     true,
-		Properties: resource.FromResourcePropertyMap(inputs),
+		Properties: inputs,
 		Parent:     parent,
 	}
 	return &testRegEvent{goal: goal}
@@ -257,7 +254,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 
 	steps := []RegisterResourceEvent{
 		// Register a provider.
-		newProviderEvent("pkgA", "providerA", nil, ""),
+		newProviderEvent("pkgA", "providerA", property.Map{}, ""),
 		// Register a component resource.
 		&testRegEvent{
 			goal: pkgresource.NewGoal{
@@ -348,8 +345,8 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 			}.Make(),
 		},
 		// Register two more providers.
-		newProviderEvent("pkgA", "providerB", nil, ""),
-		newProviderEvent("pkgC", "providerC", nil, componentURN),
+		newProviderEvent("pkgA", "providerB", property.Map{}, ""),
+		newProviderEvent("pkgC", "providerC", property.Map{}, componentURN),
 		// Register a few resources that use the new providers.
 		&testRegEvent{
 			goal: pkgresource.NewGoal{
@@ -4110,10 +4107,10 @@ func TestConfigLogValue(t *testing.T) {
 
 	m := configLogValue(cfg, []config.Key{secretKey})
 
-	require.True(t, m[resource.PropertyKey(secretKey.String())].IsSecret())
-	require.Equal(t, "us-west-2", m[resource.PropertyKey(plainKey.String())].StringValue())
+	require.True(t, m.Get(secretKey.String()).IsSecret())
+	require.Equal(t, "us-west-2", m.Get(plainKey.String()).AsString())
 
-	redacted := m.RedactedLogValue().Any().(resource.PropertyMap)
-	require.Equal(t, "[secret]", redacted[resource.PropertyKey(secretKey.String())].StringValue())
-	require.Equal(t, "us-west-2", redacted[resource.PropertyKey(plainKey.String())].StringValue())
+	redacted := m.RedactedLogValue().Any().(property.Map)
+	require.Equal(t, "[secret]", redacted.Get(secretKey.String()).AsString())
+	require.Equal(t, "us-west-2", redacted.Get(plainKey.String()).AsString())
 }
