@@ -1,0 +1,4 @@
+component: cli/env
+kind: fix
+body: Set `GOOGLE_PROJECT` to the GCP project ID instead of the project number in `pulumi env setup gcp`, and add `--project-id` to `pulumi env provider gcp-login`
+time: 2026-11-17T00:00:00Z

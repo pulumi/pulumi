@@ -53,6 +53,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 	var reason string
 	var create bool
 	var exportEnvVars bool
+	var projectID string
 
 	cmd := &cobra.Command{
 		Use:   "static [<org>/][<project>/]<environment-name> <project-number> <access-token>",
@@ -101,7 +102,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 
 			var envVars []envVar
 			if exportEnvVars {
-				envVars = gcpLoginEnvVars(propertyPathRef(path))
+				envVars = gcpLoginEnvVars(propertyPathRef(path), projectID)
 			}
 
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
@@ -118,6 +119,9 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 		StringVar(&pathStr, "path", "gcp.login", "property path under `values` where the provider block is written")
 	cmd.Flags().BoolVar(&exportEnvVars, "export-env-vars", false,
 		"also set the Google SDK environment variables (GOOGLE_PROJECT, etc.) referencing the login outputs")
+	cmd.Flags().StringVar(&projectID, "project-id", "",
+		"GCP project ID (e.g. my-project) to set GOOGLE_PROJECT to with --export-env-vars; "+
+			"defaults to the project number, which some Google APIs reject")
 	cmd.Flags().BoolVar(&create, "create", false,
 		"create the environment if it does not already exist")
 	cmd.Flags().StringVar(&draft, "draft", "",
@@ -183,6 +187,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	var reason string
 	var create bool
 	var exportEnvVars bool
+	var projectID string
 
 	cmd := &cobra.Command{
 		Use:   "oidc [<org>/][<project>/]<environment-name> <project-number>",
@@ -240,7 +245,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 
 			var envVars []envVar
 			if exportEnvVars {
-				envVars = gcpLoginEnvVars(propertyPathRef(path))
+				envVars = gcpLoginEnvVars(propertyPathRef(path), projectID)
 			}
 
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
@@ -262,6 +267,9 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 		StringVar(&pathStr, "path", "gcp.login", "property path under `values` where the provider block is written")
 	cmd.Flags().BoolVar(&exportEnvVars, "export-env-vars", false,
 		"also set the Google SDK environment variables (GOOGLE_PROJECT, etc.) referencing the login outputs")
+	cmd.Flags().StringVar(&projectID, "project-id", "",
+		"GCP project ID (e.g. my-project) to set GOOGLE_PROJECT to with --export-env-vars; "+
+			"defaults to the project number, which some Google APIs reject")
 	cmd.Flags().BoolVar(&create, "create", false,
 		"create the environment if it does not already exist")
 	cmd.Flags().StringVar(&draft, "draft", "",
@@ -276,10 +284,18 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
-// gcpLoginEnvVars returns the Google SDK environment variables that reference the gcp-login outputs
-func gcpLoginEnvVars(pathRef string) []envVar {
+// gcpLoginEnvVars returns the Google SDK environment variables that reference the gcp-login outputs.
+//
+// The gcp-login `project` output is the numeric project number, which some Google APIs (for example
+// Artifact Registry) reject as a default project. When projectID is known, GOOGLE_PROJECT is set to
+// it instead; otherwise it falls back to the project number output.
+func gcpLoginEnvVars(pathRef, projectID string) []envVar {
+	project := "${" + pathRef + ".project}"
+	if projectID != "" {
+		project = projectID
+	}
 	return []envVar{
-		{"GOOGLE_PROJECT", "${" + pathRef + ".project}"},
+		{"GOOGLE_PROJECT", project},
 		{"GOOGLE_OAUTH_ACCESS_TOKEN", "${" + pathRef + ".accessToken}"},
 		{"CLOUDSDK_AUTH_ACCESS_TOKEN", "${" + pathRef + ".accessToken}"},
 	}
