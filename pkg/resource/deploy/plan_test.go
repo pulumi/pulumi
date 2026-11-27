@@ -363,6 +363,37 @@ func TestResourcePlan(t *testing.T) {
 					}, false)
 				assert.ErrorContains(t, err, "protect changed")
 			})
+			t.Run("retainOnDelete mismatch", func(t *testing.T) {
+				t.Parallel()
+				planRetain := true
+				rp := &ResourcePlan{
+					Goal: &GoalPlan{
+						RetainOnDelete: &planRetain,
+					},
+				}
+				err := rp.checkGoal(
+					resource.PropertyMap{},
+					resource.PropertyMap{},
+					&pkgresource.Goal{
+						RetainOnDelete: nil,
+					}, false)
+				assert.ErrorContains(t, err, "retainOnDelete changed (expected true)")
+			})
+			t.Run("retainOnDelete not recorded", func(t *testing.T) {
+				t.Parallel()
+				// Plans that predate retainOnDelete do not record it, so it is not checked.
+				goalRetain := true
+				rp := &ResourcePlan{
+					Goal: &GoalPlan{},
+				}
+				err := rp.checkGoal(
+					resource.PropertyMap{},
+					resource.PropertyMap{},
+					&pkgresource.Goal{
+						RetainOnDelete: &goalRetain,
+					}, false)
+				require.NoError(t, err)
+			})
 			t.Run("deleteBeforeReplace mismatch", func(t *testing.T) {
 				t.Parallel()
 				t.Run("both non-nil", func(t *testing.T) {
