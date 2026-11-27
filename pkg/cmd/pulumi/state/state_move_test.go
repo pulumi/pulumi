@@ -1076,6 +1076,109 @@ func TestProviderIsReparented(t *testing.T) {
 		destSnapshot.Resources[2].Parent)
 }
 
+// componentOwningProvider returns a component whose explicit provider is configured from a sibling
+// and used by another child, in the order a program would register them.
+func componentOwningProvider() (urn.URN, []*pkgresource.State) {
+	sourceRoot := resource.DefaultRootStackURN("sourceStack", "test")
+	componentURN := resource.NewURN("sourceStack", "test", "", "my:comp:Comp", "comp")
+	clusterURN := resource.NewURN("sourceStack", "test", "my:comp:Comp", "a:b:cluster", "cluster")
+	providerURN := resource.NewURN("sourceStack", "test", "my:comp:Comp", "pulumi:providers:a", "prov")
+	return componentURN, []*pkgresource.State{
+		{URN: sourceRoot, Type: "pulumi:pulumi:Stack"},
+		{URN: componentURN, Type: "my:comp:Comp", Parent: sourceRoot},
+		{URN: clusterURN, Type: "a:b:cluster", Custom: true, ID: "cluster_id", Parent: componentURN},
+		{
+			URN:          providerURN,
+			Type:         "pulumi:providers:a",
+			ID:           "provider_id",
+			Custom:       true,
+			Parent:       componentURN,
+			Dependencies: []urn.URN{clusterURN},
+		},
+		{
+			URN:      resource.NewURN("sourceStack", "test", "my:comp:Comp", "a:b:c", "child"),
+			Type:     "a:b:c",
+			Custom:   true,
+			ID:       "child_id",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   componentURN,
+		},
+	}
+}
+
+func TestMoveComponentOwningItsProvider(t *testing.T) {
+	t.Parallel()
+
+	componentURN, sourceResources := componentOwningProvider()
+	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(componentURN)})
+
+	// The provider stays in the source stack, reparented to the root stack.
+	require.Len(t, sourceSnapshot.Resources, 2)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::prov"), sourceSnapshot.Resources[1].URN)
+	assert.Equal(t, resource.DefaultRootStackURN("sourceStack", "test"), sourceSnapshot.Resources[1].Parent)
+	assert.Empty(t, sourceSnapshot.Resources[1].Dependencies)
+
+	// The copied provider keeps its source position: after its parent and the resource it depends on.
+	destPrefix := "urn:pulumi:destStack::test::my:comp:Comp"
+	destProvider := urn.URN(destPrefix + "$pulumi:providers:a::prov")
+	require.Len(t, destSnapshot.Resources, 5)
+	assert.Equal(t, resource.DefaultRootStackURN("destStack", "test"), destSnapshot.Resources[0].URN)
+	assert.Equal(t, urn.URN(destPrefix+"::comp"), destSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN(destPrefix+"$a:b:cluster::cluster"), destSnapshot.Resources[2].URN)
+	assert.Equal(t, destProvider, destSnapshot.Resources[3].URN)
+	assert.Equal(t, urn.URN(destPrefix+"::comp"), destSnapshot.Resources[3].Parent)
+	assert.Equal(t, []urn.URN{destSnapshot.Resources[2].URN}, destSnapshot.Resources[3].Dependencies)
+	assert.Equal(t, urn.URN(destPrefix+"$a:b:c::child"), destSnapshot.Resources[4].URN)
+	assert.Equal(t, string(destProvider)+"::provider_id", destSnapshot.Resources[4].Provider)
+}
+
+func TestMoveComponentOwningProviderUsedOutside(t *testing.T) {
+	t.Parallel()
+
+	componentURN, sourceResources := componentOwningProvider()
+	sourceRoot := sourceResources[0].URN
+	outside := &pkgresource.State{
+		URN:          resource.NewURN("sourceStack", "test", "", "a:b:c", "outside"),
+		Type:         "a:b:c",
+		Custom:       true,
+		ID:           "outside_id",
+		Provider:     sourceResources[4].Provider,
+		Parent:       sourceRoot,
+		Dependencies: []urn.URN{sourceResources[3].URN},
+	}
+	sourceResources = append(sourceResources, outside)
+
+	sourceSnapshot, _, _ := runMove(t, sourceResources, []string{string(componentURN)})
+
+	providerURN := urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::prov")
+	require.Len(t, sourceSnapshot.Resources, 3)
+	assert.Equal(t, providerURN, sourceSnapshot.Resources[1].URN)
+	assert.Equal(t, outside.URN, sourceSnapshot.Resources[2].URN)
+	assert.Equal(t, string(providerURN)+"::provider_id", sourceSnapshot.Resources[2].Provider)
+	assert.Equal(t, []urn.URN{providerURN}, sourceSnapshot.Resources[2].Dependencies)
+}
+
+func TestMoveComponentOwningItsProviderWithNewParent(t *testing.T) {
+	t.Parallel()
+
+	componentURN, sourceResources := componentOwningProvider()
+	destParentURN := resource.NewURN("destStack", "test", "", "a:b:component", "destParent")
+	destResources := []*pkgresource.State{{URN: destParentURN, Type: "a:b:component"}}
+
+	_, destSnapshot, _ := runMoveWithOptionsAndDestResources(
+		t, sourceResources, destResources, []string{string(componentURN)},
+		&MoveOptions{NewParent: destParentURN})
+
+	destPrefix := "urn:pulumi:destStack::test::a:b:component$my:comp:Comp"
+	destProvider := urn.URN(destPrefix + "$pulumi:providers:a::prov")
+	require.Len(t, destSnapshot.Resources, 6)
+	assert.Equal(t, urn.URN(destPrefix+"::comp"), destSnapshot.Resources[2].URN)
+	assert.Equal(t, destParentURN, destSnapshot.Resources[2].Parent)
+	assert.Equal(t, destProvider, destSnapshot.Resources[4].URN)
+	assert.Equal(t, urn.URN(destPrefix+"::comp"), destSnapshot.Resources[4].Parent)
+	assert.Equal(t, string(destProvider)+"::provider_id", destSnapshot.Resources[5].Provider)
+}
+
 func TestMoveProvider(t *testing.T) {
 	t.Parallel()
 
