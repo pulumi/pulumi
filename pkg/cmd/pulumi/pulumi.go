@@ -46,6 +46,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
@@ -461,7 +462,7 @@ func NewPulumiCmd(hm *hints.Manager) (*cobra.Command, func()) {
 
 				// Show at most one message besides the update check, preferring a notification, which can
 				// carry a warning or an error, over a hint.
-				if notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version) {
+				if notifications.Print(cmdutil.Diag(), pendingNotifications(), version.Version, display.ProviderVersions()) {
 					hm.Suppress()
 				}
 			}
