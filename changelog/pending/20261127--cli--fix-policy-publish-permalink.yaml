@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Fix the permalink printed by `pulumi policy publish` to point to the correct Pulumi Cloud page
+custom:
+  PR: "25891"
