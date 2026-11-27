@@ -22,8 +22,12 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strings"
 
 	"github.com/google/shlex"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -255,10 +259,38 @@ func (cmd *stateEditCmd) validateAndPrintState(ctx context.Context, f *snapshotB
 	}
 
 	fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(
-		colors.SpecHeadline+"New state:"+colors.Reset+"\n"))
+		colors.SpecHeadline+"State changes:"+colors.Reset+"\n"))
 
-	fmt.Fprintln(cmd.Stdout, string(previewText))
+	cmd.printDiff(string(f.originalText), string(previewText))
 	return news, nil
+}
+
+func (cmd *stateEditCmd) printDiff(old, new string) {
+	edits := myers.ComputeEdits(span.URIFromPath("original"), old, new)
+	unified := fmt.Sprint(gotextdiff.ToUnified("original", "edited", old, edits))
+	for _, line := range strings.SplitAfter(unified, "\n") {
+		if line == "" {
+			continue
+		}
+		var color string
+		switch {
+		case strings.HasPrefix(line, "---"), strings.HasPrefix(line, "+++"):
+			color = colors.Bold
+		case strings.HasPrefix(line, "@@"):
+			color = colors.Cyan
+		case strings.HasPrefix(line, "-"):
+			color = colors.SpecDelete
+		case strings.HasPrefix(line, "+"):
+			color = colors.SpecCreate
+		}
+		if color == "" {
+			fmt.Fprint(cmd.Stdout, line)
+			continue
+		}
+		fmt.Fprint(cmd.Stdout, cmd.Colorizer.Colorize(color), strings.TrimSuffix(line, "\n"),
+			cmd.Colorizer.Colorize(colors.Reset), "\n")
+	}
+	fmt.Fprintln(cmd.Stdout)
 }
 
 func openInEditor(filename string) error {
