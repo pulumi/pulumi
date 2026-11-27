@@ -118,7 +118,9 @@ function main(args: string[]): void {
                 programRunning = true;
             },
             reportLoggedError: (err: Error) => loggedErrors.add(err),
-            typeScript: !process.versions.bun, // bun handles TypeScript natively
+            // bun handles TypeScript natively; otherwise the language host sets this env var unless the
+            // project disabled the built-in TypeScript support with the `typescript` runtime option.
+            typeScript: !process.versions.bun && process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true",
         });
 
         // when the user's program completes successfully, set programRunning back to false.  That

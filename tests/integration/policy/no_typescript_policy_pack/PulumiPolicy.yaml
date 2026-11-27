@@ -1,0 +1,5 @@
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+description: A policy pack that reports whether ts-node was loaded.
