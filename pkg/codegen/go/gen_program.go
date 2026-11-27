@@ -2560,6 +2560,10 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 		// e.g. "aws:index/getPartition:getPartition" where module is "index/getPartition"
 		mod = ""
 		fn = Title(modSplit[1])
+	} else if module == IndexToken {
+		// e.g. "aws:index:getPartition", or "aws:getPartition" and "aws::getPartition", which
+		// DecomposeToken normalizes to the "index" module: these are all members of the root module.
+		mod = ""
 	} else {
 		// e.g. for type "ec2/getVpc:getVpcArgs"
 		if _, has := g.contexts[pkg][mod]; !has {

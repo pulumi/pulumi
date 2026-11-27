@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Generate `Lookup*` calls and args types for root-module invokes that the Go SDK exports as `Lookup*`
+time: 2026-11-24T10:00:00Z

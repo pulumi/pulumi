@@ -1,0 +1,5 @@
+name: l2-invoke-lookup
+runtime:
+  name: nodejs
+  options:
+    typescript: false
