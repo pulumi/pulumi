@@ -49,6 +49,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	var showSecrets bool
 	var draft string
 	var reason string
+	var output string
 
 	edit := &envEditCommand{env: env}
 
@@ -67,6 +68,11 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 			"defaults to `vi`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -96,7 +102,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return fmt.Errorf("reading environment definition: %w", err)
 				}
 
-				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, reason, yaml, "", "Environment updated.")
+				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, reason, yaml, "", "Environment updated.", format)
 				if err != nil {
 					return err
 				}
@@ -154,7 +160,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return nil
 				}
 
-				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.")
+				diags, err := edit.env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.", format)
 				// Edge case: if approval gates are turned on during editing, offer to create a change request
 				if draft == "" && isApprovalRequired(err) && cmdutil.Interactive() {
 					msg := "This environment requires approval. Submit your changes as a change request?"
@@ -162,7 +168,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 						return err
 					}
 					draft = "new"
-					diags, err = edit.env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.")
+					diags, err = edit.env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.", format)
 				}
 				switch {
 				case draft != "new" && !isApprovalRequired(err) && isConflict(err):
@@ -221,6 +227,7 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 	// Allow no value to be specified with the flag and create a new change request in that case
 	cmd.Flag("draft").NoOptDefVal = "new"
 	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }
