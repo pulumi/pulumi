@@ -311,8 +311,8 @@ func (cmd *stateMoveCmd) Run(
 	// that are going to be moved.
 	remainingResources := make(map[string]*pkgresource.State)
 	var resourcesToMoveOrdered []*pkgresource.State
-	// destOrder also holds the providers to copy whose parent is being moved, at their source position,
-	// so that they come after their parent and their dependencies in the destination.
+	// destOrder also holds the providers to copy, at their source position, so that each one comes
+	// after its parent and its dependencies in the destination.
 	var destOrder []*pkgresource.State
 	for _, res := range sourceSnapshot.Resources {
 		if _, ok := resourcesToMove[string(res.URN)]; ok {
@@ -320,39 +320,34 @@ func (cmd *stateMoveCmd) Run(
 			destOrder = append(destOrder, res)
 		} else {
 			remainingResources[string(res.URN)] = res
-			if _, ok := resourcesToMove[string(res.Parent)]; ok && providersToCopy[string(res.URN)+"::"+string(res.ID)] {
+			if providersToCopy[string(res.URN)+"::"+string(res.ID)] {
 				destOrder = append(destOrder, res)
 			}
 		}
 	}
 
-	// run through the source snapshot and find all the providers
-	// that need to be copied, remove all the resources that need
-	// to be removed, and break the dependencies that are no
+	// run through the source snapshot, remove all the resources that
+	// need to be removed, and break the dependencies that are no
 	// longer valid.
 	sourceRootStack, err := stack.GetRootStackResource(sourceSnapshot)
 	if err != nil {
 		return err
 	}
-	var providers []*pkgresource.State
+	var orphanedProviders []urn.URN
 	var brokenSourceDependencies []brokenDependency
 	i := 0
 	for _, res := range sourceSnapshot.Resources {
-		// Find providers that need to be copied
 		if _, ok := resourcesToMove[string(res.URN)]; ok {
 			continue
 		}
-		if providersToCopy[string(res.URN)+"::"+string(res.ID)] {
-			providers = append(providers, res)
-		}
 		// A provider stays in the source stack even when its parent is moved, so it needs a parent there.
-		// Its URN is kept so that references from the remaining resources stay valid.
 		if _, ok := resourcesToMove[string(res.Parent)]; ok && strings.HasPrefix(string(res.Type), providerPrefix) {
 			res = res.Copy()
 			res.Parent = ""
 			if sourceRootStack != nil {
 				res.Parent = sourceRootStack.URN
 			}
+			orphanedProviders = append(orphanedProviders, res.URN)
 		}
 
 		sourceSnapshot.Resources[i] = res
@@ -360,6 +355,14 @@ func (cmd *stateMoveCmd) Run(
 		brokenSourceDependencies = append(brokenSourceDependencies, breakDependencies(res, resourcesToMove)...)
 	}
 	sourceSnapshot.Resources = sourceSnapshot.Resources[:i]
+
+	// The URN encodes the parent, so rename the reparented providers and the references to them.
+	for _, old := range orphanedProviders {
+		newURN := urn.New(old.Stack(), old.Project(), "", old.Type(), old.Name())
+		if err := stateReurnOperation(old, newURN, display.Options{}, sourceSnapshot); err != nil {
+			return fmt.Errorf("failed to rename provider %s remaining in the source stack: %w", old, err)
+		}
+	}
 
 	// Save a copy of the destination snapshot so we can restore it if saving the source snapshot with the
 	// deleted resources fails.
@@ -400,7 +403,7 @@ func (cmd *stateMoveCmd) Run(
 
 	var brokenDestDependencies []brokenDependency
 	rewriteMap := make(map[string]string)
-	copyProvider := func(res *pkgresource.State, parentRewrites map[string]string) error {
+	copyProvider := func(res *pkgresource.State) error {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
 		originalProviderRef := fmt.Sprintf("%s::%s", res.URN, res.ID)
@@ -411,7 +414,7 @@ func (cmd *stateMoveCmd) Run(
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			r.Parent = rootStack.URN
 		}
-		err := rewriteURNs(r, dest, parentRewrites)
+		err := rewriteURNs(r, dest, rewriteMap)
 		if err != nil {
 			return err
 		}
@@ -437,16 +440,6 @@ func (cmd *stateMoveCmd) Run(
 		return nil
 	}
 
-	for _, res := range providers {
-		if _, ok := resourcesToMove[string(res.Parent)]; ok {
-			// Copied in source order along with the moved resources below.
-			continue
-		}
-		if err := copyProvider(res, nil); err != nil {
-			return err
-		}
-	}
-
 	fmt.Fprintf(cmd.Stdout, cmd.Colorizer.Colorize(
 		colors.SpecHeadline+"Planning to move the following resources from %s to %s:\n"+colors.Reset),
 		source.Ref().FullyQualifiedName(), dest.Ref().FullyQualifiedName())
@@ -459,7 +452,7 @@ func (cmd *stateMoveCmd) Run(
 
 	for _, res := range destOrder {
 		if _, ok := resourcesToMove[string(res.URN)]; !ok {
-			if err := copyProvider(res, rewriteMap); err != nil {
+			if err := copyProvider(res); err != nil {
 				return err
 			}
 			continue

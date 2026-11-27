@@ -76,6 +76,7 @@ func stateReurnOperation(
 
 			// We handle providers separately later on, so ignore the return here.
 			_, allDeps := existingResource.GetAllDependencies()
+			existingResource.ReplaceWith = nil
 			for _, dep := range allDeps {
 				switch dep.Type {
 				case pkgresource.ResourceParent:

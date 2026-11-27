@@ -1114,7 +1114,7 @@ func TestMoveComponentOwningItsProvider(t *testing.T) {
 
 	// The provider stays in the source stack, reparented to the root stack.
 	require.Len(t, sourceSnapshot.Resources, 2)
-	assert.Equal(t, sourceResources[3].URN, sourceSnapshot.Resources[1].URN)
+	assert.Equal(t, urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::prov"), sourceSnapshot.Resources[1].URN)
 	assert.Equal(t, resource.DefaultRootStackURN("sourceStack", "test"), sourceSnapshot.Resources[1].Parent)
 	assert.Empty(t, sourceSnapshot.Resources[1].Dependencies)
 
@@ -1130,6 +1130,32 @@ func TestMoveComponentOwningItsProvider(t *testing.T) {
 	assert.Equal(t, []urn.URN{destSnapshot.Resources[2].URN}, destSnapshot.Resources[3].Dependencies)
 	assert.Equal(t, urn.URN(destPrefix+"$a:b:c::child"), destSnapshot.Resources[4].URN)
 	assert.Equal(t, string(destProvider)+"::provider_id", destSnapshot.Resources[4].Provider)
+}
+
+func TestMoveComponentOwningProviderUsedOutside(t *testing.T) {
+	t.Parallel()
+
+	componentURN, sourceResources := componentOwningProvider()
+	sourceRoot := sourceResources[0].URN
+	outside := &pkgresource.State{
+		URN:          resource.NewURN("sourceStack", "test", "", "a:b:c", "outside"),
+		Type:         "a:b:c",
+		Custom:       true,
+		ID:           "outside_id",
+		Provider:     sourceResources[4].Provider,
+		Parent:       sourceRoot,
+		Dependencies: []urn.URN{sourceResources[3].URN},
+	}
+	sourceResources = append(sourceResources, outside)
+
+	sourceSnapshot, _, _ := runMove(t, sourceResources, []string{string(componentURN)})
+
+	providerURN := urn.URN("urn:pulumi:sourceStack::test::pulumi:providers:a::prov")
+	require.Len(t, sourceSnapshot.Resources, 3)
+	assert.Equal(t, providerURN, sourceSnapshot.Resources[1].URN)
+	assert.Equal(t, outside.URN, sourceSnapshot.Resources[2].URN)
+	assert.Equal(t, string(providerURN)+"::provider_id", sourceSnapshot.Resources[2].Provider)
+	assert.Equal(t, []urn.URN{providerURN}, sourceSnapshot.Resources[2].Dependencies)
 }
 
 func TestMoveComponentOwningItsProviderWithNewParent(t *testing.T) {
