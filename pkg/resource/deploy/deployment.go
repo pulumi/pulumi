@@ -638,7 +638,7 @@ func buildResourceMaps(prev *Snapshot) (
 		if oldres.Custom && oldres.ID == "" {
 			return nil, false, nil, nil, nil, fmt.Errorf(
 				"resource '%s' is marked as custom but has no ID; "+
-					"remove it with `pulumi state delete --disable-integrity-checking '%s'` before retrying", urn, urn)
+					"remove it with `pulumi state remove --disable-integrity-checking '%s'` before retrying", urn, urn)
 		}
 		if olds[urn] != nil {
 			if oldres.Delete {

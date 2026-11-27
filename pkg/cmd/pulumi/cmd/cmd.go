@@ -146,7 +146,7 @@ func printSnapshotIntegrityError(err error, sie snapshot.SnapshotIntegrityError)
 		fmt.Fprintf(&message, "The Pulumi CLI attempted to automatically repair this error but was unable to\n"+
 			"do so (%v). You can try to repair the snapshot by passing the `--disable-integrity-checking` flag."+
 			"This will disable integrity checking on many Pulumi commands. This will allow you to execute "+
-			"fine-grained repairs using e.g. `pulumi state delete`",
+			"fine-grained repairs using e.g. `pulumi state remove`",
 			sie.AutoRepairErr)
 	} else {
 		message.WriteString(`You can try to repair your snapshot as follows:
@@ -155,7 +155,7 @@ func printSnapshotIntegrityError(err error, sie snapshot.SnapshotIntegrityError)
   Run ` + "`pulumi state repair --help`" + ` for more information.
 ` + "* Passing the `--disable-integrity-checking` flag." + ` This will disable integrity
   checking on many Pulumi commands. This is riskier, but may allow you to
-  execute fine-grained repairs using e.g. ` + "`pulumi state delete`" + `.
+  execute fine-grained repairs using e.g. ` + "`pulumi state remove`" + `.
 `)
 	}
 
