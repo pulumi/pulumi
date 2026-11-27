@@ -7,7 +7,9 @@
     "foo/internal/pulumiVersion.go",
     "foo/provider.go",
     "foo/pulumi-plugin.json",
+    "foo/pulumiEnums.go",
     "foo/pulumiTypes.go",
+    "foo/rootResource.go",
     "foo/submodule1/fooencryptedBarClass.go",
     "foo/submodule1/init.go",
     "foo/submodule1/moduleResource.go"

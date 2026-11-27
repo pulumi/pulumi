@@ -10,6 +10,14 @@ export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
+export { RootResourceArgs } from "./rootResource";
+export type RootResource = import("./rootResource").RootResource;
+export const RootResource: typeof import("./rootResource").RootResource = null as any;
+utilities.lazyLoad(exports, ["RootResource"], () => require("./rootResource"));
+
+
+// Export enums:
+export * from "./types/enums";
 
 // Export sub-modules:
 import * as submodule1 from "./submodule1";
@@ -19,6 +27,19 @@ export {
     submodule1,
     types,
 };
+
+const _module = {
+    version: utilities.getVersion(),
+    construct: (name: string, type: string, urn: string): pulumi.Resource => {
+        switch (type) {
+            case "foo-bar:index:RootResource":
+                return new RootResource(name, <any>undefined, { urn })
+            default:
+                throw new Error(`unknown resource type ${type}`);
+        }
+    },
+};
+pulumi.runtime.registerResourceModule("foo-bar", "index", _module)
 pulumi.runtime.registerResourcePackage("foo-bar", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

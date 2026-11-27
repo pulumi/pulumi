@@ -20,7 +20,7 @@ type Component struct {
 
 	Provider       other.ProviderOutput `pulumi:"provider"`
 	Res            mod1alias.ResOutput  `pulumi:"res"`
-	StorageClasses other.ThingMapOutput `pulumi:"storageClasses"`
+	StorageClasses pkg.ThingMapOutput   `pulumi:"storageClasses"`
 }
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
@@ -191,8 +191,8 @@ func (o ComponentOutput) Res() mod1alias.ResOutput {
 	return o.ApplyT(func(v *Component) mod1alias.ResOutput { return v.Res }).(mod1alias.ResOutput)
 }
 
-func (o ComponentOutput) StorageClasses() other.ThingMapOutput {
-	return o.ApplyT(func(v *Component) other.ThingMapOutput { return v.StorageClasses }).(other.ThingMapOutput)
+func (o ComponentOutput) StorageClasses() pkg.ThingMapOutput {
+	return o.ApplyT(func(v *Component) pkg.ThingMapOutput { return v.StorageClasses }).(pkg.ThingMapOutput)
 }
 
 type ComponentArrayOutput struct{ *pulumi.OutputState }

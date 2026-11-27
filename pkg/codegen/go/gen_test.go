@@ -415,6 +415,106 @@ func TestTokenToType(t *testing.T) {
 	}
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/25876.
+func TestTokenToEnum(t *testing.T) {
+	t.Parallel()
+
+	importWithGoInfo := func(t *testing.T, spec schema.PackageSpec) *schema.Package {
+		pkg, err := schema.ImportSpec(spec, map[string]schema.Language{"go": Importer},
+			schema.NewNullLoader(), schema.ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		return pkg
+	}
+
+	dashedSpec := schema.PackageSpec{Name: "my-pkg"}
+	dashedWithBasePathSpec := schema.PackageSpec{
+		Name: "my-pkg",
+		Language: map[string]schema.RawMessage{
+			"go": schema.RawMessage(`{"importBasePath": "example.com/my-pkg/sdk/go/foo"}`),
+		},
+	}
+
+	tests := []struct {
+		name     string
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			name:     "root module enum from a submodule",
+			pkg:      &pkgContext{pkg: importWithGoInfo(t, dashedSpec).Reference(), mod: "mod"},
+			token:    "my-pkg:index:Shade",
+			expected: "mypkg.Shade",
+		},
+		{
+			name: "root module enum from a submodule with importBasePath",
+			pkg: &pkgContext{
+				pkg:            importWithGoInfo(t, dashedWithBasePathSpec).Reference(),
+				mod:            "mod",
+				importBasePath: "example.com/my-pkg/sdk/go/foo",
+			},
+			token:    "my-pkg:index:Shade",
+			expected: "foo.Shade",
+		},
+		{
+			name:     "root module enum from the root module",
+			pkg:      &pkgContext{pkg: importWithGoInfo(t, dashedSpec).Reference()},
+			token:    "my-pkg:index:Shade",
+			expected: "Shade",
+		},
+		{
+			name:     "submodule enum from the root module",
+			pkg:      &pkgContext{pkg: importWithGoInfo(t, dashedSpec).Reference()},
+			token:    "my-pkg:mod:Shade",
+			expected: "mod.Shade",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, tt.pkg.tokenToEnum(tt.token))
+		})
+	}
+}
+
+func TestExtractImportBasePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		spec     schema.PackageSpec
+		expected string
+	}{
+		{
+			name:     "dashed name",
+			spec:     schema.PackageSpec{Name: "my-pkg"},
+			expected: "example.com/pulumi-my-pkg/sdk/go/mypkg",
+		},
+		{
+			name: "dashed name with pack support",
+			spec: schema.PackageSpec{
+				Name:    "my-pkg",
+				Version: "1.0.0",
+				Meta:    &schema.MetadataSpec{SupportPack: true},
+			},
+			expected: "example.com/pulumi-my-pkg/sdk/go/mypkg",
+		},
+		{
+			name:     "undashed name",
+			spec:     schema.PackageSpec{Name: "mypkg"},
+			expected: "example.com/pulumi-mypkg/sdk/go/mypkg",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, ExtractImportBasePath(importSpec(t, tt.spec).Reference()))
+		})
+	}
+}
+
 func TestTokenToResource(t *testing.T) {
 	t.Parallel()
 
@@ -465,6 +565,14 @@ func TestTokenToResource(t *testing.T) {
 			},
 			token:    "google-native:dns/v1:Policy",
 			expected: "dns.Policy",
+		},
+		{
+			pkg: &pkgContext{
+				pkg: importSpec(t, schema.PackageSpec{Name: "my-pkg"}).Reference(),
+				mod: "mod",
+			},
+			token:    "my-pkg:index:Res",
+			expected: "mypkg.Res",
 		},
 	}
 	for _, tt := range tests {

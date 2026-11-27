@@ -316,7 +316,9 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = components[0]
+		var err error
+		mod, err = packageRoot(pkg.pkg)
+		contract.AssertNoErrorf(err, "Unable to determine package root")
 	}
 
 	var importPath string
@@ -360,7 +362,9 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = components[0]
+		var err error
+		mod, err = packageRoot(pkg.pkg)
+		contract.AssertNoErrorf(err, "Unable to determine package root")
 	}
 
 	var importPath string
@@ -4230,7 +4234,7 @@ func ExtractImportBasePath(extPkg schema.PackageReference) string {
 		return fmt.Sprintf("%s/%s", modpath, goPackage(name))
 	}
 
-	return fmt.Sprintf("%s/go/%s", modpath, name)
+	return fmt.Sprintf("%s/go/%s", modpath, goPackage(name))
 }
 
 // ModuleAndImportPath returns the Go module path and the root import path of the SDK that

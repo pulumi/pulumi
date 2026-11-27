@@ -4,7 +4,10 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
+import * as enums from "../types/enums";
 import * as utilities from "../utilities";
+
+import {RootResource} from "..";
 
 export class ModuleResource extends pulumi.CustomResource {
     /**
@@ -43,6 +46,8 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
+    declare public readonly root: pulumi.Output<RootResource | undefined>;
+    declare public readonly shade: pulumi.Output<enums.Shade | undefined>;
     declare public readonly thing: pulumi.Output<outputs.TopLevel | undefined>;
 
     /**
@@ -56,8 +61,12 @@ export class ModuleResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
+            resourceInputs["root"] = args?.root;
+            resourceInputs["shade"] = args?.shade;
             resourceInputs["thing"] = args?.thing;
         } else {
+            resourceInputs["root"] = undefined /*out*/;
+            resourceInputs["shade"] = undefined /*out*/;
             resourceInputs["thing"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -69,5 +78,7 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
+    root?: pulumi.Input<RootResource | undefined>;
+    shade?: pulumi.Input<enums.Shade | undefined>;
     thing?: pulumi.Input<inputs.TopLevelArgs | undefined>;
 }
