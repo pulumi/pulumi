@@ -3171,6 +3171,24 @@ func TestNodejsComponentInjectNamespace(t *testing.T) {
 	assert.Equal(t, "the-output", strings.TrimSpace(stdout))
 }
 
+// Tests that we can get the schema for a Node.js component provider that is an ES module.
+func TestNodejsESMComponentProviderGetSchema(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("component_provider", "nodejs", "esm-provider"))
+	ptesting.InstallDependencies(t, e.RootPath)
+
+	e.CWD = t.TempDir()
+	stdout, _ := e.RunCommand("pulumi", "package", "get-schema", e.RootPath)
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &schema))
+	require.Equal(t, "esm-component-provider", schema["name"].(string))
+	resources := schema["resources"].(map[string]any)
+	require.Contains(t, resources, "esm-component-provider:index:MyComponent")
+}
+
 // Tests that we can run a Node.js component provider using component_provider_host
 func TestNodejsComponentProviderRun(t *testing.T) {
 	t.Parallel()

@@ -1,0 +1,2 @@
+runtime: nodejs
+description: An ES module policy pack in TypeScript without a tsconfig.json.

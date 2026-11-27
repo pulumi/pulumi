@@ -1,0 +1,10 @@
+{
+    "name": "esm-js",
+    "version": "0.0.1",
+    "type": "module",
+    "main": "index.js",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0",
+        "@pulumi/policy": "^1.3.0"
+    }
+}

@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The tsnode import is used for type-checking only. Do not reference it in the emitted code.
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as semver from "semver";
-import * as tsnode from "ts-node";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
-import * as tsutils from "../../tsutils";
 import { defaultErrorMessage } from "../run/error";
+import { loadProgram, packageObjectFromProgram, programDirectory, registerTypeScript } from "../run/esm";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -155,41 +152,25 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         process.chdir(pwd);
     }
 
-    // We provide reasonable defaults for many ts options, meaning you don't need to have a
-    // tsconfig.json present if you want to use TypeScript with Pulumi. However, ts-node's default
-    // behavior is to walk up from the cwd to find a tsconfig.json. For us, it's reasonable to say
-    // that the "root" of the project is the cwd, if there's a tsconfig.json file here. Otherwise,
-    // just tell ts-node to not load project options at all. This helps with cases like
-    // pulumi/pulumi#1772.
-    const tsConfigPath = "tsconfig.json";
-
-    if (opts.typeScript) {
-        const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
-        const skipProject = !fs.existsSync(tsConfigPath);
-        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require(tsnodeRequire);
-        const ts = require(typescriptRequire);
-        const tsVersion = semver.parse(ts.version);
-        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
-        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
-        tsn.register({
-            typeCheck: true,
-            skipProject: skipProject,
-            compiler: typescriptRequire,
-            compilerOptions: {
-                target: "ES2020", // TypeScript 3.8 supports this
-                module: useNodeNext ? "nodenext" : "commonjs",
-                moduleResolution: useNodeNext ? "nodenext" : "node",
-                sourceMap: "true",
-                ...compilerOptions,
-            },
-        });
-    }
-
     let program: string = opts.argv._[0];
     if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
         program = path.join(process.cwd(), program);
+    }
+
+    const packageObject = packageObjectFromProgram(program);
+
+    // We provide reasonable defaults for many ts options, meaning you don't need to have a
+    // tsconfig.json present if you want to use TypeScript with Pulumi. However, ts-node's default
+    // behavior is to walk up from the cwd to find a tsconfig.json. For us, it's reasonable to say
+    // that the "root" of the project is the program directory, if there's a tsconfig.json file
+    // there. The engine does not always start plugins in the program directory. Otherwise, just
+    // tell ts-node to not load project options at all. This helps with cases like
+    // pulumi/pulumi#1772.
+    const tsConfigPath = path.join(programDirectory(program), "tsconfig.json");
+
+    if (opts.typeScript) {
+        registerTypeScript(tsConfigPath, packageObject["type"] === "module");
     }
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
@@ -272,7 +253,7 @@ ${errMsg}`,
             // async functions that pulumi programs can live in.  Finally, await the value we get
             // back.  That way, if it is async and throws an exception, we properly capture it here
             // and handle it.
-            const reqResult = require(program);
+            const reqResult = await loadProgram(program, packageObject);
             const invokeResult = reqResult instanceof Function ? reqResult() : reqResult;
 
             return await invokeResult;

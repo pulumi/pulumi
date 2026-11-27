@@ -17,19 +17,23 @@
 
 import * as tsn from "ts-node";
 
-let options: any = null;
+let hooks: any = null;
 
 /**
- * Called by Node.js when the hooks are registered in `run.ts`.
+ * Called by Node.js when the hooks are registered in `run.ts`. Node.js calls
+ * this before any `resolve` or `load` call, so we create the ts-node service
+ * here with the options from `register`.
  */
-export async function initialize(args: any) {
-    options = args;
-}
-
-const makeHooks = () => {
+export async function initialize(options: any) {
     const service = tsn.register(options);
     // @ts-ignore we're using a version of ts-node that has ts-node/esm available.
-    return tsn.createEsmHooks(service);
-};
+    hooks = tsn.createEsmHooks(service);
+}
 
-export const { resolve, load, getFormat, transformSource } = makeHooks();
+export async function resolve(specifier: string, context: any, nextResolve: any) {
+    return hooks.resolve(specifier, context, nextResolve);
+}
+
+export async function load(url: string, context: any, nextLoad: any) {
+    return hooks.load(url, context, nextLoad);
+}

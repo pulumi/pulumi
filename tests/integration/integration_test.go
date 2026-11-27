@@ -1172,6 +1172,95 @@ func TestBunMandatoryPolicyPack(t *testing.T) {
 	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
 }
 
+func TestPolicyPackTypeScriptOption(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name     string
+		yaml     string
+		expected string
+	}{
+		{
+			name:     "typescript disabled",
+			yaml:     "runtime:\n  name: nodejs\n  options:\n    typescript: false\n",
+			expected: "ts-node-loaded=false",
+		},
+		{
+			name:     "default",
+			yaml:     "runtime: nodejs\n",
+			expected: "ts-node-loaded=true",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory("single_resource")
+			e.ImportDirectory("policy")
+
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+			stackName, err := resource.NewUniqueHex("ts-option-policy-pack", 8, -1)
+			contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+
+			packDir := filepath.Join(e.CWD, "no_typescript_policy_pack")
+			require.NoError(t, os.WriteFile(
+				filepath.Join(packDir, "PulumiPolicy.yaml"), []byte(tc.yaml), 0o600))
+
+			_, _, err = e.GetCommandResultsIn(packDir, "npm", "install")
+			require.NoError(t, err)
+			_, _, err = e.GetCommandResultsIn(packDir, "yarn", "link", "@pulumi/pulumi")
+			require.NoError(t, err)
+
+			e.InstallDependencies()
+
+			stdout, _, err := e.GetCommandResults(
+				"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "no_typescript_policy_pack",
+			)
+			assert.Error(t, err) //nolint:forbidigo // update fails on the mandatory violation
+			assert.Contains(t, stdout, tc.expected)
+		})
+	}
+}
+
+func TestESMPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	for _, packName := range []string{"esm_js_policy_pack", "esm_ts_policy_pack", "esm_ts_no_tsconfig_policy_pack"} {
+		t.Run(packName, func(t *testing.T) {
+			t.Parallel()
+
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+			e.ImportDirectory("single_resource")
+			e.ImportDirectory("policy")
+
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+			stackName, err := resource.NewUniqueHex("esm-policy-pack", 8, -1)
+			contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+			e.RunCommand("pulumi", "stack", "init", stackName)
+
+			// Install the SDK from a tarball and not with a link, so that typescript and ts-node
+			// resolve from the node_modules of the policy pack.
+			packDir := filepath.Join(e.CWD, packName)
+			ptesting.ConfigureNodejsCoreSDK(t, packDir)
+			_, _, err = e.GetCommandResultsIn(packDir, "npm", "install")
+			require.NoError(t, err)
+
+			e.InstallDependencies()
+
+			stdout, _, err := e.GetCommandResults(
+				"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", packName,
+			)
+			assert.Error(t, err) //nolint:forbidigo // update fails on the mandatory violation
+			assert.Contains(t, stdout, "loaded-as=esm")
+		})
+	}
+}
+
 func TestMultiplePolicyPacks(t *testing.T) {
 	t.Parallel()
 
