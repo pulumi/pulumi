@@ -1,0 +1,3 @@
+component: backend/service
+kind: fix
+body: Persist pending operations, snippets, and extensions in checkpoints uploaded to Pulumi Cloud without journaling

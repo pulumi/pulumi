@@ -211,9 +211,9 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3, version 
 	// one span for {"version":...,"features":...,"deployment":
 	//     {"manifest":...,"secrets_providers":...,"metadata":...,"resources":[
 	// len(resources) spans for resources,
-	// one span for ],"pendingOperations":[
+	// one span for ],"pending_operations":[
 	// len(operations) spans for operations
-	// one span for ]}}
+	// one span for ],"snippets":...,"extensions":...}}
 	spanner := newSpanner(b, len(d.Resources)+len(d.PendingOperations)+3)
 	encoder := segmentio_json.NewEncoder(spanner)
 	encoder.SetAppendNewline(false)
@@ -256,8 +256,8 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3, version 
 		spanner.WriteByte(']')
 	}
 
-	if len(d.PendingOperations) > 9 {
-		spanner.WriteString(`,"pendingOperations":[`)
+	if len(d.PendingOperations) > 0 {
+		spanner.WriteString(`,"pending_operations":[`)
 		for i, o := range d.PendingOperations {
 			if i > 0 {
 				spanner.WriteByte(',')
@@ -269,6 +269,19 @@ func marshalSpannedDeployment(b *bytes.Buffer, d *apitype.DeploymentV3, version 
 		}
 		spanner.nextSpan()
 		spanner.WriteByte(']')
+	}
+
+	if len(d.Snippets) > 0 {
+		spanner.WriteString(`,"snippets":`)
+		if err := encoder.Encode(d.Snippets); err != nil {
+			return spans{}, err
+		}
+	}
+	if len(d.Extensions) > 0 {
+		spanner.WriteString(`,"extensions":`)
+		if err := encoder.Encode(d.Extensions); err != nil {
+			return spans{}, err
+		}
 	}
 	spanner.WriteString("}}")
 	_, spans := spanner.finish()

@@ -1193,3 +1193,51 @@ func TestMarshalDeployment(t *testing.T) {
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, dynamicCases)
 	testOrBenchmarkDiffStack(t, testMarshalDeployment, recordedCases)
 }
+
+func TestMarshalDeploymentRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	newResource := func(name string) apitype.ResourceV3 {
+		return apitype.ResourceV3{
+			URN:    resource.URN("urn:pulumi:stack::proj::pkg:index:typ::" + name),
+			Type:   "pkg:index:typ",
+			Custom: true,
+		}
+	}
+
+	for _, pending := range []int{0, 1, 12} {
+		t.Run(fmt.Sprintf("%d pending operations", pending), func(t *testing.T) {
+			t.Parallel()
+
+			d := &apitype.DeploymentV3{
+				Manifest:  apitype.ManifestV1{Version: "v3.0.0"},
+				Resources: []apitype.ResourceV3{newResource("a"), newResource("b")},
+				Snippets: []apitype.SnippetV1{{
+					UUID: "6b9b3b4a-5b0c-4b7e-9f4c-2f5a1c0d9e11",
+					Name: "snippet",
+					Type: "pkg:index:snippet",
+					Code: "code",
+				}},
+				Extensions: map[apitype.ExtensionRef]apitype.Extension{
+					"ext": {Name: "ext", Version: "1.0.0", Value: []byte("value")},
+				},
+			}
+			for i := range pending {
+				d.PendingOperations = append(d.PendingOperations, apitype.OperationV2{
+					Resource: newResource(fmt.Sprintf("pending-%d", i)),
+					Type:     apitype.OperationTypeCreating,
+				})
+			}
+
+			dds := newDeploymentDiffState(0)
+			marshaled, err := dds.MarshalDeployment(d, 3, nil)
+			require.NoError(t, err)
+
+			var untyped apitype.UntypedDeployment
+			require.NoError(t, json.Unmarshal(marshaled.raw, &untyped))
+			var actual apitype.DeploymentV3
+			require.NoError(t, json.Unmarshal(untyped.Deployment, &actual))
+			assert.Equal(t, *d, actual)
+		})
+	}
+}
