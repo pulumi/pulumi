@@ -30,7 +30,6 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	fxs "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -725,10 +724,6 @@ func SerializeResource(
 		return apitype.ResourceV3{}, false, err
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame pkgresource.StackFrame) apitype.StackFrameV1 {
-		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
-	}))
-
 	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
 		Custom:                  res.Custom,
@@ -757,7 +752,7 @@ func SerializeResource(
 		Created:                 res.Created,
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
-		StackTrace:              stackTrace,
+		StackTrace:              append([]apitype.StackFrameV1(nil), res.StackTrace...),
 		HideDiff:                res.HideDiff,
 		IgnoreChanges:           res.IgnoreChanges,
 		ReplaceOnChanges:        res.ReplaceOnChanges,
@@ -967,10 +962,6 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) pkgresource.StackFrame {
-		return pkgresource.StackFrame{SourcePosition: frame.SourcePosition}
-	}))
-
 	return pkgresource.NewState{
 			Type:                    res.Type,
 			URN:                     res.URN,
@@ -999,7 +990,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 			Created:                 res.Created,
 			Modified:                res.Modified,
 			SourcePosition:          res.SourcePosition,
-			StackTrace:              stackTrace,
+			StackTrace:              append([]pkgresource.StackFrame(nil), res.StackTrace...),
 			IgnoreChanges:           res.IgnoreChanges,
 			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,

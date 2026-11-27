@@ -28,6 +28,10 @@ message SourcePosition {
 // A StackFrame represents a single stack frame.
 message StackFrame {
     SourcePosition pc = 1; // The position of the frame's program counter. Optional.
+    // The language-level namespace, such as a Python or Go module or a Node.js package.
+    string module = 2;
+    // Origin identifies a frame from Pulumi or the language runtime. An empty value means it is unclassified.
+    string origin = 3;
 }
 
 // A StackTrace represents the frames on the stack at the point of an RPC call.

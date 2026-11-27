@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Add stack frame metadata
+time: 2026-11-25T09:53:53.821261+01:00
