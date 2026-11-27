@@ -21,9 +21,11 @@ import { Resource } from "./resource";
 
 // Export sub-modules:
 import * as mod from "./mod";
+import * as types from "./types";
 
 export {
     mod,
+    types,
 };
 
 const _module = {

@@ -6,7 +6,9 @@ import builtins as _builtins
 from .. import _utilities
 import typing
 # Export this package's modules as members:
+from ._enums import *
 from .concat_world import *
+from .enum_resource import *
 from .resource import *
 
 # Make subpackages available:

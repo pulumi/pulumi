@@ -21,6 +21,8 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "module-format:mod_EnumResource:EnumResource":
+		r = &EnumResource{}
 	case "module-format:mod_Resource:Resource":
 		r = &Resource{}
 	default:
@@ -36,6 +38,11 @@ func init() {
 	if err != nil {
 		version = semver.Version{Major: 1}
 	}
+	pulumi.RegisterResourceModule(
+		"module-format",
+		"mod_EnumResource",
+		&module{version},
+	)
 	pulumi.RegisterResourceModule(
 		"module-format",
 		"mod_Resource",

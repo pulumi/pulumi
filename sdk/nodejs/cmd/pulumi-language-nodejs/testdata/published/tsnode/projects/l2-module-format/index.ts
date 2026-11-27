@@ -52,3 +52,5 @@ const res7 = new module_format.Resource("res7", {text: module_format.concatWorld
 export const out7 = res7.call(({
     input: "xxx",
 })).output;
+// Use an enum literal for an enum type whose module has to be resolved with the module format
+const res8 = new module_format.mod.EnumResource("res8", {color: module_format.mod.Color.Blue});

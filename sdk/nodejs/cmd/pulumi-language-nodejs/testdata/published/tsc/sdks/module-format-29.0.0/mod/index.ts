@@ -10,9 +10,17 @@ export const concatWorld: typeof import("./concatWorld").concatWorld = null as a
 export const concatWorldOutput: typeof import("./concatWorld").concatWorldOutput = null as any;
 utilities.lazyLoad(exports, ["concatWorld","concatWorldOutput"], () => require("./concatWorld"));
 
+export { EnumResourceArgs } from "./enumResource";
+export type EnumResource = import("./enumResource").EnumResource;
+export const EnumResource: typeof import("./enumResource").EnumResource = null as any;
+utilities.lazyLoad(exports, ["EnumResource"], () => require("./enumResource"));
+
 export * from "./resource";
 import { Resource } from "./resource";
 
+
+// Export enums:
+export * from "../types/enums/mod";
 
 // Export sub-modules:
 import * as nested from "./nested";
@@ -25,6 +33,8 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "module-format:mod_EnumResource:EnumResource":
+                return new EnumResource(name, <any>undefined, { urn })
             case "module-format:mod_Resource:Resource":
                 return new Resource(name, <any>undefined, { urn })
             default:
@@ -32,4 +42,5 @@ const _module = {
         }
     },
 };
+pulumi.runtime.registerResourceModule("module-format", "mod_EnumResource", _module)
 pulumi.runtime.registerResourceModule("module-format", "mod_Resource", _module)
