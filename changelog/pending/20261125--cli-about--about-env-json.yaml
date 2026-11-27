@@ -1,0 +1,3 @@
+component: cli/about
+kind: fix
+body: Respect `--json` and `--output=json` in `pulumi about env`, and report every invalid environment variable instead of only the first
