@@ -44,7 +44,8 @@ func newStackTagCmd() *cobra.Command {
 		Long: "Manage stack tags\n" +
 			"\n" +
 			"Stacks have associated metadata in the form of tags. Each tag consists of a name\n" +
-			"and value. The `get`, `ls`, `rm`, and `set` commands can be used to manage tags.\n" +
+			"and value. The `pulumi stack tag get`, `pulumi stack tag list`, `pulumi stack tag remove`,\n" +
+			"and `pulumi stack tag set` commands can be used to manage tags.\n" +
 			"Some tags are automatically assigned based on the environment each time a stack\n" +
 			"is updated.\n",
 	}

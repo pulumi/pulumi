@@ -50,7 +50,7 @@ func newStackRemoveCmd() *cobra.Command {
 		Long: "Remove a stack and its configuration\n" +
 			"\n" +
 			"This command removes a stack and its configuration state.  Please refer to the\n" +
-			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
+			"`pulumi destroy` command for removing resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
 		RunE: func(cmd *cobra.Command, args []string) error {
