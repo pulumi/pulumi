@@ -1,0 +1,11 @@
+{
+	"name": "l2-special-chars",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/specialchars": "ROOT/artifacts/pulumi-specialchars-54.0.0.tgz"
+	}
+}
