@@ -1,0 +1,5 @@
+component: engine/policy
+kind: fix
+body: Do not report every violation twice when a required policy pack is
+      also passed with --policy-pack; the local copy now shadows the
+      service-provided one with the same name and version.
