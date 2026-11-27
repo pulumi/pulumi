@@ -70,6 +70,7 @@
         "cmd/run/error.ts",
         "cmd/run/run.ts",
         "cmd/run/hooks.ts",
+        "cmd/run/esm.ts",
         "cmd/run/tracing.ts",
         "cmd/run-plugin/index.ts",
         "cmd/run-plugin/run.ts",

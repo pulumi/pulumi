@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The tsnode import is used for type-checking only. Do not reference it in the emitted code.
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as semver from "semver";
-import * as tsnode from "ts-node";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
-import * as tsutils from "../../tsutils";
 import { defaultErrorMessage } from "../run/error";
+import { registerTypeScript } from "../run/esm";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -164,46 +161,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     const tsConfigPath = "tsconfig.json";
 
     if (opts.typeScript) {
-        const { tsnodeRequire, typescriptRequire } = tsutils.typeScriptRequireStrings();
-        const skipProject = !fs.existsSync(tsConfigPath);
-        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require(tsnodeRequire);
-        const ts = require(typescriptRequire);
-        const tsVersion = semver.parse(ts.version);
-        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
-        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
-
-        // transpileOnly controls whether ts-node should do type checking or not.
-        // Users might have a separate build step that runs tsc for type
-        // checking, and don't want to pay the performance cost of type checking
-        // twice. This also enables using swc, which doesn't support type
-        // checking, with ts-node.
-        //
-        // If the `PULUMI_NODEJS_TRANSPILE_ONLY `env variable is set, we use
-        // that to determine the value of `transpileOnly.` Otherwise we use the
-        // `noCheck `compiler option from the tsconfig. Otherwise we default to
-        // ts-node's default, which is to type check.
-        let transpileOnly = undefined;
-        const transpileOnlyEnv = process.env["PULUMI_NODEJS_TRANSPILE_ONLY"];
-        if (transpileOnlyEnv) {
-            transpileOnly = transpileOnlyEnv === "true";
-        } else {
-            // @ts-ignore
-            transpileOnly = compilerOptions.noCheck;
-        }
-
-        tsn.register({
-            transpileOnly,
-            skipProject: skipProject,
-            compiler: typescriptRequire,
-            compilerOptions: {
-                target: "ES2020", // TypeScript 3.8 supports this
-                module: useNodeNext ? "nodenext" : "commonjs",
-                moduleResolution: useNodeNext ? "nodenext" : "node",
-                sourceMap: "true",
-                ...compilerOptions,
-            },
-        });
+        registerTypeScript(tsConfigPath);
     }
 
     let program: string = opts.argv._[0];
