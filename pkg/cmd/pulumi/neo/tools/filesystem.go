@@ -460,8 +460,12 @@ func (f *Filesystem) directoryTree(p string, depth int) (directoryTreeResult, er
 // directories and node_modules are skipped below the starting path — if the caller
 // explicitly names such a directory as abs, its contents are traversed.
 //
+// WalkDir does not follow symlinks, but the read or write fn performs on a matched
+// path does, so a symlink is handed to fn only when it resolves under one of the
+// allowed roots; one that escapes them is skipped, the same way resolve rejects it.
+//
 // glob is assumed valid; callers validate it up front with filepath.Match.
-func walkMatching(abs, glob string, fn func(path string) error) error {
+func (f *Filesystem) walkMatching(abs, glob string, fn func(path string) error) error {
 	info, err := os.Stat(abs)
 	if err != nil {
 		return err
@@ -485,10 +489,15 @@ func walkMatching(abs, glob string, fn func(path string) error) error {
 			}
 			return nil
 		}
-		if ok, _ := filepath.Match(glob, name); ok {
-			return fn(p)
+		if ok, _ := filepath.Match(glob, name); !ok {
+			return nil
 		}
-		return nil
+		if d.Type()&fs.ModeSymlink != 0 {
+			if _, err := resolveUnderRoots(f.allowedRoots, p, false); err != nil {
+				return nil
+			}
+		}
+		return fn(p)
 	})
 }
 
@@ -556,7 +565,7 @@ func (f *Filesystem) grep(pattern, searchPath, include string) (grepResult, erro
 		return nil
 	}
 
-	if err := walkMatching(abs, include, scanFile); err != nil {
+	if err := f.walkMatching(abs, include, scanFile); err != nil {
 		return grepResult{}, err
 	}
 
@@ -653,7 +662,7 @@ func (f *Filesystem) contentReplace(
 		return f.putFile(ctx, path, after)
 	}
 
-	if err := walkMatching(abs, filePattern, processFile); err != nil {
+	if err := f.walkMatching(abs, filePattern, processFile); err != nil {
 		return contentReplaceResult{}, err
 	}
 
