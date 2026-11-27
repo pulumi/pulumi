@@ -161,6 +161,42 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	assert.Contains(t, stdout, "Token name: team-token")
 }
 
+func TestWhoAmICmd_verbose_teamTokenWithOrganization(t *testing.T) {
+	t.Parallel()
+
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "team-account:abc123", []string{"org1"}, &workspace.TokenInformation{
+				Name:         "team-token",
+				Organization: "My Org",
+				Team:         "My Team",
+			}, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--verbose"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	stdout := buff.String()
+	assert.Contains(t, stdout, "Token type: team: My Team\n")
+	assert.Contains(t, stdout, "Token name: team-token")
+}
+
 func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	t.Parallel()
 
@@ -195,6 +231,96 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		"user": "user3",
 		"organizations": ["org1", "org2"],
 		"tokenInformation": {"name": "team-token", "team": "myTeam"},
+		"url": "https://pulumi.example.com"
+	}`, buff.String())
+}
+
+func TestWhoAmICmd_verbose_servicePrincipalToken(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		organization string
+		expected     string
+	}{
+		{"with organization", "org1", "Token type: service principal: ci-bot (organization: org1)\n"},
+		{"without organization", "", "Token type: service principal: ci-bot\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			ws := &pkgWorkspace.MockContext{}
+			be := &backend.MockBackend{
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "service-principal:abc123", []string{"org1"}, &workspace.TokenInformation{
+						Name:             "sp-token",
+						Organization:     c.organization,
+						ServicePrincipal: "ci-bot",
+					}, nil
+				},
+				URLF: func() string {
+					return "https://pulumi.example.com"
+				},
+			}
+			lm := &cmdBackend.MockLoginManager{
+				CurrentF: func(
+					context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+			}
+
+			var buff bytes.Buffer
+			cmd := NewWhoAmICmd(ws, lm)
+			cmd.SetArgs([]string{"--verbose"})
+			cmd.SetOut(&buff)
+			err := cmd.Execute()
+			require.NoError(t, err)
+
+			stdout := buff.String()
+			assert.Contains(t, stdout, "User: service-principal:abc123")
+			assert.Contains(t, stdout, c.expected)
+			assert.Contains(t, stdout, "Token name: sp-token")
+		})
+	}
+}
+
+func TestWhoAmICmd_json_servicePrincipalToken(t *testing.T) {
+	t.Parallel()
+
+	ws := &pkgWorkspace.MockContext{}
+	be := &backend.MockBackend{
+		CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+			return "service-principal:abc123", []string{"org1"}, &workspace.TokenInformation{
+				Name:             "sp-token",
+				Organization:     "org1",
+				ServicePrincipal: "ci-bot",
+			}, nil
+		},
+		URLF: func() string {
+			return "https://pulumi.example.com"
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	var buff bytes.Buffer
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetArgs([]string{"--json"})
+	cmd.SetOut(&buff)
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{
+		"user": "service-principal:abc123",
+		"organizations": ["org1"],
+		"tokenInformation": {"name": "sp-token", "organization": "org1", "servicePrincipal": "ci-bot"},
 		"url": "https://pulumi.example.com"
 	}`, buff.String())
 }

@@ -2149,6 +2149,58 @@ func TestGetPulumiAccountDetailsConcurrent(t *testing.T) {
 	assert.Equal(t, int32(1), requests.Load())
 }
 
+func TestGetPulumiAccountDetailsTokenInfo(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		tokenInfo string
+		expected  *workspace.TokenInformation
+	}{
+		{
+			name:      "service principal token",
+			tokenInfo: `,"tokenInfo":{"name":"token","organization":"My Org","team":null,"servicePrincipal":"CI Bot"}`,
+			expected:  &workspace.TokenInformation{Name: "token", Organization: "My Org", ServicePrincipal: "CI Bot"},
+		},
+		{
+			name:      "team token",
+			tokenInfo: `,"tokenInfo":{"name":"token","organization":"My Org","team":"My Team","servicePrincipal":null}`,
+			expected:  &workspace.TokenInformation{Name: "token", Organization: "My Org", Team: "My Team"},
+		},
+		{
+			name:      "organization token from an older service",
+			tokenInfo: `,"tokenInfo":{"name":"token","organization":"My Org"}`,
+			expected:  &workspace.TokenInformation{Name: "token", Organization: "My Org"},
+		},
+		{
+			name:      "null token info",
+			tokenInfo: `,"tokenInfo":null`,
+		},
+		{
+			name: "absent token info",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/api/user", r.URL.Path)
+				_, _ = w.Write([]byte(`{"githubLogin":"login","organizations":[{"githubLogin":"org"}]` +
+					c.tokenInfo + `}`))
+			}))
+			t.Cleanup(server.Close)
+			client := NewClient(server.URL, "token", false, nil)
+
+			user, orgs, info, err := client.GetPulumiAccountDetails(t.Context())
+			require.NoError(t, err)
+			assert.Equal(t, "login", user)
+			assert.Equal(t, []string{"org"}, orgs)
+			assert.Equal(t, c.expected, info)
+		})
+	}
+}
+
 func TestClient_WithRefresh(t *testing.T) {
 	t.Parallel()
 

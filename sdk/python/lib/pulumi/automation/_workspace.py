@@ -59,11 +59,26 @@ class StackSummary:
 
 @dataclass
 class TokenInformation:
-    """Information about the token that was used to authenticate the current user."""
+    """
+    Information about the token that was used to authenticate the current user.
+
+    The values are display names for showing to people, not identifiers. An
+    organization token sets ``organization``. A team token sets ``team`` and
+    ``organization`` (older Pulumi Cloud versions set only ``team``, to the team's
+    name). A service principal token sets ``service_principal`` and
+    ``organization``. A personal token has no token information. To tell the kind
+    of token, check ``service_principal`` first, then ``team``, then
+    ``organization``.
+    """
 
     name: str
+    """The name of the token."""
     organization: Optional[str]
+    """The display name of the token's organization."""
     team: Optional[str]
+    """For a team token, the team's display name."""
+    service_principal: Optional[str] = None
+    """For a service principal token, its display name."""
 
 
 class WhoAmIResult:

@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"context"
 	"os"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -47,7 +48,7 @@ func getBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
 	return "", nil
 }
 
-// GetLegacyDefaultOrgFallback returns the current user name as an org, if the user does not have
+// GetLegacyDefaultOrgFallback returns the current user's org (see GetCurrentUserOrg), if the user does not have
 // a default org locally configured. Returns empty string otherwise, or if the backend does not support
 // organizations.
 //
@@ -58,11 +59,16 @@ func getBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
 // from older versions of the Pulumi CLI that did not always store the current selected stack with a fully qualified
 // stack name. For this class of existing users, we want to ensure that we are selecting the correct organization
 // as their CLI is brought up-to-date.
-func GetLegacyDefaultOrgFallback(b Backend, currentProject *workspace.Project) (string, error) {
-	return getLegacyDefaultOrgFallback(b, currentProject, getBackendConfigDefaultOrg)
+func GetLegacyDefaultOrgFallback(
+	ctx context.Context,
+	b Backend,
+	currentProject *workspace.Project,
+) (string, error) {
+	return getLegacyDefaultOrgFallback(ctx, b, currentProject, getBackendConfigDefaultOrg)
 }
 
 func getLegacyDefaultOrgFallback(
+	ctx context.Context,
 	b Backend,
 	currentProject *workspace.Project,
 	getBackendConfigDefaultOrgF func(*workspace.Project) (string, error),
@@ -80,14 +86,29 @@ func getLegacyDefaultOrgFallback(
 
 	// If the user does not have a default org configured, then return their username as their org, without
 	// looking up the backend opinion. This was the legacy fallback behavior we are preserving for smooth
-	// migrations between CLI versions.
+	// migrations between CLI versions. Team and service principal tokens use the default organization instead.
 	if userConfiguredDefaultOrg == "" {
-		user, _, _, err := b.CurrentUser()
-		if err != nil {
-			return "", err
-		}
-		return user, nil
+		return GetCurrentUserOrg(ctx, b)
 	}
 
 	return "", nil
+}
+
+// GetCurrentUserOrg returns the organization to use where the CLI falls back to the current user's login as the
+// organization. Team and service principal tokens have logins that are not organization names, so for those it
+// returns the backend's default organization. Otherwise, or if the default organization is unknown, it returns the
+// login.
+func GetCurrentUserOrg(ctx context.Context, b Backend) (string, error) {
+	user, _, tokenInfo, err := b.CurrentUser()
+	if err != nil {
+		return "", err
+	}
+	if tokenInfo == nil || (tokenInfo.Team == "" && tokenInfo.ServicePrincipal == "") {
+		return user, nil
+	}
+	// tokenInfo.Organization is the organization's display name, not its login, so it cannot be used here.
+	if org, err := b.GetDefaultOrg(ctx); err == nil && org != "" {
+		return org, nil
+	}
+	return user, nil
 }

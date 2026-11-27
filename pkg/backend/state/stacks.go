@@ -54,7 +54,7 @@ func CurrentStackAt(
 		return nil, nil
 	}
 
-	qualifiedStackName, err := getStackNameWithLegacyOrgNameIfNeeded(b, stackName)
+	qualifiedStackName, err := getStackNameWithLegacyOrgNameIfNeeded(ctx, b, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -103,12 +103,12 @@ func getCurrentStackName(
 // Earlier versions of the Pulumi CLI did not always store the current selected stack with the fully qualified
 // stack name. Ensure backwards compatibility for these users when they upgrade that we qualify with the
 // correct org name.
-func getStackNameWithLegacyOrgNameIfNeeded(b backend.Backend, stackName string) (string, error) {
+func getStackNameWithLegacyOrgNameIfNeeded(ctx context.Context, b backend.Backend, stackName string) (string, error) {
 	// Check if only stack name is configured.
 	split := strings.Split(stackName, "/")
 	if len(split) == 1 {
 		// If so, see if we should qualify the stack with legacy default org behavior:
-		fallbackOrg, err := backend.GetLegacyDefaultOrgFallback(b, nil)
+		fallbackOrg, err := backend.GetLegacyDefaultOrgFallback(ctx, b, nil)
 		if err != nil {
 			return "", err
 		}

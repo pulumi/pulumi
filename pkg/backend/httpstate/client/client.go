@@ -603,22 +603,15 @@ type serviceUserInfo struct {
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L37
 type serviceUser struct {
-	ID            string            `json:"id"`
-	GitHubLogin   string            `json:"githubLogin"`
-	Name          string            `json:"name"`
-	Email         string            `json:"email"`
-	AvatarURL     string            `json:"avatarUrl"`
-	Organizations []serviceUserInfo `json:"organizations"`
-	Identities    []string          `json:"identities"`
-	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
-	TokenInfo     *serviceTokenInfo `json:"tokenInfo,omitempty"`
-}
-
-// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L39-L43
-type serviceTokenInfo struct {
-	Name         string `json:"name"`
-	Organization string `json:"organization,omitempty"`
-	Team         string `json:"team,omitempty"`
+	ID            string                      `json:"id"`
+	GitHubLogin   string                      `json:"githubLogin"`
+	Name          string                      `json:"name"`
+	Email         string                      `json:"email"`
+	AvatarURL     string                      `json:"avatarUrl"`
+	Organizations []serviceUserInfo           `json:"organizations"`
+	Identities    []string                    `json:"identities"`
+	SiteAdmin     *bool                       `json:"siteAdmin,omitempty"`
+	TokenInfo     *workspace.TokenInformation `json:"tokenInfo,omitempty"`
 }
 
 //nolint:gosec
@@ -754,13 +747,7 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 
 			pc.apiOrgs[i] = org.GitHubLogin
 		}
-		if resp.TokenInfo != nil {
-			pc.tokenInfo = &workspace.TokenInformation{
-				Name:         resp.TokenInfo.Name,
-				Organization: resp.TokenInfo.Organization,
-				Team:         resp.TokenInfo.Team,
-			}
-		}
+		pc.tokenInfo = resp.TokenInfo
 	}
 
 	return pc.apiUser, pc.apiOrgs, pc.tokenInfo, nil

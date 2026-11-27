@@ -400,7 +400,12 @@ func (b backendAbout) String() string {
 
 	if b.TokenInformation != nil {
 		var tokenType string
-		if b.TokenInformation.Team != "" {
+		if b.TokenInformation.ServicePrincipal != "" {
+			tokenType = "service principal: " + b.TokenInformation.ServicePrincipal
+			if b.TokenInformation.Organization != "" {
+				tokenType += " (organization: " + b.TokenInformation.Organization + ")"
+			}
+		} else if b.TokenInformation.Team != "" {
 			tokenType = "team: " + b.TokenInformation.Team
 		} else if b.TokenInformation.Organization != "" {
 			tokenType = "organization: " + b.TokenInformation.Organization

@@ -552,7 +552,7 @@ func validateStoredAccount(
 			return workspace.Account{}, false, err
 		} else {
 			username, organizations = fetchedUser, fetchedOrgs
-			// /api/user reports Name/Organization/Team only; preserve the locally
+			// /api/user reports Name/Organization/Team/ServicePrincipal only; preserve the locally
 			// cached ExpiresAt set by grant responses.
 			if fetchedTokenInfo != nil {
 				if account.TokenInformation == nil {
@@ -561,6 +561,7 @@ func validateStoredAccount(
 				account.TokenInformation.Name = fetchedTokenInfo.Name
 				account.TokenInformation.Organization = fetchedTokenInfo.Organization
 				account.TokenInformation.Team = fetchedTokenInfo.Team
+				account.TokenInformation.ServicePrincipal = fetchedTokenInfo.ServicePrincipal
 			}
 			tokenInfo = account.TokenInformation
 		}
@@ -1025,7 +1026,10 @@ func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *work
 
 func (b *cloudBackend) CloudURL() string { return b.url }
 
-func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackReference, error) {
+func (b *cloudBackend) parsePolicyPackReference(
+	ctx context.Context,
+	s string,
+) (backend.PolicyPackReference, error) {
 	split := strings.Split(s, "/")
 	var orgName string
 	var policyPackName string
@@ -1040,11 +1044,11 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 	}
 
 	if orgName == "" {
-		currentUser, _, _, userErr := b.CurrentUser()
+		currentUserOrg, userErr := backend.GetCurrentUserOrg(ctx, b)
 		if userErr != nil {
 			return nil, userErr
 		}
-		orgName = currentUser
+		orgName = currentUserOrg
 	}
 
 	return newCloudBackendPolicyPackReference(b.CloudConsoleURL(), orgName, tokens.QName(policyPackName)), nil
@@ -1053,7 +1057,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	d diag.Sink,
 ) (backend.PolicyPack, error) {
-	policyPackRef, err := b.parsePolicyPackReference(policyPack)
+	policyPackRef, err := b.parsePolicyPackReference(ctx, policyPack)
 	if err != nil {
 		return nil, err
 	}

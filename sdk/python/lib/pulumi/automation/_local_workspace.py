@@ -423,6 +423,9 @@ class LocalWorkspace(Workspace):
                     name=who_am_i_json["tokenInformation"].get("name"),
                     organization=who_am_i_json["tokenInformation"].get("organization"),
                     team=who_am_i_json["tokenInformation"].get("team"),
+                    service_principal=who_am_i_json["tokenInformation"].get(
+                        "servicePrincipal"
+                    ),
                 )
 
             return WhoAmIResult(

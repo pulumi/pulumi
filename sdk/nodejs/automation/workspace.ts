@@ -450,11 +450,31 @@ export type PulumiFn = () => Promise<Record<string, any> | void>;
 
 /**
  * The currently logged-in Pulumi access token.
+ *
+ * The values are display names for showing to people, not identifiers. An
+ * organization token sets `organization`. A team token sets `team` and
+ * `organization` (older Pulumi Cloud versions set only `team`, to the team's
+ * name). A service principal token sets `servicePrincipal` and `organization`.
+ * A personal token has no token information. To tell the kind of token, check
+ * `servicePrincipal` first, then `team`, then `organization`.
  */
 export interface TokenInfomation {
+    /**
+     * The name of the token.
+     */
     name: string;
+    /**
+     * The display name of the token's organization.
+     */
     organization?: string;
+    /**
+     * For a team token, the team's display name.
+     */
     team?: string;
+    /**
+     * For a service principal token, its display name.
+     */
+    servicePrincipal?: string;
 }
 
 /**
