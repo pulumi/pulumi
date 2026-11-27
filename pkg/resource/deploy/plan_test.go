@@ -20,6 +20,7 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,25 +32,21 @@ func TestPlan(t *testing.T) {
 		t.Run("does", func(t *testing.T) {
 			t.Parallel()
 			p := &PlanDiff{
-				Deletes: []resource.PropertyKey{
-					resource.PropertyKey("foo"),
-				},
+				Deletes: []string{"foo"},
 			}
-			assert.True(t, p.ContainsDelete(resource.PropertyKey("foo")))
+			assert.True(t, p.ContainsDelete("foo"))
 		})
 		t.Run("doesn't (empty)", func(t *testing.T) {
 			t.Parallel()
 			p := &PlanDiff{}
-			assert.False(t, p.ContainsDelete(resource.PropertyKey("foo")))
+			assert.False(t, p.ContainsDelete("foo"))
 		})
 		t.Run("doesn't", func(t *testing.T) {
 			t.Parallel()
 			p := &PlanDiff{
-				Deletes: []resource.PropertyKey{
-					resource.PropertyKey("not-foo"),
-				},
+				Deletes: []string{"not-foo"},
 			}
-			assert.False(t, p.ContainsDelete(resource.PropertyKey("foo")))
+			assert.False(t, p.ContainsDelete("foo"))
 		})
 	})
 	t.Run("MakeError", func(t *testing.T) {
@@ -57,36 +54,34 @@ func TestPlan(t *testing.T) {
 		t.Run("delete", func(t *testing.T) {
 			t.Parallel()
 			p := &PlanDiff{
-				Deletes: []resource.PropertyKey{
-					resource.PropertyKey("foo"),
-				},
+				Deletes: []string{"foo"},
 			}
-			val := resource.NewProperty("val")
-			errStr := p.MakeError(resource.PropertyKey("foo"), "", &val, false)
+			val := property.New("val")
+			errStr := p.MakeError("foo", "", &val, false)
 			assert.True(t, strings.HasPrefix(errStr, "-"))
 		})
 		t.Run("redacts secrets", func(t *testing.T) {
 			t.Parallel()
 			p := &PlanDiff{
-				Updates: resource.PropertyMap{
-					"foo": resource.MakeSecret(resource.NewProperty("expected")),
-				},
+				Updates: property.NewMap(map[string]property.Value{
+					"foo": property.New("expected").WithSecret(true),
+				}),
 			}
-			val := resource.NewProperty(resource.PropertyMap{
-				"nested": resource.MakeSecret(resource.NewProperty("actual")),
-			})
-			errStr := p.MakeError(resource.PropertyKey("foo"), "~", &val, false)
-			assert.Equal(t, "~~foo[{[secret]}!={map[nested:{[secret]}]}]", errStr)
+			val := property.New(property.NewMap(map[string]property.Value{
+				"nested": property.New("actual").WithSecret(true),
+			}))
+			errStr := p.MakeError("foo", "~", &val, false)
+			assert.Equal(t, `~~foo[<secret>!={"nested": <secret>}]`, errStr)
 		})
 		t.Run("shows secrets", func(t *testing.T) {
 			t.Parallel()
 			p := &PlanDiff{
-				Updates: resource.PropertyMap{
-					"foo": resource.MakeSecret(resource.NewProperty("expected")),
-				},
+				Updates: property.NewMap(map[string]property.Value{
+					"foo": property.New("expected").WithSecret(true),
+				}),
 			}
-			val := resource.MakeSecret(resource.NewProperty("actual"))
-			errStr := p.MakeError(resource.PropertyKey("foo"), "~", &val, true)
+			val := property.New("actual").WithSecret(true)
+			errStr := p.MakeError("foo", "~", &val, true)
 			assert.Contains(t, errStr, "expected")
 			assert.Contains(t, errStr, "actual")
 		})
@@ -567,6 +562,21 @@ func TestResourcePlan(t *testing.T) {
 
 func TestCheckDiff(t *testing.T) {
 	t.Parallel()
+	pmap := func(entries ...any) property.Map {
+		m := map[string]property.Value{}
+		for i := 0; i < len(entries); i += 2 {
+			m[entries[i].(string)] = entries[i+1].(property.Value)
+		}
+		return property.NewMap(m)
+	}
+	rpmap := func(entries ...any) resource.PropertyMap {
+		m := resource.PropertyMap{}
+		for i := 0; i < len(entries); i += 2 {
+			m[resource.PropertyKey(entries[i].(string))] = entries[i+1].(resource.PropertyValue)
+		}
+		return m
+	}
+
 	t.Run("planDiff.Deletes", func(t *testing.T) {
 		t.Parallel()
 		t.Run("ok", func(t *testing.T) {
@@ -575,9 +585,7 @@ func TestCheckDiff(t *testing.T) {
 				resource.PropertyMap{},
 				resource.PropertyMap{},
 				PlanDiff{
-					Deletes: []resource.PropertyKey{
-						"should-be-here",
-					},
+					Deletes: []string{"should-be-here"},
 				}, false)
 			require.NoError(t, err)
 		})
@@ -587,29 +595,19 @@ func TestCheckDiff(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
 					resource.PropertyMap{},
-					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewProperty("test"),
-					},
+					rpmap("should-delete", resource.NewProperty("test")),
 					PlanDiff{
-						Deletes: []resource.PropertyKey{
-							"should-delete",
-						},
+						Deletes: []string{"should-delete"},
 					}, false)
 				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			})
 			t.Run("update", func(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
-					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewProperty("test"),
-					},
-					resource.PropertyMap{
-						resource.PropertyKey("should-delete"): resource.NewProperty("new-test"),
-					},
+					rpmap("should-delete", resource.NewProperty("test")),
+					rpmap("should-delete", resource.NewProperty("new-test")),
 					PlanDiff{
-						Deletes: []resource.PropertyKey{
-							"should-delete",
-						},
+						Deletes: []string{"should-delete"},
 					}, false)
 				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			})
@@ -625,13 +623,9 @@ func TestCheckDiff(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
 				resource.PropertyMap{},
-				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-				},
+				rpmap("should-update", resource.NewProperty("new-test")),
 				PlanDiff{
-					Adds: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-					},
+					Adds: pmap("should-update", property.New("new-test")),
 				}, false)
 			require.NoError(t, err)
 		})
@@ -645,32 +639,20 @@ func TestCheckDiff(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
-				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewProperty("old-test"),
-				},
-				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-				},
+				rpmap("should-update", resource.NewProperty("old-test")),
+				rpmap("should-update", resource.NewProperty("new-test")),
 				PlanDiff{
-					Updates: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-					},
+					Updates: pmap("should-update", property.New("new-test")),
 				}, false)
 			require.NoError(t, err)
 		})
 		t.Run("ok same", func(t *testing.T) {
 			t.Parallel()
 			err := checkDiff(
-				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-				},
-				resource.PropertyMap{
-					resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-				},
+				rpmap("should-update", resource.NewProperty("new-test")),
+				rpmap("should-update", resource.NewProperty("new-test")),
 				PlanDiff{
-					Updates: resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-					},
+					Updates: pmap("should-update", property.New("new-test")),
 				}, false)
 			require.NoError(t, err)
 		})
@@ -680,61 +662,43 @@ func TestCheckDiff(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
 					resource.PropertyMap{},
-					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-					},
+					rpmap("should-update", resource.NewProperty("new-test")),
 					PlanDiff{
-						Updates: resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-						},
+						Updates: pmap("should-update", property.New("new-test")),
 					}, false)
 				assert.ErrorContains(t, err,
-					"properties changed: ~+should-update[{new-test}!={new-test}], ~+should-update[{new-test}!={new-test}]")
+					`properties changed: ~+should-update["new-test"!="new-test"], ~+should-update["new-test"!="new-test"]`)
 			})
 			t.Run("same", func(t *testing.T) {
 				t.Parallel()
 				err := checkDiff(
-					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-					},
-					resource.PropertyMap{
-						resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-					},
+					rpmap("should-update", resource.NewProperty("new-test")),
+					rpmap("should-update", resource.NewProperty("new-test")),
 					PlanDiff{
-						Updates: resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
-						},
+						Updates: pmap("should-update", property.New("new-new-test")),
 					}, false)
-				assert.ErrorContains(t, err, "properties changed: ~=should-update[{new-new-test}!={new-test}]")
+				assert.ErrorContains(t, err, `properties changed: ~=should-update["new-new-test"!="new-test"]`)
 			})
 			t.Run("missing", func(t *testing.T) {
 				t.Parallel()
 				t.Run("deleted, instead of updated", func(t *testing.T) {
 					t.Parallel()
 					err := checkDiff(
-						resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-						},
+						rpmap("should-update", resource.NewProperty("new-test")),
 						resource.PropertyMap{},
 						PlanDiff{
-							Updates: resource.PropertyMap{
-								resource.PropertyKey("should-update"): resource.NewProperty("new-new-test"),
-							},
+							Updates: pmap("should-update", property.New("new-new-test")),
 						}, false)
 					assert.ErrorContains(t, err,
-						"properties changed: ~-should-update[{new-new-test}], ~-should-update[{new-new-test}]")
+						`properties changed: ~-should-update["new-new-test"], ~-should-update["new-new-test"]`)
 				})
 				t.Run("computed", func(t *testing.T) {
 					t.Parallel()
 					err := checkDiff(
-						resource.PropertyMap{
-							resource.PropertyKey("should-update"): resource.NewProperty("new-test"),
-						},
+						rpmap("should-update", resource.NewProperty("new-test")),
 						resource.PropertyMap{},
 						PlanDiff{
-							Updates: resource.PropertyMap{
-								resource.PropertyKey("should-update"): resource.MakeComputed(resource.NewProperty("new-new-test")),
-							},
+							Updates: pmap("should-update", property.New(property.Computed)),
 						}, false)
 					require.NoError(t, err)
 				})

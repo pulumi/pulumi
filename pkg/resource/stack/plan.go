@@ -16,6 +16,7 @@ package stack
 
 import (
 	"context"
+	"slices"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -31,20 +32,17 @@ func SerializePlanDiff(
 	showSecrets bool,
 ) (apitype.PlanDiffV1, error) {
 	ctx := context.TODO()
-	adds, err := SerializeProperties(ctx, diff.Adds, enc, showSecrets)
+	adds, err := SerializeProperties(ctx, resource.ToResourcePropertyMap(diff.Adds), enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
 
-	updates, err := SerializeProperties(ctx, diff.Updates, enc, showSecrets)
+	updates, err := SerializeProperties(ctx, resource.ToResourcePropertyMap(diff.Updates), enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
 
-	deletes := make([]string, len(diff.Deletes))
-	for i := range deletes {
-		deletes[i] = string(diff.Deletes[i])
-	}
+	deletes := slices.Clone(diff.Deletes)
 
 	return apitype.PlanDiffV1{
 		Adds:    adds,
@@ -67,12 +65,11 @@ func DeserializePlanDiff(
 		return deploy.PlanDiff{}, err
 	}
 
-	deletes := make([]resource.PropertyKey, len(diff.Deletes))
-	for i := range deletes {
-		deletes[i] = resource.PropertyKey(diff.Deletes[i])
-	}
-
-	return deploy.PlanDiff{Adds: adds, Updates: updates, Deletes: deletes}, nil
+	return deploy.PlanDiff{
+		Adds:    resource.FromResourcePropertyMap(adds),
+		Updates: resource.FromResourcePropertyMap(updates),
+		Deletes: slices.Clone(diff.Deletes),
+	}, nil
 }
 
 func SerializeResourcePlan(
