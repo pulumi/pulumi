@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Reject `pulumi api describe <operationId>` when `--method` disagrees with the operation's method
+time: 2026-11-24T18:50:00.000000000+00:00
