@@ -1,0 +1,15 @@
+{
+	"name": "l2-invoke-result-as-input",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/invokeresult": "ROOT/artifacts/pulumi-invokeresult-64.0.0.tgz"
+	}
+}
