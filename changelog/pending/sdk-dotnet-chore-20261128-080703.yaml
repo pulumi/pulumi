@@ -1,0 +1,4 @@
+component: sdk/dotnet
+kind: chore
+body: Upgrade dotnet to v3.121.0
+time: 2026-11-28T08:07:03.323912307Z
