@@ -1889,8 +1889,12 @@ func (s *RefreshStep) Fail() {
 	// Nothing to do here.
 }
 
+// Skip is only reached for a program refresh when the new registration depends on a skipped resource. Step
+// generation resumes from the unrefreshed state, and the resource's own step is skipped as well.
 func (s *RefreshStep) Skip() {
-	// Nothing to do here.
+	if s.cts != nil {
+		s.cts.MustFulfill(s.old)
+	}
 }
 
 // ExtensionParameterizeStep is an internal step that applies an extension

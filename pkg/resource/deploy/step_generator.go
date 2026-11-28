@@ -951,7 +951,7 @@ func (sg *stepGenerator) generateResourceSteps(
 			// but a goroutine blocked on Result and then posting to a channel is very cheap.
 			state, err := cts.Promise().Result(context.Background())
 			// alias this new "old" state in the dependency graph to it's original state.
-			if state != nil {
+			if state != nil && state != old {
 				// This mutates depGraph but this in a goroutine so might race other Alias calls so we need to lock around this.
 				sg.refreshAliasLock.Lock()
 				sg.deployment.depGraph.Alias(state, old)

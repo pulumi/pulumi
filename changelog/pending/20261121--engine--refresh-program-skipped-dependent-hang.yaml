@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Fix `up --refresh --run-program` hanging when a resource's dependency fails with `--continue-on-error` or an await error
+time: 2026-11-21T18:55:36Z

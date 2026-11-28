@@ -747,9 +747,17 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		ex.skipped.Add(errored.Res().URN)
 	}
 	for _, step := range steps {
-		if doesStepDependOn(step, ex.skipped) {
+		var skip bool
+		if rs, ok := step.(*RefreshStep); ok && rs.Persisted() {
+			// A program refresh reads with the new provider and is followed by a step generated from the new
+			// registration, so only that registration decides whether it is skipped.
+			skip = doesResourceDependOn(rs.new, ex.skipped)
+		} else {
+			skip = doesStepDependOn(step, ex.skipped)
+		}
+		if skip {
 			step.Skip()
-			ex.skipped.Add(step.Res().URN)
+			ex.skipped.Add(step.URN())
 			continue
 		}
 		newSteps = append(newSteps, step)
