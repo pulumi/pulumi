@@ -1886,11 +1886,15 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 }
 
 func (s *RefreshStep) Fail() {
-	// Nothing to do here.
+	if s.cts != nil {
+		s.cts.Reject(fmt.Errorf("refresh of %s failed", s.URN()))
+	}
 }
 
 func (s *RefreshStep) Skip() {
-	// Nothing to do here.
+	if s.cts != nil {
+		s.cts.MustFulfill(s.old)
+	}
 }
 
 // ExtensionParameterizeStep is an internal step that applies an extension

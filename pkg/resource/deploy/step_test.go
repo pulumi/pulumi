@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -943,6 +944,56 @@ func TestRefreshStep(t *testing.T) {
 			}, s.new.Outputs)
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})
+	})
+	t.Run("Fail rejects pending refresh", func(t *testing.T) {
+		t.Parallel()
+		state := &pkgresource.State{URN: "urn:pulumi:stack::project::some-type::some-urn"}
+		cts := &promise.CompletionSource[*pkgresource.State]{}
+		s := NewRefreshStep(&Deployment{}, cts, state, nil, nil)
+
+		s.Fail()
+
+		_, err, ok := cts.Promise().TryResult()
+		require.True(t, ok)
+		require.ErrorContains(t, err, "refresh of urn:pulumi:stack::project::some-type::some-urn failed")
+	})
+	t.Run("Fail keeps Apply error", func(t *testing.T) {
+		t.Parallel()
+		expectedErr := errors.New("expected error")
+		state := &pkgresource.State{
+			URN:      "urn:pulumi:stack::project::some-type::some-urn",
+			ID:       "some-id",
+			Custom:   true,
+			Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
+		}
+		cts := &promise.CompletionSource[*pkgresource.State]{}
+		s := NewRefreshStep(&Deployment{opts: &Options{DryRun: true}}, cts, state, nil, nil).(*RefreshStep)
+		s.provider = &deploytest.Provider{
+			ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{}, expectedErr
+			},
+		}
+
+		_, _, err := s.Apply()
+		require.ErrorIs(t, err, expectedErr)
+		s.Fail()
+
+		_, err, ok := cts.Promise().TryResult()
+		require.True(t, ok)
+		require.ErrorIs(t, err, expectedErr)
+	})
+	t.Run("Skip fulfills with old state", func(t *testing.T) {
+		t.Parallel()
+		state := &pkgresource.State{URN: "urn:pulumi:stack::project::some-type::some-urn"}
+		cts := &promise.CompletionSource[*pkgresource.State]{}
+		s := NewRefreshStep(&Deployment{}, cts, state, nil, nil)
+
+		s.Skip()
+
+		result, err, ok := cts.Promise().TryResult()
+		require.True(t, ok)
+		require.NoError(t, err)
+		require.Same(t, state, result)
 	})
 }
 
